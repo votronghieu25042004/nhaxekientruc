@@ -21,7 +21,7 @@ class ScannerController extends Controller
             return response()->json(['valid' => false, 'message' => 'Mã QR không hợp lệ.'], 400);
         }
 
-        $booking = Booking::with(['trip.route.departureStation', 'trip.route.arrivalStation', 'trip.bus', 'trip.company', 'bookingSeats'])
+        $booking = Booking::with(['trip.route.stops', 'trip.bus', 'trip.driver', 'bookingSeats'])
             ->where('qr_token', $token)
             ->orWhere('booking_code', $token)
             ->first();
@@ -32,6 +32,11 @@ class ScannerController extends Controller
                 'message' => 'Vé không tồn tại trong hệ thống hoặc mã QR giả mạo!',
             ]);
         }
+
+        $originName = $booking->trip?->route?->origin ?? 'Đà Nẵng';
+        $destName = $booking->trip?->route?->destination ?? 'Điểm đến';
+        $firstStop = $booking->trip?->route?->stops?->first()?->stop_name ?? 'Bến xe trung tâm';
+        $lastStop = $booking->trip?->route?->stops?->last()?->stop_name ?? 'Bến xe trả khách';
 
         return response()->json([
             'valid' => true,
@@ -47,12 +52,12 @@ class ScannerController extends Controller
                 'payment_status' => $booking->payment_status,
                 'checkin_status' => $booking->checkin_status,
                 'checked_in_at' => $booking->checked_in_at ? $booking->checked_in_at->format('H:i - d/m/Y') : null,
-                'departure_time' => $booking->trip->departure_time->format('H:i - d/m/Y'),
-                'from_station' => $booking->trip->route->departureStation->name,
-                'to_station' => $booking->trip->route->arrivalStation->name,
-                'company_name' => $booking->trip->company->name,
-                'license_plate' => $booking->trip->bus->license_plate,
-                'bus_type' => $booking->trip->bus->bus_type,
+                'departure_time' => $booking->trip?->departure_time ? $booking->trip->departure_time->format('H:i - d/m/Y') : '',
+                'from_station' => "{$originName} ({$firstStop})",
+                'to_station' => "{$destName} ({$lastStop})",
+                'company_name' => 'Nhà xe Kiến Trúc (nhaxekientruc)',
+                'license_plate' => $booking->trip?->bus?->license_plate ?? '43B-012.34',
+                'bus_type' => $booking->trip?->bus?->bus_type ?? 'Ghế ngồi cao cấp VIP',
             ]
         ]);
     }
@@ -64,7 +69,7 @@ class ScannerController extends Controller
 
         $booking = Booking::findOrFail($bookingId);
 
-        if ($booking->checkin_status === 'boarded') {
+        if ($booking->checkin_status === 'CHECKED_IN' || $booking->checkin_status === 'boarded') {
             return response()->json([
                 'success' => false,
                 'message' => 'CẢNH BÁO: Vé này đã được check-in lúc ' . ($booking->checked_in_at ? $booking->checked_in_at->format('H:i d/m/Y') : '') . '!',
@@ -72,11 +77,16 @@ class ScannerController extends Controller
         }
 
         $booking->update([
-            'payment_status' => 'fully_paid',
-            'checkin_status' => 'boarded',
+            'payment_status' => 'PAID',
+            'paid_amount' => $booking->total_amount,
+            'checkin_status' => 'CHECKED_IN',
+            'boarding_status' => 'BOARDED',
+            'is_boarded' => 1,
             'checked_in_at' => Carbon::now(),
             'checked_in_by' => $staffName,
         ]);
+
+        $booking->bookingSeats()->update(['checkin_status' => 'boarded']);
 
         return response()->json([
             'success' => true,
