@@ -72,10 +72,10 @@
             <span class="text-lg font-black text-blue-600 font-mono block">{{ verifiedTicket.booking_code }}</span>
           </div>
           <span
-            :class="verifiedTicket.checkin_status === 'boarded' ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-green-500/20 text-green-400 border-green-500/30'"
+            :class="['boarded', 'CHECKED_IN'].includes(verifiedTicket.checkin_status) ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 'bg-green-500/20 text-green-600 border-green-500/30'"
             class="px-3 py-1 rounded-full text-xs font-bold border"
           >
-            {{ verifiedTicket.checkin_status === 'boarded' ? 'ĐÃ CHECK-IN TRƯỚC ĐÓ' : 'HỢP LỆ - CHƯA LÊN XE' }}
+            {{ ['boarded', 'CHECKED_IN'].includes(verifiedTicket.checkin_status) ? 'ĐÃ CHECK-IN TRƯỚC ĐÓ' : 'HỢP LỆ - CHƯA LÊN XE' }}
           </span>
         </div>
 
@@ -114,7 +114,7 @@
           </div>
         </div>
 
-        <div v-if="verifiedTicket.checkin_status !== 'boarded'">
+        <div v-if="!['boarded', 'CHECKED_IN'].includes(verifiedTicket.checkin_status)">
           <button
             @click="confirmCheckin"
             :disabled="checkingIn"
@@ -126,7 +126,7 @@
             XÁC NHẬN ĐÃ THU {{ formatPrice(verifiedTicket.remaining_amount) }}đ & CHECK-IN
           </button>
         </div>
-        <div v-else class="text-center p-3 bg-rose-500/10 rounded-2xl text-xs text-rose-400 font-bold">
+        <div v-else class="text-center p-3 bg-rose-500/10 rounded-2xl text-xs text-rose-500 font-bold">
           ⚠️ Vé này đã được check-in lúc {{ verifiedTicket.checked_in_at }}
         </div>
       </div>
@@ -195,7 +195,7 @@ const confirmCheckin = async () => {
     });
     if (res.data.success) {
       alert(res.data.message);
-      verifiedTicket.value.checkin_status = 'boarded';
+      verifiedTicket.value.checkin_status = 'CHECKED_IN';
       verifiedTicket.value.checked_in_at = res.data.checked_in_at;
     } else {
       alert(res.data.message);
