@@ -72,10 +72,10 @@
                 <td class="py-3.5 text-amber-400 font-bold">{{ formatPrice(b.remaining_amount) }}đ</td>
                 <td class="py-3.5 text-right">
                   <span
-                    :class="b.checkin_status === 'boarded' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-blue-600/20 text-amber-400 border-blue-600/30'"
+                    :class="['CHECKED_IN', 'boarded'].includes(b.checkin_status) ? 'bg-emerald-500/20 text-emerald-600 border-emerald-500/30' : 'bg-amber-500/20 text-amber-600 border-amber-500/30'"
                     class="px-2.5 py-1 rounded-full text-[11px] font-bold border inline-block"
                   >
-                    {{ b.checkin_status === 'boarded' ? '✓ Đã lên xe' : 'Chờ soát vé' }}
+                    {{ ['CHECKED_IN', 'boarded'].includes(b.checkin_status) ? '✓ Đã lên xe' : 'Chờ soát vé' }}
                   </span>
                 </td>
               </tr>
