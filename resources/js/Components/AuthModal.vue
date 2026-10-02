@@ -2,263 +2,289 @@
   <Teleport to="body">
     <div
       v-if="visible"
-      class="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
-      @click.self="closeModal"
+      class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
     >
-      <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 sm:p-8 my-auto transform transition-all animate-in fade-in zoom-in-95 duration-200">
-        <!-- Close Button -->
-        <button
-          type="button"
-          @click="closeModal"
-          class="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+      <!-- Backdrop click to close -->
+      <div class="fixed inset-0" @click="closeModal"></div>
+
+      <!-- Modal Card -->
+      <div
+        class="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden z-10 animate-in zoom-in-95 duration-150 border border-slate-100 p-6 sm:p-7"
+      >
+        <!-- Header -->
+        <div class="flex items-center justify-between pb-3.5 border-b border-slate-100">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 flex items-center justify-center text-white font-black text-xl shadow-md shadow-red-500/20">
+              🚌
+            </div>
+            <div>
+              <h3 class="text-base sm:text-lg font-black text-slate-900 leading-tight">Đăng Nhập Tài Khoản</h3>
+              <p class="text-[11px] text-slate-500 font-medium">Đăng nhập bằng Email hoặc Số điện thoại & Mật khẩu</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            @click="closeModal"
+            class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center text-base font-bold transition cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- THÔNG BÁO LỖI NẾU ĐĂNG NHẬP THẤT BẠI -->
+        <div
+          v-if="errorMessage"
+          class="mt-4 p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-2xl flex items-start gap-2.5 animate-in fade-in duration-150"
         >
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-
-        <!-- Brand Header -->
-        <div class="text-center mb-5">
-          <div class="w-12 h-12 rounded-2xl bg-[#2563EB] text-white flex items-center justify-center mx-auto mb-2 shadow-md shadow-blue-600/25 font-black text-xl">
-            F
-          </div>
-          <h2 class="text-xl font-black text-slate-900 tracking-tight">BusHub Terminal & redBus</h2>
-          <p class="text-xs text-slate-500 mt-0.5">Đăng nhập tài khoản & Nhận mã vé QR</p>
+          <span class="text-base shrink-0 leading-none">⚠️</span>
+          <span class="leading-relaxed">{{ errorMessage }}</span>
         </div>
 
-        <!-- Fast Dev 1-Click Role Login Bar (Easy Testing) -->
-        <div class="mb-5 p-3.5 bg-blue-50/80 rounded-2xl border border-blue-200/80">
-          <div class="flex items-center space-x-1.5 text-xs font-black text-orange-900 mb-2">
-            <span>⚡</span>
-            <span>ĐĂNG NHẬP NHANH 1 CHẠM (TIỆN TEST):</span>
-          </div>
-          <div class="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              @click="fastLogin('admin')"
-              class="py-2 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold text-center transition cursor-pointer shadow-xs"
-            >
-              👑 Admin
-            </button>
-            <button
-              type="button"
-              @click="fastLogin('driver')"
-              class="py-2 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold text-center transition cursor-pointer shadow-xs"
-            >
-              🚌 Tài Xế
-            </button>
-            <button
-              type="button"
-              @click="fastLogin('staff')"
-              class="py-2 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold text-center transition cursor-pointer shadow-xs"
-            >
-              🎫 Lơ Xe
-            </button>
-          </div>
-        </div>
-
-        <!-- Mode Switcher Tabs -->
-        <div class="flex p-1 bg-slate-100 rounded-2xl mb-5">
-          <button
-            type="button"
-            @click="activeTab = 'otp'"
-            :class="[
-              'flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
-              activeTab === 'otp' ? 'bg-white text-[#2563EB] shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            ]"
-          >
-            Đăng Nhập OTP Gmail
-          </button>
-          <button
-            type="button"
-            @click="activeTab = 'password'"
-            :class="[
-              'flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
-              activeTab === 'password' ? 'bg-white text-[#2563EB] shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            ]"
-          >
-            Mật Khẩu
-          </button>
-        </div>
-
-        <!-- OTP Flow -->
-        <div v-if="activeTab === 'otp'" class="space-y-4">
-          <!-- Step 1: Input Email -->
-          <div v-if="!otpSent">
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Địa chỉ Gmail của bạn</label>
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
+        <!-- FORM ĐĂNG NHẬP MẬT KHẨU -->
+        <form @submit.prevent="handlePasswordLogin" class="mt-4 space-y-4">
+          <!-- Tài khoản (Email hoặc SĐT) -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              Email hoặc Số điện thoại <span class="text-red-500">*</span>
+            </label>
+            <div class="relative flex items-center">
+              <span class="absolute left-3.5 text-slate-400 text-sm pointer-events-none">👤</span>
               <input
-                type="email"
-                v-model="otpEmail"
-                placeholder="tenban@gmail.com"
-                class="w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-[#2563EB] focus:bg-white"
+                type="text"
+                v-model="loginForm.email"
+                required
+                autofocus
+                placeholder="Nhập email hoặc 10 số điện thoại của bạn"
+                class="w-full pl-10 pr-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition"
               />
             </div>
-            <button
-              type="button"
-              :disabled="!otpEmail || isSubmitting"
-              @click="handleSendOtp"
-              class="w-full mt-4 py-3 bg-[#2563EB] hover:bg-[#D84315] text-white font-extrabold text-xs rounded-2xl shadow-md shadow-blue-600/20 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
-            >
-              <span v-if="isSubmitting">Đang gửi mã...</span>
-              <span v-else>Gửi Mã Xác Thực OTP</span>
-            </button>
-          </div>
 
-          <!-- Step 2: Input OTP Code -->
-          <div v-else>
-            <div class="p-3 bg-blue-50 rounded-2xl border border-blue-100 text-xs text-orange-900 mb-4">
-              Mã OTP 6 số đã được gửi đến: <strong>{{ otpEmail }}</strong>
+            <!-- Student Auto-detection Banner -->
+            <div v-if="isArchitectureStudent" class="mt-2 p-3 bg-gradient-to-r from-red-50 to-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-950 space-y-1 animate-in fade-in">
+              <div class="flex items-center gap-1.5 font-black text-red-700">
+                <span>🏮</span>
+                <span>SINH VIÊN ĐẠI HỌC KIẾN TRÚC (DAU)</span>
+                <span class="ml-auto text-[9.5px] px-2 py-0.5 rounded-full bg-red-600 text-white font-mono">Xác thực: Hợp lệ</span>
+              </div>
+              <p class="text-[11px] text-slate-700 leading-snug">
+                🎉 Bạn được hưởng đặc quyền <strong>VÉ 0-ĐỒNG VỀ QUÊ ĐÓN TẾT (Mã: SINHVIEN0DONG)</strong>, miễn phí 100% đồ án & có <strong>AI gọi điện nhắc lịch xuất bến</strong>!
+              </p>
             </div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Nhập mã OTP 6 chữ số</label>
-            <input
-              type="text"
-              v-model="otpCode"
-              placeholder="123456"
-              maxlength="6"
-              class="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-center text-lg font-black tracking-widest focus:ring-2 focus:ring-[#2563EB] focus:bg-white"
-            />
-            <button
-              type="button"
-              :disabled="otpCode.length < 6 || isSubmitting"
-              @click="handleVerifyOtp"
-              class="w-full mt-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-2xl shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
-            >
-              <span v-if="isSubmitting">Đang xác thực...</span>
-              <span v-else>Xác Nhận & Đăng Nhập</span>
-            </button>
-            <button
-              type="button"
-              @click="otpSent = false"
-              class="w-full mt-2 text-xs font-bold text-slate-500 hover:text-slate-800 text-center cursor-pointer"
-            >
-              Đổi email khác
-            </button>
+            <div v-else-if="isGeneralStudent" class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-950 space-y-1 animate-in fade-in">
+              <div class="flex items-center gap-1.5 font-black text-blue-700">
+                <span>🎓</span>
+                <span>SINH VIÊN CÁC TRƯỜNG ĐH & CĐ TOÀN QUỐC</span>
+                <span class="ml-auto text-[9.5px] px-2 py-0.5 rounded-full bg-blue-600 text-white font-mono">Đã xác nhận SV</span>
+              </div>
+              <p class="text-[11px] text-slate-700 leading-snug">
+                Áp dụng chính sách <strong>GIẢM 30% LẦN ĐẦU (Mã SINHVIEN)</strong> hoặc <strong>VÉ 0-ĐỒNG TẾT</strong> và AI nhắc lịch trình tự động!
+              </p>
+            </div>
           </div>
-        </div>
 
-        <!-- Password Flow -->
-        <div v-else class="space-y-4">
+          <!-- Mật khẩu -->
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Email</label>
-            <input
-              type="email"
-              v-model="loginForm.email"
-              placeholder="admin@bushub.vn"
-              class="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-[#2563EB] focus:bg-white"
-            />
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Mật khẩu <span class="text-red-500">*</span>
+              </label>
+              <button
+                type="button"
+                @click="showForgot = !showForgot"
+                class="text-[11px] font-bold text-red-600 hover:underline cursor-pointer"
+              >
+                Quên mật khẩu?
+              </button>
+            </div>
+            <div class="relative flex items-center">
+              <span class="absolute left-3.5 text-slate-400 text-sm pointer-events-none">🔒</span>
+              <input
+                :type="showPassword ? 'text' : 'password'"
+                v-model="loginForm.password"
+                required
+                placeholder="Nhập mật khẩu tài khoản"
+                class="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition"
+              />
+              <button
+                type="button"
+                @click="showPassword = !showPassword"
+                class="absolute right-3 text-slate-400 hover:text-slate-600 text-base cursor-pointer"
+              >
+                {{ showPassword ? '🙈' : '👁️' }}
+              </button>
+            </div>
           </div>
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Mật khẩu</label>
-            <input
-              type="password"
-              v-model="loginForm.password"
-              placeholder="••••••••"
-              class="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-[#2563EB] focus:bg-white"
-            />
+
+          <!-- Hộp hướng dẫn quên mật khẩu -->
+          <div v-if="showForgot" class="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 space-y-1 animate-in fade-in">
+            <p class="font-bold">📞 Hỗ trợ lấy lại mật khẩu nhaxekientruc:</p>
+            <p class="text-[11px] text-amber-800">
+              Vui lòng gọi Tổng đài 24/7: <a href="tel:19006067" class="font-bold underline text-red-700">1900 6067</a> hoặc Hotline: <a href="tel:0905123456" class="font-bold underline text-red-700">0905 123 456</a> để được hỗ trợ cấp lại mật khẩu.
+            </p>
           </div>
+
+          <!-- Ghi nhớ đăng nhập -->
+          <div class="flex items-center justify-between text-xs text-slate-600 pt-0.5">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                v-model="loginForm.remember"
+                class="rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
+              />
+              <span class="text-xs font-medium">Ghi nhớ đăng nhập</span>
+            </label>
+          </div>
+
+          <!-- Nút Đăng Nhập -->
+          <button
+            type="submit"
+            :disabled="isSubmitting"
+            class="w-full py-3.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs sm:text-sm rounded-2xl shadow-lg shadow-red-600/25 active:scale-95 disabled:opacity-50 transition cursor-pointer flex items-center justify-center gap-2"
+          >
+            <span>{{ isSubmitting ? 'ĐANG ĐĂNG NHẬP...' : 'ĐĂNG NHẬP NGAY' }}</span>
+            <span>➔</span>
+          </button>
+
+          <!-- ĐĂNG NHẬP NHANH DEMO CHO SINH VIÊN (1-CLICK) -->
+          <div class="pt-2 border-t border-dashed border-slate-200">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block text-center mb-1.5">
+              Đăng nhập nhanh tài khoản sinh viên (1-Click)
+            </span>
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                @click="loginAsArchitectureStudent"
+                class="p-2.5 rounded-xl bg-gradient-to-r from-red-50 to-amber-50 border border-amber-300 hover:border-amber-500 text-left cursor-pointer transition group shadow-2xs"
+              >
+                <div class="text-[11px] font-black text-red-800 flex items-center gap-1">
+                  <span>🏛️</span>
+                  <span>SV Kiến Trúc (DAU)</span>
+                </div>
+                <div class="text-[9.5px] text-slate-600 truncate font-mono">sinhvien@dau.edu.vn</div>
+                <div class="text-[9px] text-amber-700 font-bold mt-0.5">🧧 Vé Tết 0đ + AI gọi</div>
+              </button>
+
+              <button
+                type="button"
+                @click="loginAsGeneralStudent"
+                class="p-2.5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 hover:border-blue-400 text-left cursor-pointer transition group shadow-2xs"
+              >
+                <div class="text-[11px] font-black text-blue-800 flex items-center gap-1">
+                  <span>🎓</span>
+                  <span>Sinh Viên ĐH Khác</span>
+                </div>
+                <div class="text-[9.5px] text-slate-600 truncate font-mono">sinhvien@dut.udn.vn</div>
+                <div class="text-[9px] text-blue-700 font-bold mt-0.5">Giảm 30% lần đầu</div>
+              </button>
+            </div>
+          </div>
+
+        </form>
+
+        <!-- CHUYỂN SANG ĐĂNG KÝ (XÁC THỰC OTP) -->
+        <div class="mt-4 pt-3.5 border-t border-slate-100 text-center space-y-2">
+          <p class="text-xs text-slate-500 font-medium">
+            Chưa có tài khoản nhaxekientruc?
+          </p>
           <button
             type="button"
-            :disabled="isSubmitting"
-            @click="handlePasswordLogin"
-            class="w-full py-3 bg-[#2563EB] hover:bg-[#D84315] text-white font-extrabold text-xs rounded-2xl shadow-md shadow-blue-600/20 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+            @click="goToRegister"
+            class="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:border-red-500 hover:bg-red-50/50 text-slate-700 hover:text-red-700 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
           >
-            <span v-if="isSubmitting">Đang đăng nhập...</span>
-            <span v-else>Đăng Nhập</span>
+            <span>📝</span>
+            <span>Đăng ký tài khoản mới (Xác thực OTP qua Gmail / Zalo)</span>
           </button>
         </div>
+
       </div>
     </div>
   </Teleport>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { ref, computed } from 'vue';
+import { router } from '@inertiajs/vue3';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   isOpen: { type: Boolean, default: false },
-  initialTab: { type: String, default: 'otp' },
-})
+});
 
-const emit = defineEmits(['update:modelValue', 'close'])
+const emit = defineEmits(['update:modelValue', 'close']);
 
-const visible = computed(() => props.modelValue || props.isOpen)
+const visible = computed(() => props.modelValue || props.isOpen);
 
-const activeTab = ref(props.initialTab || 'otp')
-const isSubmitting = ref(false)
-const otpEmail = ref('')
-const otpCode = ref('')
-const otpSent = ref(false)
+const isSubmitting = ref(false);
+const showPassword = ref(false);
+const showForgot = ref(false);
+const errorMessage = ref('');
 
 const loginForm = ref({
   email: '',
   password: '',
-})
+  remember: true,
+});
+
+const isArchitectureStudent = computed(() => {
+  const e = (loginForm.value.email || '').toLowerCase().trim();
+  return e.endsWith('@dau.edu.vn') || e.includes('kientruc');
+});
+
+const isGeneralStudent = computed(() => {
+  const e = (loginForm.value.email || '').toLowerCase().trim();
+  return !isArchitectureStudent.value && (e.includes('.edu.vn') || e.includes('sinhvien'));
+});
+
+const isStudentEmail = computed(() => isArchitectureStudent.value || isGeneralStudent.value);
+
+const loginAsArchitectureStudent = () => {
+  loginForm.value.email = 'sinhvien@dau.edu.vn';
+  loginForm.value.password = '123456';
+  handlePasswordLogin();
+};
+
+const loginAsGeneralStudent = () => {
+  loginForm.value.email = 'sinhvien@dut.udn.vn';
+  loginForm.value.password = '123456';
+  handlePasswordLogin();
+};
 
 const closeModal = () => {
-  emit('update:modelValue', false)
-  emit('close')
-}
+  emit('update:modelValue', false);
+  emit('close');
+  errorMessage.value = '';
+  showForgot.value = false;
+};
 
-const fastLogin = (role) => {
-  closeModal()
-  router.post('/auth/fast-login', { role })
-}
-
-const handleSendOtp = () => {
-  if (!otpEmail.value) return
-  isSubmitting.value = true
-
-  router.post('/auth/send-otp', { target: otpEmail.value, type: 'email' }, {
-    onSuccess: () => {
-      otpSent.value = true
-      isSubmitting.value = false
-    },
-    onError: () => {
-      isSubmitting.value = false
-      alert('Không thể gửi mã OTP. Vui lòng thử lại.')
-    }
-  })
-}
-
-const handleVerifyOtp = () => {
-  if (!otpCode.value) return
-  isSubmitting.value = true
-
-  router.post('/auth/verify-otp', {
-    target: otpEmail.value,
-    otp: otpCode.value,
-  }, {
-    onSuccess: () => {
-      isSubmitting.value = false
-      closeModal()
-      window.location.reload()
-    },
-    onError: () => {
-      isSubmitting.value = false
-      alert('Mã OTP không chính xác hoặc đã hết hạn.')
-    }
-  })
-}
+const goToRegister = () => {
+  closeModal();
+  router.visit('/register');
+};
 
 const handlePasswordLogin = () => {
-  isSubmitting.value = true
-  router.post('/login', loginForm.value, {
+  if (!loginForm.value.email.trim() || !loginForm.value.password) {
+    errorMessage.value = 'Vui lòng nhập email/số điện thoại và mật khẩu!';
+    return;
+  }
+
+  isSubmitting.value = true;
+  errorMessage.value = '';
+
+  router.post('/login', {
+    email: loginForm.value.email.trim(),
+    password: loginForm.value.password,
+    remember: loginForm.value.remember,
+  }, {
+    preserveState: false,
+    preserveScroll: true,
     onSuccess: () => {
-      isSubmitting.value = false
-      closeModal()
+      isSubmitting.value = false;
+      closeModal();
     },
-    onError: () => {
-      isSubmitting.value = false
-      alert('Email hoặc mật khẩu không đúng.')
+    onError: (errors) => {
+      isSubmitting.value = false;
+      errorMessage.value = errors.email || errors.password || errors.status || 'Email/Số điện thoại hoặc mật khẩu không chính xác!';
     }
-  })
-}
+  });
+};
 </script>
