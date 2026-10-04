@@ -24,5 +24,6 @@ Route::post('/scanner/checkin', [ScannerController::class, 'checkin']);
 // 5. Danh sách tài xế
 Route::get('/drivers', [BusApiController::class, 'getDrivers']);
 
-// 6. Trợ lý AI
+// 6. Trợ lý AI & Thông báo tự động
 Route::post('/ai/chat', [AiAssistantController::class, 'chat']);
+Route::post('/ai/auto-notify', [AiAssistantController::class, 'autoNotify']);
