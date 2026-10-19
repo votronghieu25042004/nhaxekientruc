@@ -52,7 +52,7 @@ class StaffController extends Controller
             'todayTrips' => $todayTrips,
             'selectedTrip' => $selectedTrip ? [
                 'id' => $selectedTrip->id,
-                'route_name' => $selectedTrip->route->departure_location . ' ➔ ' . $selectedTrip->route->arrival_location,
+                'route_name' => ($selectedTrip->route?->origin ?? 'Đà Nẵng') . ' ➔ ' . ($selectedTrip->route?->destination ?? 'Điểm đến'),
                 'departure_time' => $selectedTrip->departure_time->format('H:i - d/m/Y'),
                 'bus_plate' => $selectedTrip->bus->license_plate,
                 'bus_type' => $selectedTrip->bus->bus_type,
@@ -75,8 +75,9 @@ class StaffController extends Controller
         }
 
         $booking->update([
-            'payment_status' => 'fully_paid',
-            'checkin_status' => 'boarded',
+            'payment_status' => 'PAID',
+            'paid_amount' => $booking->total_amount,
+            'checkin_status' => 'CHECKED_IN',
             'checked_in_at' => Carbon::now(),
             'checked_in_by' => Auth::user() ? Auth::user()->name : 'Lơ xe trực tiếp',
         ]);
