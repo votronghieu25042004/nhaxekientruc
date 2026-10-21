@@ -10,21 +10,52 @@ use App\Models\BookingSeat;
 class SeatSegmentService
 {
     /**
-     * Lấy danh sách các ghế bị trùng/chiếm trên đoạn đường từ pickupOrder đến dropoffOrder
-     * Quy tắc Overlap: max(P1, P2) < min(D1, D2)
+     * Lấy toàn bộ danh sách ghế đã được đặt / chiếm trên chuyến xe
+     * Đồng bộ chuẩn xác 100% cho cả 4 phân hệ: Khách Hàng, Admin, Lơ Xe, Tài Xế
+     * Chỉ giải phóng khi vé bị HỦY (CANCELLED) hoặc ĐÃ HOÀN TIỀN (REFUNDED)
+     * Vé đang chờ hoàn tiền (PENDING) vẫn giữ nguyên ghế cho tới khi Admin duyệt.
      */
-    public static function getOccupiedSeats(int $tripId, int $pickupOrder, int $dropoffOrder): array
+    public static function getAllBookedSeatsForTrip(int $tripId): array
     {
         $occupiedSeats = BookingSeat::where('trip_id', $tripId)
-            ->where(function ($query) use ($pickupOrder, $dropoffOrder) {
-                // Điều kiện giao nhau giữa 2 đoạn [P1, D1] và [P2, D2]
-                $query->where('pickup_order', '<', $dropoffOrder)
-                      ->where('dropoff_order', '>', $pickupOrder);
+            ->whereHas('booking', function ($query) {
+                $query->whereNotIn('checkin_status', ['CANCELLED'])
+                      ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
             })
             ->pluck('seat_number')
             ->toArray();
 
-        return array_unique($occupiedSeats);
+        return array_values(array_unique($occupiedSeats));
+    }
+
+    /**
+     * Lấy danh sách các ghế bị trùng/chiếm trên đoạn đường từ pickupOrder đến dropoffOrder
+     * Bỏ qua các vé đã bị Hủy hoặc Hoàn tiền (CANCELLED, REFUNDED)
+     */
+    public static function getOccupiedSeats(int $tripId, int $pickupOrder, int $dropoffOrder): array
+    {
+        if ($pickupOrder === 0 && $dropoffOrder >= 90) {
+            return self::getAllBookedSeatsForTrip($tripId);
+        }
+
+        $occupiedSeats = BookingSeat::where('trip_id', $tripId)
+            ->whereHas('booking', function ($query) {
+                $query->whereNotIn('checkin_status', ['CANCELLED'])
+                      ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
+            })
+            ->where(function ($query) use ($pickupOrder, $dropoffOrder) {
+                // Điều kiện giao nhau giữa 2 đoạn [P1, D1] và [P2, D2] hoặc toàn bộ chuyến
+                $query->where(function ($sub) use ($pickupOrder, $dropoffOrder) {
+                    $sub->where('pickup_order', '<', $dropoffOrder)
+                        ->where('dropoff_order', '>', $pickupOrder);
+                })
+                ->orWhereNull('dropoff_order')
+                ->orWhere('dropoff_order', '<=', 0);
+            })
+            ->pluck('seat_number')
+            ->toArray();
+
+        return array_values(array_unique($occupiedSeats));
     }
 
     /**
