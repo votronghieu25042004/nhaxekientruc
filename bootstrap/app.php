@@ -20,7 +20,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/*',
             'scanner/verify',
             'scanner/checkin',
-            'ai/chat',
+            'ai/*',
+            'conductor/*',
+            'driver/*',
+            'register/send-otp',
+            'register/verify-otp',
+            'auth/send-otp',
+            'auth/verify-otp',
+            'admin/trips/*/assign-driver',
+            'admin/users/*/toggle-status',
+            'admin/users/*',
+            'admin/roles/users/*/toggle-status',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
