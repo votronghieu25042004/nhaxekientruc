@@ -37,7 +37,7 @@
                 <td class="py-3.5">
                   <span
                     :class="{
-                      'bg-blue-600/20 text-amber-400 border-blue-600/30': u.role === 'admin',
+                      'bg-[#dc2626]/20 text-amber-400 border-blue-600/30': u.role === 'admin',
                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30': u.role === 'staff',
                       'bg-blue-500/20 text-blue-400 border-blue-500/30': u.role === 'customer',
                     }"
@@ -69,19 +69,33 @@
             </div>
             <div>
               <label class="text-xs font-bold text-slate-700 uppercase">Email</label>
-              <input v-model="staffForm.email" type="email" required placeholder="staff2@bushub.vn" class="w-full mt-1 bg-[#F8FAFC] border border-slate-300 rounded-xl p-3 text-slate-900 text-sm" />
+              <input v-model="staffForm.email" type="email" required placeholder="staff2@nhaxekientruc.vn" class="w-full mt-1 bg-[#F8FAFC] border border-slate-300 rounded-xl p-3 text-slate-900 text-sm" />
             </div>
             <div>
               <label class="text-xs font-bold text-slate-700 uppercase">Số điện thoại</label>
               <input v-model="staffForm.phone" type="tel" required placeholder="0905 888 999" class="w-full mt-1 bg-[#F8FAFC] border border-slate-300 rounded-xl p-3 text-slate-900 text-sm" />
             </div>
             <div>
+              <label class="text-xs font-bold text-slate-700 uppercase">Vai trò / Chức danh</label>
+              <select v-model="staffForm.role" class="w-full mt-1 bg-[#F8FAFC] border border-slate-300 rounded-xl p-3 text-slate-900 text-sm font-bold">
+                <option value="staff">🎫 Lơ Xe / Phụ Xe (Soát vé QR, Thu tiền mặt, Bán vé)</option>
+                <option value="driver">🚌 Tài Xế (Lái xe, Nhận chuyến, Báo sự cố)</option>
+                <option value="admin">👑 Quản Trị Viên (Toàn quyền điều hành)</option>
+              </select>
+            </div>
+            <div>
               <label class="text-xs font-bold text-slate-700 uppercase">Mật khẩu cấp</label>
-              <input v-model="staffForm.password" type="password" required placeholder="Mật khẩu ban đầu" class="w-full mt-1 bg-[#F8FAFC] border border-slate-300 rounded-xl p-3 text-slate-900 text-sm" />
+              <input v-model="staffForm.password" type="password" required placeholder="Mật khẩu ban đầu (mặc định: 123456)" class="w-full mt-1 bg-[#F8FAFC] border border-slate-300 rounded-xl p-3 text-slate-900 text-sm" />
             </div>
 
-            <button type="submit" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm">
-              TẠO TÀI KHOẢN LƠ XE
+            <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 leading-relaxed">
+              <span class="font-bold">📱 Hướng dẫn Lơ xe:</span> Admin tạo xong chỉ cần nhắn cho Lơ xe: <br>
+              <em>"Tài khoản của em là SĐT <strong>{{ staffForm.phone || '0905xxx' }}</strong>, mật khẩu là <strong>{{ staffForm.password || '123456' }}</strong> nhé"</em>.<br>
+              Lơ xe mở link <code>/login</code> trên điện thoại, đăng nhập bằng SĐT sẽ tự động chuyển vào giao diện Lơ xe.
+            </div>
+
+            <button type="submit" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/20 cursor-pointer">
+              XÁC NHẬN CẤP TÀI KHOẢN
             </button>
           </form>
         </div>
@@ -105,6 +119,7 @@ const staffForm = reactive({
   name: '',
   email: '',
   phone: '',
+  role: 'staff',
   password: '123456',
 });
 
