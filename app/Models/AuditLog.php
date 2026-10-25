@@ -14,4 +14,8 @@ class AuditLog extends Model {
             'description' => $description,
         ]);
     }
+
+    public function trip() {
+        return $this->belongsTo(Trip::class, 'trip_id');
+    }
 }
