@@ -23,8 +23,8 @@ class ReviewController extends Controller
                 'booking_code' => $booking->booking_code,
                 'customer_name' => $booking->customer_name,
                 'departure_time' => $booking->trip->departure_time->format('H:i - d/m/Y'),
-                'from_location' => $booking->trip->route->departure_location ?? 'Đà Nẵng',
-                'to_location' => $booking->trip->route->arrival_location ?? 'Hội An',
+                'from_location' => $booking->trip?->route?->origin ?? 'Đà Nẵng',
+                'to_location' => $booking->trip?->route?->destination ?? 'Điểm đến',
                 'bus_type' => $booking->trip->bus->bus_type ?? 'Giường Nằm Cao Cấp',
                 'license_plate' => $booking->trip->bus->plate_number ?? $booking->trip->bus->license_plate ?? '43B-012.34',
                 'driver' => $booking->trip->driver ? [
@@ -52,7 +52,7 @@ class ReviewController extends Controller
         ]);
 
         $isAnonymous = $request->boolean('is_anonymous');
-        $reviewerName = $isAnonymous ? 'Hành khách ẩn danh' : ($booking->customer_name ?? 'Hành khách FUTA');
+        $reviewerName = $isAnonymous ? 'Hành khách ẩn danh' : ($booking->customer_name ?? 'Hành khách nhaxekientruc');
 
         $review = Review::updateOrCreate(
             ['booking_id' => $booking->id],
@@ -73,6 +73,6 @@ class ReviewController extends Controller
         }
 
         return redirect()->route('booking.ticket', ['code' => $booking->booking_code])
-            ->with('success', 'Cảm ơn bạn đã gửi đánh giá cho Tài xế và Chuyến xe FUTA Bus Lines!');
+            ->with('success', 'Cảm ơn bạn đã gửi đánh giá cho Tài xế và Chuyến xe Nhà xe Kiến Trúc (nhaxekientruc)!');
     }
 }
