@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-blue-600 selection:text-white">
     <Navbar />
 
@@ -8,7 +8,7 @@
           Ý Kiến Hành Khách
         </span>
         <h1 class="text-2xl sm:text-3xl font-black text-white">ĐÁNH GIÁ TÀI XẾ & CHUYẾN ĐI</h1>
-        <p class="text-xs text-slate-400">Đánh giá của bạn được gửi trực tiếp đến Bác tài và Ban điều hành BusHub Terminal</p>
+        <p class="text-xs text-slate-400">Đánh giá của bạn được gửi trực tiếp đến Bác tài và Ban điều hành nhaxekientruc Terminal</p>
       </div>
 
       <div class="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-3xl space-y-6 shadow-2xl">
