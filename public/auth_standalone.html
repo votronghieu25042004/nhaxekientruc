@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full bg-[#F8FAFC]">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng Nhập & Đăng Ký | nhaxekientruc - HỆ THỐNG VÉ XE ĐÀ NẴNG</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              red: '#DC2626',
+              darkred: '#991B1B',
+              amber: '#F59E0B',
+              slate: '#0F172A',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
+    
+    /* Animations */
+    @keyframes starTwinkle {
+      0% { opacity: 0.2; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.3); }
+      100% { opacity: 0.3; transform: scale(0.9); }
+    }
+    .star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: white;
+      border-radius: 9999px;
+      box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
+      animation: starTwinkle 2.5s infinite ease-in-out alternate;
+    }
+
+    @keyframes driveLeftToRight {
+      0% { transform: translateX(-160px); }
+      100% { transform: translateX(460px); }
+    }
+    .bus-lane-1 {
+      animation: driveLeftToRight 7.5s linear infinite;
+    }
+
+    @keyframes driveRightToLeft {
+      0% { transform: translateX(460px); }
+      100% { transform: translateX(-160px); }
+    }
+    .bus-lane-2 {
+      animation: driveRightToLeft 9s linear infinite;
+    }
+
+    .bus-speed-fast {
+      animation-duration: 3.5s !important;
+    }
+
+    @keyframes wheelRotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .wheel-spin {
+      animation: wheelRotate 0.6s linear infinite;
+    }
+
+    /* Shimmer button glow */
+    .btn-shimmer::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+      transform: skewX(-20deg);
+      animation: shimmerMove 3.5s infinite;
+    }
+    @keyframes shimmerMove {
+      0% { left: -100%; }
+      25% { left: 200%; }
+      100% { left: 200%; }
+    }
+
+    /* Panoramic Strip */
+    .road-strip {
+      background-image: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 18px,
+        rgba(245, 158, 11, 0.8) 18px,
+        rgba(245, 158, 11, 0.8) 36px
+      );
+      background-size: 72px 3px;
+      background-position: center;
+      background-repeat: repeat-x;
+      animation: roadStripMove 1.2s linear infinite;
+    }
+    .road-strip-fast {
+      animation-duration: 0.5s !important;
+    }
+    @keyframes roadStripMove {
+      0% { background-position-x: 0; }
+      100% { background-position-x: -72px; }
+    }
+
+    @keyframes drivePanoramicRight {
+      0% { left: -100px; }
+      100% { left: 110%; }
+    }
+    .panoramic-bus-1 {
+      animation: drivePanoramicRight 12s linear infinite;
+    }
+
+    @keyframes drivePanoramicLeft {
+      0% { left: 110%; }
+      100% { left: -100px; }
+    }
+    .panoramic-bus-2 {
+      animation: drivePanoramicLeft 15s linear infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans selection:bg-red-600 selection:text-white">
+
+  <!-- ========================================================================= -->
+  <!-- 1. HEADER CHUẨN THƯƠNG HIỆU NHAXEKIENTRUC (NỀN SÁNG ĐẸP HIỆN ĐẠI)        -->
+  <!-- ========================================================================= -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 text-slate-800 shadow-2xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+      <div class="flex items-center justify-between h-16 gap-4">
+        
+        <!-- Logo Brand -->
+        <a href="/" class="flex items-center gap-2.5 group">
+          <div class="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-white text-xl shadow-md group-hover:scale-105 transition-all">
+            🚌
+          </div>
+          <div>
+            <span class="text-xl font-black tracking-tight text-red-600 block leading-none">
+              nhaxekientruc
+            </span>
+            <span class="text-[9px] text-slate-400 font-bold block tracking-wider uppercase mt-1">HỆ THỐNG VÉ XE</span>
+          </div>
+        </a>
+
+        <!-- Navigation Menu -->
+        <nav class="hidden md:flex items-center gap-7 text-sm font-semibold text-slate-600">
+          <a href="/" class="hover:text-red-600 transition py-1">Trang Chủ</a>
+          <a href="/trips" class="hover:text-red-600 transition py-1">Tìm Chuyến</a>
+          <a href="/schedules" class="hover:text-red-600 transition py-1">Lịch Trình</a>
+          <a href="/my-bookings" class="hover:text-red-600 transition py-1">Quản Lý Vé</a>
+        </nav>
+
+        <!-- Nút chuyển đổi nhanh & CTA Đặt Vé Ngay -->
+        <div class="flex items-center gap-3">
+          <button 
+            type="button" 
+            onclick="setTab(currentTab === 'login' ? 'register' : 'login')"
+            class="text-xs font-bold text-slate-700 hover:text-red-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl border border-slate-200 transition cursor-pointer"
+            id="navTabSwitchBtn"
+          >
+            Đăng Ký
+          </button>
+          <a 
+            href="/trips" 
+            class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black shadow-md shadow-red-600/20 transition hover:scale-[1.02] cursor-pointer"
+          >
+            Đặt Vé Ngay ➔
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- 2. BỐ CỤC CHÍNH: SPLIT-CARD 12 CỘT CÓ HIỆU ỨNG XA LỘ XE CHẠY             -->
+  <!-- ========================================================================= -->
+  <main class="flex-1 py-8 sm:py-12 px-4 sm:px-6 flex items-center justify-center bg-[#F8FAFC] relative overflow-hidden">
+    
+    <!-- Ambient Background Glows -->
+    <div class="absolute top-10 left-1/4 w-96 h-96 bg-red-500/5 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute bottom-10 right-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="max-w-6xl w-full relative z-10">
+      
+      <!-- MAIN SPLIT-CARD CONTAINER -->
+      <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/80 border border-slate-200 overflow-hidden flex flex-col">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 min-h-[680px]">
+          
+          <!-- ======================================================================= -->
+          <!-- A. CỘT TRÁI (5/12): SA BÀN XA LỘ ĐÀ NẴNG & HIỆU ỨNG XE CHẠY 2 CHIỀU    -->
+          <!-- ======================================================================= -->
+          <div 
+            id="leftColumn" 
+            class="lg:col-span-5 relative text-white p-6 sm:p-8 flex flex-col justify-between overflow-hidden transition-colors duration-700 select-none bg-gradient-to-br from-[#1a0508] via-[#380811] to-[#540b17]"
+          >
+            
+            <!-- Twinkling Stars & Moon (Night Mode) -->
+            <div id="nightSky" class="absolute inset-0 pointer-events-none overflow-hidden opacity-80">
+              <div class="star" style="top: 15%; left: 20%; animation-delay: 0.2s;"></div>
+              <div class="star" style="top: 25%; left: 60%; animation-delay: 1.1s;"></div>
+              <div class="star" style="top: 40%; left: 85%; animation-delay: 0.6s;"></div>
+              <div class="star" style="top: 10%; left: 75%; animation-delay: 1.8s;"></div>
+              <div class="star" style="top: 35%; left: 35%; animation-delay: 0.9s;"></div>
+              <div class="star" style="top: 50%; left: 15%; animation-delay: 1.4s;"></div>
+              <div class="star" style="top: 18%; left: 45%; animation-delay: 2.1s;"></div>
+              <div class="star" style="top: 45%; left: 65%; animation-delay: 0.4s;"></div>
+              <!-- Glowing Crescent Moon -->
+              <div class="absolute top-6 right-8 w-10 h-10 rounded-full bg-amber-100 shadow-[0_0_25px_rgba(254,243,199,0.7)] opacity-90">
+                <div class="w-8 h-8 rounded-full bg-[#0B1329] absolute -top-1 -right-1"></div>
+              </div>
+            </div>
+
+            <!-- Sunset Glow (Sunset Mode, Hidden by default) -->
+            <div id="sunsetSky" class="absolute inset-0 pointer-events-none overflow-hidden hidden">
+              <div class="absolute -top-12 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-amber-400/25 blur-3xl"></div>
+              <div class="absolute top-8 right-10 w-12 h-12 rounded-full bg-amber-300 shadow-[0_0_40px_rgba(251,191,36,0.9)] opacity-95"></div>
+            </div>
+
+            <!-- Dãy núi Đèo Hải Vân & Silhouette Cầu Rồng Đà Nẵng phát sáng -->
+            <div class="absolute bottom-40 inset-x-0 h-44 pointer-events-none opacity-40 overflow-hidden">
+              <svg class="absolute bottom-0 w-full h-full text-slate-900/80" viewBox="0 0 500 150" preserveAspectRatio="none">
+                <path d="M0,150 L0,75 Q80,20 160,85 T320,50 T450,95 L500,60 L500,150 Z" fill="currentColor" opacity="0.6"/>
+                <path d="M0,150 L0,95 Q90,50 200,110 T380,80 T500,105 L500,150 Z" fill="currentColor" opacity="0.9"/>
+              </svg>
+              <!-- Glowing Dragon Bridge Silhouette -->
+              <svg class="absolute bottom-1 right-2 w-64 h-24 text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]" viewBox="0 0 240 80" fill="none">
+                <path d="M10,75 C40,75 50,45 75,45 C100,45 110,65 135,65 C160,65 170,35 195,35 C210,35 225,50 235,75" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+                <circle cx="198" cy="35" r="4" fill="#EF4444" class="animate-ping"/>
+                <circle cx="198" cy="35" r="3" fill="#FBBF24"/>
+              </svg>
+            </div>
+
+            <!-- Brand Slogan & Subtitle -->
+            <div class="relative z-20 space-y-3">
+              <div class="flex items-center justify-between gap-2">
+                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-amber-300 text-[10.5px] font-black uppercase tracking-wider">
+                  <span>⭐</span>
+                  <span>VẬN TẢI HÀNH KHÁCH CÔNG NGHỆ CAO</span>
+                </div>
+                <span class="text-[11px] font-bold text-amber-200/80 tracking-wide hidden sm:inline">
+                  Đà Nẵng ⇄ Miền Trung & Tây Nguyên
+                </span>
+              </div>
+
+              <div>
+                <h2 class="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
+                  <span>nhaxekientruc</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-red-600/80 border border-red-400 text-white font-bold font-mono">ĐÀ NẴNG</span>
+                </h2>
+                <p class="text-xs sm:text-sm font-bold text-amber-300 mt-0.5 flex items-center gap-1.5">
+                  <span>Hành trình êm ái</span>
+                  <span>•</span>
+                  <span>Vạn dặm bình an</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- SA BÀN XA LỘ XE CHẠY 2 CHIỀU (CHUẨN ẢNH IMAGE 1 & IMAGE 2) -->
+            <div class="relative z-20 my-4 p-3 rounded-2xl bg-black/40 border border-white/20 backdrop-blur-md shadow-2xl overflow-hidden transition-all duration-700">
+              <!-- Header bên trong sa bàn (Ảnh Image 1: Xa lộ Đà Nẵng ⇄ Liên Tỉnh + Đá pha & Còi + Nút Hoàng Hôn / Ban Đêm) -->
+              <div class="flex items-center justify-between text-[11px] font-bold text-slate-300 mb-2.5 px-0.5">
+                <!-- Tiêu đề bên trái -->
+                <div class="flex items-center gap-2">
+                  <span class="w-3 h-3 rounded-full bg-emerald-950 border border-emerald-500/80 flex items-center justify-center">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  </span>
+                  <span class="font-bold text-xs sm:text-sm text-slate-100 tracking-tight">Xa lộ Đà Nẵng ⇄ Liên Tỉnh</span>
+                </div>
+
+                <!-- 2 nút điều khiển đưa vào trong như ảnh Image 1 & Image 2 -->
+                <div class="flex items-center gap-2">
+                  <!-- Nút 1: Đá pha & Còi (Ảnh Image 1) -->
+                  <button
+                    type="button"
+                    onclick="triggerHornAndHeadlights()"
+                    id="hornBtn"
+                    class="px-2.5 sm:px-3 py-1 rounded-lg sm:rounded-full text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer border border-[#854d0e]/80 bg-[#361a0f]/90 hover:bg-[#452214] text-amber-300 shadow-sm active:scale-95"
+                    title="Bấm để bật chùm đèn pha LED và còi hơi"
+                  >
+                    <span class="text-xs">📢</span>
+                    <span>Đá pha & Còi</span>
+                  </button>
+
+                  <!-- Nút 2: Hoàng Hôn / Ban Đêm (Ảnh Image 1: Bấm để đổi cả ở trong và ở ngoài) -->
+                  <button
+                    type="button"
+                    onclick="toggleSky()"
+                    id="skyToggleBtn"
+                    class="px-2.5 sm:px-3 py-1 rounded-lg sm:rounded-full text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 border border-slate-700 bg-[#1e293b]/90 hover:bg-slate-700 text-white"
+                    title="Chuyển đổi bầu trời Đêm / Hoàng Hôn (Ở trong & ở ngoài cùng đổi)"
+                  >
+                    <span id="skyIcon" class="w-4 h-4 rounded flex items-center justify-center text-xs bg-indigo-950">🌙</span>
+                    <span id="skyText" class="font-bold">Ban Đêm</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- KHUNG ĐƯỜNG 2 LÀN XE CHẠY NGƯỢC CHIỀU (Ở TRONG: THAY ĐỔI THEO BẦU TRỜI) -->
+              <div 
+                id="roadSkyBox" 
+                class="relative h-28 rounded-xl overflow-hidden border border-slate-700/80 flex flex-col justify-between p-1.5 transition-all duration-700 bg-gradient-to-b from-[#080d1a] via-[#0f172a] to-[#1e293b]"
+              >
+                <!-- 1. Bầu trời đêm sa bàn (Mặc định ở ban đêm) -->
+                <div id="roadNightSky" class="absolute inset-0 pointer-events-none overflow-hidden z-0">
+                  <!-- Mặt trăng khuyết góc trên phải -->
+                  <div class="absolute top-2 right-6 w-7 h-7 rounded-full bg-amber-100 shadow-[0_0_20px_#FDE047]">
+                    <div class="w-5 h-5 rounded-full bg-[#080d1a] absolute -top-1 -right-1"></div>
+                  </div>
+                  
+                  <!-- Ngôi sao nhỏ lấp lánh -->
+                  <div class="absolute top-2.5 left-10 w-1 h-1 bg-white rounded-full opacity-80 animate-ping"></div>
+                  <div class="absolute top-5 left-36 w-1 h-1 bg-white rounded-full opacity-70"></div>
+                  <div class="absolute top-3.5 right-32 w-1.5 h-1.5 bg-white rounded-full opacity-80"></div>
+
+                  <!-- Dãy đồi núi đêm -->
+                  <svg class="absolute inset-x-0 bottom-8 w-full h-10 opacity-60" viewBox="0 0 320 40" fill="none" preserveAspectRatio="none">
+                    <path d="M0,40 L0,22 Q60,5 140,25 T280,15 L320,20 L320,40 Z" fill="#090d16"/>
+                  </svg>
+                </div>
+
+                <!-- 2. Bầu trời hoàng hôn sa bàn (Ẩn ở chế độ đêm, hiện khi bấm Hoàng Hôn như Ảnh Image 1) -->
+                <div id="roadSunsetSky" class="hidden absolute inset-0 pointer-events-none overflow-hidden z-0">
+                  <!-- Mặt trời hoàng hôn to tròn màu vàng rực rỡ góc trên bên phải (Ảnh Image 1) -->
+                  <div class="absolute top-2 right-6 w-8 h-8 rounded-full bg-amber-300 shadow-[0_0_30px_#F59E0B] opacity-95"></div>
+                  
+                  <!-- Vầng sáng hoàng hôn ấm áp -->
+                  <div class="absolute -top-4 right-2 w-28 h-28 rounded-full bg-amber-500/25 blur-xl"></div>
+
+                  <!-- Đốm sáng phản chiếu hoàng hôn lơ lửng -->
+                  <div class="absolute top-3 left-8 w-1.5 h-1.5 rounded-full bg-amber-200/60"></div>
+                  <div class="absolute top-5 left-28 w-1 h-1 rounded-full bg-amber-100/40"></div>
+
+                  <!-- Dãy đồi núi uốn lượn màu hoàng hôn sẫm (Ảnh Image 1) -->
+                  <svg class="absolute inset-x-0 bottom-8 w-full h-12 opacity-80" viewBox="0 0 320 45" fill="none" preserveAspectRatio="none">
+                    <path d="M0,45 L0,25 Q50,8 130,28 T260,18 L320,22 L320,45 Z" fill="#3d1409"/>
+                    <path d="M0,45 L0,32 Q70,18 160,32 T300,24 L320,28 L320,45 Z" fill="#5c1d0c" opacity="0.6"/>
+                  </svg>
+                </div>
+
+                <!-- Đường lượn sóng cam neon đặc trưng (Ảnh Image 1 & Image 2) -->
+                <svg class="absolute inset-x-0 top-1 w-full h-14 pointer-events-none z-10" viewBox="0 0 320 40" fill="none" preserveAspectRatio="none">
+                  <path d="M 0 25 Q 80 5, 160 25 T 320 18" stroke="#f59e0b" stroke-width="2.5" fill="none" stroke-linecap="round" class="drop-shadow-[0_0_8px_rgba(245,158,11,0.9)]"/>
+                  <line x1="0" y1="28" x2="320" y2="28" stroke="#eab308" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="6 4" />
+                </svg>
+
+                <!-- Dải vạch tim đường phản quang di chuyển -->
+                <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1 border-t-2 border-dashed border-amber-400/80 opacity-80 z-0"></div>
+
+                <!-- LÀN 1: XE GIƯỜNG NẰM NHAXEKIENTRUC (Trái -> Phải) -->
+                <div class="relative h-12 w-full z-10 flex items-center overflow-visible">
+                  <div id="busLane1" class="bus-lane-1 absolute flex items-center select-none">
+                    
+                    <!-- Bong bóng còi hơi khi bấm Đá pha & Còi -->
+                    <div 
+                      id="hornBubble" 
+                      class="hidden absolute -top-7 left-12 px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10.5px] whitespace-nowrap shadow-lg border border-white animate-bounce z-30"
+                    >
+                      📢 PÍP PÍP! 🚌💨
+                    </div>
+
+                    <!-- Nhóm Thân xe và Bánh xe định vị chuẩn xác 100% -->
+                    <div class="relative flex items-center">
+                      <!-- Xe Khách Giường Nằm 2 Tầng Đỏ - Trắng Chuẩn Image 1 -->
+                      <div class="relative w-44 h-11 bg-[#991b1b] rounded-lg shadow-xl border-2 border-amber-400 flex flex-col justify-between p-1 overflow-hidden">
+                        
+                        <!-- Dãy 4 khoang kính giường nằm phía trên (Ảnh Image 1) -->
+                        <div class="flex items-center gap-1.5 h-3.5 pr-6">
+                          <div class="flex-1 h-3 rounded-[2px] bg-amber-200/90 border border-amber-500/70 flex items-center justify-center">
+                            <div class="w-3.5 h-0.5 bg-amber-700/60 rounded-full"></div>
+                          </div>
+                          <div class="flex-1 h-3 rounded-[2px] bg-amber-200/90 border border-amber-500/70 flex items-center justify-center">
+                            <div class="w-3.5 h-0.5 bg-amber-700/60 rounded-full"></div>
+                          </div>
+                          <div class="flex-1 h-3 rounded-[2px] bg-amber-200/90 border border-amber-500/70 flex items-center justify-center">
+                            <div class="w-3.5 h-0.5 bg-amber-700/60 rounded-full"></div>
+                          </div>
+                          <div class="flex-1 h-3 rounded-[2px] bg-amber-200/90 border border-amber-500/70 flex items-center justify-center">
+                            <div class="w-3.5 h-0.5 bg-amber-700/60 rounded-full"></div>
+                          </div>
+                        </div>
+
+                        <!-- Kính buồng lái màu xanh dương cyan góc trước (Ảnh Image 1) -->
+                        <div class="absolute right-1 top-1 w-6 h-8 rounded-r-md bg-sky-300 border border-sky-400 shadow-[0_0_8px_#38bdf8] flex items-center justify-center">
+                          <div class="w-4 h-1 bg-white/70 rounded-full blur-[0.5px]"></div>
+                        </div>
+
+                        <!-- Dải chữ Limousine & Biển số vàng phía dưới (Ảnh Image 1) -->
+                        <div class="flex items-center justify-between pr-7 z-10">
+                          <span class="text-[7.5px] font-black text-amber-300 tracking-tight flex items-center gap-0.5">
+                            <span class="text-[6.5px]">★</span> NHAXEKIENTRUC LIMOUSINE
+                          </span>
+                          <span class="px-1 py-0.2 rounded-xs bg-amber-400 text-slate-950 font-mono font-black text-[7px] tracking-tight">
+                            43B-067.89
+                          </span>
+                        </div>
+
+                        <!-- Đèn hậu đỏ -->
+                        <div class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-red-400 shadow-[0_0_8px_#EF4444]"></div>
+
+                        <!-- Đèn pha LED trước -->
+                        <div class="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-amber-100 shadow-[0_0_12px_#FDE047]"></div>
+                      </div>
+
+                      <!-- 2 Bánh xe quay tròn định vị chính xác khớp với thân xe đỏ -->
+                      <div class="absolute -bottom-2 left-6 w-4 h-4 rounded-full bg-slate-950 border-2 border-amber-400 wheel-spin flex items-center justify-center z-20">
+                        <div class="w-1.5 h-1.5 rounded-full bg-slate-800 border border-amber-300"></div>
+                      </div>
+                      <div class="absolute -bottom-2 right-6 w-4 h-4 rounded-full bg-slate-950 border-2 border-amber-400 wheel-spin flex items-center justify-center z-20">
+                        <div class="w-1.5 h-1.5 rounded-full bg-slate-800 border border-amber-300"></div>
+                      </div>
+                    </div>
+
+                    <!-- Chùm sáng đèn pha quét mặt đường phía trước -->
+                    <div 
+                      id="headlightBeam"
+                      class="w-16 h-8 bg-gradient-to-r from-amber-200/40 via-amber-300/10 to-transparent transition-all duration-300 pointer-events-none origin-left"
+                      style="clip-path: polygon(0 25%, 100% 0, 100% 100%, 0 75%);"
+                    ></div>
+                  </div>
+                </div>
+
+                <!-- LÀN 2: XE BUÝT TRUNG CHUYỂN 0Đ (Phải -> Trái) -->
+                <div class="relative h-11 w-full z-10 flex items-center overflow-visible">
+                  <div id="busLane2" class="bus-lane-2 absolute flex items-center flex-row-reverse select-none">
+                    
+                    <!-- Nhóm Thân xe và Bánh xe trung chuyển định vị chuẩn xác 100% -->
+                    <div class="relative flex items-center">
+                      <!-- Xe buýt trung chuyển màu trắng đỏ chuẩn Ảnh 1 -->
+                      <div class="relative w-36 h-9 bg-white rounded-md shadow-lg border-2 border-slate-300 flex flex-col justify-between p-1 overflow-hidden">
+                        <!-- Tầng trên: Banner vàng TRUNG CHUYỂN 0Đ -->
+                        <div class="flex items-center justify-between pl-7">
+                          <span class="text-[7.5px] font-black text-amber-900 bg-amber-300/80 px-1 py-0.2 rounded-xs">TRUNG CHUYỂN 0Đ</span>
+                        </div>
+
+                        <!-- Kính buồng lái màu xanh đậm bên trái (Ảnh Image 1) -->
+                        <div class="absolute left-1 top-1 w-5 h-7 rounded-l-md bg-slate-800 border border-slate-600 flex items-center justify-center">
+                          <div class="w-3 h-1 bg-sky-400/50 rounded-full"></div>
+                        </div>
+
+                        <!-- Dải đỏ ĐÓN TẬN NƠI & Biển số (Ảnh Image 1) -->
+                        <div class="flex items-center justify-between pl-7 bg-red-600 -mx-1 -mb-1 px-1.5 py-0.5 text-white">
+                          <span class="text-[7px] font-black tracking-tight uppercase">ĐÓN TẬN NƠI</span>
+                          <span class="font-mono text-[6.5px] font-bold">43B-199.28</span>
+                        </div>
+                      </div>
+
+                      <!-- 2 Bánh xe trung chuyển định vị chính xác khớp với thân xe trắng đỏ -->
+                      <div class="absolute -bottom-1.5 left-5 w-3.5 h-3.5 rounded-full bg-slate-950 border-2 border-amber-400 wheel-spin flex items-center justify-center z-20">
+                        <div class="w-1 h-1 rounded-full bg-slate-800"></div>
+                      </div>
+                      <div class="absolute -bottom-1.5 right-5 w-3.5 h-3.5 rounded-full bg-slate-950 border-2 border-amber-400 wheel-spin flex items-center justify-center z-20">
+                        <div class="w-1 h-1 rounded-full bg-slate-800"></div>
+                      </div>
+                    </div>
+
+                    <!-- Chùm sáng đèn pha của xe làn 2 (chiếu sang trái) -->
+                    <div 
+                      class="w-12 h-6 bg-gradient-to-l from-amber-200/30 to-transparent pointer-events-none"
+                      style="clip-path: polygon(100% 25%, 0 0, 0 100%, 100% 75%);"
+                    ></div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- LƯỚI 4 THẺ QUYỀN LỢI (2x2 GLASSMORPHISM TRÊN NỀN TỐI) -->
+            <div class="relative z-20 my-2 grid grid-cols-2 gap-2 text-xs">
+              
+              <!-- 1. HÀNH LÝ MIỄN PHÍ 100% (0đ) -->
+              <div class="p-2.5 rounded-2xl bg-slate-900/60 backdrop-blur-md border border-white/10 hover:border-amber-400/50 transition-all shadow-md group">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <span class="text-base group-hover:scale-110 transition-transform">🧳</span>
+                  <span class="font-black text-white text-[11px] truncate">Hành Lý FREE 100%</span>
+                </div>
+                <p class="text-[10px] text-slate-300 leading-tight">Miễn cước 20kg khoang gầm + xách tay, không phụ phí.</p>
+              </div>
+
+              <!-- 2. SƠ ĐỒ 30 CHỖ CHUẨN XÁC -->
+              <div class="p-2.5 rounded-2xl bg-slate-900/60 backdrop-blur-md border border-white/10 hover:border-amber-400/50 transition-all shadow-md group">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <span class="text-base group-hover:scale-110 transition-transform">💺</span>
+                  <span class="font-black text-white text-[11px] truncate">Sơ Đồ 30 Chỗ Chuẩn</span>
+                </div>
+                <p class="text-[10px] text-slate-300 leading-tight">Tầng 1 (18 chỗ) • Tầng 2 (12 chỗ) cập nhật tức thì.</p>
+              </div>
+
+              <!-- 3. GÓI SINH VIÊN LẦN ĐẦU (-100%) -->
+              <div class="p-2.5 rounded-2xl bg-slate-900/60 backdrop-blur-md border border-white/10 hover:border-amber-400/50 transition-all shadow-md group">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <span class="text-base group-hover:scale-110 transition-transform">🎓</span>
+                  <span class="font-black text-amber-300 text-[11px] truncate">Đặc Quyền Sinh Viên</span>
+                </div>
+                <p class="text-[10px] text-slate-300 leading-tight">Email .edu.vn áp mã SINHVIEN: Vé đầu 0đ & Giảm 30%.</p>
+              </div>
+
+              <!-- 4. VÉ QR CODE TỨC THÌ -->
+              <div class="p-2.5 rounded-2xl bg-slate-900/60 backdrop-blur-md border border-white/10 hover:border-amber-400/50 transition-all shadow-md group">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <span class="text-base group-hover:scale-110 transition-transform">🎫</span>
+                  <span class="font-black text-white text-[11px] truncate">Vé QR & Giữ Chỗ Thật</span>
+                </div>
+                <p class="text-[10px] text-slate-300 leading-tight">Quét mã lên xe ngay, cam kết 100% giữ đúng chỗ ngồi.</p>
+              </div>
+
+            </div>
+
+            <!-- THỐNG KÊ CHÂN CỘT TRÁI -->
+            <div class="relative z-20 border-t border-white/15 pt-3 flex items-center justify-between text-center mt-2">
+              <div>
+                <p class="font-mono font-black text-base text-white">500.000+</p>
+                <p class="text-[9.5px] text-slate-300 uppercase font-bold tracking-wide">Lượt khách</p>
+              </div>
+              <div class="w-px h-6 bg-white/15"></div>
+              <div>
+                <p class="font-mono font-black text-base text-amber-300">120+</p>
+                <p class="text-[9.5px] text-slate-300 uppercase font-bold tracking-wide">Tuyến xe</p>
+              </div>
+              <div class="w-px h-6 bg-white/15"></div>
+              <div>
+                <p class="font-mono font-black text-base text-emerald-400">100%</p>
+                <p class="text-[9.5px] text-slate-300 uppercase font-bold tracking-wide">Giữ chỗ thật</p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ======================================================================= -->
+          <!-- B. CỘT PHẢI (7/12): FORM ĐĂNG NHẬP & ĐĂNG KÝ 3 BƯỚC HOẠT ĐỘNG THỰC TẾ  -->
+          <!-- ======================================================================= -->
+          <div class="lg:col-span-7 p-6 sm:p-9 flex flex-col justify-between bg-white text-slate-900">
+            <div>
+              
+              <!-- THANH CHUYỂN ĐỔI 2 TAB (ĐĂNG NHẬP vs ĐĂNG KÝ) -->
+              <div class="flex border-b border-slate-200 mb-6">
+                <button
+                  type="button"
+                  onclick="setTab('login')"
+                  id="tabLoginBtn"
+                  class="flex-1 pb-3 text-center text-sm font-black transition relative cursor-pointer text-red-600"
+                >
+                  <span class="flex items-center justify-center gap-1.5">
+                    <span>🔐</span>
+                    <span>ĐĂNG NHẬP</span>
+                  </span>
+                  <div id="tabLoginIndicator" class="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600 rounded-t-full shadow-sm"></div>
+                </button>
+
+                <button
+                  type="button"
+                  onclick="setTab('register')"
+                  id="tabRegisterBtn"
+                  class="flex-1 pb-3 text-center text-sm font-black transition relative cursor-pointer text-slate-400 hover:text-slate-700"
+                >
+                  <span class="flex items-center justify-center gap-1.5">
+                    <span>📝</span>
+                    <span>ĐĂNG KÝ TÀI KHOẢN</span>
+                  </span>
+                  <div id="tabRegisterIndicator" class="hidden absolute bottom-0 left-0 right-0 h-0.5 bg-red-600 rounded-t-full shadow-sm"></div>
+                </button>
+              </div>
+
+              <!-- ==================== TAB 1: FORM ĐĂNG NHẬP ==================== -->
+              <div id="paneLogin" class="space-y-4">
+                
+                <form id="loginFormElement" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                  <!-- Ô Nhập Số Điện Thoại hoặc Email -->
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Số điện thoại hoặc Email / Gmail <span class="text-red-500">*</span>
+                    </label>
+
+                    <div class="relative flex items-center">
+                      <span class="absolute left-3.5 text-slate-400 text-sm pointer-events-none">👤</span>
+                      <input
+                        id="loginAccountInput"
+                        type="text"
+                        required
+                        autofocus
+                        onfocus="startTurbo()"
+                        onblur="stopTurbo()"
+                        oninput="onLoginAccountInput(this.value)"
+                        placeholder="Nhập SĐT (10 số) hoặc Email (VD: sinhvien@dau.edu.vn)"
+                        class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-red-500/20"
+                      />
+                    </div>
+
+                    <!-- 2 Nút Gợi Ý Điền Nhanh -->
+                    <div class="flex flex-wrap items-center gap-2 mt-2">
+                      <span class="text-[10.5px] font-bold text-slate-400 uppercase">Gợi ý điền:</span>
+                      <button
+                        type="button"
+                        onclick="fillLoginQuick('sinhvien@dau.edu.vn')"
+                        class="px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition active:scale-95"
+                      >
+                        <span>🎓</span>
+                        <span>SV Kiến Trúc: sinhvien@dau.edu.vn</span>
+                      </button>
+                      <button
+                        type="button"
+                        onclick="fillLoginQuick('0905123456')"
+                        class="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition active:scale-95"
+                      >
+                        <span>📱</span>
+                        <span>SĐT Khách: 0905123456</span>
+                      </button>
+                    </div>
+
+                    <!-- BANNER NHẬN DIỆN EMAIL SINH VIÊN KIẾN TRÚC -->
+                    <div 
+                      id="studentBannerLogin" 
+                      class="hidden mt-3 p-3 bg-emerald-50 border-2 border-emerald-400 rounded-2xl text-emerald-950 text-xs flex items-start gap-2.5 shadow-sm"
+                    >
+                      <span class="text-xl shrink-0 mt-0.5">🎓</span>
+                      <div>
+                        <p class="font-black text-emerald-800 text-[12.5px] flex items-center gap-1.5">
+                          <span>ĐÃ NHẬN DIỆN EMAIL SINH VIÊN KIẾN TRÚC!</span>
+                          <span class="px-1.5 py-0.2 rounded bg-emerald-600 text-white font-mono text-[9px] font-black uppercase">SINHVIEN</span>
+                        </p>
+                        <p class="text-[11px] text-emerald-700 mt-0.5 leading-snug">
+                          Tài khoản trường <strong>.edu.vn</strong> được kích hoạt <strong>Gói Giảm 30% (Mã: SINHVIEN)</strong> và đặc quyền vé đầu tiên miễn phí 100%!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Ô Nhập Mật Khẩu -->
+                  <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Mật khẩu <span class="text-red-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onclick="openForgotModal()"
+                        class="text-[11px] font-bold text-red-600 hover:underline cursor-pointer"
+                      >
+                        Quên mật khẩu?
+                      </button>
+                    </div>
+
+                    <div class="relative flex items-center">
+                      <span class="absolute left-3.5 text-slate-400 text-sm pointer-events-none">🔒</span>
+                      <input
+                        id="loginPasswordInput"
+                        type="password"
+                        required
+                        onfocus="startTurbo()"
+                        onblur="stopTurbo()"
+                        placeholder="Nhập mật khẩu tài khoản"
+                        class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-10 py-3 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-red-500/20"
+                      />
+                      <button
+                        type="button"
+                        onclick="toggleLoginPasswordVisibility()"
+                        id="togglePwdBtn"
+                        class="absolute right-3.5 text-slate-400 hover:text-slate-600 text-sm cursor-pointer p-1"
+                        title="Ẩn / Hiện mật khẩu"
+                      >
+                        👁️
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Ghi Nhớ Đăng Nhập -->
+                  <div class="flex items-center justify-between text-xs text-slate-600 pt-0.5">
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked
+                        class="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500 cursor-pointer"
+                      />
+                      <span class="font-medium text-slate-700">Ghi nhớ đăng nhập</span>
+                    </label>
+                  </div>
+
+                  <!-- NÚT ĐĂNG NHẬP CHÍNH (CỠ LỚN CÓ HIỆU ỨNG ÁNH SÁNG LƯỚT QUA) -->
+                  <button
+                    type="submit"
+                    id="loginSubmitBtn"
+                    class="relative overflow-hidden w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-red-600 via-red-500 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs sm:text-sm shadow-lg shadow-red-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] btn-shimmer"
+                  >
+                    <span>ĐĂNG NHẬP VÀO HỆ THỐNG</span>
+                    <span class="text-base">➔</span>
+                  </button>
+                </form>
+
+              </div>
+
+              <!-- ==================== TAB 2: FORM ĐĂNG KÝ (3 BƯỚC) ==================== -->
+              <div id="paneRegister" class="hidden space-y-4">
+                
+                <!-- 1. Bộ Chuyển Đổi Phương Thức: SĐT vs Email -->
+                <div class="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 text-xs">
+                  <button
+                    type="button"
+                    onclick="setRegisterMethod('phone')"
+                    id="regMethodPhoneBtn"
+                    class="py-2.5 px-3 rounded-xl font-black transition flex items-center justify-center gap-1.5 cursor-pointer bg-white text-red-600 shadow-sm"
+                  >
+                    <span>📱</span>
+                    <span>Số Điện Thoại (Zalo / SMS)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onclick="setRegisterMethod('gmail')"
+                    id="regMethodGmailBtn"
+                    class="py-2.5 px-3 rounded-xl font-bold transition flex items-center justify-center gap-1.5 cursor-pointer text-slate-600 hover:text-slate-900"
+                  >
+                    <span>✉️</span>
+                    <span>Email / Gmail (.edu.vn)</span>
+                  </button>
+                </div>
+
+                <!-- 2. Thanh Tiến Trình 3 Bước (Stepper) -->
+                <div class="flex items-center justify-between px-1 py-1.5 border-b border-slate-100">
+                  <div class="flex items-center gap-1.5">
+                    <div id="step1Badge" class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-red-600 text-white shadow-xs">
+                      1
+                    </div>
+                    <span id="step1Label" class="text-xs font-bold text-red-600">
+                      Nhập Thông Tin
+                    </span>
+                  </div>
+
+                  <div class="flex-1 h-0.5 mx-2 bg-slate-200">
+                    <div id="stepProgressBar1" class="h-full bg-red-600 transition-all duration-300 w-0"></div>
+                  </div>
+
+                  <div class="flex items-center gap-1.5">
+                    <div id="step2Badge" class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-slate-200 text-slate-500">
+                      2
+                    </div>
+                    <span id="step2Label" class="text-xs font-bold text-slate-500">
+                      Mã OTP
+                    </span>
+                  </div>
+
+                  <div class="flex-1 h-0.5 mx-2 bg-slate-200">
+                    <div id="stepProgressBar2" class="h-full bg-red-600 transition-all duration-300 w-0"></div>
+                  </div>
+
+                  <div class="flex items-center gap-1.5">
+                    <div id="step3Badge" class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-slate-200 text-slate-500">
+                      3
+                    </div>
+                    <span id="step3Label" class="text-xs font-bold text-slate-500">
+                      Mật Khẩu
+                    </span>
+                  </div>
+                </div>
+
+                <!-- BƯỚC 1: NHẬP SĐT HOẶC EMAIL -->
+                <div id="regStep1Container" class="space-y-4">
+                  
+                  <div id="regFieldPhone" class="space-y-3">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Số điện thoại nhận OTP (Zalo/SMS) <span class="text-red-500">*</span>
+                      </label>
+                      <div class="relative flex items-center">
+                        <span class="absolute left-3.5 text-slate-400 text-sm">📱</span>
+                        <input
+                          id="regPhoneInput"
+                          type="tel"
+                          onfocus="startTurbo()"
+                          onblur="stopTurbo()"
+                          placeholder="Nhập 10 chữ số (VD: 0905123456)"
+                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
+                        />
+                      </div>
+                      <div class="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex items-center gap-2 font-medium">
+                        <span class="text-lg">🎁</span>
+                        <div>
+                          <span class="font-bold text-amber-800">Quà Tặng Thành Viên Mới:</span>
+                          <span class="text-slate-700 ml-1">Tặng ngay mã <strong>CHAOBAOMOI (Giảm 10%)</strong> cho lần đặt vé đầu tiên!</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div id="regFieldGmail" class="hidden space-y-3">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Địa chỉ Email / Gmail <span class="text-red-500">*</span>
+                      </label>
+                      <div class="relative flex items-center">
+                        <span class="absolute left-3.5 text-slate-400 text-sm">✉️</span>
+                        <input
+                          id="regGmailInput"
+                          type="email"
+                          onfocus="startTurbo()"
+                          onblur="stopTurbo()"
+                          oninput="checkRegEmailStudent(this.value)"
+                          placeholder="Nhập email (VD: sinhvien@dau.edu.vn hoặc yourname@gmail.com)"
+                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
+                        />
+                      </div>
+                      
+                      <!-- Box Sinh Viên cho Register -->
+                      <div id="regStudentBox" class="hidden mt-2 p-3 bg-emerald-50 border border-emerald-300 rounded-2xl text-xs text-emerald-950 flex items-center gap-2 font-bold">
+                        <span class="text-xl">🎓</span>
+                        <div>
+                          <span class="text-emerald-800">Email Sinh Viên Trường Hợp Lệ:</span>
+                          <span class="font-normal text-slate-700 ml-1">Kích hoạt đặc quyền <strong>Mã: SINHVIEN (Giảm 30% & vé đầu 0đ)</strong>!</span>
+                        </div>
+                      </div>
+
+                      <div id="regNormalBox" class="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex items-center gap-2 font-medium">
+                        <span class="text-lg">🎁</span>
+                        <div>
+                          <span class="font-bold text-amber-800">Quà Tặng Thành Viên Mới:</span>
+                          <span class="text-slate-700 ml-1">Áp dụng mã <strong>CHAOBAOMOI (Giảm 10%)</strong> cho chuyến đi đầu tiên!</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Terms agreement -->
+                  <div class="flex items-start gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="regAgreeCheckbox"
+                      checked
+                      class="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500 mt-0.5 cursor-pointer"
+                    />
+                    <label for="regAgreeCheckbox" class="text-xs text-slate-600 select-none cursor-pointer">
+                      Tôi đồng ý với <a href="#" class="text-red-600 underline font-bold">Điều khoản & Quy định vận chuyển</a> của nhaxekientruc (Bao gồm miễn phí 20kg hành lý 0đ).
+                    </label>
+                  </div>
+
+                  <!-- Nút Gửi OTP Bước 1 -->
+                  <button
+                    type="button"
+                    onclick="handleStep1SendOtp()"
+                    id="step1SubmitBtn"
+                    class="relative overflow-hidden w-full py-3.5 px-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-sm shadow-md shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer"
+                  >
+                    <span id="step1BtnText">NHẬN MÃ OTP QUA ZALO / SMS →</span>
+                  </button>
+                </div>
+
+                <!-- BƯỚC 2: NHẬP MÃ OTP 6 SỐ -->
+                <div id="regStep2Container" class="hidden space-y-4">
+                  <div class="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onclick="goToRegStep(1)"
+                      class="text-xs font-bold text-slate-500 hover:text-red-600 flex items-center gap-1 cursor-pointer transition"
+                    >
+                      <span>← Quay lại</span>
+                      <span id="step2TargetDisplay" class="text-[11px] font-mono"></span>
+                    </button>
+                    <span id="countdownDisplay" class="text-xs font-mono font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
+                      ⏱️ Còn lại: 01:59
+                    </span>
+                  </div>
+
+                  <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-center space-y-1.5">
+                    <p class="text-xs text-slate-600">
+                      Mã xác thực OTP gồm 6 chữ số đã được gửi tới:
+                    </p>
+                    <p id="targetDisplayFull" class="font-mono font-black text-slate-900 text-sm sm:text-base">
+                      0905 123 456
+                    </p>
+                    <p class="text-[11px] text-slate-500">
+                      Vui lòng nhập 6 chữ số để xác thực tài khoản:
+                    </p>
+                  </div>
+
+                  <!-- 6 Ô Input OTP Tự Động Chuyển Ô Khi Gõ -->
+                  <div class="flex items-center justify-center gap-2 sm:gap-2.5 py-1">
+                    <input type="text" maxlength="1" inputmode="numeric" class="otp-box w-11 h-12 sm:w-12 sm:h-14 text-center font-mono font-black text-lg sm:text-xl text-slate-900 bg-slate-50 border-2 border-slate-300 focus:border-red-600 focus:bg-white rounded-2xl outline-none transition focus:ring-2 focus:ring-red-500/20 shadow-xs" oninput="handleOtpInput(this, 0)" onkeydown="handleOtpKeydown(event, 0)">
+                    <input type="text" maxlength="1" inputmode="numeric" class="otp-box w-11 h-12 sm:w-12 sm:h-14 text-center font-mono font-black text-lg sm:text-xl text-slate-900 bg-slate-50 border-2 border-slate-300 focus:border-red-600 focus:bg-white rounded-2xl outline-none transition focus:ring-2 focus:ring-red-500/20 shadow-xs" oninput="handleOtpInput(this, 1)" onkeydown="handleOtpKeydown(event, 1)">
+                    <input type="text" maxlength="1" inputmode="numeric" class="otp-box w-11 h-12 sm:w-12 sm:h-14 text-center font-mono font-black text-lg sm:text-xl text-slate-900 bg-slate-50 border-2 border-slate-300 focus:border-red-600 focus:bg-white rounded-2xl outline-none transition focus:ring-2 focus:ring-red-500/20 shadow-xs" oninput="handleOtpInput(this, 2)" onkeydown="handleOtpKeydown(event, 2)">
+                    <input type="text" maxlength="1" inputmode="numeric" class="otp-box w-11 h-12 sm:w-12 sm:h-14 text-center font-mono font-black text-lg sm:text-xl text-slate-900 bg-slate-50 border-2 border-slate-300 focus:border-red-600 focus:bg-white rounded-2xl outline-none transition focus:ring-2 focus:ring-red-500/20 shadow-xs" oninput="handleOtpInput(this, 3)" onkeydown="handleOtpKeydown(event, 3)">
+                    <input type="text" maxlength="1" inputmode="numeric" class="otp-box w-11 h-12 sm:w-12 sm:h-14 text-center font-mono font-black text-lg sm:text-xl text-slate-900 bg-slate-50 border-2 border-slate-300 focus:border-red-600 focus:bg-white rounded-2xl outline-none transition focus:ring-2 focus:ring-red-500/20 shadow-xs" oninput="handleOtpInput(this, 4)" onkeydown="handleOtpKeydown(event, 4)">
+                    <input type="text" maxlength="1" inputmode="numeric" class="otp-box w-11 h-12 sm:w-12 sm:h-14 text-center font-mono font-black text-lg sm:text-xl text-slate-900 bg-slate-50 border-2 border-slate-300 focus:border-red-600 focus:bg-white rounded-2xl outline-none transition focus:ring-2 focus:ring-red-500/20 shadow-xs" oninput="handleOtpInput(this, 5)" onkeydown="handleOtpKeydown(event, 5)">
+                  </div>
+
+                  <!-- Nút Điền Nhanh OTP Mẫu 1-Click Demo -->
+                  <div class="text-center">
+                    <button
+                      type="button"
+                      onclick="fillDemoOtp()"
+                      class="text-[11px] font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1 rounded-xl transition cursor-pointer"
+                    >
+                      ⚡ Điền nhanh mã OTP mẫu: <span class="font-mono font-black text-red-600">888999</span>
+                    </button>
+                  </div>
+
+                  <!-- Nút Xác Thực OTP Bước 2 -->
+                  <div class="space-y-2 pt-1">
+                    <button
+                      type="button"
+                      onclick="handleVerifyOtpStep2()"
+                      class="w-full py-3.5 px-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-sm shadow-md shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer"
+                    >
+                      <span>XÁC THỰC MÃ OTP & TIẾP TỤC →</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- BƯỚC 3: THIẾT LẬP MẬT KHẨU & HOÀN TẤT -->
+                <div id="regStep3Container" class="hidden space-y-4">
+                  <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-bold flex items-center gap-2">
+                    <span>✓</span>
+                    <span>Xác thực OTP thành công! Thiết lập mật khẩu để hoàn tất đăng ký.</span>
+                  </div>
+
+                  <form onsubmit="handleCompleteRegisterStep3(event)" class="space-y-3.5">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Họ và tên của bạn <span class="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="regNameInput"
+                        type="text"
+                        required
+                        placeholder="Ví dụ: Nguyễn Văn An"
+                        class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Mật khẩu mới <span class="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="regPasswordInput"
+                        type="password"
+                        required
+                        minlength="6"
+                        placeholder="Tối thiểu 6 ký tự"
+                        class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Xác nhận lại mật khẩu <span class="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="regPasswordConfirmInput"
+                        type="password"
+                        required
+                        minlength="6"
+                        placeholder="Nhập lại mật khẩu vừa đặt"
+                        class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      class="relative overflow-hidden w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs sm:text-sm shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer"
+                    >
+                      <span>HOÀN TẤT ĐĂNG KÝ TÀI KHOẢN 🎉</span>
+                    </button>
+                  </form>
+                </div>
+
+              </div>
+
+            </div>
+
+            <!-- Footer hotline & an toàn thông tin -->
+            <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+              <span class="flex items-center gap-1">
+                <span>🛡️</span>
+                <span>Bảo mật dữ liệu 100% chuẩn SSL</span>
+              </span>
+              <span>Tổng đài CSKH: <a href="tel:19006067" class="font-bold text-red-600 hover:underline">1900 6067</a></span>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- ======================================================================= -->
+        <!-- C. DẢI XA LỘ TOÀN CẢNH CHẠY XUYÊN SUỐT DƯỚI ĐÁY CARD                     -->
+        <!-- ======================================================================= -->
+        <div class="w-full h-9 bg-slate-950 border-t-2 border-slate-800 relative overflow-hidden flex items-center select-none">
+          <!-- Vạch sơn tim đường di chuyển liên tục -->
+          <div id="panoramicRoadStrip" class="absolute inset-0 bg-repeat-x road-strip"></div>
+
+          <!-- Mini Bus Chạy Toàn Cảnh (Trái -> Phải) -->
+          <div id="panoramicBus1" class="panoramic-bus-1 absolute flex items-center gap-1 pointer-events-none">
+            <div class="w-14 h-4 bg-red-600 rounded-sm border border-white/40 shadow-md flex items-center justify-center text-[7px] text-white font-black">
+              NHAXEKIENTRUC
+            </div>
+            <div class="w-5 h-2 bg-amber-300/60 blur-[1px]"></div>
+          </div>
+
+          <!-- Mini Transit Chạy Toàn Cảnh (Phải -> Trái) -->
+          <div id="panoramicBus2" class="panoramic-bus-2 absolute flex items-center flex-row-reverse gap-1 pointer-events-none">
+            <div class="w-11 h-3.5 bg-amber-400 rounded-sm border border-slate-900 shadow-sm flex items-center justify-center text-[6.5px] text-slate-950 font-bold">
+              0Đ
+            </div>
+            <div class="w-4 h-2 bg-amber-200/50 blur-[1px]"></div>
+          </div>
+
+          <div class="absolute right-4 text-[9px] font-mono text-slate-400 font-bold tracking-wider uppercase z-10 bg-slate-900/80 px-2 py-0.5 rounded">
+            HÀNH TRÌNH ĐÀ NẴNG ↔ LIÊN TỈNH TOÀN QUỐC
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 3. FOOTER 4 CỘT HIỆN ĐẠI (NỀN TRẮNG SÁNG HIỆN ĐẠI)                        -->
+  <!-- ========================================================================= -->
+  <footer class="bg-white border-t border-slate-200 text-slate-600 py-12 px-4 sm:px-6 mt-auto">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 text-xs leading-relaxed">
+      
+      <!-- Cột 1: Hệ thống nhaxekientruc Terminal -->
+      <div class="space-y-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center text-white text-base">
+            🚌
+          </div>
+          <span class="text-base font-black text-slate-900">nhaxekientruc Terminal</span>
+        </div>
+        <p class="text-slate-500">
+          Hệ thống đặt vé xe khách tiện nghi cao cấp, phục vụ hành trình liên tỉnh Bắc Nam, kết nối các trường Đại Học và trung tâm đô thị lớn.
+        </p>
+        <div class="space-y-1 text-slate-500 font-medium pt-1">
+          <p>📍 <strong class="text-slate-800">Trụ sở:</strong> Đại Học Kiến Trúc Đà Nẵng, 566 Núi Thành, Hải Châu, Đà Nẵng</p>
+          <p>📍 <strong class="text-slate-800">Bến xe:</strong> Chi nhánh 159 Tôn Đức Thắng, Liên Chiểu, Đà Nẵng</p>
+        </div>
+      </div>
+
+      <!-- Cột 2: Tuyến xe nổi bật -->
+      <div class="space-y-3">
+        <h4 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+          <span class="w-1.5 h-3 bg-red-600 rounded-full"></span>
+          <span>Tuyến Xe Nổi Bật</span>
+        </h4>
+        <ul class="space-y-2 text-slate-500">
+          <li class="hover:text-red-600 transition cursor-pointer flex items-center justify-between">
+            <span>Đà Nẵng ↔ Huế (Cao tốc La Sơn)</span>
+            <span class="font-mono text-slate-900 font-bold">120k</span>
+          </li>
+          <li class="hover:text-red-600 transition cursor-pointer flex items-center justify-between">
+            <span>Đà Nẵng ↔ Đông Hà (Quảng Trị)</span>
+            <span class="font-mono text-slate-900 font-bold">160k</span>
+          </li>
+          <li class="hover:text-red-600 transition cursor-pointer flex items-center justify-between">
+            <span>Đà Nẵng ↔ Quy Nhơn (Bình Định)</span>
+            <span class="font-mono text-slate-900 font-bold">250k</span>
+          </li>
+          <li class="hover:text-red-600 transition cursor-pointer flex items-center justify-between">
+            <span>Đà Nẵng ↔ Buôn Ma Thuột (Tây Nguyên)</span>
+            <span class="font-mono text-slate-900 font-bold">320k</span>
+          </li>
+          <li class="hover:text-red-600 transition cursor-pointer flex items-center justify-between">
+            <span>Đà Nẵng ↔ Hội An (Trung chuyển 0đ)</span>
+            <span class="font-mono text-emerald-600 font-bold">FREE</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Cột 3: Hỗ trợ khách hàng 24/7 -->
+      <div class="space-y-3">
+        <h4 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+          <span class="w-1.5 h-3 bg-red-600 rounded-full"></span>
+          <span>Hỗ Trợ Khách Hàng</span>
+        </h4>
+        <div class="space-y-2 text-slate-500">
+          <div class="flex items-center gap-2 text-slate-700">
+            <span>📞</span>
+            <span>Tổng đài đặt vé:</span>
+            <a href="tel:19006067" class="text-red-600 font-black font-mono text-sm hover:underline">1900 6067</a>
+          </div>
+          <div class="flex items-center gap-2 text-slate-700">
+            <span>📱</span>
+            <span>Hotline khiếu nại:</span>
+            <a href="tel:0905123456" class="text-red-600 font-bold font-mono hover:underline">0905 123 456</a>
+          </div>
+          <div class="flex items-center gap-2">
+            <span>✉️</span>
+            <span>Hòm thư điện tử:</span>
+            <span class="text-slate-700 font-mono">hotro@nhaxekientruc.vn</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span>⏰</span>
+            <span>Giờ làm việc: 24/7 (Cả Lễ, Tết)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cột 4: Cổng thanh toán & Bảo mật -->
+      <div class="space-y-3">
+        <h4 class="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+          <span class="w-1.5 h-3 bg-red-600 rounded-full"></span>
+          <span>Cổng Thanh Toán An Toàn</span>
+        </h4>
+        <p class="text-slate-500">Hỗ trợ thanh toán bảo mật đa kênh qua VNPAY, Ví MoMo, ZaloPay và thẻ ATM Quốc tế.</p>
+        <div class="grid grid-cols-4 gap-2 pt-1">
+          <div class="bg-slate-100 border border-slate-200 p-2 rounded-xl text-center font-bold text-[10px] text-slate-800">VNPay</div>
+          <div class="bg-pink-50 border border-pink-200 p-2 rounded-xl text-center font-bold text-[10px] text-pink-600">MoMo</div>
+          <div class="bg-blue-50 border border-blue-200 p-2 rounded-xl text-center font-bold text-[10px] text-blue-600">ZaloPay</div>
+          <div class="bg-emerald-50 border border-emerald-200 p-2 rounded-xl text-center font-bold text-[10px] text-emerald-600">Napas</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="max-w-7xl mx-auto border-t border-slate-200 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2">
+      <p>© 2026 nhaxekientruc Terminal Đà Nẵng. Bản quyền thuộc về Hệ thống Đặt Vé Xe Khách Công Nghệ Cao.</p>
+      <p>Hành trình êm ái • Vạn dặm bình an</p>
+    </div>
+  </footer>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL QUÊN MẬT KHẨU                                                      -->
+  <!-- ========================================================================= -->
+  <div id="forgotModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full space-y-4 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
+          <span>🔑</span>
+          <span>Hỗ Trợ Lấy Lại Mật Khẩu</span>
+        </h3>
+        <button onclick="closeForgotModal()" class="text-slate-400 hover:text-slate-600 text-lg cursor-pointer">✕</button>
+      </div>
+      <p class="text-xs text-slate-600 leading-relaxed">
+        Vui lòng liên hệ tổng đài CSKH nhaxekientruc để được cấp lại mật khẩu hoặc xác thực tài khoản nhanh chóng:
+      </p>
+      <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs text-slate-800 space-y-2 font-bold">
+        <div class="flex items-center justify-between">
+          <span>📞 Tổng đài 24/7:</span>
+          <a href="tel:19006067" class="text-red-600 underline font-mono text-sm">1900 6067</a>
+        </div>
+        <div class="flex items-center justify-between">
+          <span>📱 Hotline hỗ trợ:</span>
+          <a href="tel:0905123456" class="text-red-600 underline font-mono">0905 123 456</a>
+        </div>
+        <div class="flex items-center justify-between">
+          <span>✉️ Hòm thư CSKH:</span>
+          <span class="text-red-600 font-mono">hotro@nhaxekientruc.vn</span>
+        </div>
+      </div>
+      <button
+        onclick="closeForgotModal()"
+        class="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition cursor-pointer"
+      >
+        Đã Hiểu
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TOAST NOTIFICATION CONTAINER                                             -->
+  <!-- ========================================================================= -->
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- ========================================================================= -->
+  <!-- VANILLA JAVASCRIPT LOGIC                                                 -->
+  <!-- ========================================================================= -->
+  <script>
+    // State
+    let currentTab = 'login';
+    let currentSky = 'night';
+    let isTurbo = false;
+    let isHornPlaying = false;
+    let hornTimer = null;
+    let registerMethod = 'phone';
+    let currentRegStep = 1;
+    let countdownInterval = null;
+    let remainingSeconds = 119;
+
+    // Toast function
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `p-4 rounded-2xl shadow-xl text-xs font-bold flex items-center gap-2 transform transition-all duration-300 translate-y-4 opacity-0 pointer-events-auto ${
+        type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+      }`;
+      toast.innerHTML = `<span>${type === 'success' ? '✓' : '⚠️'}</span><span>${message}</span>`;
+      document.getElementById('toastContainer').appendChild(toast);
+      
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-4', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-4', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Tab Switching
+    function setTab(tab) {
+      currentTab = tab;
+      const paneLogin = document.getElementById('paneLogin');
+      const paneRegister = document.getElementById('paneRegister');
+      const tabLoginBtn = document.getElementById('tabLoginBtn');
+      const tabRegisterBtn = document.getElementById('tabRegisterBtn');
+      const tabLoginIndicator = document.getElementById('tabLoginIndicator');
+      const tabRegisterIndicator = document.getElementById('tabRegisterIndicator');
+      const navTabSwitchBtn = document.getElementById('navTabSwitchBtn');
+
+      if (tab === 'login') {
+        paneLogin.classList.remove('hidden');
+        paneRegister.classList.add('hidden');
+        tabLoginBtn.classList.add('text-red-600');
+        tabLoginBtn.classList.remove('text-slate-400');
+        tabRegisterBtn.classList.add('text-slate-400');
+        tabRegisterBtn.classList.remove('text-red-600');
+        tabLoginIndicator.classList.remove('hidden');
+        tabRegisterIndicator.classList.add('hidden');
+        navTabSwitchBtn.innerText = 'Đăng Ký';
+      } else {
+        paneLogin.classList.add('hidden');
+        paneRegister.classList.remove('hidden');
+        tabRegisterBtn.classList.add('text-red-600');
+        tabRegisterBtn.classList.remove('text-slate-400');
+        tabLoginBtn.classList.add('text-slate-400');
+        tabLoginBtn.classList.remove('text-red-600');
+        tabRegisterIndicator.classList.remove('hidden');
+        tabLoginIndicator.classList.add('hidden');
+        navTabSwitchBtn.innerText = 'Đăng Nhập';
+      }
+    }
+
+    // Sky Switcher (Đêm vs Hoàng Hôn) - Ở TRONG & Ở NGOÀI ĐỀU ĐỔI ĐỒNG BỘ
+    function toggleSky() {
+      const leftCol = document.getElementById('leftColumn');
+      const nightSky = document.getElementById('nightSky');
+      const sunsetSky = document.getElementById('sunsetSky');
+      const skyIcon = document.getElementById('skyIcon');
+      const skyText = document.getElementById('skyText');
+      const skyBtn = document.getElementById('skyToggleBtn');
+      const roadBox = document.getElementById('roadSkyBox');
+      const roadNightSky = document.getElementById('roadNightSky');
+      const roadSunsetSky = document.getElementById('roadSunsetSky');
+
+      if (currentSky === 'night') {
+        currentSky = 'sunset';
+        // Ở NGOÀI: Đổi sang đỏ cam hoàng hôn rực rỡ chuẩn Ảnh 1
+        leftCol.className = 'lg:col-span-5 relative text-white p-6 sm:p-8 flex flex-col justify-between overflow-hidden transition-colors duration-700 select-none bg-gradient-to-br from-[#b91c1c] via-[#dc2626] to-[#ea580c]';
+        nightSky.classList.add('hidden');
+        sunsetSky.classList.remove('hidden');
+        
+        // Nút bấm:
+        skyIcon.innerText = '🌅';
+        skyIcon.className = 'w-4 h-4 rounded flex items-center justify-center text-xs bg-gradient-to-tr from-amber-500 to-rose-500';
+        skyText.innerText = 'Hoàng Hôn';
+        skyBtn.className = 'px-2.5 sm:px-3 py-1 rounded-lg sm:rounded-full text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 border border-[#5c2317] bg-[#3a1d17]/90 hover:bg-[#4d261e] text-white shadow-[0_0_12px_rgba(245,158,11,0.25)]';
+
+        // Ở TRONG: Đổi sang bầu trời hoàng hôn ấm áp có mặt trời to tròn như Ảnh 1
+        roadBox.className = 'relative h-28 rounded-xl overflow-hidden border border-slate-700/80 flex flex-col justify-between p-1.5 transition-all duration-700 bg-gradient-to-b from-[#2a0c06] via-[#541607] to-[#7c2d12]';
+        roadNightSky.classList.add('hidden');
+        roadSunsetSky.classList.remove('hidden');
+      } else {
+        currentSky = 'night';
+        // Ở NGOÀI: Đổi sang bóng đêm huyền bí
+        leftCol.className = 'lg:col-span-5 relative text-white p-6 sm:p-8 flex flex-col justify-between overflow-hidden transition-colors duration-700 select-none bg-gradient-to-br from-[#1a0508] via-[#380811] to-[#540b17]';
+        nightSky.classList.remove('hidden');
+        sunsetSky.classList.add('hidden');
+        
+        // Nút bấm:
+        skyIcon.innerText = '🌙';
+        skyIcon.className = 'w-4 h-4 rounded flex items-center justify-center text-xs bg-indigo-950';
+        skyText.innerText = 'Ban Đêm';
+        skyBtn.className = 'px-2.5 sm:px-3 py-1 rounded-lg sm:rounded-full text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 border border-slate-700 bg-[#1e293b]/90 hover:bg-slate-700 text-white';
+
+        // Ở TRONG: Đổi sang bầu trời đêm sa bàn với trăng khuyết và sao
+        roadBox.className = 'relative h-28 rounded-xl overflow-hidden border border-slate-700/80 flex flex-col justify-between p-1.5 transition-all duration-700 bg-gradient-to-b from-[#080d1a] via-[#0f172a] to-[#1e293b]';
+        roadNightSky.classList.remove('hidden');
+        roadSunsetSky.classList.add('hidden');
+      }
+    }
+
+    // Đá pha và Còi xe khách + Web Audio API synthesizer
+    function triggerHornAndHeadlights() {
+      const beam = document.getElementById('headlightBeam');
+      const bubble = document.getElementById('hornBubble');
+      const hornBtn = document.getElementById('hornBtn');
+
+      bubble.classList.remove('hidden');
+      beam.className = 'w-32 h-8 bg-gradient-to-r from-amber-200/90 via-amber-300/40 to-transparent blur-[1px] transition-all duration-300 pointer-events-none origin-left';
+      hornBtn.className = 'px-2.5 py-1 rounded-xl text-[11px] font-bold transition flex items-center gap-1 cursor-pointer border bg-amber-400 text-slate-950 border-amber-300 ring-2 ring-amber-300/50 shadow-sm active:scale-95';
+
+      // Phát âm thanh còi hơi tổng hợp
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+          const ctx = new AudioContext();
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc1.type = 'sawtooth';
+          osc2.type = 'triangle';
+          osc1.frequency.setValueAtTime(440, ctx.currentTime);
+          osc2.frequency.setValueAtTime(554.37, ctx.currentTime);
+
+          gain.gain.setValueAtTime(0.12, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc1.start();
+          osc2.start();
+          osc1.stop(ctx.currentTime + 0.45);
+          osc2.stop(ctx.currentTime + 0.45);
+        }
+      } catch (e) {}
+
+      if (hornTimer) clearTimeout(hornTimer);
+      hornTimer = setTimeout(() => {
+        bubble.classList.add('hidden');
+        beam.className = 'w-16 h-8 bg-gradient-to-r from-amber-200/40 via-amber-300/10 to-transparent transition-all duration-300 pointer-events-none origin-left';
+        hornBtn.className = 'px-2.5 py-1 rounded-xl text-[11px] font-bold transition flex items-center gap-1 cursor-pointer border bg-white/15 hover:bg-white/25 text-white border-white/20 shadow-sm active:scale-95';
+      }, 2200);
+    }
+
+    // Turbo Speed (2x bus speed when typing or submitting)
+    function startTurbo() {
+      isTurbo = true;
+      document.getElementById('turboBadge').className = 'font-mono text-[10px] px-2 py-0.5 rounded-md font-bold transition-all bg-amber-400 text-slate-950 animate-bounce';
+      document.getElementById('turboBadge').innerText = '⚡ TURBO SPEED 2X';
+      document.getElementById('busLane1').classList.add('bus-speed-fast');
+      document.getElementById('busLane2').classList.add('bus-speed-fast');
+      document.getElementById('panoramicBus1').classList.add('bus-speed-fast');
+      document.getElementById('panoramicBus2').classList.add('bus-speed-fast');
+      document.getElementById('panoramicRoadStrip').classList.add('road-strip-fast');
+    }
+
+    function stopTurbo() {
+      isTurbo = false;
+      document.getElementById('turboBadge').className = 'font-mono text-[10px] px-2 py-0.5 rounded-md font-bold transition-all bg-white/10 text-slate-300';
+      document.getElementById('turboBadge').innerText = 'TỐC ĐỘ: 80 KM/H';
+      document.getElementById('busLane1').classList.remove('bus-speed-fast');
+      document.getElementById('busLane2').classList.remove('bus-speed-fast');
+      document.getElementById('panoramicBus1').classList.remove('bus-speed-fast');
+      document.getElementById('panoramicBus2').classList.remove('bus-speed-fast');
+      document.getElementById('panoramicRoadStrip').classList.remove('road-strip-fast');
+    }
+
+    // Login Form logic
+    function onLoginAccountInput(value) {
+      startTurbo();
+      const val = (value || '').toLowerCase().trim();
+      const banner = document.getElementById('studentBannerLogin');
+      if (val.endsWith('.edu.vn') || val.includes('@dau.edu.vn')) {
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    function fillLoginQuick(credential) {
+      const input = document.getElementById('loginAccountInput');
+      input.value = credential;
+      onLoginAccountInput(credential);
+      document.getElementById('loginPasswordInput').focus();
+    }
+
+    function toggleLoginPasswordVisibility() {
+      const input = document.getElementById('loginPasswordInput');
+      const btn = document.getElementById('togglePwdBtn');
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.innerText = '🙈';
+      } else {
+        input.type = 'password';
+        btn.innerText = '👁️';
+      }
+    }
+
+    function handleLoginSubmit(e) {
+      e.preventDefault();
+      startTurbo();
+      const account = document.getElementById('loginAccountInput').value;
+      const btn = document.getElementById('loginSubmitBtn');
+      btn.innerHTML = '<span>ĐANG ĐĂNG NHẬP...</span><span class="animate-spin">⏳</span>';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        btn.innerHTML = '<span>ĐĂNG NHẬP VÀO HỆ THỐNG</span><span class="text-base">➔</span>';
+        btn.disabled = false;
+        stopTurbo();
+        showToast(`Đăng nhập thành công! Chào mừng trở lại ${account}.`, 'success');
+      }, 1000);
+    }
+
+    // Register Stepper logic
+    function setRegisterMethod(method) {
+      registerMethod = method;
+      const phoneBtn = document.getElementById('regMethodPhoneBtn');
+      const gmailBtn = document.getElementById('regMethodGmailBtn');
+      const phoneField = document.getElementById('regFieldPhone');
+      const gmailField = document.getElementById('regFieldGmail');
+      const btnText = document.getElementById('step1BtnText');
+
+      if (method === 'phone') {
+        phoneBtn.className = 'py-2.5 px-3 rounded-xl font-black transition flex items-center justify-center gap-1.5 cursor-pointer bg-white text-red-600 shadow-sm';
+        gmailBtn.className = 'py-2.5 px-3 rounded-xl font-bold transition flex items-center justify-center gap-1.5 cursor-pointer text-slate-600 hover:text-slate-900';
+        phoneField.classList.remove('hidden');
+        gmailField.classList.add('hidden');
+        btnText.innerText = 'NHẬN MÃ OTP QUA ZALO / SMS →';
+      } else {
+        gmailBtn.className = 'py-2.5 px-3 rounded-xl font-black transition flex items-center justify-center gap-1.5 cursor-pointer bg-white text-red-600 shadow-sm';
+        phoneBtn.className = 'py-2.5 px-3 rounded-xl font-bold transition flex items-center justify-center gap-1.5 cursor-pointer text-slate-600 hover:text-slate-900';
+        gmailField.classList.remove('hidden');
+        phoneField.classList.add('hidden');
+        btnText.innerText = 'NHẬN MÃ OTP QUA EMAIL →';
+      }
+      goToRegStep(1);
+    }
+
+    function checkRegEmailStudent(val) {
+      startTurbo();
+      const email = (val || '').toLowerCase().trim();
+      const studentBox = document.getElementById('regStudentBox');
+      const normalBox = document.getElementById('regNormalBox');
+      if (email.includes('.edu.vn')) {
+        studentBox.classList.remove('hidden');
+        normalBox.classList.add('hidden');
+      } else {
+        studentBox.classList.add('hidden');
+        normalBox.classList.remove('hidden');
+      }
+    }
+
+    function goToRegStep(step) {
+      currentRegStep = step;
+      const c1 = document.getElementById('regStep1Container');
+      const c2 = document.getElementById('regStep2Container');
+      const c3 = document.getElementById('regStep3Container');
+
+      const s1B = document.getElementById('step1Badge');
+      const s2B = document.getElementById('step2Badge');
+      const s3B = document.getElementById('step3Badge');
+
+      const p1 = document.getElementById('stepProgressBar1');
+      const p2 = document.getElementById('stepProgressBar2');
+
+      c1.classList.add('hidden');
+      c2.classList.add('hidden');
+      c3.classList.add('hidden');
+
+      if (step === 1) {
+        c1.classList.remove('hidden');
+        s1B.className = 'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-red-600 text-white shadow-xs';
+        s2B.className = 'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-slate-200 text-slate-500';
+        s3B.className = 'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-slate-200 text-slate-500';
+        p1.style.width = '0%';
+        p2.style.width = '0%';
+      } else if (step === 2) {
+        c2.classList.remove('hidden');
+        s1B.className = 'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-emerald-600 text-white';
+        s1B.innerText = '✓';
+        s2B.className = 'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-red-600 text-white shadow-xs';
+        s3B.className = 'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-slate-200 text-slate-500';
+        p1.style.width = '100%';
+        p2.style.width = '0%';
+        startCountdown();
+        const boxes = document.querySelectorAll('.otp-box');
+        if (boxes[0]) boxes[0].focus();
+      } else if (step === 3) {
+        c3.classList.remove('hidden');
+        s1B.className = 'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-emerald-600 text-white';
+        s2B.className = 'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-emerald-600 text-white';
+        s2B.innerText = '✓';
+        s3B.className = 'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-red-600 text-white shadow-xs';
+        p1.style.width = '100%';
+        p2.style.width = '100%';
+        if (countdownInterval) clearInterval(countdownInterval);
+      }
+    }
+
+    function handleStep1SendOtp() {
+      const isPhone = registerMethod === 'phone';
+      const target = isPhone ? document.getElementById('regPhoneInput').value : document.getElementById('regGmailInput').value;
+
+      if (!target || !target.trim()) {
+        showToast('Vui lòng nhập ' + (isPhone ? 'Số điện thoại' : 'Email') + ' để nhận OTP!', 'error');
+        return;
+      }
+
+      document.getElementById('step2TargetDisplay').innerText = `(${target})`;
+      document.getElementById('targetDisplayFull').innerText = target;
+      showToast(`Mã xác thực OTP đã được gửi tới ${target}!`, 'success');
+      goToRegStep(2);
+    }
+
+    function handleOtpInput(element, index) {
+      const val = element.value.replace(/[^0-9]/g, '');
+      element.value = val ? val.slice(-1) : '';
+      const boxes = document.querySelectorAll('.otp-box');
+
+      if (val && index < 5) {
+        boxes[index + 1].focus();
+      }
+
+      const allFilled = Array.from(boxes).every(b => b.value.length === 1);
+      if (allFilled) {
+        handleVerifyOtpStep2();
+      }
+    }
+
+    function handleOtpKeydown(e, index) {
+      const boxes = document.querySelectorAll('.otp-box');
+      if (e.key === 'Backspace' && !boxes[index].value && index > 0) {
+        boxes[index - 1].focus();
+        boxes[index - 1].value = '';
+      }
+    }
+
+    function fillDemoOtp() {
+      const digits = ['8', '8', '8', '9', '9', '9'];
+      const boxes = document.querySelectorAll('.otp-box');
+      boxes.forEach((box, i) => box.value = digits[i]);
+      handleVerifyOtpStep2();
+    }
+
+    function handleVerifyOtpStep2() {
+      const boxes = document.querySelectorAll('.otp-box');
+      const otp = Array.from(boxes).map(b => b.value).join('');
+      if (otp.length !== 6) {
+        showToast('Vui lòng nhập đủ 6 chữ số mã OTP!', 'error');
+        return;
+      }
+      showToast('Xác thực OTP thành công!', 'success');
+      goToRegStep(3);
+    }
+
+    function startCountdown() {
+      if (countdownInterval) clearInterval(countdownInterval);
+      remainingSeconds = 119;
+      const display = document.getElementById('countdownDisplay');
+
+      countdownInterval = setInterval(() => {
+        if (remainingSeconds > 0) {
+          remainingSeconds--;
+          const m = Math.floor(remainingSeconds / 60);
+          const s = remainingSeconds % 60;
+          display.innerText = `⏱️ Còn lại: ${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+        } else {
+          clearInterval(countdownInterval);
+          display.innerText = 'Mã OTP đã hết hạn';
+        }
+      }, 1000);
+    }
+
+    function handleCompleteRegisterStep3(e) {
+      e.preventDefault();
+      const name = document.getElementById('regNameInput').value;
+      const pwd = document.getElementById('regPasswordInput').value;
+      const pwdC = document.getElementById('regPasswordConfirmInput').value;
+
+      if (pwd !== pwdC) {
+        showToast('Mật khẩu xác nhận không khớp!', 'error');
+        return;
+      }
+
+      startTurbo();
+      showToast(`Đăng ký tài khoản thành công cho ${name}! Đang chuyển hướng...`, 'success');
+      setTimeout(() => {
+        stopTurbo();
+        setTab('login');
+        document.getElementById('loginAccountInput').value = registerMethod === 'phone' ? document.getElementById('regPhoneInput').value : document.getElementById('regGmailInput').value;
+      }, 1500);
+    }
+
+    // Modal
+    function openForgotModal() {
+      document.getElementById('forgotModal').classList.remove('hidden');
+    }
+    function closeForgotModal() {
+      document.getElementById('forgotModal').classList.add('hidden');
+    }
+  </script>
+
+</body>
+</html>
