@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'smtp'),
+    'default' => env('MAIL_MAILER', env('EMAIL_WEBHOOK_URL') ? 'webhook' : 'smtp'),
 
     /*
     |--------------------------------------------------------------------------
@@ -31,11 +31,16 @@ return [
     |
     | Supported: "smtp", "sendmail", "mailgun", "ses", "ses-v2",
     |            "postmark", "resend", "log", "array",
-    |            "failover", "roundrobin"
+    |            "failover", "roundrobin", "webhook"
     |
     */
 
     'mailers' => [
+
+        'webhook' => [
+            'transport' => 'webhook',
+            'url' => env('EMAIL_WEBHOOK_URL'),
+        ],
 
         'smtp' => [
             'transport' => 'smtp',

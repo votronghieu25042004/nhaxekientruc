@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Artisan;
 use App\Models\Trip;
 use Carbon\Carbon;
 
+use Illuminate\Support\Facades\Mail;
+use App\Mail\Transport\WebhookTransport;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -23,6 +26,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Đăng ký custom Mail driver 'webhook' để gửi email qua HTTPS port 443 trên Cloud (bỏ qua tường lửa Render)
+        Mail::extend('webhook', function (array $config = []) {
+            $url = $config['url'] ?? env('EMAIL_WEBHOOK_URL', '');
+            return new WebhookTransport($url);
+        });
         // Tự động đảm bảo luôn có lịch trình và dữ liệu khi chạy artisan command hoặc an toàn
         try {
             if ($this->app->runningInConsole() && Schema::hasTable('trips')) {
