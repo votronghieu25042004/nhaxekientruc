@@ -1117,50 +1117,22 @@ class AdminController extends Controller
     {
         $today = Carbon::today('Asia/Ho_Chi_Minh');
 
-        // Tác vụ 1: Gửi Gmail nhắc trước 45 phút (Gửi mail thật qua SMTP)
-        $trips45m = Trip::with(['bookings.bookingSeats', 'bookings.user', 'bookings.pickupStop', 'route', 'bus', 'driver'])
+        // Tác vụ 1: Gửi Gmail nhắc trước 45 phút qua HTTPS Webhook Relay
+        $tripsQuery = Trip::with(['bookings.bookingSeats', 'bookings.user', 'bookings.pickupStop', 'route', 'bus', 'driver'])
             ->whereDate('departure_time', $today)
-            ->whereBetween('departure_time', [now(), now()->addMinutes(45)])
-            ->get();
+            ->whereNotIn('status', ['CANCELLED', 'COMPLETED']);
+
+        // Nếu admin bấm nút hoặc gọi cron, quét các chuyến sắp chạy hôm nay
+        $trips45m = $tripsQuery->get();
 
         $emailCount = 0;
         foreach ($trips45m as $t) {
             $validBookings = $t->bookings->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
-            $plate = $t->bus ? ($t->bus->license_plate ?? '43B-012.34') : '43B-012.34';
-            $busType = $t->bus ? ($t->bus->bus_type ?? 'Xe Giường Nằm VIP') : 'Xe Giường Nằm VIP';
-            $driver = $t->driver ? $t->driver->name : 'Bác tài nhaxekientruc';
-            $driverPhone = $t->driver ? ($t->driver->phone ?? '0905.123.456') : '0905.123.456';
-            $depDate = Carbon::parse($t->departure_time)->format('H:i - d/m/Y');
-            $routeName = $t->route?->name ?? 'Tuyến đường';
 
             foreach ($validBookings as $b) {
-                $recipient = $b->customer_email ?: ($b->user?->email ?: null);
-                if ($recipient && filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
-                    try {
-                        $seatCodes = $b->bookingSeats->pluck('seat_number')->join(', ') ?: ($b->seat_code ?: 'Ghế');
-                        $pickupName = $b->pickupStop?->stop_name ?? ($t->pickup_point ?? 'Bến xe Trung tâm Đà Nẵng');
-
-                        Mail::send('emails.departure_reminder_45m', [
-                            'customerName' => $b->customer_name ?: 'Quý Khách',
-                            'tripCode' => $t->trip_code,
-                            'routeName' => $routeName,
-                            'departureTime' => $depDate,
-                            'busPlate' => $plate,
-                            'busType' => $busType,
-                            'driverName' => $driver,
-                            'driverPhone' => $driverPhone,
-                            'pickupStop' => $pickupName,
-                            'seatNumbers' => $seatCodes,
-                            'bookingCode' => $b->booking_code,
-                            'ticketUrl' => url('/booking/' . $b->booking_code),
-                        ], function ($message) use ($recipient, $t, $routeName) {
-                            $message->to($recipient)
-                                    ->subject("⏰ [nhaxekientruc] Nhắc nhở xuất bến trước 45 phút - Chuyến {$t->trip_code} ({$routeName})");
-                        });
-                        $emailCount++;
-                    } catch (\Throwable $e) {
-                        Log::warning("Lỗi gửi email auto-cron cho {$recipient}: " . $e->getMessage());
-                    }
+                $sent = \App\Services\EmailService::sendDepartureReminder($b);
+                if ($sent) {
+                    $emailCount++;
                 }
             }
         }
@@ -1679,47 +1651,27 @@ class AdminController extends Controller
         $bookings = $trip->bookings->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
         $totalBookings = $bookings->count();
 
+        if ($totalBookings === 0) {
+            return back()->with('warning', "Chuyến xe {$trip->trip_code} hiện chưa có hành khách đặt vé nào để gửi thông báo nhắc nhở.");
+        }
+
         $depTime = Carbon::parse($trip->departure_time)->format('H:i');
-        $depDate = Carbon::parse($trip->departure_time)->format('H:i - d/m/Y');
         $plate = $trip->bus ? ($trip->bus->license_plate ?? '43B-012.34') : '43B-012.34';
-        $busType = $trip->bus ? ($trip->bus->bus_type ?? 'Xe Giường Nằm VIP') : 'Xe Giường Nằm VIP';
         $driver = $trip->driver ? $trip->driver->name : 'Bác tài nhaxekientruc';
-        $driverPhone = $trip->driver ? ($trip->driver->phone ?? '0905.123.456') : '0905.123.456';
-        $routeName = $trip->route?->name ?? 'Tuyến đường';
 
         $sentCount = 0;
         foreach ($bookings as $b) {
-            $recipient = $b->customer_email ?: ($b->user?->email ?: null);
-            if ($recipient && filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
-                try {
-                    $seatCodes = $b->bookingSeats->pluck('seat_number')->join(', ') ?: ($b->seat_code ?: 'Ghế');
-                    $pickupName = $b->pickupStop?->stop_name ?? ($trip->pickup_point ?? 'Bến xe Trung tâm Đà Nẵng');
-
-                    Mail::send('emails.departure_reminder_45m', [
-                        'customerName' => $b->customer_name ?: 'Quý Khách',
-                        'tripCode' => $trip->trip_code,
-                        'routeName' => $routeName,
-                        'departureTime' => $depDate,
-                        'busPlate' => $plate,
-                        'busType' => $busType,
-                        'driverName' => $driver,
-                        'driverPhone' => $driverPhone,
-                        'pickupStop' => $pickupName,
-                        'seatNumbers' => $seatCodes,
-                        'bookingCode' => $b->booking_code,
-                        'ticketUrl' => url('/booking/' . $b->booking_code),
-                    ], function ($message) use ($recipient, $trip, $routeName) {
-                        $message->to($recipient)
-                                ->subject("⏰ [nhaxekientruc] Nhắc nhở xuất bến trước 45 phút - Chuyến {$trip->trip_code} ({$routeName})");
-                    });
-                    $sentCount++;
-                } catch (\Throwable $e) {
-                    Log::warning("Lỗi gửi email nhắc nhở 45p cho {$recipient}: " . $e->getMessage());
-                }
+            $sent = \App\Services\EmailService::sendDepartureReminder($b);
+            if ($sent) {
+                $sentCount++;
             }
         }
 
-        return back()->with('success', "🔔 ĐÃ GỬI GMAIL THẬT NHẮC 45 PHÚT TỚI {$sentCount}/{$totalBookings} HÀNH KHÁCH của chuyến {$trip->trip_code} (Khởi hành lúc {$depTime}, Xe {$plate}, Bác tài: {$driver}). Kèm mã QR vé điện tử!");
+        if ($sentCount > 0) {
+            return back()->with('success', "🔔 ĐÃ GỬI THÀNH CÔNG GMAIL NHẮC 45 PHÚT TỚI {$sentCount}/{$totalBookings} HÀNH KHÁCH của chuyến {$trip->trip_code} (Khởi hành lúc {$depTime}, Xe {$plate}, Bác tài: {$driver}). Kèm mã QR vé điện tử!");
+        }
+
+        return back()->with('warning', "Đã quét {$totalBookings} hành khách của chuyến {$trip->trip_code}, nhưng các hành khách này chưa có địa chỉ Gmail hợp lệ hoặc dịch vụ chuyển phát đang bận.");
     }
 
     public function notifyAllReminders(Request $request)
@@ -3658,31 +3610,16 @@ class AdminController extends Controller
             'performed_by' => $adminName,
         ]);
 
-        // Gửi email thông báo DUYỆT HOÀN TIỀN THÀNH CÔNG về Gmail của khách hàng
-        if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
-            try {
-                $trip = $booking->trip;
-                \Illuminate\Support\Facades\Mail::send('emails.refund_approved', [
-                    'customerName' => $booking->customer_name,
-                    'bookingCode' => $booking->booking_code,
-                    'routeName' => $trip?->route?->name ?? 'Tuyến xe nhaxekientruc',
-                    'refundAmount' => number_format($refundAmount, 0, ',', '.') . ' VNĐ',
-                    'paymentMethod' => $booking->refund_bank_name ? 'Chuyển khoản Ngân hàng' : ($booking->payment_method ?: 'Ví điện tử'),
-                    'bankName' => $booking->refund_bank_name ?: 'Chuyển khoản theo yêu cầu',
-                    'accountNumber' => $booking->refund_account_number ?: 'Tài khoản gốc',
-                    'accountName' => $booking->refund_account_name ?: $booking->customer_name,
-                    'txCode' => $txCode,
-                    'adminNotes' => $adminNoteText,
-                    'processedAt' => now()->format('H:i - d/m/Y'),
-                    'ticketUrl' => url('/ve/' . $booking->booking_code),
-                ], function ($message) use ($booking) {
-                    $message->to($booking->customer_email)
-                            ->subject("✅ [nhaxekientruc] Đã Duyệt Hoàn Tiền Vé #{$booking->booking_code}");
-                });
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error("[REFUND_APPROVED_EMAIL_ERROR] " . $e->getMessage());
-            }
-        }
+        // Gửi email thông báo DUYỆT HOÀN TIỀN THÀNH CÔNG về Gmail của khách hàng qua Relay HTTPS 443
+        \App\Services\EmailService::sendRefundApproved($booking, [
+            'refundAmount' => $refundAmount,
+            'paymentMethod' => $booking->refund_bank_name ? 'Chuyển khoản Ngân hàng' : ($booking->payment_method ?: 'Ví điện tử'),
+            'bankName' => $booking->refund_bank_name ?: 'Chuyển khoản theo yêu cầu',
+            'accountNumber' => $booking->refund_account_number ?: 'Tài khoản gốc',
+            'accountName' => $booking->refund_account_name ?: $booking->customer_name,
+            'txCode' => $txCode,
+            'adminNotes' => $adminNoteText,
+        ]);
 
         return back()->with('success', "Đã duyệt hoàn tiền " . number_format($refundAmount, 0, ',', '.') . "đ cho vé #{$booking->booking_code} và gửi thông báo về Gmail thành công!");
     }
@@ -3712,26 +3649,8 @@ class AdminController extends Controller
             'performed_by' => $adminName,
         ]);
 
-        // Gửi email thông báo TỪ CHỐI HOÀN TIỀN về Gmail của khách hàng
-        if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
-            try {
-                $trip = $booking->trip;
-                \Illuminate\Support\Facades\Mail::send('emails.refund_rejected', [
-                    'customerName' => $booking->customer_name,
-                    'bookingCode' => $booking->booking_code,
-                    'routeName' => $trip?->route?->name ?? 'Tuyến xe nhaxekientruc',
-                    'rejectReason' => $reason,
-                    'departureTime' => $trip?->departure_time ? \Carbon\Carbon::parse($trip->departure_time)->format('H:i - d/m/Y') : 'Xem trên vé',
-                    'processedAt' => now()->format('H:i - d/m/Y'),
-                    'ticketUrl' => url('/ve/' . $booking->booking_code),
-                ], function ($message) use ($booking) {
-                    $message->to($booking->customer_email)
-                            ->subject("⚠️ [nhaxekientruc] Thông Báo Từ Chối Yêu Cầu Hoàn Tiền Vé #{$booking->booking_code}");
-                });
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error("[REFUND_REJECTED_EMAIL_ERROR] " . $e->getMessage());
-            }
-        }
+        // Gửi email thông báo TỪ CHỐI HOÀN TIỀN về Gmail của khách hàng qua Relay HTTPS 443
+        \App\Services\EmailService::sendRefundRejected($booking, $reason);
 
         return back()->with('success', "Đã từ chối hoàn tiền cho vé #{$booking->booking_code} và gửi thông báo về Gmail của khách hàng.");
     }
