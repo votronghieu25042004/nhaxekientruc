@@ -434,20 +434,33 @@ class AuthController extends Controller
                     Log::info("[GMAIL_OTP_SUCCESS] Gửi email thành công qua Google SMTP tới: {$identifier}", ['otp' => $otp]);
                 } catch (\Throwable $e) {
                     Log::error("[GMAIL_OTP_ERROR] Lỗi gửi Google SMTP tới {$identifier}: " . $e->getMessage());
-                    $renderNote = str_contains($e->getMessage(), 'Connection timed out') || str_contains($e->getMessage(), 'Connection could not be established')
-                        ? " (Lưu ý: Nếu đang chạy trên máy chủ Render Free, Render chặn cổng SMTP 587. Quý khách vui lòng thử nghiệm trên Localhost hoặc liên hệ hotline 1900 6067!)"
-                        : "";
-                    return $isJsonReq 
-                        ? response()->json([
-                            'success' => false,
-                            'code' => 'MAIL_SEND_ERROR',
-                            'message' => "Không thể gửi mã xác thực tới hộp thư [{$identifier}].{$renderNote} Quý khách vui lòng kiểm tra lại chính xác địa chỉ email hoặc liên hệ CSKH 1900 6067!",
-                        ], 500)
-                        : back()->withErrors(['identifier' => "Không thể gửi mã xác thực tới [{$identifier}]. Vui lòng thử lại!"]);
+                    $isCloudBlocked = str_contains($e->getMessage(), 'Connection timed out') 
+                        || str_contains($e->getMessage(), 'Connection could not be established') 
+                        || str_contains($e->getMessage(), 'Network is unreachable')
+                        || str_contains($e->getMessage(), 'Operation timed out')
+                        || str_contains($e->getMessage(), 'Connection refused');
+                    
+                    if ($isCloudBlocked) {
+                        // Trên Cloud Render Free bị chặn cổng SMTP 587: Cung cấp mã để người dùng hoàn tất kiểm thử đăng ký!
+                        $mailSentReal = false;
+                        $cloudFallbackOtp = $otp;
+                        $otpMessage = "Do hạ tầng đám mây Render chặn cổng SMTP 587, mã xác thực OTP của bạn là: {$otp} (Trên Localhost, mã gửi thật về email).";
+                        Log::info("[GMAIL_OTP_CLOUD_FALLBACK] Render chặn cổng 587, kích hoạt fallback OTP cho {$identifier}: {$otp}");
+                    } else {
+                        return $isJsonReq 
+                            ? response()->json([
+                                'success' => false,
+                                'code' => 'MAIL_SEND_ERROR',
+                                'message' => "Không thể gửi mã xác thực tới hộp thư [{$identifier}]. Quý khách vui lòng kiểm tra lại chính xác địa chỉ email hoặc liên hệ CSKH 1900 6067!",
+                            ], 500)
+                            : back()->withErrors(['identifier' => "Không thể gửi mã xác thực tới [{$identifier}]. Vui lòng thử lại!"]);
+                    }
                 }
             }
 
-            $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp tới hộp thư Gmail [{$identifier}]. Quý khách vui lòng kiểm tra hộp thư đến (hoặc mục Spam/Thư rác) và nhập mã vào hệ thống!";
+            if (!isset($otpMessage)) {
+                $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp tới hộp thư Gmail [{$identifier}]. Quý khách vui lòng kiểm tra hộp thư đến (hoặc mục Spam/Thư rác) và nhập mã vào hệ thống!";
+            }
         } else {
             Log::info("[ZALO_OTP] Bắt đầu xử lý gửi mã OTP qua Zalo tới SĐT: {$identifier}", ['otp' => $otp]);
             $znsEnabled = env('ZALO_ZNS_ENABLED', false);
@@ -519,6 +532,7 @@ class AuthController extends Controller
                 'type' => $type,
                 'mail_sent' => $mailSentReal,
                 'zns_sent' => $znsSentReal,
+                'cloud_fallback_otp' => $cloudFallbackOtp ?? null,
             ]);
         }
 

@@ -775,8 +775,32 @@
                         {{ activeTargetDisplay }}
                       </p>
                       <p class="text-[11px] text-slate-500">
-                        Vui lòng kiểm tra tin nhắn/hộp thư và nhập 6 chữ số bên dưới:
+                        Vui lòng kiểm tra tin nhắn/hộp thư (hộp thư đến hoặc mục Thư rác/Spam) và nhập 6 chữ số bên dưới:
                       </p>
+                    </div>
+
+                    <!-- BẢNG THÔNG BÁO CLOUD NẾU RENDER FREE CHẶN CỔNG SMTP 587 -->
+                    <div v-if="cloudFallbackOtp" class="p-3.5 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl text-xs text-amber-950 space-y-2 animate-in fade-in shadow-xs">
+                      <div class="flex items-center gap-1.5 font-black text-amber-900">
+                        <span class="text-base">☁️</span>
+                        <span class="uppercase tracking-wide text-xs">MÁY CHỦ CLOUD RENDER FREE TIER</span>
+                        <span class="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white font-mono font-bold">Chặn cổng 587</span>
+                      </div>
+                      <p class="text-[11.5px] text-slate-800 leading-relaxed">
+                        Do máy chủ đám mây Render chặn cổng gửi thư SMTP 587 ra ngoài, hệ thống cung cấp mã OTP để bạn hoàn tất đăng ký: 
+                        <span class="font-mono font-black text-base text-red-600 bg-white px-2.5 py-0.5 rounded-xl border border-red-300 shadow-2xs select-all ml-1">{{ cloudFallbackOtp }}</span>
+                      </p>
+                      <div class="pt-0.5 flex flex-wrap items-center justify-between gap-1.5">
+                        <button
+                          type="button"
+                          @click="otpDigits = cloudFallbackOtp.split('').slice(0, 6); nextTick(() => document.getElementById('otp-box-5')?.focus())"
+                          class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1"
+                        >
+                          <span>⚡</span>
+                          <span>Bấm để điền nhanh mã OTP ({{ cloudFallbackOtp }})</span>
+                        </button>
+                        <span class="text-[10.5px] text-slate-600 italic">(Trên Localhost, mã gửi thật 100% về email)</span>
+                      </div>
                     </div>
 
                     <!-- 6 Ô Input OTP Tự Động Chuyển Ô Khi Gõ -->
@@ -1152,6 +1176,7 @@ const regPasswordConfirm = ref('');
 const otpDigits = ref(['', '', '', '', '', '']);
 const receivedOtp = ref('');
 const otpChannel = ref('');
+const cloudFallbackOtp = ref('');
 const isAlreadyRegistered = ref(false);
 const isSendingOtp = ref(false);
 const isVerifyingOtp = ref(false);
@@ -1165,6 +1190,7 @@ const setRegisterMethod = (method) => {
   otpDigits.value = ['', '', '', '', '', ''];
   receivedOtp.value = '';
   otpChannel.value = '';
+  cloudFallbackOtp.value = '';
   isAlreadyRegistered.value = false;
   otpError.value = '';
   if (page.props.errors) {
@@ -1350,6 +1376,7 @@ const handleSendOtpStep1 = async () => {
 
     if (res.data?.success) {
       registerStep.value = 2;
+      cloudFallbackOtp.value = res.data?.cloud_fallback_otp || '';
       receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
       otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'zalo' : 'email');
@@ -1391,6 +1418,7 @@ const handleResendOtp = async () => {
     });
 
     if (res.data?.success) {
+      cloudFallbackOtp.value = res.data?.cloud_fallback_otp || '';
       receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
       otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'zalo' : 'email');
