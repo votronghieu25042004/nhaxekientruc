@@ -23,9 +23,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Tự động đảm bảo luôn có lịch trình và dữ liệu cho ngày hôm nay (tránh bị trống dữ liệu khi sang ngày mới)
+        // Tự động đảm bảo luôn có lịch trình và dữ liệu khi chạy artisan command hoặc an toàn
         try {
-            if (Schema::hasTable('trips')) {
+            if ($this->app->runningInConsole() && Schema::hasTable('trips')) {
                 $todayCount = Trip::whereDate('departure_time', Carbon::today('Asia/Ho_Chi_Minh'))->count();
                 if ($todayCount === 0) {
                     Artisan::call('db:seed');
