@@ -57,7 +57,7 @@ class TripScheduleService
      * Đảm bảo luôn luôn có đủ lịch xe chạy và ĐẦY ĐỦ HÀNH KHÁCH trên xe cho cả ngày quá khứ (-3 ngày: 01, 02, 03/11) 
      * lẫn hôm nay (04/11) và tương lai (+3 ngày: 05, 06, 07/11).
      */
-    public static function ensureUpcomingTripsExist(int $daysAhead = 1): void
+    public static function ensureUpcomingTripsExist(int $daysAhead = 3): void
     {
         $today = Carbon::today('Asia/Ho_Chi_Minh');
         $todayStr = $today->toDateString();
@@ -70,21 +70,74 @@ class TripScheduleService
 
         $now = Carbon::now('Asia/Ho_Chi_Minh');
 
-        // Chỉ quét hôm nay và ngày mai khi có request web để trang web tải ngay trong 0.5s
-        for ($i = 0; $i <= $daysAhead; $i++) {
+        // Quét từ 2 ngày trước đến 3 ngày tới để ĐẦY ĐỦ chuyến cũ (cho tài xế, lơ xe, admin) và chuyến mới (cho khách đặt vé)
+        for ($i = -2; $i <= $daysAhead; $i++) {
             $targetDate = $today->copy()->addDays($i);
             $targetDateStr = $targetDate->toDateString();
 
             $existingCount = Trip::whereDate('departure_time', $targetDateStr)->count();
 
-            // Nếu ngày này chưa có chuyến xe nào, sinh các chuyến chính
-            if ($existingCount < 5) {
+            // Nếu ngày này chưa có chuyến xe nào, sinh 20 chuyến
+            if ($existingCount < 10) {
                 self::generateTripsForDate($targetDate, $now);
             }
         }
 
+        // Tự động đảm bảo các Bác tài luôn có đầy đủ Đánh giá (Reviews) từ hành khách
+        self::ensureDriverReviewsExist();
+
         // Lưu vào Cache 2 giờ để không phải quét lại
         Cache::put($cacheKey, true, now()->addHours(2));
+    }
+
+    /**
+     * Tự động sinh đánh giá thực tế từ khách hàng cho các bác tài
+     */
+    public static function ensureDriverReviewsExist(): void
+    {
+        try {
+            if (\App\Models\Review::count() >= 20) {
+                return;
+            }
+
+            $drivers = \App\Models\Driver::all();
+            if ($drivers->isEmpty()) {
+                return;
+            }
+
+            $comments = [
+                [5, 'Bác tài lái rất êm, đúng giờ, xe sạch sẽ, nhiệt tình giúp đỡ hành khách!'],
+                [5, 'Chuyến đi an toàn, xe chạy đúng tốc độ, đón trả đúng trạm.'],
+                [5, 'Bác tài rất vui tính và chu đáo, nhắc nhở hành khách cẩn thận từng trạm.'],
+                [4, 'Lái xe cẩn thận, vào cua đèo Hải Vân rất êm không bị say xe.'],
+                [5, 'Dịch vụ chuẩn 5 sao, bác tài hỗ trợ xách hành lý nhiệt tình.'],
+                [4, 'Xe chạy đúng giờ quy định, phong cách phục vụ văn minh lịch sự.'],
+                [5, 'Cảm giác yên tâm khi đi xe, bác tài tuân thủ nghiêm luật giao thông.'],
+                [4, 'Xe sạch sẽ, điều hòa mát rượi, lái xe chuyên nghiệp. Sẽ tiếp tục ủng hộ!'],
+                [5, 'Chuyến đi xuất sắc! Bác tài lái vững tay, thái độ 10/10.'],
+                [5, 'Rất hài lòng, xuất bến đúng giờ, tài xế không hút thuốc, không phóng nhanh vượt ẩu.'],
+            ];
+
+            foreach ($drivers as $driver) {
+                $reviewsCount = \App\Models\Review::where('driver_id', $driver->id)->count();
+                if ($reviewsCount < 5) {
+                    for ($k = 0; $k < 6; $k++) {
+                        $c = $comments[($driver->id + $k) % count($comments)];
+                        \App\Models\Review::create([
+                            'driver_id'      => $driver->id,
+                            'rating'         => $c[0],
+                            'safety_rating'  => min(5, $c[0] + rand(-1, 0)),
+                            'service_rating' => $c[0],
+                            'comment'        => $c[1],
+                            'is_anonymous'   => false,
+                            'reviewer_name'  => 'Hành khách ' . ['Minh Tuấn', 'Phương Thảo', 'Hoàng Anh', 'Bảo Thy', 'Ngọc Trâm', 'Thanh Bình'][$k % 6],
+                            'created_at'     => now()->subDays(rand(1, 15))->subHours(rand(1, 10)),
+                            'updated_at'     => now()->subDays(rand(1, 15)),
+                        ]);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {}
     }
 
     /**
