@@ -27,15 +27,17 @@ class TripController extends Controller
      */
     public function schedules(Request $request)
     {
-        try {
-            \App\Services\TripScheduleService::ensureUpcomingTripsExist(1);
-            Trip::syncRealTimeStatuses();
-        } catch (\Throwable $e) {}
         $dateParam = $request->query('date');
         $today = Carbon::today('Asia/Ho_Chi_Minh');
         $selectedDate = $dateParam ? Carbon::parse($dateParam) : $today;
         $dateString = $selectedDate->format('Y-m-d');
         $now = Carbon::now('Asia/Ho_Chi_Minh');
+
+        try {
+            \App\Services\TripScheduleService::ensureTripsForDate($selectedDate, $now);
+            \App\Services\TripScheduleService::ensureUpcomingTripsExist(7);
+            Trip::syncRealTimeStatuses();
+        } catch (\Throwable $e) {}
 
         // Lấy 10 tuyến đường cố định cốt lõi kèm trạm dừng
         $routes = Route::with(['stops' => fn($q) => $q->orderBy('stop_order', 'asc')])
@@ -143,7 +145,7 @@ class TripController extends Controller
     public function home()
     {
         try {
-            \App\Services\TripScheduleService::ensureUpcomingTripsExist(1);
+            \App\Services\TripScheduleService::ensureUpcomingTripsExist(7);
         } catch (\Throwable $e) {
             // bỏ qua để trang chủ luôn mở siêu tốc
         }
@@ -194,15 +196,19 @@ class TripController extends Controller
      */
     public function search(Request $request)
     {
+        $now = Carbon::now('Asia/Ho_Chi_Minh');
+        $date = $request->input('date');
+        $targetDate = !empty($date) ? Carbon::parse($date) : Carbon::today('Asia/Ho_Chi_Minh');
+
         try {
-            \App\Services\TripScheduleService::ensureUpcomingTripsExist(1);
+            \App\Services\TripScheduleService::ensureTripsForDate($targetDate, $now);
+            \App\Services\TripScheduleService::ensureUpcomingTripsExist(7);
             Trip::syncRealTimeStatuses();
         } catch (\Throwable $e) {}
-        $now = Carbon::now('Asia/Ho_Chi_Minh');
+
         $q = str_replace(['Thừa Thiên - Huế', 'Thừa Thiên – Huế', 'Thừa Thiên — Huế'], 'Thừa Thiên Huế', trim($request->input('q', '')));
         $origin = str_replace(['Thừa Thiên - Huế', 'Thừa Thiên – Huế', 'Thừa Thiên — Huế'], 'Thừa Thiên Huế', trim($request->input('origin', '')));
         $destination = str_replace(['Thừa Thiên - Huế', 'Thừa Thiên – Huế', 'Thừa Thiên — Huế'], 'Thừa Thiên Huế', trim($request->input('destination', '')));
-        $date = $request->input('date');
         $returnDate = $request->input('return_date');
         $tripType = $request->input('trip_type', 'one_way');
 

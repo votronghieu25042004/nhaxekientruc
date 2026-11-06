@@ -263,8 +263,8 @@ class AuthController extends Controller
         })->first();
 
         if ($existing) {
-            $typeLabel = $isEmail ? "Email [{$identifier}]" : "Số điện thoại [{$cleanPhone}]";
-            $message = "⚠️ {$typeLabel} đã được đăng ký tài khoản trên nhaxekientruc! Quý khách vui lòng chuyển sang tab Đăng Nhập.";
+            $typeLabel = $isEmail ? "Địa chỉ Gmail [{$identifier}]" : "Số điện thoại [{$cleanPhone}]";
+            $message = "⚠️ {$typeLabel} đã tồn tại trên hệ thống!";
             if ($existing->status === 'LOCKED') {
                 $message = "⛔ Tài khoản gắn với {$typeLabel} đã bị KHÓA. Xin vui lòng liên hệ CSKH 1900 6067.";
             } elseif ($existing->status === 'DELETED') {
@@ -310,7 +310,7 @@ class AuthController extends Controller
             }
             $existing = User::whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])->first();
             if ($existing) {
-                $err = "Địa chỉ Email [{$identifier}] đã được đăng ký tài khoản trên nhaxekientruc. Quý khách vui lòng chuyển sang tab Đăng Nhập!";
+                $err = "⚠️ Địa chỉ Gmail [{$identifier}] đã tồn tại trên hệ thống!";
                 if ($existing->status === 'LOCKED') {
                     $err = '⛔ Tài khoản gắn với Email này đã bị KHÓA. Xin vui lòng liên hệ nhà xe nhaxekientruc qua Hotline: 1900 6067 hoặc SĐT: 0905 123 456 để được hỗ trợ!';
                 } elseif ($existing->status === 'DELETED') {
@@ -336,7 +336,7 @@ class AuthController extends Controller
                 ->orWhere('email', $cleanPhone . '@nhaxekientruc.vn')
                 ->first();
             if ($existing) {
-                $err = "Số điện thoại [{$cleanPhone}] đã được đăng ký tài khoản trên nhaxekientruc. Quý khách vui lòng chuyển sang tab Đăng Nhập!";
+                $err = "⚠️ Số điện thoại [{$cleanPhone}] đã tồn tại trên hệ thống!";
                 if ($existing->status === 'LOCKED') {
                     $err = '⛔ Tài khoản gắn với số điện thoại này đã bị KHÓA. Xin vui lòng liên hệ nhà xe nhaxekientruc qua Hotline: 1900 6067 hoặc SĐT: 0905 123 456 để được hỗ trợ!';
                 } elseif ($existing->status === 'DELETED') {

@@ -630,17 +630,6 @@
                         <p :class="isRegisterLocked ? 'font-black text-sm text-red-900' : 'font-bold'">
                           {{ registerErrorText }}
                         </p>
-                        <!-- Nút chuyển sang Đăng nhập nếu đã có tài khoản -->
-                        <div v-if="isAlreadyRegistered" class="pt-1">
-                          <button
-                            type="button"
-                            @click="switchTab('login'); loginForm.email = activeIdentifier"
-                            class="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
-                          >
-                            <span>👉</span>
-                            <span>Chuyển sang Đăng Nhập ngay (Đã điền sẵn)</span>
-                          </button>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -737,15 +726,13 @@
                     <!-- Nút Gửi OTP Bước 1 -->
                     <button
                       type="button"
-                      @click="isAlreadyRegistered ? (switchTab('login'), loginForm.email = activeIdentifier) : handleSendOtpStep1()"
-                      :disabled="!isAlreadyRegistered && (!isStep1Valid || !agreeTerms || isSendingOtp)"
-                      :class="isAlreadyRegistered ? 'bg-amber-600 hover:bg-amber-700 text-white cursor-pointer shadow-md shadow-amber-600/30' : 'bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30'"
-                      class="relative overflow-hidden w-full py-3.5 px-4 rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer"
+                      @click="handleSendOtpStep1"
+                      :disabled="!isStep1Valid || !agreeTerms || isSendingOtp"
+                      class="relative overflow-hidden w-full py-3.5 px-4 rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30"
                     >
                       <span v-if="isSendingOtp" class="animate-spin text-sm">⏳</span>
                       <span>
                         <template v-if="isSendingOtp">ĐANG GỬI MÃ XÁC THỰC OTP...</template>
-                        <template v-else-if="isAlreadyRegistered">👉 TÀI KHOẢN ĐÃ CÓ - BẤM ĐĂNG NHẬP NGAY</template>
                         <template v-else>{{ registerMethod === 'phone' ? 'NHẬN MÃ OTP QUA ZALO / SMS →' : 'NHẬN MÃ OTP QUA EMAIL →' }}</template>
                       </span>
                     </button>
@@ -1321,10 +1308,10 @@ const checkIdentifierExists = async () => {
     if (res.data?.exists) {
       isAlreadyRegistered.value = true;
       registerStep.value = 1;
-      otpError.value = res.data.message || 'Tài khoản này đã được đăng ký trên hệ thống. Quý khách vui lòng chuyển sang Đăng Nhập!';
+      otpError.value = res.data.message || (registerMethod.value === 'phone' ? 'Số điện thoại này đã tồn tại trên hệ thống!' : 'Địa chỉ Gmail này đã tồn tại trên hệ thống!');
     } else {
       isAlreadyRegistered.value = false;
-      if (otpError.value && (otpError.value.includes('đã được đăng ký') || otpError.value.includes('đã được sử dụng'))) {
+      if (otpError.value && (otpError.value.includes('đã tồn tại') || otpError.value.includes('đã được đăng ký') || otpError.value.includes('đã được sử dụng'))) {
         otpError.value = '';
       }
     }
@@ -1340,8 +1327,9 @@ const handleSendOtpStep1 = async () => {
   if (!isStep1Valid.value || !agreeTerms.value || isSendingOtp.value) return;
 
   if (isAlreadyRegistered.value) {
-    switchTab('login');
-    loginForm.email = activeIdentifier.value;
+    otpError.value = registerMethod.value === 'phone'
+      ? `Số điện thoại [${activeIdentifier.value}] đã tồn tại trên hệ thống!`
+      : `Địa chỉ Gmail [${activeIdentifier.value}] đã tồn tại trên hệ thống!`;
     return;
   }
 
@@ -1362,7 +1350,7 @@ const handleSendOtpStep1 = async () => {
     if (checkRes.data?.exists) {
       isAlreadyRegistered.value = true;
       registerStep.value = 1;
-      otpError.value = checkRes.data.message || 'Tài khoản này đã được đăng ký trên hệ thống. Quý khách vui lòng chuyển sang Đăng Nhập!';
+      otpError.value = checkRes.data.message || (reqType === 'phone' ? 'Số điện thoại này đã tồn tại trên hệ thống!' : 'Địa chỉ Gmail này đã tồn tại trên hệ thống!');
       return;
     }
 
