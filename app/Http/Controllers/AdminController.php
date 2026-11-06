@@ -828,31 +828,15 @@ class AdminController extends Controller
             'performed_by' => auth()->user()->name ?? 'Nhân viên quầy POS',
         ]);
 
-        // Gửi email xác nhận đặt vé & mã QR check-in về Gmail khách hàng
+        // Gửi email xác nhận đặt vé & mã QR check-in về Gmail khách hàng (Hỗ trợ Render qua Webhook Relay cổng 443 + Brevo + SMTP)
         if ($custEmail && filter_var($custEmail, FILTER_VALIDATE_EMAIL)) {
-            try {
-                \Illuminate\Support\Facades\Mail::send('emails.booking_confirmed', [
-                    'customerName' => $booking->customer_name,
-                    'bookingCode' => $booking->booking_code,
-                    'routeName' => $trip->route?->name ?? 'Tuyến xe nhaxekientruc',
-                    'departureTime' => $trip->departure_time ? \Carbon\Carbon::parse($trip->departure_time)->format('H:i - d/m/Y') : 'Xem trên vé',
-                    'pickupStop' => $request->pickup_stop_name ?? 'Bến xe xuất phát',
-                    'dropoffStop' => $request->dropoff_stop_name ?? 'Bến xe đến',
-                    'seatNumbers' => $request->seats,
-                    'totalAmount' => number_format($request->total_amount) . ' VNĐ',
-                    'paidAmount' => number_format($paidAmt) . ' VNĐ',
-                    'busPlate' => $trip->bus?->license_plate ?? '43B-045.67',
-                    'busType' => $trip->bus?->bus_type ?? 'Giường nằm VIP',
-                    'driverName' => $trip->driver?->name ?? 'Bác tài nhaxekientruc',
-                    'ticketUrl' => url('/ve/' . $booking->booking_code),
-                    'qrToken' => $booking->booking_code,
-                ], function ($message) use ($custEmail, $booking) {
-                    $message->to($custEmail)
-                            ->subject("🎫 [nhaxekientruc] Xác Nhận Vé Xuất Quầy #{$booking->booking_code} & Mã QR Check-in");
-                });
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error("[POS_EMAIL_ERROR] " . $e->getMessage());
-            }
+            \App\Services\EmailService::sendBookingConfirmation($booking, [
+                'pickupStop' => $request->pickup_stop_name ?? 'Bến xe xuất phát',
+                'dropoffStop' => $request->dropoff_stop_name ?? 'Bến xe đến',
+                'seatNumbers' => $request->seats,
+                'totalAmount' => $request->total_amount,
+                'paidAmount' => $paidAmt,
+            ]);
         }
 
         return back()->with('success', "✓ XUẤT VÉ THÀNH CÔNG! Mã vé: {$booking->booking_code}. Hệ thống đã gửi vé điện tử kèm mã QR tới Gmail: {$custEmail}!");

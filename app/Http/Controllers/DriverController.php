@@ -271,96 +271,85 @@ class DriverController extends Controller
                 }
             }
 
-            // 1.3 Thống kê Lộ trình 3 Trạm Cố Định Chuẩn Mực cho Bác tài:
-            // Trạm 1: Khởi Hành (Bến xe xuất bến)
-            // Trạm 2: Trạm Dừng Nghỉ Chân Dọc Tuyến (Nghỉ 20-30 phút ăn uống, vệ sinh & trả khách dọc đường nếu có)
-            // Trạm 3: BẾN XE ĐÍCH ĐẾN CUỐI CÙNG (100% Khách Xuống Xe tại Bến Xe)
-            $firstStop = $stops->first();
-            $lastStop = $stops->last();
-
-            // Khách trả tại bến xe đích đến cuối cùng
-            $finalDropBookings = $bookings->filter(function($b) use ($lastStop) {
-                return empty($b->dropoff_stop_id) || $b->dropoff_stop_id == $lastStop?->id || ($b->dropoff_order ?? 99) >= 3;
-            });
-            $finalDropPax = [];
-            foreach ($finalDropBookings as $b) {
-                $finalDropPax[] = [
-                    'id' => $b->id,
-                    'customer_name' => $b->customer_name,
-                    'customer_phone' => $b->customer_phone,
-                    'seats' => $b->bookingSeats->pluck('seat_number')->toArray(),
-                    'checkin_status' => $b->checkin_status,
-                ];
-            }
-
-            // Khách trả dọc đường trung gian (nếu có khách đăng ký xuống trước bến)
-            $midDropBookings = $bookings->filter(function($b) use ($firstStop, $lastStop) {
-                return !empty($b->dropoff_stop_id) && $b->dropoff_stop_id != $firstStop?->id && $b->dropoff_stop_id != $lastStop?->id && ($b->dropoff_order ?? 0) < 3;
-            });
-            $midDropPax = [];
-            foreach ($midDropBookings as $b) {
-                $midDropPax[] = [
-                    'id' => $b->id,
-                    'customer_name' => $b->customer_name,
-                    'customer_phone' => $b->customer_phone,
-                    'seats' => $b->bookingSeats->pluck('seat_number')->toArray(),
-                    'checkin_status' => $b->checkin_status,
-                ];
-            }
-
-            // Tên trạm dừng nghỉ chân ăn uống phù hợp tuyến
-            $midStopName = 'Trạm Dừng Nghỉ Chân Ăn Uống & Vệ Sinh (20-30p)';
-            $destLower = mb_strtolower($selectedTrip->route?->destination ?? '');
-            if (str_contains($destLower, 'huế')) {
-                $midStopName = 'Trạm Dừng Nghỉ Đèo Hải Vân / Lăng Cô (20-30p)';
-            } elseif (str_contains($destLower, 'quảng trị')) {
-                $midStopName = 'Trạm Dừng Nghỉ Cửa Ngõ Nam Đông Hà (20-30p)';
-            } elseif (str_contains($destLower, 'quảng bình') || str_contains($destLower, 'đồng hới')) {
-                $midStopName = 'Trạm Dừng Nghỉ Đông Hà / Lệ Thủy (20-30p)';
-            } elseif (str_contains($destLower, 'quy nhơn')) {
-                $midStopName = 'Trạm Dừng Nghỉ Sa Huỳnh / Quảng Ngãi (20-30p)';
-            } elseif (str_contains($destLower, 'buôn ma thuột') || str_contains($destLower, 'đắk lắk')) {
-                $midStopName = 'Trạm Dừng Nghỉ Đèo An Khê / QL14 (20-30p)';
-            }
-
+            // 1.3 Thống kê Lộ trình Trạm Dừng & Khách Xuống Xe (Động theo các trạm đón/trả thực tế)
+            $stationDropoffs = [];
+            $stopsCount = $stops->count();
             $totalDist = (float)($selectedTrip->route?->distance_km ?? 180);
             $totalMins = (int)round(($selectedTrip->route?->estimated_hours ?? 3.5) * 60);
 
-            $stationDropoffs = [
-                [
-                    'stop_id' => $firstStop?->id ?? 1,
-                    'stop_order' => 1,
-                    'type' => 'ORIGIN',
-                    'stop_name' => $firstStop?->stop_name ?? ($selectedTrip->route?->origin ?? 'Bến xe Trung tâm Đà Nẵng'),
-                    'address' => $firstStop?->address ?? 'Điểm xuất phát ban đầu của xe',
-                    'distance_km' => 0,
-                    'estimated_minutes' => 0,
-                    'passengers' => [],
-                    'total_pax' => ($selectedTrip->occupied_count ?? count($finalDropPax)),
-                ],
-                [
-                    'stop_id' => 999,
-                    'stop_order' => 2,
-                    'type' => 'REST_STOP',
-                    'stop_name' => $midStopName,
-                    'address' => 'Trạm dừng chân ăn uống, nghỉ ngơi & vệ sinh (Nghỉ 20-30 phút)',
-                    'distance_km' => round($totalDist * 0.45),
-                    'estimated_minutes' => round($totalMins * 0.45),
-                    'passengers' => $midDropPax,
-                    'total_pax' => count($midDropPax),
-                ],
-                [
-                    'stop_id' => $lastStop?->id ?? 3,
-                    'stop_order' => 3,
-                    'type' => 'DESTINATION_BUS_STATION',
-                    'stop_name' => $lastStop?->stop_name ?? ('Bến xe ' . ($selectedTrip->route?->destination ?? 'Đích Đến')),
-                    'address' => $lastStop?->address ?? 'Bến xe đích đến cuối cùng kết thúc hành trình',
-                    'distance_km' => $totalDist,
-                    'estimated_minutes' => $totalMins,
-                    'passengers' => $finalDropPax,
-                    'total_pax' => count($finalDropPax),
-                ]
-            ];
+            if ($stopsCount > 0) {
+                $lastStop = $stops->last();
+                foreach ($stops as $idx => $st) {
+                    $order = $st->stop_order ?? ($idx + 1);
+                    $isOrigin = ($idx === 0);
+                    $isLast = ($idx === $stopsCount - 1);
+
+                    // Khách xuống tại trạm này
+                    if ($isLast) {
+                        $paxBookings = $bookings->filter(function($b) use ($st) {
+                            return empty($b->dropoff_stop_id) || $b->dropoff_stop_id == $st->id;
+                        });
+                    } else {
+                        $paxBookings = $bookings->filter(function($b) use ($st) {
+                            return !empty($b->dropoff_stop_id) && $b->dropoff_stop_id == $st->id;
+                        });
+                    }
+
+                    $paxList = [];
+                    foreach ($paxBookings as $b) {
+                        $paxList[] = [
+                            'id' => $b->id,
+                            'customer_name' => $b->customer_name,
+                            'customer_phone' => $b->customer_phone,
+                            'seats' => $b->bookingSeats->pluck('seat_number')->toArray(),
+                            'checkin_status' => $b->checkin_status,
+                        ];
+                    }
+
+                    $type = 'STOP';
+                    if ($isOrigin) $type = 'ORIGIN';
+                    elseif ($isLast) $type = 'DESTINATION';
+                    elseif ($st->stop_type === 'DROPOFF') $type = 'DROPOFF';
+                    elseif ($st->stop_type === 'PICKUP') $type = 'PICKUP';
+
+                    $stationDropoffs[] = [
+                        'stop_id' => $st->id,
+                        'stop_order' => $order,
+                        'type' => $type,
+                        'stop_name' => $st->stop_name,
+                        'address' => $st->address ?? ($isOrigin ? 'Bến xuất phát ban đầu' : ($isLast ? 'Bến xe đích đến cuối cùng' : 'Trạm đón trả trên tuyến')),
+                        'distance_km' => $st->distance_from_start_km ?? round($totalDist * ($idx / max(1, $stopsCount - 1))),
+                        'estimated_minutes' => $st->estimated_minutes_from_start ?? round($totalMins * ($idx / max(1, $stopsCount - 1))),
+                        'passengers' => $paxList,
+                        'total_pax' => count($paxList),
+                    ];
+                }
+            } else {
+                $stationDropoffs = [
+                    [
+                        'stop_id' => 1,
+                        'stop_order' => 1,
+                        'type' => 'ORIGIN',
+                        'stop_name' => $selectedTrip->route?->origin ?? 'Bến xe xuất phát',
+                        'address' => 'Điểm xuất phát ban đầu của xe',
+                        'distance_km' => 0,
+                        'estimated_minutes' => 0,
+                        'passengers' => [],
+                        'total_pax' => 0,
+                    ],
+                    [
+                        'stop_id' => 2,
+                        'stop_order' => 2,
+                        'type' => 'DESTINATION',
+                        'stop_name' => $selectedTrip->route?->destination ?? 'Bến xe đích đến',
+                        'address' => 'Bến xe đích đến cuối cùng kết thúc hành trình',
+                        'distance_km' => $totalDist,
+                        'estimated_minutes' => $totalMins,
+                        'passengers' => [],
+                        'total_pax' => $bookings->count(),
+                    ]
+                ];
+            }
 
             // 1.4 Minh bạch Tài chính & Chốt ca (Settlement)
             $activeBookings = $bookings->whereNotIn('checkin_status', ['NO_SHOW', 'CANCELLED']);

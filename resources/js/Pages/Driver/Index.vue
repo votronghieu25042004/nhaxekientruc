@@ -207,7 +207,7 @@ watch(() => props.selectedTrip, (newTrip) => {
 })
 
 // Quản lý chuyến & ngày xem sơ đồ tải trọng (Tab 3)
-const seatmapDate = ref('2026-11-04')
+const seatmapDate = ref(new Date().toISOString().split('T')[0])
 
 watch(() => activeActionTrip.value, (newTrip) => {
     if (newTrip?.departure_time) {
@@ -243,7 +243,7 @@ const switchTripForSeatmap = (trip) => {
         driver_id: props.currentDriver?.id,
         tab: 'seatmap'
     }, { 
-        preserveState: false, 
+        preserveState: true, 
         preserveScroll: true 
     })
 }
@@ -869,13 +869,47 @@ const startWatchPosition = () => {
     }
 }
 
+const CITY_COORDINATES = {
+    'đà nẵng': [16.0544, 108.2022],
+    'huế': [16.4637, 107.5909],
+    'lăng cô': [16.2300, 108.0100],
+    'phú bài': [16.3980, 107.6960],
+    'đông hà': [16.8167, 107.1000],
+    'quảng trị': [16.7500, 107.1850],
+    'quảng bình': [17.4687, 106.6225],
+    'đồng hới': [17.4760, 106.6000],
+    'lệ thủy': [17.2155, 106.7865],
+    'quy nhơn': [13.7820, 109.2190],
+    'bình định': [13.7820, 109.2190],
+    'nha trang': [12.2388, 109.1967],
+    'khánh hòa': [12.2388, 109.1967],
+    'đắk lắk': [12.6667, 108.0500],
+    'buôn ma thuột': [12.6667, 108.0500],
+    'sài gòn': [10.7769, 106.7009],
+    'hồ chí minh': [10.7769, 106.7009],
+    'hà nội': [21.0285, 105.8542],
+}
+
+const getStopLatLng = (stopName, idx, total) => {
+    if (!stopName) {
+        return [16.0544 + (idx * 0.22), 108.2022 - (idx * 0.12)]
+    }
+    const nameLower = String(stopName).toLowerCase()
+    for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
+        if (nameLower.includes(key)) {
+            return [coords[0] + (idx * 0.012), coords[1] + (idx * 0.012)]
+        }
+    }
+    return [16.0544 + (idx * 0.25), 108.2022 - (idx * 0.15)]
+}
+
 const updateMarkerAtLaptop = (lat, lng, accuracy) => {
     if (!leafletMap) return
     const latLng = [lat, lng]
 
     if (busMarker) {
         busMarker.setLatLng(latLng)
-        busMarker.bindPopup(`
+        const popupHtml = `
             <div class="text-xs p-1 text-slate-900 font-sans">
                 <div class="flex items-center gap-1 text-red-600 font-black text-sm mb-1">
                     <i class="fa-solid fa-laptop text-base"></i>
@@ -888,7 +922,12 @@ const updateMarkerAtLaptop = (lat, lng, accuracy) => {
                 </div>
                 <span class="inline-block mt-1 text-[10px] font-bold text-emerald-600">● Tín hiệu GPS Laptop đang hoạt động trực tiếp</span>
             </div>
-        `).openPopup()
+        `
+        if (busMarker.isPopupOpen && busMarker.isPopupOpen()) {
+            busMarker.setPopupContent(popupHtml)
+        } else {
+            busMarker.bindPopup(popupHtml, { autoPan: false })
+        }
     }
 
     // Vòng tròn bán kính sai số GPS
@@ -1278,43 +1317,37 @@ const activeDayTitle = computed(() => {
 
 const makeCall = (phone) => { if (phone) window.location.href = `tel:${phone}` }
 
-// Lấy danh sách đầy đủ 3 trạm chuẩn mực (Xuất phát -> Trạm dừng chân Đông Hà -> Bến đích đến)
+// Lấy danh sách đầy đủ các trạm đón/trả thực tế của chuyến xe
 const getTripDropoffStops = (trip) => {
-    // Nếu là chuyến được chọn và props.stationDropoffs có dữ liệu đầy đủ
-    if (props.stationDropoffs && props.stationDropoffs.length >= 3) {
+    const isSelected = (trip?.id === props.selectedTrip?.id || trip?.id === activeActionTrip.value?.id)
+    if (isSelected && props.stationDropoffs && props.stationDropoffs.length > 0) {
         return props.stationDropoffs
     }
 
-    // Danh sách 3 trạm từ lộ trình trip.route.stops
+    // Danh sách trạm từ lộ trình trip.route.stops
     const routeStops = (trip?.route?.stops && trip.route.stops.length > 0)
         ? [...trip.route.stops].sort((a, b) => (a.stop_order || 0) - (b.stop_order || 0))
         : [
-            { id: 1, stop_order: 1, stop_name: trip?.route?.start_point || 'Bến xe Trung tâm Đà Nẵng', address: 'Điểm xuất phát bến đi', distance_from_start_km: 0, estimated_minutes_from_start: 0 },
-            { id: 2, stop_order: 2, stop_name: 'Trạm Dừng Chân Đông Hà (Nghỉ 20-30p)', address: 'Trạm dừng chân ăn uống, vệ sinh', distance_from_start_km: 95, estimated_minutes_from_start: 90 },
-            { id: 3, stop_order: 3, stop_name: trip?.route?.end_point || 'Bến xe Đồng Hới (Quảng Bình)', address: 'Bến xe đích đến cuối cùng', distance_from_start_km: 185, estimated_minutes_from_start: 180 }
+            { id: 1, stop_order: 1, stop_type: 'PICKUP', stop_name: trip?.route?.origin ? `Bến xe ${trip.route.origin}` : 'Bến xe xuất phát', address: 'Điểm xuất phát bến đi ban đầu', distance_from_start_km: 0, estimated_minutes_from_start: 0 },
+            { id: 2, stop_order: 2, stop_type: 'PICKUP', stop_name: trip?.route?.origin ? `Trạm đón ${trip.route.origin}` : 'Trạm đón trung chuyển', address: 'Điểm đón nội thành', distance_from_start_km: 15, estimated_minutes_from_start: 25 },
+            { id: 3, stop_order: 3, stop_type: 'DROPOFF', stop_name: trip?.route?.destination ? `Trạm trả ${trip.route.destination}` : 'Trạm trả khách', address: 'Cửa ngõ trả khách', distance_from_start_km: 140, estimated_minutes_from_start: 150 },
+            { id: 4, stop_order: 4, stop_type: 'DROPOFF', stop_name: trip?.route?.destination ? `Bến xe ${trip.route.destination}` : 'Bến xe đích đến', address: 'Bến xe kết thúc hành trình', distance_from_start_km: 180, estimated_minutes_from_start: 210 }
         ]
 
+    const totalStops = routeStops.length
     return routeStops.map((st, idx) => {
         const order = st.stop_order || (idx + 1)
-        const match = props.stationDropoffs?.find(d => d.stop_id === st.id || d.stop_order === order)
-        if (match) {
-            return {
-                ...st,
-                ...match,
-                stop_order: order,
-                stop_name: match.stop_name || st.stop_name,
-                total_pax: match.total_pax !== undefined ? match.total_pax : (order === 3 ? (props.occupiedSeats?.length || 14) : 0),
-                passengers: match.passengers || []
-            }
-        }
+        const isFirst = (idx === 0)
+        const isLast = (idx === totalStops - 1)
         return {
             stop_id: st.id,
             stop_order: order,
+            stop_type: st.stop_type || (isFirst ? 'PICKUP' : (isLast ? 'DROPOFF' : 'STOP')),
             stop_name: st.stop_name,
-            address: st.address || (order === 1 ? 'Điểm xuất phát bến đi' : (order === 2 ? 'Trạm nghỉ dừng chân ăn uống' : 'Bến đến đích cuối')),
-            distance_km: st.distance_from_start_km || (order === 1 ? 0 : (order === 2 ? 95 : 185)),
-            estimated_minutes: st.estimated_minutes_from_start || (order === 1 ? 0 : (order === 2 ? 90 : 180)),
-            total_pax: (order === 3 ? (props.occupiedSeats?.length || trip?.total_seats_sold || 14) : 0),
+            address: st.address || (isFirst ? 'Điểm xuất phát bến đi ban đầu' : (isLast ? 'Bến xe đích đến cuối cùng' : 'Trạm đón trả trên tuyến')),
+            distance_km: st.distance_from_start_km || 0,
+            estimated_minutes: st.estimated_minutes_from_start || 0,
+            total_pax: isLast ? (trip?.occupied_count || trip?.total_seats_sold || 0) : 0,
             passengers: []
         }
     })
@@ -1521,7 +1554,7 @@ onUnmounted(() => {
           <button
             type="button"
             @click="showSosModal = true"
-            class="px-4 py-2 rounded-2xl font-black text-xs flex items-center gap-1.5 transition bg-[#f59e0b] hover:bg-amber-400 text-slate-950 shadow-md cursor-pointer animate-pulse"
+            class="px-4 py-2 rounded-2xl font-black text-xs flex items-center gap-1.5 transition bg-[#f59e0b] hover:bg-amber-400 text-slate-950 shadow-md cursor-pointer"
             title="Nhấn phát tín hiệu SOS khẩn cấp đến Trung tâm Điều hành"
           >
             <i class="fa-solid fa-triangle-exclamation text-red-600"></i>
@@ -1916,7 +1949,7 @@ onUnmounted(() => {
 
             </div>
 
-            <!-- DANH SÁCH 3 TRẠM DỪNG & KHÁCH XUỐNG XE (LỘ TRÌNH 3 TRẠM LIÊN TỤC KHÔNG TRỐNG) -->
+            <!-- DANH SÁCH CÁC TRẠM DỪNG & KHÁCH XUỐNG XE (LỘ TRÌNH ĐỘNG THEO TUYẾN) -->
             <div :class="isDarkMode ? 'bg-[#18181B] border border-[#2A2A2A]' : 'bg-slate-50 border border-slate-200'" class="p-4 sm:p-5 rounded-3xl space-y-4 mt-4 shadow-xs">
               
               <!-- Header Section -->
@@ -1927,77 +1960,71 @@ onUnmounted(() => {
                   </span>
                   <div>
                     <h4 class="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
-                      <span>Lộ Trình 3 Trạm Dừng & Danh Sách Khách Xuống Xe</span>
+                      <span>Lộ Trình Các Trạm Dừng & Danh Sách Khách Xuống Xe</span>
                     </h4>
                     <p class="text-xs text-slate-500 mt-0.5">
-                      Bác tài theo dõi chính xác khách xuống tại Trạm Dừng Chân trung gian (Đông Hà) vs Bến cuối Đồng Hới
+                      Bác tài theo dõi chính xác từng điểm đón/trả khách từ {{ trip.route?.origin || 'Bến xuất phát' }} đến {{ trip.route?.destination || 'Bến đích' }}
                     </p>
                   </div>
                 </div>
                 <div class="flex items-center gap-2 self-start sm:self-auto">
                   <span class="text-xs font-bold text-red-600 bg-red-50 dark:bg-red-950/40 px-3 py-1 rounded-xl border border-red-200 dark:border-red-900/40 shadow-2xs">
-                    🛣️ 3 Trạm Cố Định
+                    🛣️ {{ (getTripDropoffStops(trip) || []).length }} Điểm Đón / Trả
                   </span>
                 </div>
               </div>
 
-              <!-- Thanh Lộ Trình Tuyến Kết Nối 3 Điểm Dừng (Route Journey Progress Bar) -->
-              <div class="p-3 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-3 text-xs" :class="isDarkMode ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white border-slate-200'">
-                <div class="flex items-center gap-2 text-blue-600 font-black">
-                  <span class="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-600 flex items-center justify-center text-xs">1</span>
-                  <span>Khởi Hành: {{ trip.route?.start_point || 'Đà Nẵng' }}</span>
-                </div>
-                <div class="hidden md:flex flex-1 items-center px-4">
-                  <div class="h-0.5 w-full bg-slate-200 dark:bg-zinc-700 relative flex items-center justify-center">
-                    <span class="px-2 py-0.5 text-[10px] font-bold text-slate-400 bg-white dark:bg-zinc-900 rounded-full border border-slate-200 dark:border-zinc-700">
-                      95 km (~1h30m)
+              <!-- Thanh Lộ Trình Tuyến (Route Journey Dynamic Progress Bar) -->
+              <div class="p-3 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-2 text-xs overflow-x-auto" :class="isDarkMode ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white border-slate-200'">
+                <template v-for="(st, stIdx) in getTripDropoffStops(trip)" :key="'prog-st-' + (st.stop_id || stIdx)">
+                  <div class="flex items-center gap-2 shrink-0 font-bold"
+                    :class="stIdx === 0 ? 'text-blue-600' : (stIdx === (getTripDropoffStops(trip).length - 1) ? 'text-red-600' : 'text-amber-600')"
+                  >
+                    <span class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shadow-xs shrink-0"
+                      :class="stIdx === 0 ? 'bg-blue-100 dark:bg-blue-950 text-blue-600' : (stIdx === (getTripDropoffStops(trip).length - 1) ? 'bg-red-100 dark:bg-red-950 text-red-600' : 'bg-amber-100 dark:bg-amber-950 text-amber-600')"
+                    >
+                      {{ stIdx + 1 }}
                     </span>
+                    <span class="truncate max-w-[140px] sm:max-w-none">{{ st.stop_name }}</span>
                   </div>
-                </div>
-                <div class="flex items-center gap-2 text-amber-600 font-black">
-                  <span class="w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-600 flex items-center justify-center text-xs">2</span>
-                  <span>Dừng Nghỉ: Trạm Đông Hà (20-30p)</span>
-                </div>
-                <div class="hidden md:flex flex-1 items-center px-4">
-                  <div class="h-0.5 w-full bg-slate-200 dark:bg-zinc-700 relative flex items-center justify-center">
-                    <span class="px-2 py-0.5 text-[10px] font-bold text-slate-400 bg-white dark:bg-zinc-900 rounded-full border border-slate-200 dark:border-zinc-700">
-                      90 km (~1h30m)
-                    </span>
+                  <div v-if="stIdx < (getTripDropoffStops(trip).length - 1)" class="hidden md:flex flex-1 items-center px-2">
+                    <div class="h-0.5 w-full bg-slate-200 dark:bg-zinc-700 relative flex items-center justify-center">
+                      <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+                    </div>
                   </div>
-                </div>
-                <div class="flex items-center gap-2 text-red-600 font-black">
-                  <span class="w-6 h-6 rounded-lg bg-red-100 dark:bg-red-950 text-red-600 flex items-center justify-center text-xs">3</span>
-                  <span>Đích Đến: {{ trip.route?.end_point || 'Đồng Hới' }}</span>
-                </div>
+                </template>
               </div>
 
-              <!-- Danh sách 3 trạm (Phủ kín 3 cột cân đối, không để khoảng trống trắng thừa thãi) -->
-              <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+              <!-- Danh sách các trạm: Grid responsive cân đối hoàn hảo theo số trạm -->
+              <div 
+                class="grid gap-4 items-stretch"
+                :class="(getTripDropoffStops(trip) || []).length >= 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : ((getTripDropoffStops(trip) || []).length === 3 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2')"
+              >
                 <div 
                   v-for="(st, stIdx) in getTripDropoffStops(trip)" 
                   :key="'drop-st-' + (st.stop_id || st.id || stIdx)"
                   class="p-4 rounded-2xl border text-xs flex flex-col justify-between transition shadow-2xs"
-                  :class="st.stop_order === 1
+                  :class="stIdx === 0
                     ? (isDarkMode ? 'bg-zinc-900 border-zinc-800 border-t-4 border-t-blue-500' : 'bg-white border-slate-200 border-t-4 border-t-blue-500')
-                    : (st.stop_order === 2
-                      ? (isDarkMode ? 'bg-amber-950/20 border-amber-900/60 border-t-4 border-t-amber-500' : 'bg-amber-50/50 border-amber-200 border-t-4 border-t-amber-500')
-                      : (isDarkMode ? 'bg-zinc-900 border-zinc-800 border-t-4 border-t-red-500' : 'bg-white border-slate-200 border-t-4 border-t-red-500'))"
+                    : (stIdx === (getTripDropoffStops(trip).length - 1)
+                      ? (isDarkMode ? 'bg-zinc-900 border-zinc-800 border-t-4 border-t-red-500' : 'bg-white border-slate-200 border-t-4 border-t-red-500')
+                      : (isDarkMode ? 'bg-amber-950/20 border-amber-900/60 border-t-4 border-t-amber-500' : 'bg-amber-50/50 border-amber-200 border-t-4 border-t-amber-500'))"
                 >
                   <!-- Trạm Header -->
                   <div>
                     <div class="flex items-center justify-between gap-1 mb-2">
                       <span 
                         class="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-2xs" 
-                        :class="st.stop_order === 1 
+                        :class="stIdx === 0 
                           ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300' 
-                          : (st.stop_order === 2 
-                            ? 'bg-amber-500 text-slate-950 font-black' 
-                            : 'bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300')"
+                          : (stIdx === (getTripDropoffStops(trip).length - 1)
+                            ? 'bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300'
+                            : 'bg-amber-500 text-slate-950 font-black')"
                       >
-                        {{ st.stop_order === 1 ? '🚀 Trạm 1: Khởi Hành' : (st.stop_order === 2 ? '☕ Trạm 2: Dừng Nghỉ Chân' : '🏁 Trạm 3: Đích Đến') }}
+                        {{ stIdx === 0 ? '🚀 Trạm 1: Khởi Hành' : (stIdx === (getTripDropoffStops(trip).length - 1) ? `🏁 Trạm ${stIdx + 1}: Bến Đích Cuối` : `📍 Trạm ${stIdx + 1}: ${st.stop_type === 'DROPOFF' ? 'Trả Khách' : (st.stop_type === 'PICKUP' ? 'Đón Khách' : 'Dừng Nghỉ')}`) }}
                       </span>
-                      <span class="font-extrabold text-[11px]" :class="st.stop_order === 3 || st.total_pax > 0 ? 'text-red-600' : 'text-slate-500'">
-                        {{ st.stop_order === 1 ? 'Điểm xuất bến' : (st.total_pax > 0 ? `${st.total_pax} khách xuống` : 'Nghỉ 20-30 phút') }}
+                      <span class="font-extrabold text-[11px]" :class="(st.total_pax > 0 || stIdx === (getTripDropoffStops(trip).length - 1)) ? 'text-red-600' : 'text-slate-500'">
+                        {{ stIdx === 0 ? 'Điểm xuất bến' : (st.total_pax > 0 ? `${st.total_pax} khách xuống` : (st.stop_type === 'PICKUP' ? 'Đón trung chuyển' : 'Không có khách xuống')) }}
                       </span>
                     </div>
 
@@ -2005,18 +2032,18 @@ onUnmounted(() => {
                       {{ st.stop_name || st.name }}
                     </div>
                     <div class="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
-                      {{ st.address || (st.stop_order === 1 ? 'Điểm xuất phát bến đi ban đầu' : (st.stop_order === 2 ? 'Trạm nghỉ ngơi, ăn uống & vệ sinh' : 'Bến xe kết thúc hành trình')) }}
+                      {{ st.address || (stIdx === 0 ? 'Điểm xuất phát bến đi ban đầu' : (stIdx === (getTripDropoffStops(trip).length - 1) ? 'Bến xe kết thúc hành trình' : 'Trạm đón trả trên tuyến')) }}
                     </div>
 
-                    <!-- TH 1: TRẠM 1 (KHỞI HÀNH) -->
-                    <div v-if="st.stop_order === 1" class="mt-3 pt-3 border-t border-slate-100 dark:border-zinc-800 space-y-2">
+                    <!-- NỘI DUNG 1: TRẠM XUẤT PHÁT -->
+                    <div v-if="stIdx === 0" class="mt-3 pt-3 border-t border-slate-100 dark:border-zinc-800 space-y-2">
                       <div class="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-blue-950 dark:text-blue-200">
                         <div class="font-bold flex items-center justify-between text-xs">
                           <span>Tổng khách xuất bến:</span>
-                          <span class="text-blue-700 dark:text-blue-300 font-black text-sm">{{ occupiedSeats?.length || trip.total_seats_sold || 14 }} khách</span>
+                          <span class="text-blue-700 dark:text-blue-300 font-black text-sm">{{ occupiedSeats?.length || trip.total_seats_sold || 0 }} khách</span>
                         </div>
                         <p class="text-[11px] text-blue-600 dark:text-blue-400 mt-1">
-                          ✓ Hành khách tập kết tại cửa xuất bến số 1. Toàn bộ giường đã được sắp xếp khoa học.
+                          ✓ Toàn bộ giường đã được chuẩn bị chu đáo, xe sẵn sàng lăn bánh.
                         </p>
                       </div>
                       <div class="text-[11px] text-slate-500 flex items-center gap-1.5">
@@ -2025,58 +2052,11 @@ onUnmounted(() => {
                       </div>
                     </div>
 
-                    <!-- TH 2: TRẠM 2 (DỪNG CHÂN ĐÔNG HÀ) -->
-                    <div v-else-if="st.stop_order === 2" class="mt-3 pt-3 border-t border-amber-100 dark:border-zinc-800 space-y-2">
-                      <!-- Có khách xuống tại trạm dừng chân -->
-                      <div v-if="st.passengers && st.passengers.length > 0" class="space-y-1.5">
-                        <div class="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase">Khách xuống tại trạm dừng chân:</div>
-                        <div class="max-h-40 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
-                          <div 
-                            v-for="p in st.passengers" 
-                            :key="'p-drop-mid-' + p.id"
-                            class="p-2 rounded-xl bg-white dark:bg-zinc-800 border border-amber-200 dark:border-zinc-700 flex items-center justify-between gap-1 shadow-2xs"
-                          >
-                            <div>
-                              <div class="font-black text-slate-900 dark:text-white text-[11px] flex items-center gap-1">
-                                <span>{{ p.customer_name }}</span>
-                                <span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-mono text-[9px] font-extrabold">
-                                  {{ p.seats?.join(', ') }}
-                                </span>
-                              </div>
-                              <div class="text-[10px] text-slate-400 font-mono">{{ p.customer_phone }}</div>
-                            </div>
-                            <button 
-                              type="button" 
-                              @click="makeCall(p.customer_phone)"
-                              class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center text-xs cursor-pointer hover:bg-emerald-200"
-                              title="Gọi cho hành khách"
-                            >
-                              <i class="fa-solid fa-phone"></i>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Không có khách xuống (Trạm nghỉ ăn uống, vệ sinh) -->
-                      <div v-else class="p-2.5 rounded-xl bg-amber-100/60 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 text-amber-950 dark:text-amber-200 space-y-1">
-                        <div class="font-bold flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-300">
-                          <i class="fa-solid fa-utensils"></i>
-                          <span>Trạm Dừng Chân Ăn Uống & Vệ Sinh</span>
-                        </div>
-                        <p class="text-[11px] text-amber-700 dark:text-amber-300/80 leading-relaxed">
-                          Chuyến xe nghỉ 20 - 30 phút. 100% hành khách tiếp tục hành trình đến Bến Cuối Đồng Hới (không có khách trả tại đây).
-                        </p>
-                        <p class="text-[10px] text-amber-600/90 dark:text-amber-400 font-medium pt-0.5">
-                          💡 Bác tài bấm nút "Đã Đến Trạm Nghỉ" trên Taplo khi xe cập trạm.
-                        </p>
-                      </div>
-                    </div>
-
-                    <!-- TH 3: TRẠM 3 (ĐÍCH ĐẾN BẾN CUỐI) -->
-                    <div v-else class="mt-3 pt-3 border-t border-slate-100 dark:border-zinc-800 space-y-2">
+                    <!-- NỘI DUNG 2: TRẠM BẾN ĐÍCH CUỐI CÙNG -->
+                    <div v-else-if="stIdx === (getTripDropoffStops(trip).length - 1)" class="mt-3 pt-3 border-t border-slate-100 dark:border-zinc-800 space-y-2">
                       <div class="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase">
                         <span>Danh Sách Khách Xuống Bến:</span>
-                        <span class="text-red-600 font-extrabold">{{ st.passengers?.length || occupiedSeats?.length || 14 }} Hành Khách</span>
+                        <span class="text-red-600 font-extrabold">{{ st.passengers?.length || st.total_pax || occupiedSeats?.length || trip.total_seats_sold || 0 }} Hành Khách</span>
                       </div>
 
                       <!-- Danh sách hành khách xuống bến cuối -->
@@ -2106,23 +2086,67 @@ onUnmounted(() => {
                         </div>
                       </div>
 
-                      <!-- Trường hợp chưa load chi tiết booking lẻ thì hiển thị danh sách ghế trả bến -->
+                      <!-- Fallback khi chưa có list passenger chi tiết -->
                       <div v-else class="p-2.5 rounded-xl bg-red-50/70 dark:bg-red-950/30 border border-red-100 dark:border-red-900/40 text-red-950 dark:text-red-200 space-y-1">
                         <div class="font-bold text-xs flex items-center justify-between text-red-700 dark:text-red-300">
                           <span>Bến trả toàn bộ khách:</span>
-                          <span class="font-black text-sm">{{ occupiedSeats?.length || 14 }} khách</span>
+                          <span class="font-black text-sm">{{ occupiedSeats?.length || trip.total_seats_sold || 0 }} khách</span>
                         </div>
                         <p class="text-[11px] text-red-600 dark:text-red-400">
-                          Toàn bộ hành khách kết thúc hành trình an toàn tại bến xe Đồng Hới. Bác tài kiểm tra hầm hành lý khi trả khách.
+                          Toàn bộ hành khách kết thúc hành trình an toàn tại bến xe đích đến. Bác tài kiểm tra hầm hành lý khi trả khách.
+                        </p>
+                      </div>
+                    </div>
+
+                    <!-- NỘI DUNG 3: CÁC TRẠM TRUNG GIAN (ĐÓN / TRẢ / DỪNG NGHỈ) -->
+                    <div v-else class="mt-3 pt-3 border-t border-amber-100 dark:border-zinc-800 space-y-2">
+                      <!-- Có khách xuống tại trạm này -->
+                      <div v-if="st.passengers && st.passengers.length > 0" class="space-y-1.5">
+                        <div class="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase">Khách xuống tại trạm này:</div>
+                        <div class="max-h-40 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+                          <div 
+                            v-for="p in st.passengers" 
+                            :key="'p-drop-mid-' + p.id"
+                            class="p-2 rounded-xl bg-white dark:bg-zinc-800 border border-amber-200 dark:border-zinc-700 flex items-center justify-between gap-1 shadow-2xs"
+                          >
+                            <div>
+                              <div class="font-black text-slate-900 dark:text-white text-[11px] flex items-center gap-1">
+                                <span>{{ p.customer_name }}</span>
+                                <span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-mono text-[9px] font-extrabold">
+                                  {{ p.seats?.join(', ') }}
+                                </span>
+                              </div>
+                              <div class="text-[10px] text-slate-400 font-mono">{{ p.customer_phone }}</div>
+                            </div>
+                            <button 
+                              type="button" 
+                              @click="makeCall(p.customer_phone)"
+                              class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center text-xs cursor-pointer hover:bg-emerald-200"
+                              title="Gọi cho hành khách"
+                            >
+                              <i class="fa-solid fa-phone"></i>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Không có khách xuống -->
+                      <div v-else class="p-2.5 rounded-xl bg-amber-100/60 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 text-amber-950 dark:text-amber-200 space-y-1">
+                        <div class="font-bold flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-300">
+                          <i :class="st.stop_type === 'PICKUP' ? 'fa-solid fa-location-dot' : 'fa-solid fa-utensils'"></i>
+                          <span>{{ st.stop_type === 'PICKUP' ? 'Điểm Đón Khách Trung Chuyển' : 'Trạm Dừng Nghỉ / Cửa Ngõ' }}</span>
+                        </div>
+                        <p class="text-[11px] text-amber-700 dark:text-amber-300/80 leading-relaxed">
+                          {{ st.stop_type === 'PICKUP' ? 'Xe dừng đón thêm hành khách trung chuyển nội thành.' : 'Chưa có hành khách đăng ký xuống tại trạm này.' }}
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Footer của từng card trạm: Khoảng cách & Thời gian -->
+                  <!-- Footer của từng card trạm -->
                   <div class="mt-3 pt-2 border-t border-slate-100 dark:border-zinc-800 text-[10px] flex items-center justify-between text-slate-400 font-medium">
-                    <span>Lộ trình: {{ st.stop_order === 1 ? 'Điểm bắt đầu 0 km' : (st.stop_order === 2 ? 'Km thứ 95 (~1h30)' : 'Km thứ 185 (~3h15)') }}</span>
-                    <span class="text-slate-500 font-bold">Trạm {{ st.stop_order }}/3</span>
+                    <span>Lộ trình: {{ st.distance_km ? ('Km thứ ' + st.distance_km) : (stIdx === 0 ? 'Xuất bến 0 km' : 'Theo lộ trình') }}</span>
+                    <span class="text-slate-500 font-bold">Trạm {{ stIdx + 1 }}/{{ (getTripDropoffStops(trip) || []).length }}</span>
                   </div>
 
                 </div>
@@ -2468,7 +2492,7 @@ onUnmounted(() => {
             type="button"
             class="py-6 px-4 rounded-3xl bg-red-600 hover:bg-red-700 text-white font-black text-base flex flex-col items-center justify-center gap-2 shadow-xl shadow-red-600/35 hover:shadow-red-600/50 cursor-pointer transition-all duration-150 transform hover:-translate-y-0.5 active:translate-y-1 active:scale-[0.98] active:shadow-md"
           >
-            <i class="fa-solid fa-triangle-exclamation text-3xl animate-bounce"></i>
+            <i class="fa-solid fa-triangle-exclamation text-3xl"></i>
             <span>SỰ CỐ XE KHẨN CẤP</span>
             <span class="text-[11px] font-bold opacity-90">Hỏng máy, nổ lốp, cứu hộ 114</span>
           </button>
@@ -2580,33 +2604,23 @@ onUnmounted(() => {
               <span class="text-[11px] font-bold text-slate-400 uppercase mr-1">Ngày:</span>
               <button
                 type="button"
-                @click="onSeatmapDateChange('2026-11-04')"
+                @click="onSeatmapDateChange(filterTodayDateStr)"
                 class="px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer border"
-                :class="seatmapDate === '2026-11-04'
+                :class="seatmapDate === filterTodayDateStr
                   ? 'bg-red-600 text-white border-red-600 shadow-xs'
                   : (isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-white text-slate-700 border-slate-200')"
               >
-                04/11 (Nay)
+                Hôm Nay
               </button>
               <button
                 type="button"
-                @click="onSeatmapDateChange('2026-11-05')"
+                @click="onSeatmapDateChange(filterTomorrowDateStr)"
                 class="px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer border"
-                :class="seatmapDate === '2026-11-05'
+                :class="seatmapDate === filterTomorrowDateStr
                   ? 'bg-red-600 text-white border-red-600 shadow-xs'
                   : (isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-white text-slate-700 border-slate-200')"
               >
-                05/11 (Mai)
-              </button>
-              <button
-                type="button"
-                @click="onSeatmapDateChange('2026-11-06')"
-                class="px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer border"
-                :class="seatmapDate === '2026-11-06'
-                  ? 'bg-red-600 text-white border-red-600 shadow-xs'
-                  : (isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-white text-slate-700 border-slate-200')"
-              >
-                06/11 (Kia)
+                Ngày Mai
               </button>
               <input
                 type="date"
@@ -2988,13 +3002,13 @@ onUnmounted(() => {
         <!-- ============================================================== -->
         <div v-if="scheduleViewMode === 'timeline'" class="space-y-4">
           
-          <!-- HIỆU ỨNG TRÔI DỌC (STICKY HEADER): Dính trên cùng khi cuộn để Bác tài luôn biết đang xem ngày nào -->
+          <!-- TIÊU ĐỀ NGÀY ĐANG XEM TRONG TIMELINE -->
           <div 
-            class="sticky top-[100px] z-30 backdrop-blur-md p-3.5 rounded-2xl border shadow-md flex items-center justify-between gap-3 transition-all duration-300"
-            :class="isDarkMode ? 'bg-[#1E1E1E]/95 border-[#2E2E2E] text-zinc-100 shadow-black/40' : 'bg-white/95 border-slate-200 text-slate-900 shadow-slate-200/50'"
+            class="p-3.5 rounded-2xl border shadow-xs flex items-center justify-between gap-3 transition-colors"
+            :class="isDarkMode ? 'bg-[#1E1E1E] border-[#2E2E2E] text-zinc-100' : 'bg-white border-slate-200 text-slate-900'"
           >
             <div class="flex items-center gap-2.5">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
               <span class="text-xs font-black uppercase text-slate-400">Đang xem lịch ngày:</span>
               <strong class="text-sm font-black text-slate-900 dark:text-white">{{ activeDayTitle }}</strong>
             </div>
@@ -3012,7 +3026,7 @@ onUnmounted(() => {
             class="p-8 sm:p-12 rounded-3xl border text-center space-y-3"
             :class="isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'"
           >
-            <span class="text-5xl block animate-bounce">🌴</span>
+            <span class="text-5xl block">🌴</span>
             <h3 class="text-base sm:text-lg font-black text-slate-900 dark:text-white">
               Bác Tài Được Phân Công Nghỉ Ca Định Kỳ!
             </h3>
@@ -4004,7 +4018,7 @@ onUnmounted(() => {
     <div v-if="showArriveFlashModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
       <div :class="isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white text-slate-900'" class="rounded-3xl max-w-md w-full p-6 shadow-2xl border-4 border-emerald-500 space-y-5 text-center">
         
-        <div class="w-16 h-16 rounded-3xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-3xl mx-auto animate-bounce">
+        <div class="w-16 h-16 rounded-3xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-3xl mx-auto shadow-inner">
           <i class="fa-solid fa-door-open"></i>
         </div>
 
@@ -4053,7 +4067,7 @@ onUnmounted(() => {
     <div v-if="showSosModal" class="fixed inset-0 bg-red-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-slate-900 border-4 border-red-600 text-center">
         
-        <span class="text-5xl animate-bounce block">🚨</span>
+        <span class="text-5xl block">🚨</span>
         <h3 class="font-black text-xl text-red-600">PHÁT TÍN HIỆU SOS KHẨN CẤP</h3>
         <p class="text-xs text-slate-600">
           Chỉ sử dụng khi gặp sự cố đe dọa an toàn, tai nạn nghiêm trọng hoặc sức khỏe nguy cấp.
