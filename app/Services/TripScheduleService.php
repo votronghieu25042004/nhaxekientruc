@@ -57,47 +57,34 @@ class TripScheduleService
      * Đảm bảo luôn luôn có đủ lịch xe chạy và ĐẦY ĐỦ HÀNH KHÁCH trên xe cho cả ngày quá khứ (-3 ngày: 01, 02, 03/11) 
      * lẫn hôm nay (04/11) và tương lai (+3 ngày: 05, 06, 07/11).
      */
-    public static function ensureUpcomingTripsExist(int $daysAhead = 3): void
+    public static function ensureUpcomingTripsExist(int $daysAhead = 1): void
     {
         $today = Carbon::today('Asia/Ho_Chi_Minh');
         $todayStr = $today->toDateString();
         $cacheKey = 'trips_ensured_schedule_' . $todayStr . '_' . $daysAhead;
 
-        // Nếu đã kiểm tra lịch xe trong vòng 1 giờ gần nhất, bỏ qua ngay lập tức để tăng tốc web tối đa
+        // Nếu đã kiểm tra lịch xe trong vòng 1 giờ gần nhất, bỏ qua ngay lập tức để tải trang siêu tốc
         if (Cache::has($cacheKey)) {
             return;
         }
 
         $now = Carbon::now('Asia/Ho_Chi_Minh');
 
-        // Quét từ 3 ngày trước đến N ngày tới
-        for ($i = -3; $i <= $daysAhead; $i++) {
+        // Chỉ quét hôm nay và ngày mai khi có request web để trang web tải ngay trong 0.5s
+        for ($i = 0; $i <= $daysAhead; $i++) {
             $targetDate = $today->copy()->addDays($i);
             $targetDateStr = $targetDate->toDateString();
 
-            // Đếm số chuyến trong ngày targetDate
-            $existingTrips = Trip::with(['route.stops', 'bus'])->whereDate('departure_time', $targetDateStr)->get();
+            $existingCount = Trip::whereDate('departure_time', $targetDateStr)->count();
 
-            // Nếu ngày này chưa có chuyến xe nào (hoặc quá ít < 10 chuyến), tự động sinh 20 chuyến
-            if ($existingTrips->count() < 10) {
+            // Nếu ngày này chưa có chuyến xe nào, sinh các chuyến chính
+            if ($existingCount < 5) {
                 self::generateTripsForDate($targetDate, $now);
-                $existingTrips = Trip::with(['route.stops', 'bus'])->whereDate('departure_time', $targetDateStr)->get();
-            }
-
-            // ĐẢM BẢO MỌI CHUYẾN XE ĐỀU CÓ HÀNH KHÁCH (Không bị tình trạng 0 khách)
-            // Tối ưu hóa: Dùng 1 truy vấn whereIn thay vì 20 truy vấn n+1
-            $tripIds = $existingTrips->pluck('id')->toArray();
-            $tripIdsWithBookings = Booking::whereIn('trip_id', $tripIds)->pluck('trip_id')->unique()->toArray();
-
-            foreach ($existingTrips as $trip) {
-                if (!in_array($trip->id, $tripIdsWithBookings)) {
-                    self::seedPassengersForTrip($trip, $now);
-                }
             }
         }
 
-        // Lưu vào Cache 1 giờ (60 phút)
-        Cache::put($cacheKey, true, now()->addMinutes(60));
+        // Lưu vào Cache 2 giờ để không phải quét lại
+        Cache::put($cacheKey, true, now()->addHours(2));
     }
 
     /**
