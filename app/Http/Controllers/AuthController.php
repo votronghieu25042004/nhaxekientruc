@@ -372,25 +372,82 @@ class AuthController extends Controller
         ]);
 
         if ($type === 'email') {
-            Log::info("[GMAIL_OTP] Bắt đầu gửi OTP qua Google SMTP tới email: {$identifier}", ['otp' => $otp]);
-            try {
-                Mail::send('emails.register_otp', ['otp' => $otp, 'email' => $identifier], function ($message) use ($identifier, $otp) {
-                    $message->to($identifier)
-                            ->subject("[nhaxekientruc] Mã xác thực OTP đăng ký tài khoản của bạn: {$otp}");
-                });
-                $mailSentReal = true;
-                $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp tới hộp thư Gmail [{$identifier}]. Quý khách vui lòng kiểm tra hộp thư đến (hoặc mục Spam/Thư rác) và nhập mã vào hệ thống!";
-                Log::info("[GMAIL_OTP_SUCCESS] Gửi email thành công qua Google SMTP tới: {$identifier}", ['otp' => $otp]);
-            } catch (\Throwable $e) {
-                Log::error("[GMAIL_OTP_ERROR] Lỗi gửi Google SMTP tới {$identifier}: " . $e->getMessage());
-                return $isJsonReq 
-                    ? response()->json([
-                        'success' => false,
-                        'code' => 'MAIL_SEND_ERROR',
-                        'message' => "Không thể gửi mã xác thực tới hộp thư [{$identifier}]. Quý khách vui lòng kiểm tra lại chính xác địa chỉ email hoặc liên hệ CSKH 1900 6067!",
-                    ], 500)
-                    : back()->withErrors(['identifier' => "Không thể gửi mã xác thực tới [{$identifier}]. Vui lòng thử lại!"]);
+            Log::info("[EMAIL_OTP] Bắt đầu gửi OTP tới email: {$identifier}", ['otp' => $otp]);
+            
+            $brevoKey = env('BREVO_API_KEY');
+            $resendKey = env('RESEND_API_KEY');
+
+            // 1. Thử gửi qua Resend HTTPS API (cổng 443 - không bị chặn trên Render)
+            if (!empty($resendKey)) {
+                try {
+                    $res = \Illuminate\Support\Facades\Http::withToken($resendKey)
+                        ->timeout(6)
+                        ->post('https://api.resend.com/emails', [
+                            'from' => env('MAIL_FROM_ADDRESS', 'onboarding@resend.dev'),
+                            'to' => [$identifier],
+                            'subject' => "[nhaxekientruc] Mã xác thực OTP đăng ký tài khoản của bạn: {$otp}",
+                            'html' => view('emails.register_otp', ['otp' => $otp, 'email' => $identifier])->render(),
+                        ]);
+                    if ($res->successful()) {
+                        $mailSentReal = true;
+                        Log::info("[RESEND_SUCCESS] Đã gửi OTP qua Resend HTTPS API tới {$identifier}");
+                    }
+                } catch (\Throwable $re) {
+                    Log::warning("[RESEND_FAILED] " . $re->getMessage());
+                }
             }
+
+            // 2. Thử gửi qua Brevo HTTPS API (cổng 443)
+            if (!$mailSentReal && !empty($brevoKey)) {
+                try {
+                    $res = \Illuminate\Support\Facades\Http::withHeaders([
+                            'api-key' => $brevoKey,
+                            'Content-Type' => 'application/json',
+                        ])
+                        ->timeout(6)
+                        ->post('https://api.brevo.com/v3/smtp/email', [
+                            'sender' => [
+                                'name' => 'Nhà Xe Kiến Trúc',
+                                'email' => env('MAIL_FROM_ADDRESS', 'volananh2k4@gmail.com'),
+                            ],
+                            'to' => [['email' => $identifier]],
+                            'subject' => "[nhaxekientruc] Mã xác thực OTP đăng ký tài khoản của bạn: {$otp}",
+                            'htmlContent' => view('emails.register_otp', ['otp' => $otp, 'email' => $identifier])->render(),
+                        ]);
+                    if ($res->successful()) {
+                        $mailSentReal = true;
+                        Log::info("[BREVO_SUCCESS] Đã gửi OTP qua Brevo HTTPS API tới {$identifier}");
+                    }
+                } catch (\Throwable $be) {
+                    Log::warning("[BREVO_FAILED] " . $be->getMessage());
+                }
+            }
+
+            // 3. Gửi qua Google SMTP chuẩn (Chạy mượt 100% trên Localhost & VPS máy chủ)
+            if (!$mailSentReal) {
+                try {
+                    Mail::send('emails.register_otp', ['otp' => $otp, 'email' => $identifier], function ($message) use ($identifier, $otp) {
+                        $message->to($identifier)
+                                ->subject("[nhaxekientruc] Mã xác thực OTP đăng ký tài khoản của bạn: {$otp}");
+                    });
+                    $mailSentReal = true;
+                    Log::info("[GMAIL_OTP_SUCCESS] Gửi email thành công qua Google SMTP tới: {$identifier}", ['otp' => $otp]);
+                } catch (\Throwable $e) {
+                    Log::error("[GMAIL_OTP_ERROR] Lỗi gửi Google SMTP tới {$identifier}: " . $e->getMessage());
+                    $renderNote = str_contains($e->getMessage(), 'Connection timed out') || str_contains($e->getMessage(), 'Connection could not be established')
+                        ? " (Lưu ý: Nếu đang chạy trên máy chủ Render Free, Render chặn cổng SMTP 587. Quý khách vui lòng thử nghiệm trên Localhost hoặc liên hệ hotline 1900 6067!)"
+                        : "";
+                    return $isJsonReq 
+                        ? response()->json([
+                            'success' => false,
+                            'code' => 'MAIL_SEND_ERROR',
+                            'message' => "Không thể gửi mã xác thực tới hộp thư [{$identifier}].{$renderNote} Quý khách vui lòng kiểm tra lại chính xác địa chỉ email hoặc liên hệ CSKH 1900 6067!",
+                        ], 500)
+                        : back()->withErrors(['identifier' => "Không thể gửi mã xác thực tới [{$identifier}]. Vui lòng thử lại!"]);
+                }
+            }
+
+            $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp tới hộp thư Gmail [{$identifier}]. Quý khách vui lòng kiểm tra hộp thư đến (hoặc mục Spam/Thư rác) và nhập mã vào hệ thống!";
         } else {
             Log::info("[ZALO_OTP] Bắt đầu xử lý gửi mã OTP qua Zalo tới SĐT: {$identifier}", ['otp' => $otp]);
             $znsEnabled = env('ZALO_ZNS_ENABLED', false);
