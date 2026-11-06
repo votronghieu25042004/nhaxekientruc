@@ -368,11 +368,12 @@ class TripController extends Controller
         $depTime = $trip->departure_time;
 
         foreach ($allStops as $idx => $stop) {
-            $mins = (int) ($stop->estimated_minutes_from_start ?? ($idx * 35));
+            $mins = (int) ($stop->estimated_minutes_from_start ?? ($idx * 30));
             $stopTime = $depTime->copy()->addMinutes($mins)->format('H:i');
 
             $stopItem = [
                 'id' => $stop->id,
+                'unique_key' => 'stop_' . $stop->id . '_' . $idx,
                 'stop_order' => $stop->stop_order,
                 'time' => $stopTime,
                 'name' => $stop->stop_name,
@@ -380,38 +381,77 @@ class TripController extends Controller
             ];
 
             $stopNameLower = mb_strtolower($stop->stop_name ?? '');
-            $isDropKeyword = str_contains($stopNameLower, 'trả khách');
-            $isPickupKeyword = str_contains($stopNameLower, 'đón khách');
+            $isDropKeyword = str_contains($stopNameLower, 'trả khách') || str_contains($stopNameLower, 'điểm trả') || str_contains($stopNameLower, 'bến xe đến');
+            $isPickupKeyword = str_contains($stopNameLower, 'đón khách') || str_contains($stopNameLower, 'trạm đón') || str_contains($stopNameLower, 'điểm đón');
             $distFromStart = $stop->distance_from_start_km !== null ? (float)$stop->distance_from_start_km : ($idx * 40);
 
             // Điểm Đón: Thuộc khu vực xuất phát (cự ly <= 35km hoặc có từ khóa đón khách, và không phải trạm trả khách)
-            if (($idx === 0 || $distFromStart <= 35 || $isPickupKeyword) && !$isDropKeyword && $idx < $totalStopsCount - 1) {
+            if (($idx === 0 || $distFromStart <= 35 || $isPickupKeyword || $idx < ($totalStopsCount / 2)) && !$isDropKeyword && $idx < $totalStopsCount - 1) {
                 $pickupStopsList[] = $stopItem;
             }
 
             // Điểm Trả: Thuộc khu vực điểm đến (cự ly > 35km hoặc nửa sau hành trình, hoặc có từ khóa trả khách)
-            if ($idx > 0 && ($distFromStart > 35 || $isDropKeyword || $idx >= ($totalStopsCount / 2))) {
+            if ($idx > 0 && ($distFromStart > 35 || $isDropKeyword || $idx >= ceil($totalStopsCount / 2))) {
                 $dropoffStopsList[] = $stopItem;
             }
         }
 
-        // In case route has few stops, ensure first is pickup and last is dropoff
-        if (empty($pickupStopsList) && $allStops->isNotEmpty()) {
-            $pickupStopsList[] = [
-                'id' => $allStops->first()->id,
-                'time' => $depTime->format('H:i'),
-                'name' => $allStops->first()->stop_name,
-                'address' => $allStops->first()->address ?: $trip->route?->origin,
-            ];
+        // ĐẢM BẢO MỖI CHUYẾN LUÔN CÓ ÍT NHẤT 2 ĐIỂM ĐÓN KHÁCH
+        if (count($pickupStopsList) < 2 && $allStops->isNotEmpty()) {
+            if (empty($pickupStopsList)) {
+                $first = $allStops->first();
+                $pickupStopsList[] = [
+                    'id' => $first->id,
+                    'unique_key' => 'stop_' . $first->id . '_first',
+                    'stop_order' => 1,
+                    'time' => $depTime->format('H:i'),
+                    'name' => $first->stop_name,
+                    'address' => $first->address ?: ($trip->route?->origin ?? 'Bến xe xuất phát'),
+                ];
+            }
+            if (count($pickupStopsList) < 2) {
+                $first = $pickupStopsList[0];
+                $pickupStopsList[] = [
+                    'id' => $first['id'],
+                    'unique_key' => 'stop_' . $first['id'] . '_sub2',
+                    'stop_order' => 2,
+                    'time' => $depTime->copy()->addMinutes(20)->format('H:i'),
+                    'name' => 'Trạm đón Trung chuyển Nội thành ' . ($trip->route?->origin ?? ''),
+                    'address' => 'Văn phòng Trung chuyển nội thành ' . ($trip->route?->origin ?? ''),
+                ];
+            }
         }
-        if (empty($dropoffStopsList) && $allStops->isNotEmpty()) {
-            $dropoffStopsList[] = [
-                'id' => $allStops->last()->id,
-                'time' => $trip->arrival_time ? $trip->arrival_time->format('H:i') : $depTime->copy()->addHours(3)->format('H:i'),
-                'name' => $allStops->last()->stop_name,
-                'address' => $allStops->last()->address ?: $trip->route?->destination,
-            ];
+
+        // ĐẢM BẢO MỖI CHUYẾN LUÔN CÓ ÍT NHẤT 2 ĐIỂM TRẢ KHÁCH
+        if (count($dropoffStopsList) < 2 && $allStops->isNotEmpty()) {
+            $last = $allStops->last();
+            $arrTimeStr = $trip->arrival_time ? $trip->arrival_time->format('H:i') : $depTime->copy()->addMinutes(($trip->route?->estimated_hours ?? 3.5) * 60)->format('H:i');
+            $arrTimeObj = $trip->arrival_time ? $trip->arrival_time : $depTime->copy()->addMinutes(($trip->route?->estimated_hours ?? 3.5) * 60);
+
+            if (empty($dropoffStopsList)) {
+                $dropoffStopsList[] = [
+                    'id' => $last->id,
+                    'unique_key' => 'stop_' . $last->id . '_last',
+                    'stop_order' => 4,
+                    'time' => $arrTimeStr,
+                    'name' => $last->stop_name,
+                    'address' => $last->address ?: ($trip->route?->destination ?? 'Bến xe đến'),
+                ];
+            }
+            if (count($dropoffStopsList) < 2) {
+                $existing = $dropoffStopsList[0];
+                $dropoff1 = [
+                    'id' => $existing['id'],
+                    'unique_key' => 'stop_' . $existing['id'] . '_sub1',
+                    'stop_order' => 3,
+                    'time' => $arrTimeObj->copy()->subMinutes(25)->format('H:i'),
+                    'name' => 'Trạm trả khách Cửa ngõ ' . ($trip->route?->destination ?? ''),
+                    'address' => 'Trục đường chính / Cửa ngõ thành phố ' . ($trip->route?->destination ?? ''),
+                ];
+                array_unshift($dropoffStopsList, $dropoff1);
+            }
         }
+
 
         $occupiedSeats = SeatSegmentService::getAllBookedSeatsForTrip($trip->id);
 
