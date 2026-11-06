@@ -317,7 +317,7 @@ class AuthController extends Controller
                     $err = '⛔ Tài khoản gắn với Email này đã bị XÓA khỏi hệ thống. Xin vui lòng liên hệ Hotline: 1900 6067 để được giải quyết!';
                 }
                 return $isJsonReq 
-                    ? response()->json(['success' => false, 'code' => 'ALREADY_EXISTS', 'message' => $err], 422) 
+                    ? response()->json(['success' => false, 'code' => 'ALREADY_EXISTS', 'is_already_registered' => true, 'message' => $err], 422) 
                     : back()->withErrors(['identifier' => $err]);
             }
             $identifier = $cleanEmail;
@@ -343,7 +343,7 @@ class AuthController extends Controller
                     $err = '⛔ Tài khoản gắn với số điện thoại này đã bị XÓA khỏi hệ thống. Xin vui lòng liên hệ Hotline: 1900 6067 để được giải quyết!';
                 }
                 return $isJsonReq 
-                    ? response()->json(['success' => false, 'code' => 'ALREADY_EXISTS', 'message' => $err], 422) 
+                    ? response()->json(['success' => false, 'code' => 'ALREADY_EXISTS', 'is_already_registered' => true, 'message' => $err], 422) 
                     : back()->withErrors(['identifier' => $err]);
             }
             $identifier = $cleanPhone;
@@ -382,9 +382,14 @@ class AuthController extends Controller
                 $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp tới hộp thư Gmail [{$identifier}]. Quý khách vui lòng kiểm tra hộp thư đến (hoặc mục Spam/Thư rác) và nhập mã vào hệ thống!";
                 Log::info("[GMAIL_OTP_SUCCESS] Gửi email thành công qua Google SMTP tới: {$identifier}", ['otp' => $otp]);
             } catch (\Throwable $e) {
-                Log::warning("[EMAIL_OTP_FALLBACK] Lỗi gửi SMTP tới {$identifier}: " . $e->getMessage() . " -> Sử dụng kênh OTP an toàn nội bộ");
-                $mailSentReal = false;
-                $otpMessage = "Mã xác thực OTP đã được gửi tới hộp thư [{$identifier}]! (Mã OTP của bạn: {$otp})";
+                Log::error("[GMAIL_OTP_ERROR] Lỗi gửi Google SMTP tới {$identifier}: " . $e->getMessage());
+                return $isJsonReq 
+                    ? response()->json([
+                        'success' => false,
+                        'code' => 'MAIL_SEND_ERROR',
+                        'message' => "Không thể gửi mã xác thực tới hộp thư [{$identifier}]. Quý khách vui lòng kiểm tra lại chính xác địa chỉ email hoặc liên hệ CSKH 1900 6067!",
+                    ], 500)
+                    : back()->withErrors(['identifier' => "Không thể gửi mã xác thực tới [{$identifier}]. Vui lòng thử lại!"]);
             }
         } else {
             Log::info("[ZALO_OTP] Bắt đầu xử lý gửi mã OTP qua Zalo tới SĐT: {$identifier}", ['otp' => $otp]);

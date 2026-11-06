@@ -737,13 +737,16 @@
                     <!-- Nút Gửi OTP Bước 1 -->
                     <button
                       type="button"
-                      @click="handleSendOtpStep1"
-                      :disabled="!isStep1Valid || !agreeTerms || isSendingOtp || isAlreadyRegistered"
-                      class="relative overflow-hidden w-full py-3.5 px-4 rounded-2xl bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white font-black text-xs sm:text-sm shadow-md shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed btn-shimmer"
+                      @click="isAlreadyRegistered ? (switchTab('login'), loginForm.email = activeIdentifier) : handleSendOtpStep1()"
+                      :disabled="!isAlreadyRegistered && (!isStep1Valid || !agreeTerms || isSendingOtp)"
+                      :class="isAlreadyRegistered ? 'bg-amber-600 hover:bg-amber-700 text-white cursor-pointer shadow-md shadow-amber-600/30' : 'bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30'"
+                      class="relative overflow-hidden w-full py-3.5 px-4 rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer"
                     >
                       <span v-if="isSendingOtp" class="animate-spin text-sm">⏳</span>
                       <span>
-                        {{ isSendingOtp ? 'ĐANG GỬI MÃ XÁC THỰC OTP...' : (registerMethod === 'phone' ? 'NHẬN MÃ OTP QUA ZALO / SMS →' : 'NHẬN MÃ OTP QUA EMAIL →') }}
+                        <template v-if="isSendingOtp">ĐANG GỬI MÃ XÁC THỰC OTP...</template>
+                        <template v-else-if="isAlreadyRegistered">👉 TÀI KHOẢN ĐÃ CÓ - BẤM ĐĂNG NHẬP NGAY</template>
+                        <template v-else>{{ registerMethod === 'phone' ? 'NHẬN MÃ OTP QUA ZALO / SMS →' : 'NHẬN MÃ OTP QUA EMAIL →' }}</template>
                       </span>
                     </button>
                   </div>
@@ -1291,7 +1294,8 @@ const checkIdentifierExists = async () => {
     });
     if (res.data?.exists) {
       isAlreadyRegistered.value = true;
-      otpError.value = res.data.message || 'Tài khoản này đã được đăng ký. Vui lòng chuyển sang Đăng Nhập!';
+      registerStep.value = 1;
+      otpError.value = res.data.message || 'Tài khoản này đã được đăng ký trên hệ thống. Quý khách vui lòng chuyển sang Đăng Nhập!';
     } else {
       isAlreadyRegistered.value = false;
       if (otpError.value && (otpError.value.includes('đã được đăng ký') || otpError.value.includes('đã được sử dụng'))) {
@@ -1307,16 +1311,36 @@ const onIdentifierBlur = () => {
 };
 
 const handleSendOtpStep1 = async () => {
-  if (!isStep1Valid.value || !agreeTerms.value || isSendingOtp.value || isAlreadyRegistered.value) return;
+  if (!isStep1Valid.value || !agreeTerms.value || isSendingOtp.value) return;
+
+  if (isAlreadyRegistered.value) {
+    switchTab('login');
+    loginForm.email = activeIdentifier.value;
+    return;
+  }
 
   isSendingOtp.value = true;
   otpError.value = '';
-  isAlreadyRegistered.value = false;
 
   const reqIdentifier = activeIdentifier.value;
   const reqType = registerMethod.value === 'phone' ? 'phone' : 'email';
 
   try {
+    // 1. Kiểm tra sự tồn tại của tài khoản trước khi gửi OTP
+    const checkRes = await axios.post('/register/check-exists', {
+      identifier: reqIdentifier,
+    }, {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (checkRes.data?.exists) {
+      isAlreadyRegistered.value = true;
+      registerStep.value = 1;
+      otpError.value = checkRes.data.message || 'Tài khoản này đã được đăng ký trên hệ thống. Quý khách vui lòng chuyển sang Đăng Nhập!';
+      return;
+    }
+
+    // 2. Gửi mã OTP xác thực
     const res = await axios.post('/register/send-otp', {
       identifier: reqIdentifier,
       type: reqType,
@@ -1329,16 +1353,18 @@ const handleSendOtpStep1 = async () => {
       receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
       otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'zalo' : 'email');
-      startCountdown(119);
+      startCountdown(60);
       nextTick(() => {
         document.getElementById('otp-box-0')?.focus();
       });
     } else {
+      registerStep.value = 1;
       otpError.value = res.data?.message || 'Có lỗi khi gửi mã OTP. Vui lòng thử lại!';
     }
   } catch (err) {
+    registerStep.value = 1;
     const res = err.response?.data;
-    if (res?.code === 'ALREADY_EXISTS') {
+    if (res?.code === 'ALREADY_EXISTS' || res?.is_already_registered || (res?.message && (res.message.includes('đã được đăng ký') || res.message.includes('đã được sử dụng')))) {
       isAlreadyRegistered.value = true;
     }
     otpError.value = res?.message || res?.errors?.identifier?.[0] || 'Không thể gửi mã xác thực. Vui lòng kiểm tra lại thông tin!';
@@ -1368,13 +1394,19 @@ const handleResendOtp = async () => {
       receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
       otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'zalo' : 'email');
-      startCountdown(119);
+      startCountdown(60);
       nextTick(() => {
         document.getElementById('otp-box-0')?.focus();
       });
+    } else {
+      otpError.value = res.data?.message || 'Có lỗi khi gửi lại OTP.';
     }
   } catch (err) {
     const res = err.response?.data;
+    if (res?.code === 'ALREADY_EXISTS' || res?.is_already_registered) {
+      isAlreadyRegistered.value = true;
+      registerStep.value = 1;
+    }
     otpError.value = res?.message || 'Lỗi khi gửi lại OTP.';
   } finally {
     isSendingOtp.value = false;
@@ -1431,7 +1463,7 @@ watch([regPhone, regGmail], () => {
   if (isStep1Valid.value) {
     checkExistsTimer = setTimeout(() => {
       checkIdentifierExists();
-    }, 450);
+    }, 250);
   }
 });
 

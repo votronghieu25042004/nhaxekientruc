@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'ai/*',
             'conductor/*',
             'driver/*',
+            'register/check-exists',
             'register/send-otp',
             'register/verify-otp',
             'auth/send-otp',
