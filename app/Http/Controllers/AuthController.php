@@ -235,6 +235,54 @@ class AuthController extends Controller
         ]);
     }
 
+    public function checkRegisterExists(Request $request)
+    {
+        $identifier = trim((string)$request->input('identifier', ''));
+        if (empty($identifier)) {
+            return response()->json(['exists' => false]);
+        }
+
+        $cleanEmail = strtolower(trim($identifier));
+        $cleanPhone = preg_replace('/[^0-9]/', '', $identifier);
+        if (str_starts_with($cleanPhone, '84') && strlen($cleanPhone) === 11) {
+            $cleanPhone = '0' . substr($cleanPhone, 2);
+        }
+
+        $isEmail = str_contains($identifier, '@');
+
+        $existing = User::where(function($q) use ($isEmail, $cleanEmail, $cleanPhone) {
+            if ($isEmail) {
+                $q->whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail]);
+            } else {
+                if (!empty($cleanPhone) && strlen($cleanPhone) >= 9) {
+                    $q->whereRaw("REPLACE(REPLACE(REPLACE(phone, '.', ''), ' ', ''), '-', '') = ?", [$cleanPhone])
+                      ->orWhere('phone', $cleanPhone)
+                      ->orWhere('email', $cleanPhone . '@nhaxekientruc.vn');
+                }
+            }
+        })->first();
+
+        if ($existing) {
+            $typeLabel = $isEmail ? "Email [{$identifier}]" : "Số điện thoại [{$cleanPhone}]";
+            $message = "⚠️ {$typeLabel} đã được đăng ký tài khoản trên nhaxekientruc! Quý khách vui lòng chuyển sang tab Đăng Nhập.";
+            if ($existing->status === 'LOCKED') {
+                $message = "⛔ Tài khoản gắn với {$typeLabel} đã bị KHÓA. Xin vui lòng liên hệ CSKH 1900 6067.";
+            } elseif ($existing->status === 'DELETED') {
+                $message = "⛔ Tài khoản gắn với {$typeLabel} đã bị XÓA khỏi hệ thống.";
+            }
+            return response()->json([
+                'exists' => true,
+                'code' => 'ALREADY_EXISTS',
+                'message' => $message,
+                'status' => $existing->status,
+                'name' => $existing->name,
+                'identifier' => $identifier,
+            ]);
+        }
+
+        return response()->json(['exists' => false]);
+    }
+
     public function sendRegisterOtp(Request $request)
     {
         $identifier = trim($request->input('identifier', $request->input('email', '')));
@@ -247,14 +295,20 @@ class AuthController extends Controller
 
         $isJsonReq = $request->wantsJson() || $request->ajax() || $request->isJson() || str_contains($request->header('Accept', ''), 'application/json');
 
+        $cleanEmail = strtolower(trim($identifier));
+        $cleanPhone = preg_replace('/[^0-9]/', '', $identifier);
+        if (str_starts_with($cleanPhone, '84') && strlen($cleanPhone) === 11) {
+            $cleanPhone = '0' . substr($cleanPhone, 2);
+        }
+
         if ($type === 'email') {
-            if (!filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+            if (!filter_var($cleanEmail, FILTER_VALIDATE_EMAIL)) {
                 $err = 'Địa chỉ Email không đúng định dạng!';
                 return $isJsonReq 
                     ? response()->json(['success' => false, 'code' => 'INVALID_EMAIL', 'message' => $err], 422) 
                     : back()->withErrors(['identifier' => $err]);
             }
-            $existing = User::where('email', $identifier)->first();
+            $existing = User::whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])->first();
             if ($existing) {
                 $err = "Địa chỉ Email [{$identifier}] đã được đăng ký tài khoản trên nhaxekientruc. Quý khách vui lòng chuyển sang tab Đăng Nhập!";
                 if ($existing->status === 'LOCKED') {
@@ -266,21 +320,21 @@ class AuthController extends Controller
                     ? response()->json(['success' => false, 'code' => 'ALREADY_EXISTS', 'message' => $err], 422) 
                     : back()->withErrors(['identifier' => $err]);
             }
+            $identifier = $cleanEmail;
             $targetLabel = "Gmail {$identifier}";
             $channelName = "Gmail";
         } else {
             // Chuẩn hóa số điện thoại Việt Nam 10 chữ số
-            $cleanPhone = preg_replace('/[^0-9]/', '', $identifier);
-            if (str_starts_with($identifier, '+84')) {
-                $cleanPhone = '0' . substr($cleanPhone, 2);
-            }
             if (!preg_match('/^0[35789][0-9]{8}$/', $cleanPhone)) {
                 $err = 'Số điện thoại không hợp lệ! Vui lòng nhập đúng chuẩn Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08, 09 hoặc +84).';
                 return $isJsonReq 
                     ? response()->json(['success' => false, 'code' => 'INVALID_PHONE', 'message' => $err], 422) 
                     : back()->withErrors(['identifier' => $err]);
             }
-            $existing = User::where('phone', $cleanPhone)->first();
+            $existing = User::whereRaw("REPLACE(REPLACE(REPLACE(phone, '.', ''), ' ', ''), '-', '') = ?", [$cleanPhone])
+                ->orWhere('phone', $cleanPhone)
+                ->orWhere('email', $cleanPhone . '@nhaxekientruc.vn')
+                ->first();
             if ($existing) {
                 $err = "Số điện thoại [{$cleanPhone}] đã được đăng ký tài khoản trên nhaxekientruc. Quý khách vui lòng chuyển sang tab Đăng Nhập!";
                 if ($existing->status === 'LOCKED') {
@@ -385,13 +439,13 @@ class AuthController extends Controller
                         $otpMessage = "Mã xác thực Zalo/SMS đã được gửi tới số {$identifier}! (Mã OTP của bạn: {$otp})";
                     }
                 } catch (\Throwable $e) {
-                    $otpMessage = "Mã xác thực Zalo/SMS đã được gửi tới số {$identifier}! (Mã OTP của bạn: {$otp})";
+                    $otpMessage = "Mã xác thực Zalo/SMS đã được gửi tới số {$identifier}! Vui lòng kiểm tra tin nhắn và nhập mã OTP để tiếp tục.";
                 }
             }
             // 3. Kênh OTP nhaxekientruc Zalo SMS trực tiếp
             else {
                 Log::info("[ZALO_DIRECT_OTP] Đã tạo mã OTP Zalo cho SĐT {$identifier}: {$otp}");
-                $otpMessage = "Mã xác thực Zalo đã được gửi tới số {$identifier}! Vui lòng nhập mã OTP [{$otp}] để hoàn tất đăng ký.";
+                $otpMessage = "Mã xác thực Zalo đã được gửi tới số {$identifier}! Vui lòng kiểm tra tin nhắn và nhập mã OTP để tiếp tục.";
             }
         }
 
@@ -403,7 +457,6 @@ class AuthController extends Controller
                 'type' => $type,
                 'mail_sent' => $mailSentReal,
                 'zns_sent' => $znsSentReal,
-                'otp' => $otp,
             ]);
         }
 
@@ -474,25 +527,29 @@ class AuthController extends Controller
 
         $isEmail = str_contains($identifier, '@');
         if ($isEmail) {
-            if (!filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+            $cleanEmail = strtolower(trim($identifier));
+            if (!filter_var($cleanEmail, FILTER_VALIDATE_EMAIL)) {
                 return back()->withErrors(['identifier' => 'Địa chỉ Gmail/Email không đúng định dạng!']);
             }
-            if (User::where('email', $identifier)->exists()) {
-                return back()->withErrors(['identifier' => 'Địa chỉ Gmail này đã được sử dụng. Vui lòng đăng nhập!']);
+            if (User::whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])->exists()) {
+                return back()->withErrors(['identifier' => "Địa chỉ Gmail [{$cleanEmail}] này đã được sử dụng. Vui lòng chuyển sang tab Đăng Nhập!"]);
             }
-            $email = $identifier;
+            $email = $cleanEmail;
             $phone = null;
         } else {
             // Chuẩn hóa và kiểm tra số điện thoại Việt Nam chuẩn 10 số (+84 hoặc 03, 05, 07, 08, 09)
             $cleanPhone = preg_replace('/[^0-9]/', '', $identifier);
-            if (str_starts_with($identifier, '+84')) {
+            if (str_starts_with($cleanPhone, '84') && strlen($cleanPhone) === 11) {
                 $cleanPhone = '0' . substr($cleanPhone, 2);
             }
             if (!preg_match('/^0[35789][0-9]{8}$/', $cleanPhone)) {
                 return back()->withErrors(['identifier' => 'Số điện thoại không hợp lệ! Vui lòng nhập đúng chuẩn Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08, 09 hoặc +84).']);
             }
-            if (User::where('phone', $cleanPhone)->exists()) {
-                return back()->withErrors(['identifier' => 'Số điện thoại này đã được đăng ký tài khoản. Vui lòng đăng nhập!']);
+            if (User::whereRaw("REPLACE(REPLACE(REPLACE(phone, '.', ''), ' ', ''), '-', '') = ?", [$cleanPhone])
+                ->orWhere('phone', $cleanPhone)
+                ->orWhere('email', $cleanPhone . '@nhaxekientruc.vn')
+                ->exists()) {
+                return back()->withErrors(['identifier' => "Số điện thoại [{$cleanPhone}] này đã được đăng ký tài khoản. Vui lòng chuyển sang tab Đăng Nhập!"]);
             }
             $phone = $cleanPhone;
             $email = $cleanPhone . '@nhaxekientruc.vn';

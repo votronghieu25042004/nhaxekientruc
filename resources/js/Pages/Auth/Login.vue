@@ -661,7 +661,7 @@
                             type="tel"
                             required
                             @focus="triggerTurboSpeed"
-                            @blur="stopTurboSpeed"
+                            @blur="onIdentifierBlur"
                             placeholder="Nhập 10 chữ số (VD: 0905123456)"
                             class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
                           />
@@ -690,7 +690,7 @@
                             type="email"
                             required
                             @focus="triggerTurboSpeed"
-                            @blur="stopTurboSpeed"
+                            @blur="onIdentifierBlur"
                             placeholder="Nhập email (VD: sinhvien@dau.edu.vn hoặc yourname@gmail.com)"
                             class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
                           />
@@ -738,7 +738,7 @@
                     <button
                       type="button"
                       @click="handleSendOtpStep1"
-                      :disabled="!isStep1Valid || !agreeTerms || isSendingOtp"
+                      :disabled="!isStep1Valid || !agreeTerms || isSendingOtp || isAlreadyRegistered"
                       class="relative overflow-hidden w-full py-3.5 px-4 rounded-2xl bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white font-black text-xs sm:text-sm shadow-md shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed btn-shimmer"
                     >
                       <span v-if="isSendingOtp" class="animate-spin text-sm">⏳</span>
@@ -791,17 +791,6 @@
                         @paste="onOtpPaste"
                         class="w-11 h-12 sm:w-12 sm:h-14 text-center font-mono font-black text-lg sm:text-xl text-slate-900 bg-slate-50 border-2 border-slate-300 focus:border-red-600 focus:bg-white rounded-2xl outline-none transition focus:ring-2 focus:ring-red-500/20 shadow-xs"
                       />
-                    </div>
-
-                    <!-- Nút Điền Nhanh OTP Mẫu (1-Click Demo OTP Fill Button) -->
-                    <div v-if="receivedOtp" class="text-center">
-                      <button
-                        type="button"
-                        @click="quickFillOtp"
-                        class="text-[11px] font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1 rounded-xl transition cursor-pointer"
-                      >
-                        ⚡ Điền nhanh mã OTP: <span class="font-mono font-black text-red-600">{{ receivedOtp }}</span>
-                      </button>
                     </div>
 
                     <!-- Nút Xác Thực OTP Bước 2 -->
@@ -1289,17 +1278,36 @@ const onOtpPaste = (event) => {
   }
 };
 
-const quickFillOtp = () => {
-  if (!receivedOtp.value) return;
-  const digits = String(receivedOtp.value).split('').slice(0, 6);
-  digits.forEach((d, i) => {
-    otpDigits.value[i] = d;
-  });
-  handleVerifyOtpStep2();
+let checkExistsTimer = null;
+const checkIdentifierExists = async () => {
+  const identifier = activeIdentifier.value;
+  if (!identifier || !isStep1Valid.value) return;
+
+  try {
+    const res = await axios.post('/register/check-exists', {
+      identifier: identifier,
+    }, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (res.data?.exists) {
+      isAlreadyRegistered.value = true;
+      otpError.value = res.data.message || 'Tài khoản này đã được đăng ký. Vui lòng chuyển sang Đăng Nhập!';
+    } else {
+      isAlreadyRegistered.value = false;
+      if (otpError.value && (otpError.value.includes('đã được đăng ký') || otpError.value.includes('đã được sử dụng'))) {
+        otpError.value = '';
+      }
+    }
+  } catch (e) {}
+};
+
+const onIdentifierBlur = () => {
+  stopTurboSpeed();
+  checkIdentifierExists();
 };
 
 const handleSendOtpStep1 = async () => {
-  if (!isStep1Valid.value || !agreeTerms.value || isSendingOtp.value) return;
+  if (!isStep1Valid.value || !agreeTerms.value || isSendingOtp.value || isAlreadyRegistered.value) return;
 
   isSendingOtp.value = true;
   otpError.value = '';
@@ -1318,7 +1326,7 @@ const handleSendOtpStep1 = async () => {
 
     if (res.data?.success) {
       registerStep.value = 2;
-      receivedOtp.value = res.data?.otp || '';
+      receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
       otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'zalo' : 'email');
       startCountdown(119);
@@ -1357,7 +1365,7 @@ const handleResendOtp = async () => {
     });
 
     if (res.data?.success) {
-      receivedOtp.value = res.data?.otp || '';
+      receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
       otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'zalo' : 'email');
       startCountdown(119);
@@ -1410,12 +1418,20 @@ const registerForm = useForm({
 });
 
 watch([regPhone, regGmail], () => {
-  otpError.value = '';
+  if (checkExistsTimer) clearTimeout(checkExistsTimer);
   isAlreadyRegistered.value = false;
+  if (otpError.value && (otpError.value.includes('đã được đăng ký') || otpError.value.includes('đã được sử dụng'))) {
+    otpError.value = '';
+  }
   if (page.props.errors) {
     delete page.props.errors.identifier;
     delete page.props.errors.email;
     delete page.props.errors.phone;
+  }
+  if (isStep1Valid.value) {
+    checkExistsTimer = setTimeout(() => {
+      checkIdentifierExists();
+    }, 450);
   }
 });
 
