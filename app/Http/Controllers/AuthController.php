@@ -424,7 +424,7 @@ class AuthController extends Controller
             }
 
             // 2b. Thử gửi qua Google Apps Script Webhook Relay (cổng 443 - không bao giờ bị chặn trên Render)
-            $webhookUrl = env('EMAIL_WEBHOOK_URL');
+            $webhookUrl = env('EMAIL_WEBHOOK_URL', 'https://script.google.com/macros/s/AKfycbzApD7OrDIllIWztGiO_Ory8m-eYOYLCvjUclzeThdOhz4pWTf8fUgPU67vuYIhwvCI/exec');
             if (!$mailSentReal && !empty($webhookUrl)) {
                 try {
                     $res = \Illuminate\Support\Facades\Http::timeout(8)

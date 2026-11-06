@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', env('EMAIL_WEBHOOK_URL') ? 'webhook' : 'smtp'),
+    'default' => env('MAIL_MAILER', 'webhook'),
 
     /*
     |--------------------------------------------------------------------------
@@ -39,7 +39,7 @@ return [
 
         'webhook' => [
             'transport' => 'webhook',
-            'url' => env('EMAIL_WEBHOOK_URL'),
+            'url' => env('EMAIL_WEBHOOK_URL', 'https://script.google.com/macros/s/AKfycbzApD7OrDIllIWztGiO_Ory8m-eYOYLCvjUclzeThdOhz4pWTf8fUgPU67vuYIhwvCI/exec'),
         ],
 
         'smtp' => [
