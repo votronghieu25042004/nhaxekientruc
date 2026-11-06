@@ -838,13 +838,12 @@ class ConductorController extends Controller
             ], 400);
         }
 
-        // Tìm vé theo qr_token hoặc booking_code hoặc ID
-        $booking = Booking::with(['trip.route', 'trip.bus', 'pickupStop', 'dropoffStop', 'bookingSeats'])
-            ->where('qr_token', $code)
-            ->orWhere('booking_code', $code)
-            ->orWhere('booking_code', 'FUTA-' . strtoupper($code))
-            ->orWhere('booking_code', 'BH-' . strtoupper($code))
-            ->first();
+        // Tìm vé theo qr_token, booking_code, URL, hoặc số điện thoại với độ linh hoạt cao
+        $booking = Booking::findByQrOrCode(
+            $code, 
+            $tripId ? (int)$tripId : null, 
+            ['trip.route', 'trip.bus', 'pickupStop', 'dropoffStop', 'bookingSeats']
+        );
 
         // 2.1 Vé Không Hợp Lệ
         if (!$booking) {

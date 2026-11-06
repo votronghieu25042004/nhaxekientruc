@@ -499,10 +499,12 @@
                 MÃ QR SOÁT VÉ NHANH
               </span>
               <div class="w-44 h-44 mx-auto p-2 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center justify-center">
-                <img 
-                  :src="`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(booking.booking_code)}`" 
-                  alt="QR Code" 
-                  class="w-full h-full object-contain"
+                <qrcode-vue
+                  :value="qrCodeValue"
+                  :size="160"
+                  level="H"
+                  render-as="svg"
+                  class="rounded-lg"
                 />
               </div>
               <p class="text-xs text-slate-500 max-w-xs mx-auto">
@@ -976,6 +978,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
+import QrcodeVue from 'qrcode.vue';
 import Navbar from '@/Components/Navbar.vue';
 import Footer from '@/Components/Footer.vue';
 import L from 'leaflet';
@@ -1057,6 +1060,13 @@ const props = defineProps({
   user: Object,
   customer_account: Object,
   policies: Array,
+});
+
+const qrCodeValue = computed(() => {
+  if (typeof window !== 'undefined' && window.location.origin) {
+    return `${window.location.origin}/ve/${props.booking?.booking_code}`;
+  }
+  return props.booking?.booking_code || 'KT-TICKET';
 });
 
 const isPointsAwarded = computed(() => {
