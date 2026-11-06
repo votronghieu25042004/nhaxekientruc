@@ -43,6 +43,29 @@ Route::post('user/verify-otp', [AuthController::class, 'verifyProfileOtp'])->nam
 // 2. Schedules Route
 Route::get('schedules', [TripController::class, 'schedules'])->name('schedules.index');
 
+// Diagnostic route
+Route::get('debug-check', function () {
+    $results = [];
+    $results['php_version'] = PHP_VERSION;
+    $results['app_env'] = config('app.env');
+    $results['app_debug'] = config('app.debug');
+    $results['db_connection'] = config('database.default');
+    $results['db_host'] = config('database.connections.mysql.host');
+    $results['db_port'] = config('database.connections.mysql.port');
+    $results['db_database'] = config('database.connections.mysql.database');
+    $results['session_driver'] = config('session.driver');
+    
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        $results['db_status'] = 'CONNECTED';
+        $results['tables'] = \Illuminate\Support\Facades\DB::select('SHOW TABLES');
+    } catch (\Throwable $e) {
+        $results['db_status'] = 'FAILED: ' . $e->getMessage();
+    }
+    
+    return response()->json($results);
+});
+
 // 2. Customer Routes
 Route::get('/', [TripController::class, 'home'])->name('home');
 Route::get('trips', [TripController::class, 'search'])->name('trips.index');
