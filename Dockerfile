@@ -18,9 +18,10 @@ RUN apk add --no-cache \
     zip \
     unzip \
     oniguruma-dev \
+    sqlite-dev \
     ca-certificates
 
-RUN docker-php-ext-install pdo pdo_mysql bcmath mbstring opcache
+RUN docker-php-ext-install pdo pdo_mysql pdo_sqlite bcmath mbstring opcache
 
 # Copy Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
