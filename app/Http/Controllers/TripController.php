@@ -140,7 +140,11 @@ class TripController extends Controller
      */
     public function home()
     {
-        \App\Services\TripScheduleService::ensureUpcomingTripsExist(3);
+        try {
+            \App\Services\TripScheduleService::ensureUpcomingTripsExist(1);
+        } catch (\Throwable $e) {
+            // bỏ qua để trang chủ luôn mở siêu tốc
+        }
         $now = Carbon::now('Asia/Ho_Chi_Minh');
         $today = Carbon::today('Asia/Ho_Chi_Minh');
         $routes = Route::with(['stops'])->get();
