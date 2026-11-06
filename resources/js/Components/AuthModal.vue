@@ -58,28 +58,6 @@
                 class="w-full pl-10 pr-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition"
               />
             </div>
-
-            <!-- Student Auto-detection Banner -->
-            <div v-if="isArchitectureStudent" class="mt-2 p-3 bg-gradient-to-r from-red-50 to-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-950 space-y-1 animate-in fade-in">
-              <div class="flex items-center gap-1.5 font-black text-red-700">
-                <span>🏮</span>
-                <span>SINH VIÊN ĐẠI HỌC KIẾN TRÚC (DAU)</span>
-                <span class="ml-auto text-[9.5px] px-2 py-0.5 rounded-full bg-red-600 text-white font-mono">Xác thực: Hợp lệ</span>
-              </div>
-              <p class="text-[11px] text-slate-700 leading-snug">
-                🎉 Bạn được hưởng đặc quyền <strong>VÉ 0-ĐỒNG VỀ QUÊ ĐÓN TẾT (Mã: SINHVIEN0DONG)</strong>, miễn phí 100% đồ án & có <strong>AI gọi điện nhắc lịch xuất bến</strong>!
-              </p>
-            </div>
-            <div v-else-if="isGeneralStudent" class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-950 space-y-1 animate-in fade-in">
-              <div class="flex items-center gap-1.5 font-black text-blue-700">
-                <span>🎓</span>
-                <span>SINH VIÊN CÁC TRƯỜNG ĐH & CĐ TOÀN QUỐC</span>
-                <span class="ml-auto text-[9.5px] px-2 py-0.5 rounded-full bg-blue-600 text-white font-mono">Đã xác nhận SV</span>
-              </div>
-              <p class="text-[11px] text-slate-700 leading-snug">
-                Áp dụng chính sách <strong>GIẢM 30% LẦN ĐẦU (Mã SINHVIEN)</strong> hoặc <strong>VÉ 0-ĐỒNG TẾT</strong> và AI nhắc lịch trình tự động!
-              </p>
-            </div>
           </div>
 
           <!-- Mật khẩu -->
@@ -189,18 +167,6 @@ const loginForm = ref({
   password: '',
   remember: true,
 });
-
-const isArchitectureStudent = computed(() => {
-  const e = (loginForm.value.email || '').toLowerCase().trim();
-  return e.endsWith('@dau.edu.vn') || e.includes('kientruc');
-});
-
-const isGeneralStudent = computed(() => {
-  const e = (loginForm.value.email || '').toLowerCase().trim();
-  return !isArchitectureStudent.value && (e.includes('.edu.vn') || e.includes('sinhvien'));
-});
-
-const isStudentEmail = computed(() => isArchitectureStudent.value || isGeneralStudent.value);
 
 const closeModal = () => {
   emit('update:modelValue', false);

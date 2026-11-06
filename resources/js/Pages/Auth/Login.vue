@@ -480,23 +480,6 @@
                           class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal outline-none transition focus:ring-2 focus:ring-red-500/20"
                         />
                       </div>
-
-                      <!-- TỰ ĐỘNG NHẬN DIỆN EMAIL SINH VIÊN (BANNER XANH LÁ) -->
-                      <div 
-                        v-if="isStudentEmailLogin" 
-                        class="mt-3 p-3 bg-emerald-50 border-2 border-emerald-400 rounded-2xl text-emerald-950 text-xs flex items-start gap-2.5 shadow-sm animate-in fade-in"
-                      >
-                        <span class="text-xl shrink-0 mt-0.5">🎓</span>
-                        <div>
-                          <p class="font-black text-emerald-800 text-[12.5px] flex items-center gap-1.5">
-                            <span>ĐÃ NHẬN DIỆN EMAIL SINH VIÊN KIẾN TRÚC!</span>
-                            <span class="px-1.5 py-0.2 rounded bg-emerald-600 text-white font-mono text-[9px] font-black uppercase">SINHVIEN</span>
-                          </p>
-                          <p class="text-[11px] text-emerald-700 mt-0.5 leading-snug">
-                            Tài khoản trường <strong>.edu.vn</strong> được kích hoạt <strong>Gói Giảm 30% (Mã: SINHVIEN)</strong> và đặc quyền vé đầu tiên miễn phí 100%!
-                          </p>
-                        </div>
-                      </div>
                     </div>
 
                     <!-- Ô Nhập Mật Khẩu -->
@@ -713,13 +696,19 @@
                           />
                         </div>
                         
-                        <!-- Tự động phát hiện email sinh viên vs email thường -->
-                        <div v-if="regGmail && regGmail.toLowerCase().includes('.edu.vn')" class="mt-2 p-3 bg-emerald-50 border border-emerald-300 rounded-2xl text-xs text-emerald-950 flex items-center gap-2 font-bold animate-in fade-in">
-                          <span class="text-xl">🎓</span>
-                          <div>
-                            <span class="text-emerald-800">Email Sinh Viên Trường Hợp Lệ:</span>
-                            <span class="font-normal text-slate-700 ml-1">Kích hoạt đặc quyền <strong>Mã: SINHVIEN (Giảm 30% vĩnh viễn & vé đầu 0đ)</strong>!</span>
+                        <!-- Tự động phát hiện email sinh viên khi đăng ký -->
+                        <div v-if="isStudentRegEmail" class="mt-2.5 p-3.5 bg-gradient-to-r from-red-50 to-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-950 space-y-1.5 animate-in fade-in shadow-2xs">
+                          <div class="flex items-center gap-1.5 font-black text-red-700">
+                            <span class="text-base">🏮</span>
+                            <span class="text-xs sm:text-sm uppercase tracking-wide">SINH VIÊN ĐẠI HỌC</span>
+                            <span class="ml-auto text-[9.5px] px-2.5 py-0.5 rounded-full bg-red-600 text-white font-mono font-bold">Xác thực: Hợp lệ</span>
                           </div>
+                          <p class="text-[11.5px] text-slate-800 leading-relaxed">
+                            🎉 Bạn được hưởng đặc quyền <strong>VÉ 0Đ cho lần đầu đặt vé (Mã: SINHVIEN0DONG)</strong>, và được hưởng <strong>1 năm đặt vé được giảm 30% (Mã: SINHVIEN30)</strong>!
+                          </p>
+                          <p class="text-[10.5px] text-amber-900/85 font-medium">
+                            ⚠️ <em>Lưu ý: Mỗi sinh viên áp dụng duy nhất 1 lần mã 0 đồng và mỗi lần chỉ được 1 ghế.</em>
+                          </p>
                         </div>
                         <div v-else-if="regGmail" class="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex items-center gap-2 font-medium animate-in fade-in">
                           <span class="text-lg">🎁</span>
@@ -1202,6 +1191,11 @@ const regGmailValid = computed(() => {
   const raw = (regGmail.value || '').trim();
   if (!raw) return false;
   return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(raw);
+});
+
+const isStudentRegEmail = computed(() => {
+  const e = (regGmail.value || '').toLowerCase().trim();
+  return e.includes('.edu.vn') || e.includes('sinhvien') || e.includes('kientruc');
 });
 
 const isStep1Valid = computed(() => {

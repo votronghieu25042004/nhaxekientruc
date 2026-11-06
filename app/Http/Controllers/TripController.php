@@ -665,7 +665,10 @@ class TripController extends Controller
 
         if (in_array(strtoupper($voucherCode), ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])) {
             if (!$isStudent) {
-                return back()->withErrors(['voucher' => 'Mã giảm giá 100% chỉ dành riêng cho sinh viên có email trường (.edu.vn)!']);
+                return back()->withErrors(['voucher' => 'Mã giảm giá 100% (SINHVIEN0DONG) chỉ dành riêng cho sinh viên có email trường (.edu.vn)!']);
+            }
+            if (count($seatIds) > 1) {
+                return back()->withErrors(['voucher' => 'Mã vé 0-Đồng sinh viên (SINHVIEN0DONG) chỉ áp dụng tối đa cho đúng 1 ghế cho mỗi sinh viên. Quý khách vui lòng chọn đúng 1 ghế!']);
             }
             if ($userId) {
                 $hasUsedFirstTrip = Booking::where('user_id', $userId)
@@ -675,7 +678,7 @@ class TripController extends Controller
                     })
                     ->exists();
                 if ($hasUsedFirstTrip) {
-                    return back()->withErrors(['voucher' => 'Không đủ điều kiện! Mã giảm giá 100% chỉ áp dụng duy nhất cho lần đầu tiên đặt vé của sinh viên.']);
+                    return back()->withErrors(['voucher' => 'Không đủ điều kiện! Mã vé 0-Đồng chỉ áp dụng duy nhất 1 lần cho lần đầu tiên đặt vé của sinh viên.']);
                 }
             }
             $studentDiscount = $totalAmount; // Vé 0-Đồng (Giảm 100%)
@@ -1460,7 +1463,15 @@ class TripController extends Controller
             if (!$isStudent) {
                 return response()->json([
                     'valid' => false,
-                    'message' => 'Mã giảm giá 100% [SINHVIEN100] chỉ dành riêng cho sinh viên có email trường (.edu.vn / @dau.edu.vn)! Vui lòng đăng nhập bằng email sinh viên.',
+                    'message' => 'Mã vé 0-Đồng [SINHVIEN0DONG] chỉ dành riêng cho sinh viên có email trường (.edu.vn)! Vui lòng đăng ký/dùng email sinh viên để áp dụng.',
+                ], 422);
+            }
+
+            $seatCount = (int)$request->input('seat_count', 1);
+            if ($seatCount > 1) {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'Mã vé 0-Đồng (SINHVIEN0DONG) chỉ áp dụng tối đa cho đúng 1 ghế cho mỗi sinh viên. Quý khách vui lòng chọn đúng 1 ghế!',
                 ], 422);
             }
 
@@ -1476,18 +1487,18 @@ class TripController extends Controller
                 if ($hasUsedFirstTrip) {
                     return response()->json([
                         'valid' => false,
-                        'message' => 'Không đủ điều kiện! Mã giảm giá 100% chỉ áp dụng duy nhất cho lần đầu tiên đặt vé của sinh viên.',
+                        'message' => 'Không đủ điều kiện! Mã vé 0-Đồng chỉ áp dụng duy nhất 1 lần cho lần đầu tiên đặt vé của sinh viên.',
                     ], 422);
                 }
             }
 
             return response()->json([
                 'valid' => true,
-                'code' => 'SINHVIEN100',
+                'code' => 'SINHVIEN0DONG',
                 'discount_type' => 'PERCENT',
                 'discount_value' => 100,
                 'discount_amount' => $amount,
-                'description' => 'Đặc quyền Sinh Viên: Miễn phí 100% (0 VNĐ) cho chuyến xe đầu tiên',
+                'description' => 'Đặc quyền Sinh Viên: Miễn phí 100% (0 VNĐ) cho 1 ghế đầu tiên',
                 'message' => "🎉 Chúc mừng bạn đã áp dụng thành công VÉ 0-ĐỒNG LẦN ĐẦU! Giá vé 0 VNĐ, tài trợ 100% bởi nhaxekientruc!",
             ]);
         }
