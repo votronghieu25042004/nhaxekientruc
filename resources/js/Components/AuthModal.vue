@@ -144,41 +144,6 @@
             <span>{{ isSubmitting ? 'ĐANG ĐĂNG NHẬP...' : 'ĐĂNG NHẬP NGAY' }}</span>
             <span>➔</span>
           </button>
-
-          <!-- ĐĂNG NHẬP NHANH DEMO CHO SINH VIÊN (1-CLICK) -->
-          <div class="pt-2 border-t border-dashed border-slate-200">
-            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block text-center mb-1.5">
-              Đăng nhập nhanh tài khoản sinh viên (1-Click)
-            </span>
-            <div class="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                @click="loginAsArchitectureStudent"
-                class="p-2.5 rounded-xl bg-gradient-to-r from-red-50 to-amber-50 border border-amber-300 hover:border-amber-500 text-left cursor-pointer transition group shadow-2xs"
-              >
-                <div class="text-[11px] font-black text-red-800 flex items-center gap-1">
-                  <span>🏛️</span>
-                  <span>SV Kiến Trúc (DAU)</span>
-                </div>
-                <div class="text-[9.5px] text-slate-600 truncate font-mono">sinhvien@dau.edu.vn</div>
-                <div class="text-[9px] text-amber-700 font-bold mt-0.5">🧧 Vé Tết 0đ + AI gọi</div>
-              </button>
-
-              <button
-                type="button"
-                @click="loginAsGeneralStudent"
-                class="p-2.5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 hover:border-blue-400 text-left cursor-pointer transition group shadow-2xs"
-              >
-                <div class="text-[11px] font-black text-blue-800 flex items-center gap-1">
-                  <span>🎓</span>
-                  <span>Sinh Viên ĐH Khác</span>
-                </div>
-                <div class="text-[9.5px] text-slate-600 truncate font-mono">sinhvien@dut.udn.vn</div>
-                <div class="text-[9px] text-blue-700 font-bold mt-0.5">Giảm 30% lần đầu</div>
-              </button>
-            </div>
-          </div>
-
         </form>
 
         <!-- CHUYỂN SANG ĐĂNG KÝ (XÁC THỰC OTP) -->
@@ -236,18 +201,6 @@ const isGeneralStudent = computed(() => {
 });
 
 const isStudentEmail = computed(() => isArchitectureStudent.value || isGeneralStudent.value);
-
-const loginAsArchitectureStudent = () => {
-  loginForm.value.email = 'sinhvien@dau.edu.vn';
-  loginForm.value.password = '123456';
-  handlePasswordLogin();
-};
-
-const loginAsGeneralStudent = () => {
-  loginForm.value.email = 'sinhvien@dut.udn.vn';
-  loginForm.value.password = '123456';
-  handlePasswordLogin();
-};
 
 const closeModal = () => {
   emit('update:modelValue', false);
