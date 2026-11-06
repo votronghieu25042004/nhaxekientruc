@@ -507,12 +507,16 @@ class TripController extends Controller
         $user = Auth::user();
         $hasUsedStudentFirstTrip = false;
         if ($user) {
-            $hasUsedStudentFirstTrip = Booking::where('user_id', $user->id)
-                ->where(function ($q) {
-                    $q->whereIn('voucher_code', ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])
-                      ->orWhereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
-                })
-                ->exists();
+            try {
+                $hasUsedStudentFirstTrip = Booking::where('user_id', $user->id)
+                    ->where(function ($q) {
+                        $q->whereIn('voucher_code', ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])
+                          ->orWhereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
+                    })
+                    ->exists();
+            } catch (\Throwable $e) {
+                $hasUsedStudentFirstTrip = false;
+            }
         }
 
         return Inertia::render('Trips/Show', [
