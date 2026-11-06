@@ -34,6 +34,13 @@ class Trip extends Model {
      */
     public static function syncRealTimeStatuses()
     {
+        // Chỉ chạy đồng bộ trạng thái tối đa 1 lần mỗi 2 phút để người dùng lướt web mượt 60fps
+        $cacheKey = 'trip_realtime_synced_flag';
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            return;
+        }
+        \Illuminate\Support\Facades\Cache::put($cacheKey, true, 120);
+
         $now = \Carbon\Carbon::now('Asia/Ho_Chi_Minh');
 
         // 1. Chuyến đã qua giờ đến => COMPLETED
