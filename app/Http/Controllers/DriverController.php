@@ -306,16 +306,26 @@ class DriverController extends Controller
                         ];
                     }
 
-                    $type = 'STOP';
-                    if ($isOrigin) $type = 'ORIGIN';
-                    elseif ($isLast) $type = 'DESTINATION';
-                    elseif ($st->stop_type === 'DROPOFF') $type = 'DROPOFF';
-                    elseif ($st->stop_type === 'PICKUP') $type = 'PICKUP';
+                    $nameLower = mb_strtolower($st->stop_name ?? '');
+                    if ($isOrigin) {
+                        $type = 'ORIGIN';
+                    } elseif ($isLast) {
+                        $type = 'DESTINATION';
+                    } elseif (str_contains($nameLower, 'đón') || str_contains($nameLower, 'trung chuyển') || str_contains($nameLower, 'văn phòng')) {
+                        $type = 'PICKUP';
+                    } elseif (str_contains($nameLower, 'trả') || str_contains($nameLower, 'xuống') || str_contains($nameLower, 'cửa ngõ')) {
+                        $type = 'DROPOFF';
+                    } elseif (str_contains($nameLower, 'nghỉ') || str_contains($nameLower, 'ăn')) {
+                        $type = 'REST_STOP';
+                    } else {
+                        $type = ($idx < $stopsCount / 2) ? 'PICKUP' : 'DROPOFF';
+                    }
 
                     $stationDropoffs[] = [
                         'stop_id' => $st->id,
                         'stop_order' => $order,
                         'type' => $type,
+                        'stop_type' => $type,
                         'stop_name' => $st->stop_name,
                         'address' => $st->address ?? ($isOrigin ? 'Bến xuất phát ban đầu' : ($isLast ? 'Bến xe đích đến cuối cùng' : 'Trạm đón trả trên tuyến')),
                         'distance_km' => $st->distance_from_start_km ?? round($totalDist * ($idx / max(1, $stopsCount - 1))),
