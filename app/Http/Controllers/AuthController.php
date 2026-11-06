@@ -423,6 +423,25 @@ class AuthController extends Controller
                 }
             }
 
+            // 2b. Thử gửi qua Google Apps Script Webhook Relay (cổng 443 - không bao giờ bị chặn trên Render)
+            $webhookUrl = env('EMAIL_WEBHOOK_URL');
+            if (!$mailSentReal && !empty($webhookUrl)) {
+                try {
+                    $res = \Illuminate\Support\Facades\Http::timeout(8)
+                        ->post($webhookUrl, [
+                            'to' => $identifier,
+                            'subject' => "[nhaxekientruc] Mã xác thực OTP đăng ký tài khoản của bạn: {$otp}",
+                            'html' => view('emails.register_otp', ['otp' => $otp, 'email' => $identifier])->render(),
+                        ]);
+                    if ($res->successful()) {
+                        $mailSentReal = true;
+                        Log::info("[WEBHOOK_EMAIL_SUCCESS] Gửi email thành công qua Google Apps Script Webhook tới {$identifier}");
+                    }
+                } catch (\Throwable $we) {
+                    Log::warning("[WEBHOOK_EMAIL_FAILED] " . $we->getMessage());
+                }
+            }
+
             // 3. Gửi qua Google SMTP chuẩn (Chạy mượt 100% trên Localhost & VPS máy chủ)
             if (!$mailSentReal) {
                 try {
