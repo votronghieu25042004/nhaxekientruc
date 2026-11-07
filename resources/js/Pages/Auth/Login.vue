@@ -25,8 +25,8 @@
             <div class="relative z-10">
               <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
-                  <div class="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center text-2xl shadow-inner shrink-0">
-                    🚌
+                  <div class="w-11 h-11 rounded-2xl bg-white border border-white/40 flex items-center justify-center p-1 shadow-sm shrink-0">
+                    <img src="/images/logo.png" alt="Logo Trường ĐH Kiến Trúc Đà Nẵng" class="w-full h-full object-contain" />
                   </div>
                   <div>
                     <div class="flex items-center gap-1.5 flex-wrap">

@@ -43,7 +43,7 @@ function doPost(e) {
     // Gửi email thật qua hạ tầng máy chủ Gmail của Google
     GmailApp.sendEmail(to, subject, text, {
       htmlBody: html,
-      name: "Nhà Xe Kiến Trúc"
+      name: "Trường ĐH Kiến Trúc Đà Nẵng - nhaxekientruc"
     });
 
     return ContentService.createTextOutput(JSON.stringify({ 

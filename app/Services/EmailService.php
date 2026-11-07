@@ -29,7 +29,10 @@ class EmailService
         $webhookUrl = env('EMAIL_WEBHOOK_URL', 'https://script.google.com/macros/s/AKfycbzApD7OrDIllIWztGiO_Ory8m-eYOYLCvjUclzeThdOhz4pWTf8fUgPU67vuYIhwvCI/exec');
         if (!empty($webhookUrl)) {
             try {
-                $res = Http::timeout(10)->post($webhookUrl, [
+                $res = Http::withHeaders([
+                    'Content-Type' => 'application/json; charset=utf-8',
+                    'Accept' => 'application/json',
+                ])->timeout(12)->post($webhookUrl, [
                     'to' => $to,
                     'subject' => $subject,
                     'html' => $htmlContent,
@@ -55,11 +58,11 @@ class EmailService
             try {
                 $res = Http::withHeaders([
                     'api-key' => $brevoKey,
-                    'Content-Type' => 'application/json',
+                    'Content-Type' => 'application/json; charset=utf-8',
                     'Accept' => 'application/json',
                 ])->timeout(8)->post('https://api.brevo.com/v3/smtp/email', [
                     'sender' => [
-                        'name' => config('mail.from.name', 'nhaxekientruc Terminal'),
+                        'name' => config('mail.from.name', 'Trường ĐH Kiến Trúc Đà Nẵng - nhaxekientruc'),
                         'email' => config('mail.from.address', 'noreply@nhaxekientruc.vn')
                     ],
                     'to' => [['email' => $to]],
@@ -126,7 +129,7 @@ class EmailService
             'qrToken' => $qrToken,
         ];
 
-        $subject = "🎫 [nhaxekientruc] Xác Nhận Đặt Vé #{$booking->booking_code} & Mã QR Check-in";
+        $subject = "[nhaxekientruc] Xác Nhận Đặt Vé #{$booking->booking_code} & Thẻ Lên Xe Điện Tử";
         $htmlContent = view('emails.booking_confirmed', $emailData)->render();
 
         return self::sendRawHtml($to, $subject, $htmlContent);
@@ -163,7 +166,7 @@ class EmailService
             'ticketUrl' => url('/booking/' . $booking->booking_code),
         ];
 
-        $subject = "⏰ [nhaxekientruc] Nhắc nhở xuất bến trước 45 phút - Chuyến " . ($trip?->trip_code ?? '') . " (" . ($trip?->route?->name ?? 'Tuyến xe') . ")";
+        $subject = "[nhaxekientruc] Nhắc nhở xuất bến trước 45 phút - Chuyến " . ($trip?->trip_code ?? '') . " (" . ($trip?->route?->name ?? 'Tuyến xe') . ")";
         $htmlContent = view('emails.departure_reminder_45m', $emailData)->render();
 
         return self::sendRawHtml($to, $subject, $htmlContent);
@@ -197,7 +200,7 @@ class EmailService
             'ticketUrl' => url('/booking/' . $booking->booking_code),
         ];
 
-        $subject = "✅ [nhaxekientruc] Đã Duyệt Hoàn Tiền Vé #{$booking->booking_code}";
+        $subject = "[nhaxekientruc] Đã Duyệt Hoàn Tiền Vé #{$booking->booking_code}";
         $htmlContent = view('emails.refund_approved', $emailData)->render();
 
         return self::sendRawHtml($to, $subject, $htmlContent);
@@ -226,7 +229,7 @@ class EmailService
             'ticketUrl' => url('/booking/' . $booking->booking_code),
         ];
 
-        $subject = "⚠️ [nhaxekientruc] Thông Báo Từ Chối Yêu Cầu Hoàn Tiền Vé #{$booking->booking_code}";
+        $subject = "[nhaxekientruc] Thông Báo Từ Chối Yêu Cầu Hoàn Tiền Vé #{$booking->booking_code}";
         $htmlContent = view('emails.refund_rejected', $emailData)->render();
 
         return self::sendRawHtml($to, $subject, $htmlContent);

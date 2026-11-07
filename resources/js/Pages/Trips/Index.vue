@@ -1021,39 +1021,95 @@ const amenityOptions = [
 ];
 
 const dynamicPickupStops = computed(() => {
-  const orig = (originInput.value || '').toLowerCase().trim();
-  if (orig.includes('đà nẵng') || orig.includes('da nang')) {
-    return ['Bến xe Trung tâm Đà Nẵng', 'Cổng số 4 - Bến xe TT', 'Ngã Ba Huế', 'Sân bay Quốc tế Đà Nẵng', 'Đại học Bách Khoa ĐN'];
-  } else if (orig.includes('huế') || orig.includes('hue')) {
-    return ['Bến xe Phía Nam Huế', 'Bến xe An Cựu', 'Sân bay Phú Bài', 'Cửa ngõ TP Huế'];
-  } else if (orig.includes('hà nội') || orig.includes('ha noi')) {
-    return ['Bến xe Mỹ Đình', 'Bến xe Giáp Bát', 'Bến xe Nước Ngầm'];
-  } else if (orig.includes('sài gòn') || orig.includes('hồ chí minh') || orig.includes('hcm')) {
-    return ['Bến xe Miền Đông Mới', 'Bến xe Miền Tây', 'Ngã tư An Sương'];
-  } else if (orig.includes('quảng trị') || orig.includes('đông hà')) {
-    return ['Bến xe Đông Hà', 'Ngã Tư Sòng (Quảng Trị)', 'Thị xã Quảng Trị'];
+  const stopsSet = new Set();
+  const relevantTrips = rawTrips.value;
+  
+  // 1. Gather from trips on screen
+  if (relevantTrips && relevantTrips.length > 0) {
+    relevantTrips.forEach(t => {
+      const stops = t.route?.stops || [];
+      const count = stops.length;
+      stops.forEach((s, idx) => {
+        const order = s.stop_order || (idx + 1);
+        const nameLower = (s.stop_name || '').toLowerCase();
+        if ((order <= Math.max(2, Math.ceil(count / 2)) || nameLower.includes('đón')) && !nameLower.includes('trả khách')) {
+          if (s.stop_name) stopsSet.add(s.stop_name.trim());
+        }
+      });
+    });
   }
-  return ['Bến xe Trung tâm Đà Nẵng', 'Cổng số 4 - Bến xe TT', 'Bến xe Phía Nam Huế', 'Bến xe Đông Hà', 'Bến xe Miền Đông'];
+  
+  // 2. If set is empty, gather from props.routes matching search
+  if (stopsSet.size === 0 && props.routes && props.routes.length > 0) {
+    const orig = (originInput.value || '').toLowerCase().trim();
+    const dest = (destinationInput.value || '').toLowerCase().trim();
+    const matchingRoutes = props.routes.filter(r => {
+      const rOrig = (r.origin || '').toLowerCase();
+      const rDest = (r.destination || '').toLowerCase();
+      if (orig && !rOrig.includes(orig)) return false;
+      if (dest && !rDest.includes(dest)) return false;
+      return true;
+    });
+    const targetRoutes = matchingRoutes.length > 0 ? matchingRoutes : props.routes;
+    targetRoutes.forEach(r => {
+      const stops = r.stops || [];
+      const count = stops.length;
+      stops.forEach((s, idx) => {
+        const order = s.stop_order || (idx + 1);
+        const nameLower = (s.stop_name || '').toLowerCase();
+        if ((order <= Math.max(2, Math.ceil(count / 2)) || nameLower.includes('đón')) && !nameLower.includes('trả khách')) {
+          if (s.stop_name) stopsSet.add(s.stop_name.trim());
+        }
+      });
+    });
+  }
+  
+  return Array.from(stopsSet);
 });
 
 const dynamicDropoffStops = computed(() => {
-  const dest = (destinationInput.value || '').toLowerCase().trim();
-  if (dest.includes('quảng trị') || dest.includes('quang tri') || dest.includes('đông hà') || dest.includes('dong ha')) {
-    return ['Bến xe Đông Hà', 'Ngã Tư Sòng (Quảng Trị)', 'Thị xã Quảng Trị', 'Thị xã Hải Lăng', 'Cửa khẩu Quốc tế Lao Bảo'];
-  } else if (dest.includes('huế') || dest.includes('hue')) {
-    return ['Bến xe Phía Nam Huế', 'Bến xe Phía Bắc', 'Khu công nghiệp Phú Bài', 'Ngã 3 La Sơn'];
-  } else if (dest.includes('đà lạt') || dest.includes('da lat')) {
-    return ['Bến xe Liên Tỉnh Đà Lạt', 'Hồ Xuân Hương', 'Đèo Prenn', 'Chợ Đà Lạt'];
-  } else if (dest.includes('quy nhơn') || dest.includes('quy nhon') || dest.includes('bình định')) {
-    return ['Bến xe Trung tâm Quy Nhơn', 'Ngã 3 Phú Tài', 'Cửa ngõ TP Quy Nhơn'];
-  } else if (dest.includes('buôn ma thuột') || dest.includes('bmt') || dest.includes('đắk lắk')) {
-    return ['Bến xe Liên Tỉnh Đắk Lắk', 'Ngã 3 Hòa Bình', 'TP Buôn Ma Thuột'];
-  } else if (dest.includes('nam định') || dest.includes('nam dinh')) {
-    return ['Bến xe Nam Định', 'Cầu Đò Quan'];
-  } else if (dest.includes('hà nội') || dest.includes('ha noi')) {
-    return ['Bến xe Mỹ Đình', 'Bến xe Giáp Bát'];
+  const stopsSet = new Set();
+  const relevantTrips = rawTrips.value;
+  
+  if (relevantTrips && relevantTrips.length > 0) {
+    relevantTrips.forEach(t => {
+      const stops = t.route?.stops || [];
+      const count = stops.length;
+      stops.forEach((s, idx) => {
+        const order = s.stop_order || (idx + 1);
+        const nameLower = (s.stop_name || '').toLowerCase();
+        if ((order > Math.floor(count / 2) || nameLower.includes('trả')) && idx > 0) {
+          if (s.stop_name) stopsSet.add(s.stop_name.trim());
+        }
+      });
+    });
   }
-  return ['Bến xe Đông Hà (Quảng Trị)', 'Ngã Tư Sòng (Quảng Trị)', 'Bến xe Phía Nam Huế', 'Bến xe Liên Tỉnh Đắk Lắk', 'Bến xe Trung tâm Quy Nhơn'];
+  
+  if (stopsSet.size === 0 && props.routes && props.routes.length > 0) {
+    const orig = (originInput.value || '').toLowerCase().trim();
+    const dest = (destinationInput.value || '').toLowerCase().trim();
+    const matchingRoutes = props.routes.filter(r => {
+      const rOrig = (r.origin || '').toLowerCase();
+      const rDest = (r.destination || '').toLowerCase();
+      if (orig && !rOrig.includes(orig)) return false;
+      if (dest && !rDest.includes(dest)) return false;
+      return true;
+    });
+    const targetRoutes = matchingRoutes.length > 0 ? matchingRoutes : props.routes;
+    targetRoutes.forEach(r => {
+      const stops = r.stops || [];
+      const count = stops.length;
+      stops.forEach((s, idx) => {
+        const order = s.stop_order || (idx + 1);
+        const nameLower = (s.stop_name || '').toLowerCase();
+        if ((order > Math.floor(count / 2) || nameLower.includes('trả')) && idx > 0) {
+          if (s.stop_name) stopsSet.add(s.stop_name.trim());
+        }
+      });
+    });
+  }
+  
+  return Array.from(stopsSet);
 });
 
 const activeFilterCount = computed(() => {
@@ -1123,6 +1179,27 @@ const filteredTrips = computed(() => {
       if (selectedDepTime.value === 'afternoon') return hour >= 12 && hour < 18;
       if (selectedDepTime.value === 'night') return hour >= 18 && hour < 24;
       return true;
+    });
+  }
+
+  if (selectedPickupStops.value.length > 0) {
+    list = list.filter(t => {
+      const stops = t.route?.stops || [];
+      return stops.some(s => selectedPickupStops.value.includes(s.stop_name));
+    });
+  }
+
+  if (selectedDropoffStops.value.length > 0) {
+    list = list.filter(t => {
+      const stops = t.route?.stops || [];
+      return stops.some(s => selectedDropoffStops.value.includes(s.stop_name));
+    });
+  }
+
+  if (selectedBusTypes.value.length > 0) {
+    list = list.filter(t => {
+      const type = (t.bus?.bus_type || '').toLowerCase();
+      return selectedBusTypes.value.some(b => type.includes(b.toLowerCase()));
     });
   }
 
