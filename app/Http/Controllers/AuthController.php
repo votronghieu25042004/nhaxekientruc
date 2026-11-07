@@ -137,7 +137,7 @@ class AuthController extends Controller
             try {
                 Mail::send('emails.register_otp', ['otp' => $otp, 'email' => $target], function ($message) use ($target, $otp) {
                     $message->to($target)
-                            ->subject("[datxe] Mã xác thực OTP đăng nhập nhaxekientruc của bạn: {$otp}");
+                            ->subject("🔐 [nhaxekientruc] Mã xác thực OTP đăng nhập tài khoản của bạn: {$otp}");
                 });
                 $msg = "Mã xác thực OTP đã được gửi về hộp thư Gmail {$target}. Vui lòng kiểm tra hộp thư đến (Inbox) hoặc Spam!";
             } catch (\Throwable $e) {
@@ -385,7 +385,7 @@ class AuthController extends Controller
                         ->post('https://api.resend.com/emails', [
                             'from' => env('MAIL_FROM_ADDRESS', 'onboarding@resend.dev'),
                             'to' => [$identifier],
-                            'subject' => "[nhaxekientruc] Mã xác thực OTP đăng ký tài khoản của bạn: {$otp}",
+                            'subject' => "🔐 [nhaxekientruc] Mã xác thực OTP đăng ký tài khoản của bạn: {$otp}",
                             'html' => view('emails.register_otp', ['otp' => $otp, 'email' => $identifier])->render(),
                         ]);
                     if ($res->successful()) {
@@ -411,7 +411,7 @@ class AuthController extends Controller
                                 'email' => env('MAIL_FROM_ADDRESS', 'volananh2k4@gmail.com'),
                             ],
                             'to' => [['email' => $identifier]],
-                            'subject' => "[nhaxekientruc] Mã xác thực OTP đăng ký tài khoản của bạn: {$otp}",
+                            'subject' => "🔐 [nhaxekientruc] Mã xác thực OTP đăng ký tài khoản của bạn: {$otp}",
                             'htmlContent' => view('emails.register_otp', ['otp' => $otp, 'email' => $identifier])->render(),
                         ]);
                     if ($res->successful()) {
@@ -430,7 +430,7 @@ class AuthController extends Controller
                     $res = \Illuminate\Support\Facades\Http::timeout(8)
                         ->post($webhookUrl, [
                             'to' => $identifier,
-                            'subject' => "[nhaxekientruc] Mã xác thực OTP đăng ký tài khoản của bạn: {$otp}",
+                            'subject' => "🔐 [nhaxekientruc] Mã xác thực OTP đăng ký tài khoản của bạn: {$otp}",
                             'html' => view('emails.register_otp', ['otp' => $otp, 'email' => $identifier])->render(),
                         ]);
                     if ($res->successful()) {
@@ -447,7 +447,7 @@ class AuthController extends Controller
                 try {
                     Mail::send('emails.register_otp', ['otp' => $otp, 'email' => $identifier], function ($message) use ($identifier, $otp) {
                         $message->to($identifier)
-                                ->subject("[nhaxekientruc] Mã xác thực OTP đăng ký tài khoản của bạn: {$otp}");
+                                ->subject("🔐 [nhaxekientruc] Mã xác thực OTP đăng ký tài khoản của bạn: {$otp}");
                     });
                     $mailSentReal = true;
                     Log::info("[GMAIL_OTP_SUCCESS] Gửi email thành công qua Google SMTP tới: {$identifier}", ['otp' => $otp]);
