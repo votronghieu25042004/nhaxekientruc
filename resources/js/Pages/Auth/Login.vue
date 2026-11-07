@@ -506,60 +506,6 @@
 
                 <!-- ==================== TAB 1: FORM ĐĂNG NHẬP ==================== -->
                 <div v-if="activeTab === 'login'" class="space-y-4">
-                  
-                  <!-- THANH ĐĂNG NHẬP NHANH 1 CHẠM (TIỆN LỢI TRÊN ĐIỆN THOẠI & TEST ĐỒ ÁN) -->
-                  <div class="p-3 bg-gradient-to-r from-rose-50 via-red-50 to-amber-50 rounded-2xl border border-red-200/70 mb-4 shadow-2xs">
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="text-[11px] font-black text-red-800 uppercase tracking-wider flex items-center gap-1">
-                        <span>⚡</span>
-                        <span>Đăng nhập nhanh 1 chạm (Tài khoản mẫu):</span>
-                      </span>
-                      <span class="text-[10px] text-red-600 font-bold bg-white px-2 py-0.5 rounded-full border border-red-200">Mật khẩu: 123456</span>
-                    </div>
-
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                      <button
-                        type="button"
-                        @click="quickLoginAs('student')"
-                        class="px-2 py-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-slate-800 hover:text-red-600 font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
-                        title="Sinh viên Trường ĐH Kiến Trúc Đà Nẵng (sinhvien@dau.edu.vn)"
-                      >
-                        <span>🎓</span>
-                        <span>Sinh viên</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        @click="quickLoginAs('driver')"
-                        class="px-2 py-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-slate-800 hover:text-red-600 font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
-                        title="Bác tài lái xe khách (taixe1@nhaxekientruc.vn)"
-                      >
-                        <span>👨‍✈️</span>
-                        <span>Bác tài</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        @click="quickLoginAs('conductor')"
-                        class="px-2 py-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-slate-800 hover:text-red-600 font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
-                        title="Lơ xe soát vé QR (loxe1@nhaxekientruc.vn)"
-                      >
-                        <span>🎫</span>
-                        <span>Lơ xe QR</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        @click="quickLoginAs('admin')"
-                        class="px-2 py-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-slate-800 hover:text-red-600 font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
-                        title="Quản trị viên hệ thống (admin@nhaxekientruc.vn)"
-                      >
-                        <span>👔</span>
-                        <span>Admin</span>
-                      </button>
-                    </div>
-                  </div>
-
                   <!-- Báo Lỗi Đăng Nhập -->
                   <div 
                     v-if="loginErrorText" 
@@ -1267,27 +1213,6 @@ const fillLoginCredential = (identifier) => {
   });
 };
 
-const quickLoginAs = (role) => {
-  switch (role) {
-    case 'student':
-      loginForm.email = 'sinhvien@dau.edu.vn';
-      loginForm.password = '123456';
-      break;
-    case 'driver':
-      loginForm.email = 'taixe1@nhaxekientruc.vn';
-      loginForm.password = '123456';
-      break;
-    case 'conductor':
-      loginForm.email = 'loxe1@nhaxekientruc.vn';
-      loginForm.password = '123456';
-      break;
-    case 'admin':
-      loginForm.email = 'admin@nhaxekientruc.vn';
-      loginForm.password = '123456';
-      break;
-  }
-  submitLogin();
-};
 
 const loginErrorText = computed(() => {
   return loginForm.errors.email || loginForm.errors.status || loginForm.errors.phone || page.props.errors?.email || page.props.errors?.status || page.props.errors?.phone || null;
