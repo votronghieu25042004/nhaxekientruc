@@ -804,11 +804,11 @@
                   <!-- Cột Trái Tem Vé -->
                   <div
                     class="w-20 sm:w-22 text-white flex flex-col items-center justify-center text-center p-2.5 shrink-0"
-                    :class="v.type === 'STUDENT_100' || v.type === 'STUDENT_0D' ? 'bg-gradient-to-br from-amber-600 to-red-600' : (v.type === 'STUDENT_30' || v.type === 'STUDENT' ? 'bg-gradient-to-br from-red-600 to-rose-600' : 'bg-gradient-to-br from-emerald-600 to-teal-600')"
+                    :class="v.target_audience === 'STUDENT' ? 'bg-gradient-to-br from-amber-600 to-red-600' : (v.target_audience === 'INDIVIDUAL' ? 'bg-gradient-to-br from-blue-600 to-indigo-600' : 'bg-gradient-to-br from-emerald-600 to-teal-600')"
                   >
-                    <span class="text-[9px] font-bold uppercase tracking-wider opacity-90">{{ v.code.includes('100') ? 'VÉ' : 'GIẢM' }}</span>
+                    <span class="text-[9px] font-bold uppercase tracking-wider opacity-90">{{ v.discount === '0Đ' ? 'VÉ' : 'GIẢM' }}</span>
                     <span class="text-xl font-black leading-none my-0.5">{{ v.discount }}</span>
-                    <span class="text-[8px] opacity-90 font-medium">{{ v.code.includes('SINHVIEN') ? 'HỌC ĐƯỜNG' : 'ƯU ĐÃI' }}</span>
+                    <span class="text-[8px] opacity-90 font-medium">{{ v.target_audience === 'STUDENT' ? 'SINH VIÊN' : (v.target_audience === 'INDIVIDUAL' ? 'CÁ NHÂN' : 'TOÀN DÂN') }}</span>
                   </div>
 
                   <!-- Răng cưa -->
@@ -820,8 +820,19 @@
                   <!-- Thông tin chi tiết -->
                   <div class="p-3 flex-1 flex flex-col justify-between min-w-0">
                     <div>
-                      <div class="flex items-center justify-between gap-1">
-                        <span class="font-mono font-black text-xs tracking-wider text-slate-900">{{ v.code }}</span>
+                      <div class="flex items-center justify-between gap-1 flex-wrap">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                          <span class="font-mono font-black text-xs tracking-wider text-slate-900">{{ v.code }}</span>
+                          <span v-if="v.target_audience === 'STUDENT'" class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                            🎓 SV
+                          </span>
+                          <span v-else-if="v.target_audience === 'INDIVIDUAL'" class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
+                            👤 Cá nhân
+                          </span>
+                          <span v-else class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                            🌐 Toàn dân
+                          </span>
+                        </div>
                         <span 
                           v-if="props.hasUsedStudentFirstTrip && (v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG')"
                           class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700"
@@ -904,11 +915,11 @@
                   <!-- Cột Trái: Tem Vé Shopee -->
                   <div
                     class="w-20 sm:w-22 text-white flex flex-col items-center justify-center text-center p-2.5 shrink-0"
-                    :class="v.type === 'STUDENT_100' || v.type === 'STUDENT_0D' ? 'bg-gradient-to-br from-amber-600 to-red-600' : (v.type === 'STUDENT_30' || v.type === 'STUDENT' ? 'bg-gradient-to-br from-red-600 to-rose-600' : (v.type === 'ALL' ? 'bg-gradient-to-br from-emerald-600 to-teal-600' : 'bg-gradient-to-br from-amber-500 to-orange-500'))"
+                    :class="v.target_audience === 'STUDENT' ? 'bg-gradient-to-br from-amber-600 to-red-600' : (v.target_audience === 'INDIVIDUAL' ? 'bg-gradient-to-br from-blue-600 to-indigo-600' : 'bg-gradient-to-br from-emerald-600 to-teal-600')"
                   >
-                    <span class="text-[10px] font-bold uppercase tracking-wider opacity-90">{{ v.code.includes('100') ? 'VÉ' : 'GIẢM' }}</span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider opacity-90">{{ v.discount === '0Đ' ? 'VÉ' : 'GIẢM' }}</span>
                     <span class="text-xl font-black leading-none my-0.5">{{ v.discount }}</span>
-                    <span class="text-[8.5px] opacity-90 font-medium">{{ v.code.includes('SINHVIEN') ? 'HỌC ĐƯỜNG' : 'VÉ XE' }}</span>
+                    <span class="text-[8.5px] opacity-90 font-medium">{{ v.target_audience === 'STUDENT' ? 'SINH VIÊN' : (v.target_audience === 'INDIVIDUAL' ? 'CÁ NHÂN' : 'TOÀN DÂN') }}</span>
                   </div>
 
                   <!-- Đường răng cưa / rãnh ngăn cách vé Shopee -->
@@ -920,8 +931,19 @@
                   <!-- Cột Phải: Thông tin chi tiết & Nút bấm -->
                   <div class="p-3 flex-1 flex flex-col justify-between min-w-0">
                     <div>
-                      <div class="flex items-center justify-between gap-1">
-                        <span class="font-mono font-black text-xs tracking-wider text-slate-900">{{ v.code }}</span>
+                      <div class="flex items-center justify-between gap-1 flex-wrap">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                          <span class="font-mono font-black text-xs tracking-wider text-slate-900">{{ v.code }}</span>
+                          <span v-if="v.target_audience === 'STUDENT'" class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                            🎓 SV
+                          </span>
+                          <span v-else-if="v.target_audience === 'INDIVIDUAL'" class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
+                            👤 Cá nhân
+                          </span>
+                          <span v-else class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                            🌐 Toàn dân
+                          </span>
+                        </div>
                         <span
                           class="px-1.5 py-0.5 rounded text-[9px] font-bold"
                           :class="(props.hasUsedStudentFirstTrip && (v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG'))
@@ -1197,6 +1219,7 @@ const props = defineProps({
   dropoffStops: Array,
   user: Object,
   hasUsedStudentFirstTrip: Boolean,
+  vouchers: Array,
 });
 
 const showAuthModal = ref(false);
@@ -1363,53 +1386,108 @@ const isVoucherSaved = (code) => {
   return savedVouchers.value.includes(code);
 };
 
-const availableVouchers = ref([
-  {
-    code: 'SINHVIEN0DONG',
-    title: 'Vé 0đ Sinh Viên Lần Đầu (Giảm 100%)',
-    discount: '0Đ',
-    badge: '🏮 VÉ 0-ĐỒNG',
-    desc: 'Tài trợ 100% tiền vé xe chuyến đi đầu tiên cho sinh viên các trường đại học',
-    requirement: 'Chỉ áp dụng 1 lần duy nhất cho đúng 1 ghế đầu tiên của sinh viên (.edu.vn)',
-    type: 'STUDENT_0D',
-  },
-  {
-    code: 'SINHVIEN30',
-    title: 'Đặc Quyền Sinh Viên 1 Năm (Giảm 30%)',
-    discount: '30%',
-    badge: '🎓 SINH VIÊN 1 NĂM',
-    desc: 'Giảm 30% giá vé xe xuyên suốt 1 năm cho mọi chuyến đi',
-    requirement: 'Áp dụng cho tài khoản sinh viên có email trường (.edu.vn), dùng suốt 1 năm',
-    type: 'STUDENT_30',
-  },
-  {
-    code: 'SINHVIEN',
-    title: 'Gói Ưu Đãi Sinh Viên (Giảm 30%)',
-    discount: '30%',
-    badge: '🎓 SINH VIÊN',
-    desc: 'Giảm 30% cho tài khoản sinh viên',
-    requirement: 'Chỉ áp dụng cho tài khoản sinh viên có email trường (.edu.vn)',
-    type: 'STUDENT',
-  },
-  {
-    code: 'CHAOBAOMOI',
-    title: 'Gói Ưu Đãi Khách Mới 10%',
-    discount: '10%',
-    badge: '🎉 THÀNH VIÊN MỚI',
-    desc: 'Giảm 10% cho lần đầu đặt vé xe tại nhaxekientruc',
-    requirement: 'Áp dụng cho mọi khách hàng đặt vé lần đầu',
-    type: 'ALL',
-  },
-  {
-    code: 'KIENTRUC20',
-    title: 'Tri Ân Khách Hàng nhaxekientruc',
-    discount: '20K',
-    badge: '⭐ ĐƠN TỪ 200K',
-    desc: 'Giảm 20.000 VNĐ cho đơn từ 200.000đ',
-    requirement: 'Áp dụng cho đơn vé từ 200.000đ trở lên',
-    type: 'MIN_200K',
-  },
-]);
+const serverVouchers = ref([]);
+
+onMounted(async () => {
+  initSavedVouchers();
+  if (!props.vouchers || props.vouchers.length === 0) {
+    try {
+      const res = await axios.get('/api/vouchers');
+      if (res.data?.vouchers) {
+        serverVouchers.value = res.data.vouchers;
+      }
+    } catch (e) {}
+  }
+});
+
+const rawVouchersList = computed(() => {
+  if (props.vouchers && props.vouchers.length > 0) {
+    return props.vouchers;
+  }
+  return serverVouchers.value;
+});
+
+const availableVouchers = computed(() => {
+  const list = rawVouchersList.value;
+  if (list && list.length > 0) {
+    return list.map(v => {
+      let badge = '🎟️ ƯU ĐÃI';
+      if (v.target_audience === 'STUDENT') {
+        badge = Number(v.discount_value) >= 100 ? '🏮 VÉ 0-ĐỒNG (SV)' : '🎓 SINH VIÊN (.EDU.VN)';
+      } else if (v.target_audience === 'INDIVIDUAL') {
+        badge = '👤 CHO CÁ NHÂN';
+      } else {
+        badge = '🌐 TOÀN DÂN';
+      }
+
+      let discount = v.discount_type === 'PERCENT' ? `${v.discount_value}%` : `${Math.round(v.discount_value / 1000)}K`;
+      if (v.discount_type === 'PERCENT' && Number(v.discount_value) >= 100) discount = '0Đ';
+
+      let requirement = 'Áp dụng cho mọi hành khách';
+      if (v.target_audience === 'STUDENT') {
+        requirement = 'Dành riêng cho Sinh Viên có email trường (.edu.vn)';
+      } else if (v.target_audience === 'INDIVIDUAL') {
+        requirement = 'Dành cho khách hàng cá nhân khi đặt vé';
+      }
+      if (v.min_order_value > 0) {
+        requirement += ` • Đơn từ ${(v.min_order_value / 1000).toLocaleString('vi-VN')}K`;
+      }
+
+      return {
+        code: v.code,
+        title: v.description || `Mã ${v.code} Giảm ${discount}`,
+        discount: discount,
+        badge: badge,
+        target_audience: v.target_audience || 'ALL',
+        desc: v.description,
+        requirement: requirement,
+        min_order_value: v.min_order_value || 0,
+        discount_value: v.discount_value,
+        discount_type: v.discount_type,
+        max_discount: v.max_discount,
+      };
+    });
+  }
+
+  return [
+    {
+      code: 'SINHVIEN0DONG',
+      title: 'Vé 0đ Sinh Viên Lần Đầu (Giảm 100%)',
+      discount: '0Đ',
+      badge: '🏮 VÉ 0-ĐỒNG',
+      target_audience: 'STUDENT',
+      desc: 'Tài trợ 100% tiền vé xe chuyến đi đầu tiên cho sinh viên các trường đại học',
+      requirement: 'Chỉ áp dụng 1 lần duy nhất cho đúng 1 ghế đầu tiên của sinh viên (.edu.vn)',
+    },
+    {
+      code: 'SINHVIEN30',
+      title: 'Đặc Quyền Sinh Viên 1 Năm (Giảm 30%)',
+      discount: '30%',
+      badge: '🎓 SINH VIÊN 1 NĂM',
+      target_audience: 'STUDENT',
+      desc: 'Giảm 30% giá vé xe xuyên suốt 1 năm cho mọi chuyến đi',
+      requirement: 'Áp dụng cho tài khoản sinh viên có email trường (.edu.vn), dùng suốt 1 năm',
+    },
+    {
+      code: 'CHAOBAOMOI',
+      title: 'Gói Ưu Đãi Khách Mới 10%',
+      discount: '10%',
+      badge: '🎉 THÀNH VIÊN MỚI',
+      target_audience: 'INDIVIDUAL',
+      desc: 'Giảm 10% cho lần đầu đặt vé xe tại nhaxekientruc',
+      requirement: 'Áp dụng cho khách hàng cá nhân đặt vé lần đầu',
+    },
+    {
+      code: 'KIENTRUC20',
+      title: 'Tri Ân Khách Hàng nhaxekientruc',
+      discount: '20K',
+      badge: '⭐ ĐƠN TỪ 100K',
+      target_audience: 'INDIVIDUAL',
+      desc: 'Giảm 20.000 VNĐ cho đơn từ 100.000đ',
+      requirement: 'Áp dụng cho đơn vé từ 100.000đ trở lên',
+    },
+  ];
+});
 
 // Chỉ hiển thị trong ví voucher những mã mà khách hàng ĐÃ LƯU vào ví
 const savedVouchersInWallet = computed(() => {
@@ -1422,17 +1500,14 @@ const isCustomerStudent = computed(() => {
 });
 
 const isVoucherEligible = (v) => {
-  if (v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG') {
+  if (v.target_audience === 'STUDENT' || v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG') {
     if (!isCustomerStudent.value) return false;
-    if (props.hasUsedStudentFirstTrip) return false;
-    if (selectedSeats.value.length > 1) return false;
-    return true;
+    if ((v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG') && (props.hasUsedStudentFirstTrip || selectedSeats.value.length > 1)) {
+      return false;
+    }
   }
-  if (v.code === 'SINHVIEN30' || v.code === 'SINHVIEN') {
-    return isCustomerStudent.value;
-  }
-  if (v.type === 'MIN_200K') {
-    return rawSeatPrice.value >= 200000;
+  if (v.min_order_value && rawSeatPrice.value < v.min_order_value) {
+    return false;
   }
   return true;
 };

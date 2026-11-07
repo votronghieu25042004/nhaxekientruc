@@ -32,7 +32,7 @@
             :class="activeTab === 'vouchers' ? 'bg-[#dc2626] text-white shadow-xs font-black' : 'hover:bg-white text-slate-700 font-bold'"
           >
             <span>🎟️</span>
-            <span>Voucher & Điểm Thưởng</span>
+            <span>Voucher (Sinh Viên & Cá Nhân)</span>
           </button>
 
           <button
@@ -165,7 +165,7 @@
               <h2 class="text-sm font-black text-slate-900 flex items-center gap-2">
                 <span>🎟️ Danh Sách Mã Voucher Khuyến Mãi Đang Phát Hành</span>
               </h2>
-              <p class="text-xs text-slate-500 mt-0.5">Khách hàng nhập mã khi đặt vé online hoặc nhân viên áp dụng tại quầy POS</p>
+              <p class="text-xs text-slate-500 mt-0.5">Phân quyền rõ ràng đối tượng sử dụng: Cho Sinh Viên (.edu.vn), Cho Cá Nhân hoặc Áp dụng Tất Cả</p>
             </div>
 
             <button
@@ -177,12 +177,43 @@
             </button>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- BỘ LỌC ĐỐI TƯỢNG ÁP DỤNG -->
+          <div class="flex items-center gap-2 flex-wrap pb-1">
+            <button
+              type="button"
+              @click="voucherAudienceFilter = 'ALL_FILTER'"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+              :class="voucherAudienceFilter === 'ALL_FILTER' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+            >
+              <span>🌐</span>
+              <span>Tất Cả Voucher ({{ (props.vouchers || []).length }})</span>
+            </button>
+            <button
+              type="button"
+              @click="voucherAudienceFilter = 'STUDENT'"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+              :class="voucherAudienceFilter === 'STUDENT' ? 'bg-amber-500 text-white shadow-xs' : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'"
+            >
+              <span>🎓</span>
+              <span>Cho Sinh Viên Dùng ({{ studentVouchersCount }})</span>
+            </button>
+            <button
+              type="button"
+              @click="voucherAudienceFilter = 'INDIVIDUAL'"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+              :class="voucherAudienceFilter === 'INDIVIDUAL' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100'"
+            >
+              <span>👤</span>
+              <span>Cho Cá Nhân Dùng ({{ individualVouchersCount }})</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <div
-              v-for="v in vouchers"
+              v-for="v in filteredVouchers"
               :key="v.id"
-              class="p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3"
-              :class="v.is_active ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-60'"
+              class="p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 relative group"
+              :class="v.is_active ? 'bg-white border-slate-200 shadow-2xs hover:border-slate-300' : 'bg-slate-50 border-slate-200 opacity-60'"
             >
               <div>
                 <div class="flex items-center justify-between">
@@ -190,26 +221,48 @@
                     {{ v.code }}
                   </span>
                   <span
-                    class="px-2 py-0.2 rounded-full text-[10px] font-bold"
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold"
                     :class="v.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'"
                   >
                     {{ v.is_active ? 'Hoạt động' : 'Đã khóa' }}
                   </span>
                 </div>
+
+                <!-- ĐỐI TƯỢNG ÁP DỤNG BADGE -->
+                <div class="mt-2 flex items-center gap-1.5 flex-wrap">
+                  <span
+                    v-if="v.target_audience === 'STUDENT'"
+                    class="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1"
+                  >
+                    <span>🎓</span>
+                    <span>Cho Sinh Viên (.edu.vn)</span>
+                  </span>
+                  <span
+                    v-else-if="v.target_audience === 'INDIVIDUAL'"
+                    class="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-100 text-blue-900 border border-blue-300 inline-flex items-center gap-1"
+                  >
+                    <span>👤</span>
+                    <span>Cho Cá Nhân</span>
+                  </span>
+                  <span
+                    v-else
+                    class="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-900 border border-emerald-300 inline-flex items-center gap-1"
+                  >
+                    <span>🌐</span>
+                    <span>Tất Cả Khách Hàng</span>
+                  </span>
+                </div>
+
                 <div class="text-xs font-bold text-slate-900 mt-2">
                   {{ v.discount_type === 'PERCENT' ? `Giảm ${v.discount_value}% tối đa ${formatCurrency(v.max_discount)}` : `Giảm ngay ${formatCurrency(v.discount_value)}` }}
                 </div>
-                <div class="text-[11px] text-slate-500 mt-0.5">{{ v.description }}</div>
-                <div v-if="v.code === 'SINHVIEN'" class="mt-2 p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-[10px] text-amber-900 font-bold flex items-center gap-1">
-                  <span>🎓</span>
-                  <span>Gói SV 1 Năm: Vé đầu MIỄN PHÍ 100% • Lần sau giảm 30%</span>
-                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 line-clamp-2" :title="v.description">{{ v.description }}</div>
               </div>
 
               <div class="pt-2 border-t border-slate-100 text-[11px] space-y-1">
                 <div class="flex justify-between text-slate-500">
                   <span>Giới hạn/tài khoản:</span>
-                  <strong class="text-blue-700 font-bold">{{ v.max_uses_per_user || (v.code === 'SINHVIEN' ? 1 : 2) }} lần/acc</strong>
+                  <strong class="text-blue-700 font-bold">{{ v.max_uses_per_user || (v.target_audience === 'STUDENT' ? 1 : 2) }} lần/acc</strong>
                 </div>
                 <div class="flex justify-between text-slate-500">
                   <span>Lượt dùng toàn sàn:</span>
@@ -217,7 +270,7 @@
                 </div>
                 <div class="flex justify-between text-slate-500">
                   <span>Hạn sử dụng:</span>
-                  <strong class="text-slate-800">{{ v.valid_until }}</strong>
+                  <strong class="text-slate-800">{{ v.valid_until || 'Vô thời hạn' }}</strong>
                 </div>
                 <div class="grid grid-cols-3 gap-1.5 mt-2.5">
                   <button
@@ -446,6 +499,18 @@
             />
           </div>
 
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Đối Tượng Áp Dụng</label>
+            <select v-model="voucherForm.target_audience" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900">
+              <option value="ALL">🌐 Cho Tất Cả (Toàn bộ khách hàng)</option>
+              <option value="INDIVIDUAL">👤 Cho Cá Nhân (Hành khách cá nhân)</option>
+              <option value="STUDENT">🎓 Cho Sinh Viên (Bắt buộc email trường .edu.vn)</option>
+            </select>
+            <p class="text-[10px] text-slate-500 mt-1">
+              {{ voucherForm.target_audience === 'STUDENT' ? '🎓 Khách hàng phải có email .edu.vn hoặc tài khoản đã xác minh thẻ sinh viên mới được áp dụng.' : (voucherForm.target_audience === 'INDIVIDUAL' ? '👤 Dành riêng cho khách hàng cá nhân khi đặt vé.' : '🌐 Áp dụng tự do cho mọi khách hàng.') }}
+            </p>
+          </div>
+
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block font-bold text-slate-700 mb-1">Loại Giảm Giá</label>
@@ -540,6 +605,18 @@
               required 
               class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono font-bold uppercase text-slate-900"
             />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Đối Tượng Áp Dụng</label>
+            <select v-model="editVoucherForm.target_audience" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-900">
+              <option value="ALL">🌐 Cho Tất Cả (Toàn bộ khách hàng)</option>
+              <option value="INDIVIDUAL">👤 Cho Cá Nhân (Hành khách cá nhân)</option>
+              <option value="STUDENT">🎓 Cho Sinh Viên (Bắt buộc email trường .edu.vn)</option>
+            </select>
+            <p class="text-[10px] text-slate-500 mt-1">
+              {{ editVoucherForm.target_audience === 'STUDENT' ? '🎓 Khách hàng phải có email .edu.vn hoặc tài khoản đã xác minh thẻ sinh viên mới được áp dụng.' : (editVoucherForm.target_audience === 'INDIVIDUAL' ? '👤 Dành riêng cho khách hàng cá nhân khi đặt vé.' : '🌐 Áp dụng tự do cho mọi khách hàng.') }}
+            </p>
           </div>
 
           <div class="grid grid-cols-2 gap-3">
@@ -642,7 +719,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AdminHeader from '@/Components/AdminHeader.vue';
 
@@ -650,9 +727,35 @@ const props = defineProps({
   pricingRules: Array,
   vouchers: Array,
   cancellationPolicies: Array,
+  initialTab: String,
 });
 
-const activeTab = ref('pricing'); // 'pricing', 'vouchers', 'cancellation'
+const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+const isVoucherRoute = typeof window !== 'undefined' && window.location.pathname.includes('/admin/vouchers');
+const activeTab = ref(
+  props.initialTab || (urlParams?.get('tab')) || (isVoucherRoute ? 'vouchers' : 'pricing')
+);
+
+const voucherAudienceFilter = ref('ALL_FILTER'); // 'ALL_FILTER', 'STUDENT', 'INDIVIDUAL'
+
+const studentVouchersCount = computed(() => {
+  return (props.vouchers || []).filter(v => v.target_audience === 'STUDENT').length;
+});
+
+const individualVouchersCount = computed(() => {
+  return (props.vouchers || []).filter(v => v.target_audience === 'INDIVIDUAL').length;
+});
+
+const filteredVouchers = computed(() => {
+  if (voucherAudienceFilter.value === 'STUDENT') {
+    return (props.vouchers || []).filter(v => v.target_audience === 'STUDENT');
+  }
+  if (voucherAudienceFilter.value === 'INDIVIDUAL') {
+    return (props.vouchers || []).filter(v => v.target_audience === 'INDIVIDUAL');
+  }
+  return props.vouchers || [];
+});
+
 const showAddRuleModal = ref(false);
 const showAddVoucherModal = ref(false);
 const showEditVoucherModal = ref(false);
@@ -671,6 +774,7 @@ const voucherForm = reactive({
   code: '',
   discount_type: 'PERCENT',
   discount_value: 20,
+  target_audience: 'ALL',
   usage_limit: 100,
   max_uses_per_user: 2,
   valid_until: '',
@@ -681,6 +785,7 @@ const editVoucherForm = reactive({
   code: '',
   discount_type: 'PERCENT',
   discount_value: 20,
+  target_audience: 'ALL',
   min_order_value: 0,
   max_discount: 100000,
   usage_limit: 100,
@@ -696,10 +801,11 @@ const openEditVoucherModal = (v) => {
   editVoucherForm.code = v.code || '';
   editVoucherForm.discount_type = v.discount_type || 'PERCENT';
   editVoucherForm.discount_value = v.discount_value ?? 0;
+  editVoucherForm.target_audience = v.target_audience || 'ALL';
   editVoucherForm.min_order_value = v.min_order_value ?? 0;
   editVoucherForm.max_discount = v.max_discount ?? 100000;
   editVoucherForm.usage_limit = v.usage_limit ?? 100;
-  editVoucherForm.max_uses_per_user = v.max_uses_per_user || (v.code === 'SINHVIEN' ? 1 : 2);
+  editVoucherForm.max_uses_per_user = v.max_uses_per_user || (v.target_audience === 'STUDENT' ? 1 : 2);
   editVoucherForm.valid_until = v.valid_until ? String(v.valid_until).substring(0, 10) : '';
   editVoucherForm.description = v.description || '';
   showEditVoucherModal.value = true;

@@ -2727,6 +2727,21 @@ class AdminController extends Controller
             'pricingRules' => $rules,
             'vouchers' => $vouchers,
             'cancellationPolicies' => $policies,
+            'initialTab' => $request->input('tab', 'pricing'),
+        ]);
+    }
+
+    public function vouchersScreen(Request $request)
+    {
+        $rules = PricingRule::orderBy('id', 'asc')->get();
+        $vouchers = Voucher::orderBy('created_at', 'desc')->get();
+        $policies = CancellationPolicy::orderBy('hours_before', 'desc')->get();
+
+        return Inertia::render('Admin/Pricing', [
+            'pricingRules' => $rules,
+            'vouchers' => $vouchers,
+            'cancellationPolicies' => $policies,
+            'initialTab' => 'vouchers',
         ]);
     }
 
@@ -2770,6 +2785,7 @@ class AdminController extends Controller
             'code' => 'required|string|unique:vouchers,code',
             'discount_type' => 'required|string',
             'discount_value' => 'required|numeric',
+            'target_audience' => 'nullable|string|in:ALL,INDIVIDUAL,STUDENT',
             'valid_until' => 'required|date',
             'usage_limit' => 'required|numeric',
             'max_uses_per_user' => 'nullable|integer|min:1',
@@ -2779,12 +2795,14 @@ class AdminController extends Controller
         ]);
 
         $code = strtoupper(trim($validated['code']));
-        $defaultMaxPerUser = ($code === 'SINHVIEN') ? 1 : 2;
+        $targetAudience = $request->input('target_audience', 'ALL') ?: 'ALL';
+        $defaultMaxPerUser = ($targetAudience === 'STUDENT' || str_contains($code, 'SINHVIEN')) ? 1 : 2;
 
         Voucher::create([
             'code' => $code,
             'discount_type' => $validated['discount_type'],
             'discount_value' => $validated['discount_value'],
+            'target_audience' => $targetAudience,
             'min_order_value' => $request->input('min_order_value', 0),
             'max_discount' => $request->input('max_discount', 100000),
             'usage_limit' => $validated['usage_limit'],
@@ -2814,6 +2832,7 @@ class AdminController extends Controller
             'code' => 'required|string|unique:vouchers,code,' . $id,
             'discount_type' => 'required|string',
             'discount_value' => 'required|numeric',
+            'target_audience' => 'nullable|string|in:ALL,INDIVIDUAL,STUDENT',
             'valid_until' => 'required|date',
             'usage_limit' => 'required|numeric',
             'max_uses_per_user' => 'nullable|integer|min:1',
@@ -2823,12 +2842,14 @@ class AdminController extends Controller
         ]);
 
         $code = strtoupper(trim($validated['code']));
-        $defaultMaxPerUser = ($code === 'SINHVIEN') ? 1 : 2;
+        $targetAudience = $request->input('target_audience', $voucher->target_audience ?: 'ALL') ?: 'ALL';
+        $defaultMaxPerUser = ($targetAudience === 'STUDENT' || str_contains($code, 'SINHVIEN')) ? 1 : 2;
 
         $voucher->update([
             'code' => $code,
             'discount_type' => $validated['discount_type'],
             'discount_value' => $validated['discount_value'],
+            'target_audience' => $targetAudience,
             'min_order_value' => $request->input('min_order_value', 0),
             'max_discount' => $request->input('max_discount', 100000),
             'usage_limit' => $validated['usage_limit'],

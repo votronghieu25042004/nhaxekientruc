@@ -285,7 +285,7 @@
                 type="button"
                 :class="[
                   'px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer shadow-2xs',
-                  ($page.url.startsWith('/admin/customers') || $page.url.startsWith('/admin/pricing') || $page.url.startsWith('/admin/refunds'))
+                  ($page.url.startsWith('/admin/customers') || $page.url.startsWith('/admin/pricing') || $page.url.startsWith('/admin/vouchers') || $page.url.startsWith('/admin/refunds'))
                     ? 'bg-purple-50 text-purple-900 border border-purple-300 font-black'
                     : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100'
                 ]"
@@ -297,7 +297,7 @@
                 </svg>
               </button>
 
-              <div class="hidden group-hover:block hover:block absolute left-0 top-full pt-1.5 z-50 w-56 animate-in fade-in duration-100">
+              <div class="hidden group-hover:block hover:block absolute left-0 top-full pt-1.5 z-50 w-60 animate-in fade-in duration-100">
                 <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-1.5 space-y-1">
                   <Link
                     href="/admin/customers"
@@ -309,12 +309,21 @@
                   </Link>
 
                   <Link
+                    href="/admin/vouchers"
+                    class="flex items-center gap-2 p-2 rounded-xl hover:bg-red-50 text-slate-700 hover:text-red-700 transition"
+                    :class="$page.url.startsWith('/admin/vouchers') ? 'bg-red-50 text-red-700 font-black' : ''"
+                  >
+                    <span>🎟️</span>
+                    <span class="font-bold">Quản Lý Voucher (SV / Cá Nhân)</span>
+                  </Link>
+
+                  <Link
                     href="/admin/pricing"
                     class="flex items-center gap-2 p-2 rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 transition"
-                    :class="$page.url.startsWith('/admin/pricing') ? 'bg-emerald-50 text-emerald-700 font-black' : ''"
+                    :class="$page.url.startsWith('/admin/pricing') && !$page.url.startsWith('/admin/vouchers') ? 'bg-emerald-50 text-emerald-700 font-black' : ''"
                   >
                     <span>🏷️</span>
-                    <span>Giá & Khuyến Mãi</span>
+                    <span>Quy Tắc Giá & Linh Hoạt</span>
                   </Link>
 
                   <Link

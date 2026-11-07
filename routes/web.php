@@ -84,6 +84,7 @@ Route::post('trips/{id}/update-gps', [TripController::class, 'updateGps'])->name
 // Customer booking history (by phone/email)
 Route::get('my-bookings', [TripController::class, 'myBookings'])->name('my.bookings');
 Route::get('api/my-bookings', [TripController::class, 'myBookingsApi'])->name('api.myBookings');
+Route::get('api/vouchers', [TripController::class, 'activeVouchersApi'])->name('api.vouchers.list');
 Route::post('api/vouchers/apply', [TripController::class, 'applyVoucher'])->name('api.vouchers.apply');
 
 // Customer Reviews
@@ -203,6 +204,7 @@ Route::prefix('admin')->group(function () {
 
     // Pricing & Promotions (Giá & Khuyến Mãi)
     Route::get('pricing', [AdminController::class, 'pricingScreen'])->name('admin.pricing');
+    Route::get('vouchers', [AdminController::class, 'vouchersScreen'])->name('admin.vouchers');
     Route::post('pricing/rules', [AdminController::class, 'storePricingRule'])->name('admin.pricing.storeRule');
     Route::post('pricing/rules/{id}/toggle', [AdminController::class, 'togglePricingRule'])->name('admin.pricing.toggleRule');
     Route::post('pricing/vouchers', [AdminController::class, 'storeVoucher'])->name('admin.pricing.storeVoucher');
