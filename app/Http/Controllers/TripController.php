@@ -27,10 +27,8 @@ class TripController extends Controller
      */
     public function schedules(Request $request)
     {
-        try {
-            \App\Services\TripScheduleService::ensureUpcomingTripsExist(1);
-            Trip::syncRealTimeStatuses();
-        } catch (\Throwable $e) {}
+        \App\Services\TripScheduleService::ensureUpcomingTripsExist(3);
+        Trip::syncRealTimeStatuses();
         $dateParam = $request->query('date');
         $today = Carbon::today('Asia/Ho_Chi_Minh');
         $selectedDate = $dateParam ? Carbon::parse($dateParam) : $today;
@@ -142,11 +140,7 @@ class TripController extends Controller
      */
     public function home()
     {
-        try {
-            \App\Services\TripScheduleService::ensureUpcomingTripsExist(1);
-        } catch (\Throwable $e) {
-            // bỏ qua để trang chủ luôn mở siêu tốc
-        }
+        \App\Services\TripScheduleService::ensureUpcomingTripsExist(3);
         $now = Carbon::now('Asia/Ho_Chi_Minh');
         $today = Carbon::today('Asia/Ho_Chi_Minh');
         $routes = Route::with(['stops'])->get();
@@ -194,10 +188,8 @@ class TripController extends Controller
      */
     public function search(Request $request)
     {
-        try {
-            \App\Services\TripScheduleService::ensureUpcomingTripsExist(1);
-            Trip::syncRealTimeStatuses();
-        } catch (\Throwable $e) {}
+        \App\Services\TripScheduleService::ensureUpcomingTripsExist(3);
+        Trip::syncRealTimeStatuses();
         $now = Carbon::now('Asia/Ho_Chi_Minh');
         $q = str_replace(['Thừa Thiên - Huế', 'Thừa Thiên – Huế', 'Thừa Thiên — Huế'], 'Thừa Thiên Huế', trim($request->input('q', '')));
         $origin = str_replace(['Thừa Thiên - Huế', 'Thừa Thiên – Huế', 'Thừa Thiên — Huế'], 'Thừa Thiên Huế', trim($request->input('origin', '')));
