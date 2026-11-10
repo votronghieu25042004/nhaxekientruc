@@ -64,16 +64,24 @@
         <div class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div class="flex items-center gap-2">
-              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-200">
-                CỔNG THANH TOÁN TỰ ĐỘNG 24/7
+              <span 
+                class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border"
+                :class="booking.is_deposit ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-red-50 text-red-700 border-red-200'"
+              >
+                {{ booking.is_deposit ? '⚡ ĐẶT CỌC 30% GIỮ CHỖ' : 'CỔNG THANH TOÁN TỰ ĐỘNG 24/7' }}
               </span>
               <span class="text-xs font-mono font-bold text-slate-400">#{{ booking.booking_code }}</span>
             </div>
             <h1 class="text-xl sm:text-2xl font-black text-slate-900 mt-1">
-              Thanh Toán Vé Xe Trực Tuyến
+              {{ booking.is_deposit ? 'Thanh Toán Tiền Cọc 30% Giữ Chỗ' : 'Thanh Toán Vé Xe Trực Tuyến' }}
             </h1>
             <p class="text-xs text-slate-500 mt-0.5">
-              Quét mã QR bằng App Ngân Hàng hoặc Ví MoMo. Mã QR đã nhúng sẵn <strong>số tiền</strong> và <strong>nội dung chuyển tiền</strong>.
+              <span v-if="booking.is_deposit">
+                Quý khách chọn <strong>đặt cọc trước 30%</strong> để giữ chỗ. Số tiền còn lại <strong>70% ({{ formatPrice(booking.remaining_amount) }}đ)</strong> sẽ thanh toán cho Bác tài / Lơ xe khi lên xe.
+              </span>
+              <span v-else>
+                Quét mã QR bằng App Ngân Hàng hoặc Ví MoMo. Mã QR đã nhúng sẵn <strong>số tiền</strong> và <strong>nội dung chuyển tiền</strong>.
+              </span>
             </p>
           </div>
 
@@ -242,14 +250,24 @@
               <!-- SỐ TIỀN CẦN THANH TOÁN (LỚN & RÕ RÀNG) -->
               <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-red-50/80 via-white to-red-50/50 border border-red-200 flex items-center justify-between gap-3">
                 <div>
-                  <span class="text-[11px] font-bold text-slate-500 uppercase block tracking-wider">
-                    Số Tiền Cần Thanh Toán:
-                  </span>
+                  <div class="flex items-center gap-2">
+                    <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      {{ booking.is_deposit ? 'Số Tiền Đặt Cọc 30% Cần Chuyển:' : 'Số Tiền Cần Thanh Toán:' }}
+                    </span>
+                    <span v-if="booking.is_deposit" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+                      ⚡ Cọc 30%
+                    </span>
+                  </div>
                   <span class="text-2xl sm:text-3xl font-black text-red-600 font-mono tracking-tight block mt-0.5">
                     {{ vietQr.amount_formatted }}
                   </span>
-                  <span class="text-[11px] text-slate-500">
-                    (Thanh toán đủ 100% để hệ thống tự động xuất vé điện tử)
+                  <span class="text-[11.5px] text-slate-600 font-medium leading-relaxed block mt-0.5">
+                    <template v-if="booking.is_deposit">
+                      (Đã tính đúng 30% cọc giữ chỗ. Còn lại 70% tương ứng <strong class="text-slate-900">{{ formatPrice(booking.remaining_amount) }}đ</strong> Quý khách sẽ trả cho Bác tài / Lơ xe khi lên xe)
+                    </template>
+                    <template v-else>
+                      (Thanh toán đủ 100% để hệ thống tự động xuất vé điện tử)
+                    </template>
                   </span>
                 </div>
                 <button 
@@ -542,6 +560,8 @@ const copyText = async (text, fieldName) => {
     alert('Đã sao chép: ' + text);
   }
 };
+
+const formatPrice = (val) => new Intl.NumberFormat('vi-VN').format(val || 0);
 
 // Tự động chuyển sang trang Quản Lý Vé
 const redirectToTicket = () => {

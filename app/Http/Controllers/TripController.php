@@ -753,8 +753,12 @@ class TripController extends Controller
             $discountAmount += $newMemberDiscount;
         }
 
+        $isDeposit = ($request->input('payment_choice') === 'DEPOSIT') && empty($voucher);
+        $depositTargetAmount = $isDeposit ? (float) round($totalAmount * 0.3) : (float) $totalAmount;
+        $remainingAmount = max(0, $totalAmount - $depositTargetAmount);
+
         // Đặt vé trực tuyến: ban đầu trạng thái là UNPAID và paid_amount = 0 (trừ khi vé 0đ được tài trợ)
-        // Khách hàng phải quét mã QR VietQR MBBank / MoMo chuyển khoản thì mới xác nhận PAID!
+        // Khách hàng phải quét mã QR VietQR MBBank / MoMo chuyển khoản thì mới xác nhận PAID hoặc DEPOSIT_PAID!
         if ($totalAmount == 0) {
             $paidAmount = 0;
             $paymentStatus = 'PAID';
@@ -795,6 +799,12 @@ class TripController extends Controller
         $seatQrToken = 'QR-' . Str::uuid()->toString();
         $seatsStr = implode(', ', $request->seat_numbers);
 
+        $notes = $request->filled('notes') ? trim($request->input('notes')) : '';
+        if ($isDeposit) {
+            $depositNote = "Cọc trước 30% (" . number_format($depositTargetAmount, 0, ',', '.') . "đ). Còn lại 70% (" . number_format($remainingAmount, 0, ',', '.') . "đ) lơ xe thu khi lên xe.";
+            $notes = $notes ? ($depositNote . ' | ' . $notes) : $depositNote;
+        }
+
         // TẠO 1 ĐƠN ĐẶT VÉ (BOOKING) DUY NHẤT CHO TOÀN BỘ ĐƠN (KHÔNG LƯU 2 CÁI TRÙNG LẶP)
         $booking = Booking::create([
             'booking_code' => $bookingCode,
@@ -812,7 +822,7 @@ class TripController extends Controller
             'total_amount' => $totalAmount,
             'paid_amount' => $paidAmount,
             'payment_status' => $paymentStatus,
-            'payment_method' => $request->input('payment_method', 'VIETQR'),
+            'payment_method' => $isDeposit ? 'DEPOSIT_30' : $request->input('payment_method', 'VIETQR'),
             'payment_ref_code' => 'VE' . $bookingCode,
             'checkin_status' => 'PENDING',
             'qr_token' => $seatQrToken,
@@ -820,7 +830,7 @@ class TripController extends Controller
             'discount_amount' => $discountAmount,
             'points_earned' => max(1, (int)round($totalAmount / 1000)),
             'points_awarded' => 0, // Điểm thưởng CHƯA cộng ngay, chỉ kích hoạt khi xe xuất phát / khách lên xe
-            'notes' => $request->filled('notes') ? trim($request->input('notes')) : null,
+            'notes' => $notes ?: null,
         ]);
 
         // Tạo chi tiết BookingSeat cho từng ghế
@@ -881,7 +891,11 @@ class TripController extends Controller
             'bookingSeats',
         ])->where('booking_code', $code)->firstOrFail();
 
-        $vietQr = \App\Services\VietQrService::generatePaymentData($booking);
+        $isDeposit = ($booking->payment_method === 'DEPOSIT_30' || str_contains($booking->notes ?? '', 'Cọc trước 30%'));
+        $targetPayAmount = $isDeposit ? (float) round($booking->total_amount * 0.3) : (float) $booking->total_amount;
+        $remainingAmount = max(0, (float) $booking->total_amount - $targetPayAmount);
+
+        $vietQr = \App\Services\VietQrService::generatePaymentData($booking, $targetPayAmount);
 
         $trip = $booking->trip;
         $seatsArr = $booking->bookingSeats->pluck('seat_number')->toArray();
@@ -895,7 +909,10 @@ class TripController extends Controller
                 'customer_email' => $booking->customer_email,
                 'total_amount' => (float)$booking->total_amount,
                 'paid_amount' => (float)$booking->paid_amount,
-                'remaining_amount' => max(0, (float)$booking->total_amount - (float)$booking->paid_amount),
+                'target_pay_amount' => $targetPayAmount,
+                'remaining_amount' => $remainingAmount,
+                'is_deposit' => $isDeposit,
+                'deposit_percent' => $isDeposit ? 30 : 100,
                 'payment_status' => $booking->payment_status,
                 'payment_method' => $booking->payment_method,
                 'payment_confirmed_at' => $booking->payment_confirmed_at ? $booking->payment_confirmed_at->format('H:i d/m/Y') : null,
@@ -924,9 +941,13 @@ class TripController extends Controller
             ->where('booking_code', $code)
             ->firstOrFail();
 
+        $isDeposit = ($booking->payment_method === 'DEPOSIT_30' || str_contains($booking->notes ?? '', 'Cọc trước 30%'));
+        $targetPayAmount = $isDeposit ? (float) round($booking->total_amount * 0.3) : (float) $booking->total_amount;
+        $isPaidStatus = in_array($booking->payment_status, ['PAID', 'DEPOSIT_PAID', 'PARTIALLY_PAID']);
+
         // 1. Tự động kiểm tra API SePay nếu có cấu hình SEPAY_API_TOKEN
         $sepayToken = env('SEPAY_API_TOKEN');
-        if (!empty($sepayToken) && $booking->payment_status !== 'PAID') {
+        if (!empty($sepayToken) && !$isPaidStatus) {
             try {
                 $accNo = env('VIETQR_ACCOUNT_NO', '09025042004');
                 $response = \Illuminate\Support\Facades\Http::timeout(5)
@@ -951,18 +972,19 @@ class TripController extends Controller
                             || (strlen($shortCode) >= 4 && str_contains($cleanTx, $shortCode));
 
                         if ($isMatched) {
-                            $booking->payment_status = 'PAID';
-                            $booking->paid_amount = $booking->total_amount;
+                            $booking->payment_status = $isDeposit ? 'DEPOSIT_PAID' : 'PAID';
+                            $booking->paid_amount = $targetPayAmount;
                             $booking->payment_confirmed_at = now();
-                            $booking->payment_method = 'VIETQR';
+                            $booking->payment_method = $isDeposit ? 'DEPOSIT_30' : 'VIETQR';
                             $booking->payment_ref_code = $tx['reference_number'] ?? ('SEPAY-' . ($tx['id'] ?? time()));
                             $booking->save();
 
-                            AuditLog::log('SEPAY_AUTO_PAID', "Tự động nhận diện giao dịch SePay MBBank 09025042004 cho vé {$booking->booking_code}", 'Booking', $booking->id);
+                            AuditLog::log('SEPAY_AUTO_PAID', "Tự động nhận diện giao dịch SePay MBBank 09025042004 cho vé {$booking->booking_code} (" . ($isDeposit ? "Cọc 30%: " . number_format($targetPayAmount) . "đ" : "100%: " . number_format($booking->total_amount) . "đ") . ")", 'Booking', $booking->id);
 
                             if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
                                 \App\Services\EmailService::sendBookingConfirmation($booking);
                             }
+                            $isPaidStatus = true;
                             break;
                         }
                     }
@@ -975,8 +997,10 @@ class TripController extends Controller
         return response()->json([
             'booking_code' => $booking->booking_code,
             'payment_status' => $booking->payment_status,
-            'is_paid' => $booking->payment_status === 'PAID',
+            'is_paid' => in_array($booking->payment_status, ['PAID', 'DEPOSIT_PAID', 'PARTIALLY_PAID']),
+            'is_deposit' => $isDeposit,
             'paid_amount' => (float)$booking->paid_amount,
+            'remaining_amount' => max(0, (float)$booking->total_amount - (float)$booking->paid_amount),
             'payment_confirmed_at' => $booking->payment_confirmed_at ? $booking->payment_confirmed_at->format('H:i d/m/Y') : null,
         ]);
     }
@@ -990,14 +1014,17 @@ class TripController extends Controller
             ->where('booking_code', $code)
             ->firstOrFail();
 
-        $booking->payment_status = 'PAID';
-        $booking->paid_amount = $booking->total_amount;
+        $isDeposit = ($booking->payment_method === 'DEPOSIT_30' || str_contains($booking->notes ?? '', 'Cọc trước 30%'));
+        $targetPayAmount = $isDeposit ? (float) round($booking->total_amount * 0.3) : (float) $booking->total_amount;
+
+        $booking->payment_status = $isDeposit ? 'DEPOSIT_PAID' : 'PAID';
+        $booking->paid_amount = $targetPayAmount;
         $booking->payment_confirmed_at = now();
-        $booking->payment_method = 'VIETQR';
+        $booking->payment_method = $isDeposit ? 'DEPOSIT_30' : 'VIETQR';
         $booking->payment_ref_code = $booking->payment_ref_code ?: ('VE' . $booking->booking_code);
         $booking->save();
 
-        AuditLog::log('CONFIRM_VIETQR_PAYMENT', "Khách hàng xác nhận đã chuyển khoản VietQR thành công đơn vé {$booking->booking_code} ({$booking->total_amount}đ)", 'Booking', $booking->id);
+        AuditLog::log('CONFIRM_VIETQR_PAYMENT', "Khách hàng xác nhận chuyển khoản VietQR thành công đơn vé {$booking->booking_code} (" . ($isDeposit ? "Cọc 30%: " . number_format($targetPayAmount) . "đ" : "100%: " . number_format($booking->total_amount) . "đ") . ")", 'Booking', $booking->id);
 
         // Tự động gửi email xác nhận đặt vé đính kèm file vé PDF về Gmail khách
         if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
@@ -1006,7 +1033,9 @@ class TripController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Xác nhận thanh toán VietQR thành công! Vé điện tử kèm file PDF đã gửi về Gmail của Quý khách.',
+            'message' => $isDeposit
+                ? 'Xác nhận đặt cọc 30% VietQR thành công! Thẻ lên xe đã được gửi về Gmail của Quý khách. Số tiền 70% còn lại sẽ thanh toán khi lên xe.'
+                : 'Xác nhận thanh toán VietQR thành công! Vé điện tử kèm file PDF đã gửi về Gmail của Quý khách.',
             'redirect_url' => url('/ve/' . $booking->booking_code),
         ]);
     }
@@ -1064,14 +1093,17 @@ class TripController extends Controller
         }
 
         if ($booking) {
-            $booking->payment_status = 'PAID';
-            $booking->paid_amount = max($booking->total_amount, $amount ?: $booking->total_amount);
+            $isDeposit = ($booking->payment_method === 'DEPOSIT_30' || str_contains($booking->notes ?? '', 'Cọc trước 30%'));
+            $targetPayAmount = $isDeposit ? (float) round($booking->total_amount * 0.3) : (float) $booking->total_amount;
+
+            $booking->payment_status = $isDeposit ? 'DEPOSIT_PAID' : 'PAID';
+            $booking->paid_amount = $amount > 0 ? $amount : $targetPayAmount;
             $booking->payment_confirmed_at = now();
-            $booking->payment_method = 'VIETQR';
+            $booking->payment_method = $isDeposit ? 'DEPOSIT_30' : 'VIETQR';
             $booking->payment_ref_code = $request->input('referenceCode') ?? ('MB-' . now()->format('YmdHis'));
             $booking->save();
 
-            AuditLog::log('WEBHOOK_VIETQR_PAID', "Tự động nhận tiền thật từ MBBank 09025042004 (VO TRONG HIEU) cho vé {$booking->booking_code}. Số tiền: " . number_format($amount) . "đ. Nội dung: {$content}", 'Booking', $booking->id);
+            AuditLog::log('WEBHOOK_VIETQR_PAID', "Tự động nhận tiền thật từ MBBank 09025042004 (VO TRONG HIEU) cho vé {$booking->booking_code}. Số tiền: " . number_format($amount ?: $targetPayAmount) . "đ (" . ($isDeposit ? "Cọc 30%" : "Đủ 100%") . "). Nội dung: {$content}", 'Booking', $booking->id);
 
             // Tự động gửi email xác nhận kèm file vé PDF
             if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
@@ -1206,6 +1238,8 @@ class TripController extends Controller
                 'dropoff_stop'   => $booking->dropoffStop,
                 'total_amount'   => (float)$booking->total_amount,
                 'paid_amount'    => (float)$booking->paid_amount,
+                'remaining_amount' => max(0, (float)$booking->total_amount - (float)$booking->paid_amount),
+                'is_deposit'     => in_array($booking->payment_status, ['DEPOSIT_PAID', 'PARTIALLY_PAID']) || ($booking->payment_method === 'DEPOSIT_30') || str_contains($booking->notes ?? '', 'Cọc trước 30%'),
                 'payment_status' => $booking->payment_status,
                 'payment_method' => $booking->payment_method,
                 'checkin_status' => $booking->checkin_status,

@@ -11,7 +11,7 @@ class Booking extends Model {
         'ai_call_at'          => 'datetime',
     ];
 
-    protected $appends = ['passenger_name', 'passenger_phone', 'ticket_code', 'total_price', 'total_seats'];
+    protected $appends = ['passenger_name', 'passenger_phone', 'ticket_code', 'total_price', 'total_seats', 'deposit_amount', 'remaining_amount', 'is_deposit'];
 
     public function getPassengerNameAttribute() {
         return $this->customer_name ?? $this->attributes['customer_name'] ?? 'Hành khách';
@@ -24,6 +24,17 @@ class Booking extends Model {
     }
     public function getTotalPriceAttribute() {
         return $this->total_amount ?? $this->attributes['total_amount'] ?? 140000;
+    }
+    public function getDepositAmountAttribute() {
+        return (float)($this->paid_amount ?? 0);
+    }
+    public function getRemainingAmountAttribute() {
+        return max(0, (float)($this->total_amount ?? 0) - (float)($this->paid_amount ?? 0));
+    }
+    public function getIsDepositAttribute() {
+        return in_array($this->payment_status ?? '', ['DEPOSIT_PAID', 'PARTIALLY_PAID']) 
+            || (($this->payment_method ?? '') === 'DEPOSIT_30')
+            || str_contains($this->notes ?? '', 'Cọc trước 30%');
     }
     public function getTotalSeatsAttribute() {
         if (isset($this->attributes['total_seats']) && (int)$this->attributes['total_seats'] > 0) {

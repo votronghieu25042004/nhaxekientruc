@@ -915,9 +915,9 @@ class DriverController extends Controller
         $trip = Trip::with(['bookings.bookingSeats', 'expenses', 'route'])->findOrFail($id);
 
         // Tính toán doanh thu và chi phí
-        $totalRevenue = $trip->bookings->sum('total_price') ?: $trip->bookings->sum('total_amount') ?: 0;
-        $onlinePaid = $trip->bookings->where('payment_status', 'PAID')->sum('deposit_amount') ?: 0;
-        $roadsideAndRemainingCash = $totalRevenue - $onlinePaid;
+        $totalRevenue = (float)($trip->bookings->sum('total_price') ?: $trip->bookings->sum('total_amount') ?: 0);
+        $onlinePaid = (float)$trip->bookings->where('payment_method', '!=', 'CASH')->whereIn('payment_status', ['PAID', 'DEPOSIT_PAID', 'PARTIALLY_PAID'])->sum('paid_amount');
+        $roadsideAndRemainingCash = max(0, $totalRevenue - $onlinePaid);
         $totalExpenses = $trip->expenses->sum('amount') ?: 0;
         $netProfit = $totalRevenue - $totalExpenses;
         $expectedCash = max(0, $roadsideAndRemainingCash - $totalExpenses);
