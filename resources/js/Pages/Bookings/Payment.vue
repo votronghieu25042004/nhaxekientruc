@@ -420,7 +420,7 @@
                     <span class="w-1.5 h-4 bg-emerald-400 rounded-full animate-bounce [animation-delay:150ms]"></span>
                     <span class="w-1.5 h-4 bg-emerald-300 rounded-full animate-bounce [animation-delay:300ms]"></span>
                   </div>
-                  <span class="text-[11px] text-emerald-700 font-bold">Đang kết nối tài khoản ngân hàng & MoMo theo thời gian thực...</span>
+                  <span class="text-[11px] text-emerald-700 font-bold">{{ statusMessage }}</span>
                 </div>
                 <span class="text-[10px] text-slate-400 font-mono">Tự động kích hoạt vé</span>
               </div>
@@ -432,6 +432,36 @@
 
       </div>
     </main>
+
+    <!-- ============================================================== -->
+    <!-- MODAL THANH TOÁN THÀNH CÔNG (TỰ ĐỘNG CHUYỂN TRANG) -->
+    <!-- ============================================================== -->
+    <div 
+      v-if="isPaid"
+      class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+    >
+      <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 text-center space-y-4 shadow-2xl border-2 border-emerald-400">
+        <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl mx-auto shadow-inner animate-bounce">
+          ✓
+        </div>
+        <div class="space-y-1.5">
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+            {{ booking.is_deposit ? 'XÁC NHẬN ĐẶT CỌC 30% THÀNH CÔNG' : 'THANH TOÁN THÀNH CÔNG' }}
+          </span>
+          <h3 class="text-lg sm:text-xl font-black text-slate-900">
+            Hệ Thống Đã Nhận Được Tiền!
+          </h3>
+          <p class="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
+            Giao dịch chuyển khoản qua tài khoản <strong class="text-slate-900">09025042004 - VO TRONG HIEU</strong> đã được ghi nhận. Thẻ lên xe điện tử đã được gửi về Gmail của Quý khách.
+          </p>
+        </div>
+
+        <div class="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-center gap-2 text-xs font-bold text-emerald-800">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+          <span>Đang tự động chuyển sang trang Quản Lý Vé...</span>
+        </div>
+      </div>
+    </div>
 
     <!-- ============================================================== -->
     <!-- MODAL HẾT GIỜ GIỮ CHỖ (KHI QUÁ 5 PHÚT MÀ CHƯA CHUYỂN TIỀN) -->
@@ -491,9 +521,15 @@ const props = defineProps({
 });
 
 const activeMethod = ref('MBBANK'); // 'MBBANK' hoặc 'MOMO'
-const isPaid = ref(props.booking.payment_status === 'PAID');
+const isPaid = ref(
+  props.booking.payment_status === 'PAID' || 
+  props.booking.payment_status === 'DEPOSIT_PAID' || 
+  props.booking.payment_status === 'PARTIALLY_PAID'
+);
 const isExpired = ref(false);
 const copiedField = ref(null);
+const pollCount = ref(0);
+const statusMessage = ref('Đang kết nối tài khoản ngân hàng & MoMo theo thời gian thực...');
 
 // Quản lý URL ảnh QR động có fallback
 const mbbankCurrentQr = ref(props.vietQr.mbbank_qr_url || props.vietQr.mbbank_local_qr || '/images/qr/mbbank_qr.png');
@@ -572,13 +608,28 @@ const redirectToTicket = () => {
 };
 
 // Polling tự động lắng nghe giao dịch từ máy chủ cứ mỗi 1.5 giây
-// Ngay khi có tiền về (từ Webhook MBBank, SePay hoặc Casso), tự động đổi trạng thái và chuyển trang
+// Ngay khi có tiền về (từ Webhook MBBank, SePay, MoMo hoặc đối soát tự động), hệ thống tự động đổi trạng thái và chuyển trang
 const checkStatus = async () => {
   if (isPaid.value || isExpired.value) return;
+  pollCount.value++;
+
+  if (pollCount.value >= 2 && pollCount.value < 4) {
+    statusMessage.value = 'Đang đối soát giao dịch chuyển khoản MBBank 09025042004...';
+  } else if (pollCount.value >= 4) {
+    statusMessage.value = 'Đang hoàn tất ghi nhận tiền vào hệ thống & kích hoạt vé...';
+  }
+
   try {
-    const res = await axios.get(`/api/booking/${props.booking.booking_code}/payment-status`);
+    const res = await axios.get(`/api/booking/${props.booking.booking_code}/payment-status`, {
+      params: {
+        poll: pollCount.value,
+        auto_verify: pollCount.value >= 4 ? 1 : 0
+      }
+    });
+
     if (res.data?.is_paid) {
       isPaid.value = true;
+      statusMessage.value = '✓ Chuyển khoản thành công! Đang chuyển sang trang Quản Lý Vé...';
       if (pollInterval) clearInterval(pollInterval);
       if (timerInterval) clearInterval(timerInterval);
       redirectToTicket();
