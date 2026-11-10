@@ -46,7 +46,7 @@ return [
             'encryption' => env('MAIL_ENCRYPTION', 'tls'),
             'username' => env('MAIL_USERNAME', 'volananh2k4@gmail.com'),
             'password' => env('MAIL_PASSWORD', 'qpvrwgqrbjxeiyen'),
-            'timeout' => 15,
+            'timeout' => 6,
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
