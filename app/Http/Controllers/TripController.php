@@ -674,7 +674,10 @@ class TripController extends Controller
                     $discountAmount = min((float)$voucher->discount_value, $seatPrice * $totalSeatCount);
                     $discountPerSeat = round($discountAmount / max(1, $totalSeatCount));
                 }
-                $voucher->increment('used_count');
+                $voucher->increment('usage_count');
+                if (\Illuminate\Support\Facades\Schema::hasColumn('vouchers', 'used_count')) {
+                    $voucher->increment('used_count');
+                }
             }
         }
 
@@ -750,9 +753,15 @@ class TripController extends Controller
             $discountAmount += $newMemberDiscount;
         }
 
-        $isFull = ($request->payment_choice === 'FULL') || ($totalAmount == 0);
-        $paidAmount = ($totalAmount == 0) ? 0 : ($isFull ? $totalAmount : round($totalAmount * 0.3));
-        $paymentStatus = ($totalAmount == 0 || $isFull) ? 'PAID' : 'PARTIALLY_PAID';
+        // Đặt vé trực tuyến: ban đầu trạng thái là UNPAID và paid_amount = 0 (trừ khi vé 0đ được tài trợ)
+        // Khách hàng phải quét mã QR VietQR MBBank / MoMo chuyển khoản thì mới xác nhận PAID!
+        if ($totalAmount == 0) {
+            $paidAmount = 0;
+            $paymentStatus = 'PAID';
+        } else {
+            $paidAmount = 0;
+            $paymentStatus = 'UNPAID';
+        }
 
         $bookingCode = 'KT-' . strtoupper(Str::random(6));
 
@@ -803,7 +812,8 @@ class TripController extends Controller
             'total_amount' => $totalAmount,
             'paid_amount' => $paidAmount,
             'payment_status' => $paymentStatus,
-            'payment_method' => 'ONLINE',
+            'payment_method' => $request->input('payment_method', 'VIETQR'),
+            'payment_ref_code' => 'VE' . $bookingCode,
             'checkin_status' => 'PENDING',
             'qr_token' => $seatQrToken,
             'voucher_code' => $voucher ? $voucher->code : null,
@@ -861,8 +871,232 @@ class TripController extends Controller
         }
         $successMsg .= "Mã vé điện tử QR & thông báo tự động xuất bến đã gửi về Gmail {$request->customer_email}.";
 
-        return redirect()->route('booking.detail', ['code' => $bookingCode])
+        return redirect()->route('booking.payment', ['code' => $bookingCode])
             ->with('success', $successMsg);
+    }
+
+    /**
+     * Màn hình Thanh toán VietQR Napas 247
+     */
+    public function paymentScreen(Request $request, $code)
+    {
+        $booking = Booking::with([
+            'trip.route.stops',
+            'trip.bus',
+            'trip.driver',
+            'pickupStop',
+            'dropoffStop',
+            'bookingSeats',
+        ])->where('booking_code', $code)->firstOrFail();
+
+        $vietQr = \App\Services\VietQrService::generatePaymentData($booking);
+
+        $trip = $booking->trip;
+        $seatsArr = $booking->bookingSeats->pluck('seat_number')->toArray();
+
+        return Inertia::render('Bookings/Payment', [
+            'booking' => [
+                'id' => $booking->id,
+                'booking_code' => $booking->booking_code,
+                'customer_name' => $booking->customer_name,
+                'customer_phone' => $booking->customer_phone,
+                'customer_email' => $booking->customer_email,
+                'total_amount' => (float)$booking->total_amount,
+                'paid_amount' => (float)$booking->paid_amount,
+                'remaining_amount' => max(0, (float)$booking->total_amount - (float)$booking->paid_amount),
+                'payment_status' => $booking->payment_status,
+                'payment_method' => $booking->payment_method,
+                'payment_confirmed_at' => $booking->payment_confirmed_at ? $booking->payment_confirmed_at->format('H:i d/m/Y') : null,
+                'seats' => $seatsArr,
+                'seats_label' => implode(', ', $seatsArr),
+                'pickup' => $booking->pickupStop?->stop_name ?? ($trip?->route?->origin ?? 'Bến xe TT'),
+                'dropoff' => $booking->dropoffStop?->stop_name ?? ($trip?->route?->destination ?? 'Bến đến'),
+                'departure_time' => $trip?->departure_time ? Carbon::parse($trip->departure_time)->format('H:i - d/m/Y') : 'Xem trên vé',
+                'route_name' => $trip?->route?->name ?? 'Tuyến xe nhaxekientruc',
+                'bus_plate' => $trip?->bus?->license_plate ?? '43B-012.34',
+                'trip_id' => $trip?->id,
+                'ticket_url' => url('/ve/' . $booking->booking_code),
+            ],
+            'vietQr' => $vietQr,
+            'is_admin' => (bool)(session('admin_mode') || Auth::user()?->role === 'ADMIN'),
+        ]);
+    }
+
+    /**
+     * API kiểm tra trạng thái thanh toán theo thời gian thực (Polling)
+     * CHỈ xác nhận thanh toán khi thực sự có Webhook tiền vào MBBank 09025042004 hoặc SePay API ghi nhận
+     */
+    public function checkPaymentStatus(Request $request, $code)
+    {
+        $booking = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])
+            ->where('booking_code', $code)
+            ->firstOrFail();
+
+        // 1. Tự động kiểm tra API SePay nếu có cấu hình SEPAY_API_TOKEN
+        $sepayToken = env('SEPAY_API_TOKEN');
+        if (!empty($sepayToken) && $booking->payment_status !== 'PAID') {
+            try {
+                $accNo = env('VIETQR_ACCOUNT_NO', '09025042004');
+                $response = \Illuminate\Support\Facades\Http::timeout(5)
+                    ->withHeaders(['Authorization' => 'Apikey ' . $sepayToken])
+                    ->get('https://my.sepay.vn/userapi/transactions/list', [
+                        'account_number' => $accNo,
+                        'limit' => 20,
+                    ]);
+
+                if ($response->successful()) {
+                    $transactions = $response->json('transactions') ?? [];
+                    foreach ($transactions as $tx) {
+                        $txContent = strtoupper($tx['transaction_content'] ?? '');
+                        $rawBookingCode = strtoupper($booking->booking_code); // KT-2QFWP1
+                        $cleanBookingCode = preg_replace('/[^A-Z0-9]/', '', $rawBookingCode); // KT2QFWP1
+                        $cleanTx = preg_replace('/[^A-Z0-9]/', '', $txContent);
+                        $shortCode = preg_replace('/^KT/', '', $cleanBookingCode); // 2QFWP1
+
+                        $isMatched = str_contains($txContent, $rawBookingCode)
+                            || str_contains($cleanTx, $cleanBookingCode)
+                            || str_contains($cleanTx, 'VE' . $cleanBookingCode)
+                            || (strlen($shortCode) >= 4 && str_contains($cleanTx, $shortCode));
+
+                        if ($isMatched) {
+                            $booking->payment_status = 'PAID';
+                            $booking->paid_amount = $booking->total_amount;
+                            $booking->payment_confirmed_at = now();
+                            $booking->payment_method = 'VIETQR';
+                            $booking->payment_ref_code = $tx['reference_number'] ?? ('SEPAY-' . ($tx['id'] ?? time()));
+                            $booking->save();
+
+                            AuditLog::log('SEPAY_AUTO_PAID', "Tự động nhận diện giao dịch SePay MBBank 09025042004 cho vé {$booking->booking_code}", 'Booking', $booking->id);
+
+                            if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
+                                \App\Services\EmailService::sendBookingConfirmation($booking);
+                            }
+                            break;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("[SEPAY_CHECK_ERROR] " . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'booking_code' => $booking->booking_code,
+            'payment_status' => $booking->payment_status,
+            'is_paid' => $booking->payment_status === 'PAID',
+            'paid_amount' => (float)$booking->paid_amount,
+            'payment_confirmed_at' => $booking->payment_confirmed_at ? $booking->payment_confirmed_at->format('H:i d/m/Y') : null,
+        ]);
+    }
+
+    /**
+     * Xác nhận thanh toán VietQR thành công (Khách bấm hoặc mô phỏng Webhook ngân hàng)
+     */
+    public function confirmPayment(Request $request, $code)
+    {
+        $booking = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])
+            ->where('booking_code', $code)
+            ->firstOrFail();
+
+        $booking->payment_status = 'PAID';
+        $booking->paid_amount = $booking->total_amount;
+        $booking->payment_confirmed_at = now();
+        $booking->payment_method = 'VIETQR';
+        $booking->payment_ref_code = $booking->payment_ref_code ?: ('VE' . $booking->booking_code);
+        $booking->save();
+
+        AuditLog::log('CONFIRM_VIETQR_PAYMENT', "Khách hàng xác nhận đã chuyển khoản VietQR thành công đơn vé {$booking->booking_code} ({$booking->total_amount}đ)", 'Booking', $booking->id);
+
+        // Tự động gửi email xác nhận đặt vé đính kèm file vé PDF về Gmail khách
+        if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
+            \App\Services\EmailService::sendBookingConfirmation($booking);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Xác nhận thanh toán VietQR thành công! Vé điện tử kèm file PDF đã gửi về Gmail của Quý khách.',
+            'redirect_url' => url('/ve/' . $booking->booking_code),
+        ]);
+    }
+
+    /**
+     * Webhook tự động nhận thông báo tiền thật về tài khoản MBBank từ SePay / Casso / Ngân hàng
+     * Khớp lệnh khi tiền thật vào tài khoản 09025042004 - VO TRONG HIEU
+     */
+    public function handlePaymentWebhook(Request $request)
+    {
+        // SePay payload: content, transferAmount, transactionDate, referenceCode, id...
+        // Casso payload: data: [{ description, amount, ... }]
+        $content = $request->input('content') 
+            ?? $request->input('description') 
+            ?? $request->input('data.0.description') 
+            ?? '';
+
+        $amount = (float)($request->input('transferAmount') 
+            ?? $request->input('amount') 
+            ?? $request->input('data.0.amount') 
+            ?? 0);
+
+        if (empty($content)) {
+            return response()->json(['success' => false, 'message' => 'No transfer content found in payload'], 400);
+        }
+
+        $normalizedContent = preg_replace('/[^A-Z0-9]/', '', strtoupper($content));
+        $booking = null;
+
+        // 1. Thử khớp dạng KT-XXXX hoặc KTXXXX
+        if (preg_match('/(?:VE)?(KT[A-Z0-9]+)/i', $normalizedContent, $matches)) {
+            $rawCode = strtoupper($matches[1]);
+            $cleanCode = 'KT-' . substr($rawCode, 2);
+            $booking = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])
+                ->where('booking_code', $cleanCode)
+                ->orWhere('booking_code', $rawCode)
+                ->first();
+        }
+
+        // 2. Nếu chưa tìm thấy, quét tất cả đơn vé đang chờ thanh toán
+        if (!$booking) {
+            $pendingBookings = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])
+                ->whereIn('payment_status', ['UNPAID', 'PENDING'])
+                ->where('created_at', '>=', now()->subHours(48))
+                ->get();
+
+            foreach ($pendingBookings as $pb) {
+                $cleanPb = preg_replace('/[^A-Z0-9]/', '', strtoupper($pb->booking_code));
+                $shortPb = preg_replace('/^KT/', '', $cleanPb);
+                if (str_contains($normalizedContent, $cleanPb) || (strlen($shortPb) >= 4 && str_contains($normalizedContent, $shortPb))) {
+                    $booking = $pb;
+                    break;
+                }
+            }
+        }
+
+        if ($booking) {
+            $booking->payment_status = 'PAID';
+            $booking->paid_amount = max($booking->total_amount, $amount ?: $booking->total_amount);
+            $booking->payment_confirmed_at = now();
+            $booking->payment_method = 'VIETQR';
+            $booking->payment_ref_code = $request->input('referenceCode') ?? ('MB-' . now()->format('YmdHis'));
+            $booking->save();
+
+            AuditLog::log('WEBHOOK_VIETQR_PAID', "Tự động nhận tiền thật từ MBBank 09025042004 (VO TRONG HIEU) cho vé {$booking->booking_code}. Số tiền: " . number_format($amount) . "đ. Nội dung: {$content}", 'Booking', $booking->id);
+
+            // Tự động gửi email xác nhận kèm file vé PDF
+            if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
+                \App\Services\EmailService::sendBookingConfirmation($booking);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Đã tự động xác nhận thanh toán vé {$booking->booking_code} thành công!",
+                'booking_code' => $booking->booking_code,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => "Không tìm thấy đơn vé tương ứng với nội dung chuyển khoản: {$content}",
+        ], 404);
     }
 
     /**
@@ -885,66 +1119,21 @@ class TripController extends Controller
         }
 
         $sent = \App\Services\EmailService::sendDepartureReminder($booking);
+        // AI Gọi điện thoại thông báo
+        \App\Services\AiCallService::makeReminderCallAuto($booking);
 
         return response()->json([
             'success' => true,
-            'message' => "Trợ lý AI nhaxekientruc đã gửi thành công Mã vé QR & Thông báo xuất bến về Gmail {$booking->customer_email}!"
+            'message' => "Trợ lý AI nhaxekientruc đã gửi thành công Mã vé QR về Gmail {$booking->customer_email} & thực hiện cuộc gọi nhắc xuất bến!"
         ]);
     }
 
     /**
-     * Xem Vé Điện Tử
+     * Xem Vé Điện Tử & Quản Lý Vé (Đồng bộ cùng 1 trang Quản Lý Vé duy nhất với Bookings/Detail.vue)
      */
-    public function ticket($code)
+    public function ticket(Request $request, $code)
     {
-        $booking = Booking::with(['trip.route.stops', 'trip.bus', 'trip.driver', 'trip.conductor', 'pickupStop', 'dropoffStop', 'bookingSeats', 'review'])
-            ->where('booking_code', $code)
-            ->firstOrFail();
-
-        return Inertia::render('Bookings/Ticket', [
-            'booking' => [
-                'id' => $booking->id,
-                'booking_code' => $booking->booking_code,
-                'customer_name' => $booking->customer_name,
-                'customer_phone' => $booking->customer_phone,
-                'customer_email' => $booking->customer_email,
-                'seats' => $booking->bookingSeats->pluck('seat_number')->toArray(),
-                'from_location' => $booking->trip->route?->origin ?? 'Bến xuất phát',
-                'to_location' => $booking->trip->route?->destination ?? 'Bến đến',
-                'notes' => $booking->notes,
-                'total_amount' => (float) $booking->total_amount,
-                'paid_amount' => (float) $booking->paid_amount,
-                'remaining_due' => (float) ($booking->total_amount - $booking->paid_amount),
-                'payment_status' => $booking->payment_status,
-                'checkin_status' => $booking->checkin_status,
-                'checked_in_at' => $booking->checked_in_at ? $booking->checked_in_at->format('H:i - d/m/Y') : null,
-                'qr_token' => $booking->qr_token,
-                'departure_time' => $booking->trip->departure_time->format('H:i'),
-                'departure_date' => $booking->trip->departure_time->format('d/m/Y'),
-                'bus_type' => str_contains(strtolower($booking->trip->bus?->bus_type ?? ''), 'ngồi') ? 'Ghế ngồi VIP' : 'Xe giường nằm VIP',
-                'license_plate' => $booking->trip->bus?->license_plate ?? '43B-012.34',
-                'driver' => $booking->trip->driver ? [
-                    'id' => $booking->trip->driver->id,
-                    'name' => $booking->trip->driver->name,
-                    'phone' => $booking->trip->driver->phone,
-                    'avg_rating' => $booking->trip->driver->avg_rating ?? '4.9',
-                    'license_class' => $booking->trip->driver->license_class ?? 'E',
-                ] : null,
-                'conductor' => $booking->trip->conductor ? [
-                    'id' => $booking->trip->conductor->id,
-                    'name' => $booking->trip->conductor->name,
-                    'phone' => $booking->trip->conductor->phone,
-                ] : null,
-                'trip' => [
-                    'id' => $booking->trip->id,
-                    'trip_code' => $booking->trip->trip_code,
-                    'status' => $booking->trip->status,
-                    'current_speed' => $booking->trip->current_speed_kmh ?? 65,
-                ],
-                'has_reviewed' => $booking->review !== null,
-            ],
-            'user' => Auth::user(),
-        ]);
+        return $this->bookingDetail($request, $code);
     }
 
     /**

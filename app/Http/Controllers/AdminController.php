@@ -492,6 +492,13 @@ class AdminController extends Controller
                     'created_at' => $d->format('H:i - d/m/Y'),
                     'created_date_raw' => $d->format('Y-m-d'),
                     'notes' => $b->notes,
+                    'reminder_sent_at' => $b->reminder_sent_at ? Carbon::parse($b->reminder_sent_at)->timezone('Asia/Ho_Chi_Minh')->format('H:i d/m') : null,
+                    'reminder_sent_by' => $b->reminder_sent_by,
+                    'ai_call_at' => $b->ai_call_at ? Carbon::parse($b->ai_call_at)->timezone('Asia/Ho_Chi_Minh')->format('H:i d/m') : null,
+                    'ai_call_by' => $b->ai_call_by,
+                    'ai_call_status' => $b->ai_call_status,
+                    'ai_call_audio_url' => $b->ai_call_audio_url,
+                    'ai_call_script' => $b->ai_call_script,
                 ];
             });
 
@@ -1130,10 +1137,18 @@ class AdminController extends Controller
             $validBookings = $t->bookings->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
 
             foreach ($validBookings as $b) {
+                // Auto cron: chỉ gửi nếu chưa gửi lần nào (tránh spam)
+                if (!empty($b->reminder_sent_at)) {
+                    continue; // Đã gửi rồi (auto hoặc manual), bỏ qua
+                }
+                // Auto mode: set auto trước khi gọi (sendDepartureReminder sẽ ghi vào DB)
+                $b->reminder_sent_by = null; // reset để sendDepartureReminder ghi 'auto'
                 $sent = \App\Services\EmailService::sendDepartureReminder($b);
                 if ($sent) {
                     $emailCount++;
                 }
+                // AI tự động gọi điện thoại nhắc nhở xuất bến 45 phút
+                \App\Services\AiCallService::makeReminderCallAuto($b);
             }
         }
 
@@ -1535,6 +1550,7 @@ class AdminController extends Controller
                         'booking_code' => $bkg->booking_code,
                         'customer_name' => $custName,
                         'customer_phone' => $custPhone,
+                        'customer_email' => $bkg->customer_email ?: '',
                         'seats' => $seatNums,
                         'seats_label' => implode(', ', $seatNums),
                         'total_amount' => (float)$bkg->total_amount,
@@ -1545,6 +1561,14 @@ class AdminController extends Controller
                         'is_boarded' => $isBoarded,
                         'pickup' => $bkg->pickup_stop_name ?: 'Bến xe TT',
                         'dropoff' => $bkg->dropoff_stop_name ?: 'Điểm trả',
+                        // Reminder & AI Call tracking 
+                        'reminder_sent_at' => $bkg->reminder_sent_at ? $bkg->reminder_sent_at->format('H:i d/m') : null,
+                        'reminder_sent_by' => $bkg->reminder_sent_by ?? null,
+                        'ai_call_at'       => $bkg->ai_call_at ? $bkg->ai_call_at->format('H:i d/m') : null,
+                        'ai_call_by'       => $bkg->ai_call_by ?? null,
+                        'ai_call_status'   => $bkg->ai_call_status ?? null,
+                        'ai_call_audio_url'=> $bkg->ai_call_audio_url ?? null,
+                        'ai_call_script'   => $bkg->ai_call_script ?? null,
                     ];
 
                     foreach ($seatNums as $sn) {
@@ -1660,18 +1684,62 @@ class AdminController extends Controller
         $driver = $trip->driver ? $trip->driver->name : 'Bác tài nhaxekientruc';
 
         $sentCount = 0;
+        $callCount = 0;
         foreach ($bookings as $b) {
-            $sent = \App\Services\EmailService::sendDepartureReminder($b);
+            // Admin bấm tay -> ghi manual
+            $sent = \App\Services\EmailService::sendDepartureReminderManual($b);
             if ($sent) {
                 $sentCount++;
             }
+            $callRes = \App\Services\AiCallService::makeReminderCallManual($b);
+            if ($callRes['success'] ?? false) {
+                $callCount++;
+            }
         }
 
-        if ($sentCount > 0) {
-            return back()->with('success', "🔔 ĐÃ GỬI THÀNH CÔNG GMAIL NHẮC 45 PHÚT TỚI {$sentCount}/{$totalBookings} HÀNH KHÁCH của chuyến {$trip->trip_code} (Khởi hành lúc {$depTime}, Xe {$plate}, Bác tài: {$driver}). Kèm mã QR vé điện tử!");
+        if ($sentCount > 0 || $callCount > 0) {
+            return back()->with('success', "🔔 ĐÃ GỬI GMAIL ({$sentCount} khách) & TỔNG ĐÀI AI ĐÃ GỌI ĐIỆN ({$callCount} khách) NHẮC 45 PHÚT của chuyến {$trip->trip_code} (Khởi hành lúc {$depTime}, Xe {$plate}, Bác tài: {$driver})!");
         }
 
-        return back()->with('warning', "Đã quét {$totalBookings} hành khách của chuyến {$trip->trip_code}, nhưng các hành khách này chưa có địa chỉ Gmail hợp lệ hoặc dịch vụ chuyển phát đang bận.");
+        return back()->with('warning', "Đã quét {$totalBookings} hành khách của chuyến {$trip->trip_code}, nhưng các hành khách này chưa có địa chỉ Gmail / SĐT hợp lệ hoặc dịch vụ chuyển phát đang bận.");
+    }
+
+    /**
+     * Admin bấm tay gửi Gmail & Gọi AI cho TỪNG hành khách cụ thể trong chuyến xe
+     */
+    public function notifyAndCallBooking(Request $request, $id)
+    {
+        $booking = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])->findOrFail($id);
+
+        // Gửi Gmail manual
+        $emailSent = \App\Services\EmailService::sendDepartureReminderManual($booking);
+
+        // AI gọi điện thoại manual
+        $callRes = \App\Services\AiCallService::makeReminderCallManual($booking);
+
+        $msg = "Đã gửi Gmail & khởi tạo cuộc gọi AI nhắc nhở 45P tới khách {$booking->customer_name} ({$booking->customer_phone}) thành công!";
+        if (!empty($callRes['telecom_detail'])) {
+            $msg .= " (" . $callRes['telecom_detail'] . ")";
+        } elseif (!($callRes['telecom_success'] ?? false)) {
+            $msg .= " [Lưu ý viễn thông]: Để điện thoại thật {$booking->customer_phone} đổ chuông ngoài đời thực, máy chủ cần kết nối API Tổng đài viễn thông (Twilio / Stringee / eSMS) trong file .env.";
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $msg,
+            'email_sent' => $emailSent,
+            'call' => $callRes,
+            'booking' => [
+                'id' => $booking->id,
+                'reminder_sent_at' => $booking->reminder_sent_at ? $booking->reminder_sent_at->format('H:i d/m') : now()->format('H:i d/m'),
+                'reminder_sent_by' => 'manual',
+                'ai_call_at' => $booking->ai_call_at ? $booking->ai_call_at->format('H:i d/m') : now()->format('H:i d/m'),
+                'ai_call_by' => 'manual',
+                'ai_call_status' => $booking->ai_call_status ?? 'COMPLETED',
+                'ai_call_audio_url' => $booking->ai_call_audio_url,
+                'ai_call_script' => $booking->ai_call_script,
+            ]
+        ]);
     }
 
     public function notifyAllReminders(Request $request)
@@ -2977,63 +3045,225 @@ class AdminController extends Controller
     }
 
 
-    public function finance()
+    public function finance(Request $request)
     {
-        $bookings = Booking::with(['trip.route', 'trip.bus'])->orderBy('created_at', 'desc')->take(20)->get();
-        $tripClosings = TripClosing::with(['trip.route', 'trip.bus', 'trip.driver', 'trip.conductor'])->orderBy('created_at', 'desc')->get();
+        $todayStr = Carbon::today('Asia/Ho_Chi_Minh')->format('Y-m-d');
+        $period = $request->query('period', 'today'); // 'today', 'yesterday', '7days', 'month', 'custom'
+        $selectedDate = $request->query('date', $todayStr);
+        $selectedBusId = $request->query('bus_id', 'all');
+        $filterType = $request->query('filter_type', 'created_at'); // 'created_at' (ngày thu tiền) hoặc 'departure_time' (ngày chuyến chạy)
 
-        $buses = Bus::all();
-        $topBuses = $buses->map(function($b) {
-            $trips = Trip::with('bookings')->where('bus_id', $b->id)->get();
-            $tripsCount = $trips->count();
-            $passengers = 0;
-            $revenue = 0;
-            foreach ($trips as $t) {
-                $validBookings = $t->bookings ? $t->bookings->where('payment_status', '!=', 'REFUNDED') : collect();
-                $passengers += $validBookings->sum('total_seats');
-                $revenue += $validBookings->sum('total_amount');
-            }
-            return [
-                'id' => $b->id,
-                'license_plate' => $b->license_plate ?? $b->plate_number ?? '43B-012.34',
-                'bus_type' => $b->bus_type ?? 'Giường Nằm VIP',
+        // Xác định khoảng ngày lọc
+        $targetDate = Carbon::parse($selectedDate);
+        if ($period === 'yesterday') {
+            $startDate = Carbon::today('Asia/Ho_Chi_Minh')->subDay()->startOfDay();
+            $endDate = Carbon::today('Asia/Ho_Chi_Minh')->subDay()->endOfDay();
+            $displayDate = 'Hôm qua (' . $startDate->format('d/m/Y') . ')';
+            $prevStartDate = Carbon::today('Asia/Ho_Chi_Minh')->subDays(2)->startOfDay();
+            $prevEndDate = Carbon::today('Asia/Ho_Chi_Minh')->subDays(2)->endOfDay();
+            $activeDateValue = $startDate->format('Y-m-d');
+        } elseif ($period === '7days') {
+            $startDate = Carbon::today('Asia/Ho_Chi_Minh')->subDays(6)->startOfDay();
+            $endDate = Carbon::today('Asia/Ho_Chi_Minh')->endOfDay();
+            $displayDate = '7 Ngày Qua (' . $startDate->format('d/m') . ' - ' . $endDate->format('d/m/Y') . ')';
+            $prevStartDate = Carbon::today('Asia/Ho_Chi_Minh')->subDays(13)->startOfDay();
+            $prevEndDate = Carbon::today('Asia/Ho_Chi_Minh')->subDays(7)->endOfDay();
+            $activeDateValue = $endDate->format('Y-m-d');
+        } elseif ($period === 'month') {
+            $startDate = $targetDate->copy()->startOfMonth();
+            $endDate = $targetDate->copy()->endOfMonth();
+            $displayDate = 'Tháng ' . $targetDate->format('m/Y');
+            $prevStartDate = $targetDate->copy()->subMonth()->startOfMonth();
+            $prevEndDate = $targetDate->copy()->subMonth()->endOfMonth();
+            $activeDateValue = $targetDate->format('Y-m-d');
+        } elseif ($period === 'custom') {
+            $startDate = $targetDate->copy()->startOfDay();
+            $endDate = $targetDate->copy()->endOfDay();
+            $displayDate = 'Ngày ' . $targetDate->format('d/m/Y');
+            $prevStartDate = $targetDate->copy()->subDay()->startOfDay();
+            $prevEndDate = $targetDate->copy()->subDay()->endOfDay();
+            $activeDateValue = $targetDate->format('Y-m-d');
+        } else {
+            // Mặc định 'today'
+            $period = 'today';
+            $startDate = Carbon::today('Asia/Ho_Chi_Minh')->startOfDay();
+            $endDate = Carbon::today('Asia/Ho_Chi_Minh')->endOfDay();
+            $displayDate = 'Hôm nay (' . $startDate->format('d/m/Y') . ')';
+            $prevStartDate = Carbon::today('Asia/Ho_Chi_Minh')->subDay()->startOfDay();
+            $prevEndDate = Carbon::today('Asia/Ho_Chi_Minh')->subDay()->endOfDay();
+            $activeDateValue = $startDate->format('Y-m-d');
+        }
+
+        // 1. Query Bookings trong kỳ đã chọn
+        $bookingQuery = Booking::with(['trip.bus', 'trip.route', 'trip.driver', 'trip.conductor'])
+            ->where('payment_status', '!=', 'REFUNDED');
+
+        if ($filterType === 'departure_time') {
+            $bookingQuery->whereHas('trip', function($q) use ($startDate, $endDate) {
+                $q->whereBetween('departure_time', [$startDate, $endDate]);
+            });
+        } else {
+            $bookingQuery->whereBetween('created_at', [$startDate, $endDate]);
+        }
+
+        $allBookings = $bookingQuery->get();
+
+        // 2. Query Bookings kỳ trước để so sánh đối soát
+        $prevBookingQuery = Booking::where('payment_status', '!=', 'REFUNDED');
+        if ($filterType === 'departure_time') {
+            $prevBookingQuery->whereHas('trip', function($q) use ($prevStartDate, $prevEndDate) {
+                $q->whereBetween('departure_time', [$prevStartDate, $prevEndDate]);
+            });
+        } else {
+            $prevBookingQuery->whereBetween('created_at', [$prevStartDate, $prevEndDate]);
+        }
+        $prevTotalRevenue = (float)$prevBookingQuery->sum('total_amount');
+
+        // Doanh thu kỳ hiện tại
+        $totalRevenue = (float)$allBookings->sum('total_amount');
+        $totalPaidOnline = (float)$allBookings->where('payment_status', 'PAID')->sum('total_amount');
+        $totalCash = (float)max(0, $totalRevenue - $totalPaidOnline);
+        $totalSeatsSold = (int)$allBookings->sum('total_seats');
+
+        // Chênh lệch doanh thu so với kỳ trước
+        $diffAmount = $totalRevenue - $prevTotalRevenue;
+        $diffPercent = $prevTotalRevenue > 0 ? round(($diffAmount / $prevTotalRevenue) * 100, 1) : 0;
+
+        // 3. THỐNG KÊ DOANH THU THEO TỪNG XE (BUS FLEET REVENUE)
+        $buses = Bus::orderBy('license_plate')->get();
+        $fleetRevenueList = [];
+
+        foreach ($buses as $bus) {
+            $busBookings = $allBookings->filter(function($b) use ($bus) {
+                return $b->trip && $b->trip->bus_id == $bus->id;
+            });
+
+            // Số chuyến của xe trong kỳ
+            $busTrips = Trip::where('bus_id', $bus->id)
+                ->whereBetween('departure_time', [$startDate, $endDate])
+                ->get();
+
+            $tripsCount = $busTrips->count();
+            $seatsSold = (int)$busBookings->sum('total_seats');
+            $busRev = (float)$busBookings->sum('total_amount');
+            $onlineRev = (float)$busBookings->where('payment_status', 'PAID')->sum('total_amount');
+            $cashRev = (float)max(0, $busRev - $onlineRev);
+
+            $busCapacity = $tripsCount > 0 ? ($tripsCount * ($bus->total_seats ?: 34)) : ($bus->total_seats ?: 34);
+            $occupancyRate = $busCapacity > 0 ? min(100, round(($seatsSold / $busCapacity) * 100, 1)) : 0;
+            $sharePercent = $totalRevenue > 0 ? round(($busRev / $totalRevenue) * 100, 1) : 0;
+
+            $fleetRevenueList[] = [
+                'id' => $bus->id,
+                'license_plate' => $bus->license_plate ?: '43B-012.34',
+                'bus_type' => $bus->bus_type ?: 'Giường Nằm VIP',
+                'total_seats' => $bus->total_seats ?: 34,
                 'trips_count' => $tripsCount,
-                'total_passengers' => $passengers > 0 ? $passengers : ($tripsCount * 18),
-                'total_revenue' => $revenue > 0 ? $revenue : ($tripsCount * 2800000),
-                'status' => $b->status ?? 'ACTIVE',
+                'seats_sold' => $seatsSold,
+                'occupancy_rate' => $occupancyRate,
+                'online_amount' => $onlineRev,
+                'cash_amount' => $cashRev,
+                'total_revenue' => $busRev,
+                'share_percent' => $sharePercent,
+                'status' => $bus->status ?? 'ACTIVE',
             ];
-        })->sortByDesc('total_revenue')->values();
-
-        $totalRevenue = Booking::where('payment_status', '!=', 'REFUNDED')->sum('total_amount');
-        if ($totalRevenue == 0) {
-            $totalRevenue = $tripClosings->sum('total_revenue') ?: 18500000;
         }
 
-        $totalPaid = Booking::where('payment_status', 'PAID')->sum('paid_amount');
-        if ($totalPaid == 0) {
-            $totalPaid = (int)($totalRevenue * 0.3);
+        // Sắp xếp doanh thu xe giảm dần
+        usort($fleetRevenueList, function($a, $b) {
+            return $b['total_revenue'] <=> $a['total_revenue'];
+        });
+
+        // 4. DANH SÁCH CHUYẾN ĐI CHI TIẾT TRONG KỲ
+        $tripsQuery = Trip::with(['route', 'bus', 'driver', 'conductor', 'bookings'])
+            ->whereBetween('departure_time', [$startDate, $endDate]);
+
+        if ($selectedBusId !== 'all' && is_numeric($selectedBusId)) {
+            $tripsQuery->where('bus_id', (int)$selectedBusId);
         }
 
-        $totalExpenses = $tripClosings->sum('total_expenses');
-        if ($totalExpenses == 0) {
-            $totalExpenses = 2850000;
+        $dayTrips = $tripsQuery->orderBy('departure_time', 'asc')->get()->map(function($t) {
+            $validBookings = $t->bookings ? $t->bookings->where('payment_status', '!=', 'REFUNDED') : collect();
+            $tSeats = (int)$validBookings->sum('total_seats');
+            $tRev = (float)$validBookings->sum('total_amount');
+            $tOnline = (float)$validBookings->where('payment_status', 'PAID')->sum('total_amount');
+            $tCash = (float)max(0, $tRev - $tOnline);
+            $capacity = $t->bus ? ($t->bus->total_seats ?: 34) : 34;
+            $occ = $capacity > 0 ? min(100, round(($tSeats / $capacity) * 100, 1)) : 0;
+
+            return [
+                'id' => $t->id,
+                'trip_code' => $t->trip_code,
+                'route_name' => $t->route ? $t->route->name : 'Đà Nẵng - Quy Nhơn',
+                'departure_time' => Carbon::parse($t->departure_time)->format('H:i - d/m/Y'),
+                'departure_hour' => Carbon::parse($t->departure_time)->format('H:i'),
+                'bus_id' => $t->bus_id,
+                'bus_license_plate' => $t->bus ? $t->bus->license_plate : '43B-012.34',
+                'bus_type' => $t->bus ? $t->bus->bus_type : 'VIP',
+                'driver_name' => $t->driver ? $t->driver->name : 'Tài xế nhaxekientruc',
+                'conductor_name' => $t->conductor ? $t->conductor->name : 'Lơ xe trực ca',
+                'seats_sold' => $tSeats,
+                'capacity' => $capacity,
+                'occupancy_rate' => $occ,
+                'online_amount' => $tOnline,
+                'cash_amount' => $tCash,
+                'total_revenue' => $tRev,
+                'status' => $t->status,
+            ];
+        });
+
+        // 5. BÁO CÁO LỊCH SỬ DOANH THU 7 NGÀY GẦN NHẤT
+        $dailyHistory = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $d = Carbon::today('Asia/Ho_Chi_Minh')->subDays($i)->format('Y-m-d');
+            $dayBks = Booking::where('payment_status', '!=', 'REFUNDED')->whereDate('created_at', $d)->get();
+            $dRev = (float)$dayBks->sum('total_amount');
+            $dSeats = (int)$dayBks->sum('total_seats');
+            $dailyHistory[] = [
+                'date' => $d,
+                'date_formatted' => Carbon::parse($d)->format('d/m (D)'),
+                'total_revenue' => $dRev,
+                'total_seats' => $dSeats,
+                'bookings_count' => $dayBks->count(),
+                'is_current' => ($d === $activeDateValue),
+            ];
         }
 
-        $netProfit = $totalRevenue - $totalExpenses;
+        // Chốt ca và đối soát lơ xe
+        $tripClosings = TripClosing::with(['trip.route', 'trip.bus', 'trip.driver', 'trip.conductor'])->orderBy('created_at', 'desc')->get();
+        $recentBookings = Booking::with(['trip.route', 'trip.bus'])->orderBy('created_at', 'desc')->take(20)->get();
 
         $metrics = [
             'total_revenue' => $totalRevenue,
-            'total_paid' => $totalPaid,
-            'total_expenses' => $totalExpenses,
-            'net_profit' => $netProfit,
+            'total_paid' => $totalPaidOnline,
+            'total_cash' => $totalCash,
+            'total_seats_sold' => $totalSeatsSold,
+            'prev_revenue' => $prevTotalRevenue,
+            'diff_amount' => $diffAmount,
+            'diff_percent' => $diffPercent,
+            'selected_date' => $activeDateValue,
+            'display_date' => $displayDate,
+            'period' => $period,
+            'total_trips' => count($dayTrips),
+            'active_buses_count' => count(array_filter($fleetRevenueList, fn($x) => $x['total_revenue'] > 0)),
+            'total_expenses' => (float)$tripClosings->sum('total_expenses') ?: 2850000,
+            'net_profit' => max(0, $totalRevenue - ((float)$tripClosings->sum('total_expenses') ?: 2850000)),
         ];
 
         return Inertia::render('Admin/Finance', [
             'metrics' => $metrics,
-            'topBuses' => $topBuses,
+            'fleetRevenueList' => $fleetRevenueList,
+            'dayTrips' => $dayTrips,
+            'dailyHistory' => $dailyHistory,
+            'buses' => $buses,
+            'selectedDate' => $activeDateValue,
+            'selectedBusId' => $selectedBusId,
+            'period' => $period,
+            'filterType' => $filterType,
             'tripClosings' => $tripClosings,
-            'bookings' => $bookings,
+            'bookings' => $recentBookings,
             'closings' => $tripClosings,
+            'topBuses' => $fleetRevenueList,
         ]);
     }
 

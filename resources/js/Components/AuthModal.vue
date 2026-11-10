@@ -199,6 +199,7 @@ const handlePasswordLogin = () => {
     onSuccess: () => {
       isSubmitting.value = false;
       closeModal();
+      window.location.reload();
     },
     onError: (errors) => {
       isSubmitting.value = false;

@@ -2,6 +2,7 @@
 import AdminHeader from '@/Components/AdminHeader.vue'
 import { ref, computed, onMounted } from 'vue'
 import { Head, Link, useForm, router } from '@inertiajs/vue3'
+import axios from 'axios'
 
 const props = defineProps({
     trips: { type: Array, default: () => [] },
@@ -274,9 +275,80 @@ const submitIncident = () => {
 }
 
 const sendReminderForTrip = (trip) => {
-    if (confirm(`Bạn có chắc muốn tự động gửi email nhắc 45 phút tới toàn bộ ${trip.total_passengers} hành khách của chuyến ${trip.trip_code}?`)) {
+    const bookings = trip.bookings_list || []
+    const notSent = bookings.filter(b => !b.reminder_sent_at && !b.ai_call_at)
+    const alreadySent = bookings.filter(b => b.reminder_sent_at || b.ai_call_at)
+    
+    if (bookings.length > 0 && notSent.length === 0) {
+        if (confirm(`Tất cả ${bookings.length} hành khách của chuyến ${trip.trip_code} đã được gửi nhắc nhở trước đó.\nBạn có muốn GỬI LẠI Gmail nhắc 45P & kích hoạt AI GỌI ĐIỆN LẠI cho toàn bộ hành khách không?`)) {
+            router.post(`/admin/trips/${trip.id}/notify-reminder`)
+        }
+        return
+    }
+    
+    let confirmMsg = `Gửi Gmail & Kích hoạt Tổng đài AI Gọi điện nhắc 45P tới ${notSent.length} hành khách chưa nhận của chuyến ${trip.trip_code}?`
+    if (alreadySent.length > 0) {
+        confirmMsg += `\n(Đã nhắc ${alreadySent.length} người trước đó)`
+    }
+    if (confirm(confirmMsg)) {
         router.post(`/admin/trips/${trip.id}/notify-reminder`)
     }
+}
+
+const notifyingBookingId = ref(null)
+
+const notifyAndCallSingleBooking = async (b) => {
+    if (notifyingBookingId.value) return
+    notifyingBookingId.value = b.id
+    try {
+        const res = await axios.post(`/admin/bookings/${b.id}/notify-and-call`)
+        if (res.data?.success) {
+            const updated = res.data.booking
+            b.reminder_sent_at = updated.reminder_sent_at
+            b.reminder_sent_by = 'manual'
+            b.ai_call_at = updated.ai_call_at
+            b.ai_call_by = 'manual'
+            b.ai_call_status = updated.ai_call_status
+            b.ai_call_audio_url = updated.ai_call_audio_url
+            b.ai_call_script = updated.ai_call_script
+            alert(`🎉 ${res.data.message}`)
+        } else {
+            alert(res.data?.message || 'Có lỗi xảy ra khi gọi AI & gửi thông báo.')
+        }
+    } catch (err) {
+        alert(err.response?.data?.message || 'Không thể kết nối đến máy chủ.')
+    } finally {
+        notifyingBookingId.value = null
+    }
+}
+
+const playAiCallAudio = (b) => {
+    if (b.ai_call_audio_url) {
+        const audio = new Audio(b.ai_call_audio_url)
+        audio.play().catch(() => {
+            if ('speechSynthesis' in window && b.ai_call_script) {
+                const utterance = new SpeechSynthesisUtterance(b.ai_call_script)
+                utterance.lang = 'vi-VN'
+                window.speechSynthesis.speak(utterance)
+            } else {
+                alert(`Lời thoại AI: "${b.ai_call_script}"`)
+            }
+        })
+    } else if (b.ai_call_script) {
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(b.ai_call_script)
+            utterance.lang = 'vi-VN'
+            window.speechSynthesis.speak(utterance)
+        } else {
+            alert(`Lời thoại AI: "${b.ai_call_script}"`)
+        }
+    }
+}
+
+const hasAllRemindersSent = (trip) => {
+    const bookings = trip.bookings_list || []
+    if (bookings.length === 0) return false
+    return bookings.every(b => b.reminder_sent_at)
 }
 
 const sendAllReminders = () => {
@@ -863,10 +935,14 @@ const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currenc
                                         <template v-if="!['COMPLETED', 'ARRIVED', 'CLOSED'].includes(t.status)">
                                             <button 
                                                 @click="sendReminderForTrip(t)"
-                                                class="p-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs transition cursor-pointer"
-                                                title="Gửi email nhắc giờ chạy 45P"
+                                                class="px-2.5 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer border inline-flex items-center gap-1 shadow-2xs active:scale-95"
+                                                :class="hasAllRemindersSent(t) 
+                                                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300' 
+                                                    : 'bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-600 font-black'"
+                                                :title="hasAllRemindersSent(t) ? 'Bấm để GỬI LẠI Gmail & kích hoạt AI gọi lại' : 'Gửi Gmail trước 45P & Kích hoạt AI tự động gọi điện'"
                                             >
-                                                🔔
+                                                <span>{{ hasAllRemindersSent(t) ? '🔄' : '📞' }}</span>
+                                                <span class="hidden md:inline">{{ hasAllRemindersSent(t) ? 'Gửi & Gọi Lại 45P' : 'Gửi & Gọi AI 45P' }}</span>
                                             </button>
                                             <button 
                                                 @click="openIncidentModal(t)"
@@ -969,10 +1045,14 @@ const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currenc
                                 <template v-if="!['COMPLETED', 'ARRIVED', 'CLOSED'].includes(t.status)">
                                     <button 
                                         @click="sendReminderForTrip(t)"
-                                        class="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs transition cursor-pointer"
-                                        title="Gửi email nhắc 45P cho chuyến xe này"
+                                        class="px-2 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer border inline-flex items-center gap-1 shadow-2xs active:scale-95"
+                                        :class="hasAllRemindersSent(t) 
+                                            ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300' 
+                                            : 'bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-600 font-black'"
+                                        :title="hasAllRemindersSent(t) ? 'Bấm để GỬI LẠI Gmail & kích hoạt AI gọi lại' : 'Gửi Gmail trước 45P & Kích hoạt AI gọi điện'"
                                     >
-                                        🔔
+                                        <span>{{ hasAllRemindersSent(t) ? '🔄' : '📞' }}</span>
+                                        <span>{{ hasAllRemindersSent(t) ? 'Gọi Lại' : 'Gọi AI 45P' }}</span>
                                     </button>
                                     <button 
                                         @click="openIncidentModal(t)"
@@ -1186,6 +1266,61 @@ const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currenc
                                             <span class="text-[10px] font-mono text-red-600 bg-red-50 px-1 rounded">#{{ b.seats_label }}</span>
                                         </div>
                                         <div class="text-[11px] text-slate-400 font-mono">{{ b.customer_phone }}</div>
+                                        <!-- Trạng thái nhắc nhở 45 phút & Cuộc gọi AI -->
+                                        <div v-if="b.reminder_sent_at || b.ai_call_at" class="mt-1 flex items-center gap-1.5 flex-wrap">
+                                            <!-- AI tự động gọi & gửi -->
+                                            <span v-if="b.reminder_sent_by === 'auto' || b.ai_call_by === 'auto'" class="inline-flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                                                <span>🤖 AI ĐÃ GỌI & GỬI GMAIL</span>
+                                                <span class="font-mono">({{ b.reminder_sent_at || b.ai_call_at }})</span>
+                                            </span>
+                                            <!-- Admin bấm tay -->
+                                            <span v-else class="inline-flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                                                <span>✍️ ADMIN ĐÃ GỌI & GỬI GMAIL</span>
+                                                <span class="font-mono">({{ b.reminder_sent_at || b.ai_call_at }})</span>
+                                            </span>
+
+                                            <!-- Nút nghe lại giọng AI gọi thoại -->
+                                            <button 
+                                                v-if="b.ai_call_audio_url || b.ai_call_script"
+                                                @click.stop="playAiCallAudio(b)"
+                                                type="button"
+                                                class="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer"
+                                                title="Nghe lại cuộc gọi AI đã thông báo cho khách"
+                                            >
+                                                <span>🎧 Nghe AI</span>
+                                            </button>
+
+                                            <!-- Nút gửi lại / gọi lại AI -->
+                                            <button
+                                                @click.stop="notifyAndCallSingleBooking(b)"
+                                                :disabled="notifyingBookingId === b.id"
+                                                type="button"
+                                                class="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[9.5px] transition flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50"
+                                                title="Gửi lại Gmail nhắc nhở 45P và kích hoạt gọi điện thoại AI lần nữa"
+                                            >
+                                                <span v-if="notifyingBookingId === b.id" class="w-2.5 h-2.5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></span>
+                                                <span v-else>🔄 Gửi & Gọi Lại</span>
+                                            </button>
+                                        </div>
+
+                                        <!-- CHƯA GỬI / CHƯA GỌI: NÚT BẤM TAY (BẤM XONG LÀ MẤT ĐI) -->
+                                        <div v-else class="mt-1 flex items-center gap-2">
+                                            <span class="inline-flex items-center gap-0.5 text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
+                                                ⏳ Chưa gửi nhắc
+                                            </span>
+
+                                            <!-- Nút bấm tay cho Admin -->
+                                            <button
+                                                @click.stop="notifyAndCallSingleBooking(b)"
+                                                :disabled="notifyingBookingId === b.id"
+                                                type="button"
+                                                class="px-2 py-0.5 rounded-lg bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-[10px] tracking-tight transition flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+                                                title="Gửi Gmail & Kích hoạt AI gọi điện thoại nhắc nhở 45P cho khách này ngay"
+                                            >
+                                                <span v-if="notifyingBookingId === b.id" class="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                                                <span v-else>📞 Gửi & Gọi AI</span>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="text-right">
                                         <div class="font-mono font-bold text-slate-800 text-[11px]">{{ formatCurrency(b.total_amount) }}</div>
@@ -1200,13 +1335,34 @@ const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currenc
                             </div>
                         </div>
 
-                        <div class="pt-3 border-t border-slate-100 text-right">
-                            <button 
-                                @click="showSeatMapModal = false"
-                                class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition cursor-pointer"
-                            >
-                                Đóng
-                            </button>
+                        <!-- Nút gửi nhắc 45P cho cả chuyến trong modal -->
+                        <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                            <div class="text-[10px] text-slate-500">
+                                <template v-if="selectedTripForSeatMap?.bookings_list">
+                                    <span class="font-bold text-blue-600">
+                                        {{ selectedTripForSeatMap.bookings_list.filter(b => b.reminder_sent_at || b.ai_call_at).length }}
+                                    </span>/{{ selectedTripForSeatMap.bookings_list.length }} đã gửi & gọi AI
+                                </template>
+                            </div>
+                            <div class="flex gap-2">
+                                <button 
+                                    v-if="!['COMPLETED', 'ARRIVED', 'CLOSED'].includes(selectedTripForSeatMap?.status)"
+                                    @click="sendReminderForTrip(selectedTripForSeatMap)"
+                                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer inline-flex items-center gap-1.5 active:scale-95"
+                                    :class="selectedTripForSeatMap?.bookings_list?.every(b => b.reminder_sent_at || b.ai_call_at) 
+                                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300' 
+                                        : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow'"
+                                    :title="selectedTripForSeatMap?.bookings_list?.every(b => b.reminder_sent_at || b.ai_call_at) ? 'Bấm để GỬI LẠI email & AI gọi lại' : 'Gửi nhắc & Gọi AI 45P cho chuyến'"
+                                >
+                                    <span>{{ selectedTripForSeatMap?.bookings_list?.every(b => b.reminder_sent_at || b.ai_call_at) ? '🔄 Gửi & Gọi Lại Cả Chuyến' : '📞🔔 Gửi & Gọi AI Cả Chuyến' }}</span>
+                                </button>
+                                <button 
+                                    @click="showSeatMapModal = false"
+                                    class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                                >
+                                    Đóng
+                                </button>
+                            </div>
                         </div>
                     </div>
 

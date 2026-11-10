@@ -279,8 +279,15 @@
                 <span class="text-[11px] font-bold text-slate-400 uppercase block">TỔNG TIỀN VÉ</span>
                 <span class="text-2xl font-black text-emerald-700 font-mono block">{{ formatCurrency(booking.total_amount) }}</span>
                 <span class="text-[11px] text-slate-500 block">
-                  {{ booking.payment_method === 'CASH' ? 'Tiền mặt' : (booking.payment_method === 'TRANSFER' ? 'Chuyển khoản' : 'Online') }}
+                  {{ booking.payment_method === 'CASH' ? 'Tiền mặt' : (booking.payment_method === 'TRANSFER' ? 'Chuyển khoản' : (booking.payment_method === 'VIETQR' ? 'VietQR Napas 247' : 'Online')) }}
                 </span>
+                <Link 
+                  v-if="booking.payment_status !== 'PAID' && booking.payment_status !== 'CANCELLED' && booking.payment_status !== 'REFUNDED'"
+                  :href="`/booking/${booking.booking_code}/payment`"
+                  class="mt-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs shadow-md shadow-red-500/25 transition cursor-pointer active:scale-95"
+                >
+                  <span>💳 Thanh Toán VietQR</span>
+                </Link>
               </div>
             </div>
 
@@ -839,93 +846,7 @@
       </div>
     </div>
 
-    <!-- MODAL MÔ PHỎNG CUỘC GỌI AI TỔNG ĐÀI NHẮC LỊCH (AI VOICE CALL REMINDER MODAL) -->
-    <div 
-      v-if="showAiCallModal"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-      @click.self="hangupAiCall"
-    >
-      <div class="relative w-full max-w-sm rounded-3xl bg-gradient-to-b from-slate-900 via-slate-950 to-black text-white border border-slate-800 shadow-2xl p-6 sm:p-7 flex flex-col items-center text-center overflow-hidden">
-        <!-- Hiệu ứng sóng điện thoại -->
-        <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 bg-red-600/20 rounded-full blur-3xl pointer-events-none"></div>
 
-        <!-- Header Cuộc Gọi -->
-        <span class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">
-          {{ callStatus === 'RINGING' ? '📲 Cuộc gọi đến từ Tổng Đài' : (callStatus === 'CONNECTED' ? '🟢 Đang đàm thoại trực tiếp' : '🔴 Cuộc gọi đã kết thúc') }}
-        </span>
-
-        <!-- Avatar AI Caller -->
-        <div class="relative my-4">
-          <div 
-            class="w-24 h-24 rounded-full bg-gradient-to-tr from-red-600 via-rose-500 to-amber-500 flex items-center justify-center text-4xl shadow-xl border-4 border-white/20"
-            :class="{ 'animate-pulse ring-8 ring-red-500/30': callStatus === 'RINGING', 'scale-105': callStatus === 'CONNECTED' }"
-          >
-            🤖
-          </div>
-          <span 
-            v-if="callStatus === 'CONNECTED'" 
-            class="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center text-[10px]"
-          >
-            ✓
-          </span>
-        </div>
-
-        <h3 class="text-lg font-black tracking-tight text-white">
-          AI TỔNG ĐÀI NHAXEKIENTRUC
-        </h3>
-        <p class="text-xs text-red-400 font-mono font-bold mt-0.5">
-          Hotline: 1900 6067 • 0905 123 456
-        </p>
-
-        <p class="text-[11px] text-slate-400 mt-2">
-          Đang gọi đến số: <strong class="text-slate-200 font-mono">{{ booking.customer_phone }}</strong>
-        </p>
-
-        <!-- Trạng thái đếm giờ khi đã bắt máy -->
-        <div v-if="callStatus === 'CONNECTED'" class="mt-3 text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-3 py-1 rounded-full">
-          ⏱️ Thời lượng: {{ formattedCallTime }}
-        </div>
-
-        <!-- Sóng âm thanh sinh động khi AI đang nói -->
-        <div v-if="callStatus === 'CONNECTED'" class="flex items-center justify-center gap-1 my-4 h-8">
-          <span v-for="i in 9" :key="i" class="w-1 bg-gradient-to-t from-red-500 to-amber-400 rounded-full animate-bounce" :style="`height: ${Math.sin(i) * 20 + 20}px; animation-delay: ${i * 0.1}s; animation-duration: 0.6s;`"></span>
-        </div>
-
-        <!-- Lời thoại AI gọi nhắc (Transcript) -->
-        <div class="w-full my-4 p-3.5 rounded-2xl bg-white/5 border border-white/10 text-left text-xs text-slate-300 leading-relaxed max-h-40 overflow-y-auto">
-          <span class="text-[10px] text-amber-300 uppercase font-black block mb-1">
-            💬 Lời thoại Trợ lý AI phát qua điện thoại:
-          </span>
-          <p class="italic">
-            "Chào bạn <strong>{{ booking.customer_name }}</strong>! Tổng đài AI Nhà xe Kiến Trúc xin thông báo: Chuyến xe {{ (booking.total_amount == 0 || (booking.customer_email && booking.customer_email.includes('.edu.vn'))) ? '0 đồng về quê đón Tết ' : '' }}của bạn mang mã vé <strong>#{{ booking.booking_code }}</strong> sẽ khởi hành lúc <strong>{{ trip?.departure_time || '07:00' }} ngày {{ trip?.departure_date || '04/11' }}</strong>. Bác tài {{ driver?.name || 'Võ Văn Hùng' }} và Lơ xe {{ conductor?.name || 'Lê Tuấn Tú' }} đã chuẩn bị sẵn sàng đón bạn. Bạn vui lòng có mặt trước 15 phút nhé. Nhà xe Kiến Trúc chúc bạn và gia đình một mùa Tết an khang thịnh vượng!"
-          </p>
-        </div>
-
-        <!-- Phím bấm hành động Nhấc máy / Cúp máy -->
-        <div class="w-full pt-2 flex items-center justify-around gap-4">
-          <!-- Nút Nghe Máy (Nếu đang đổ chuông) -->
-          <button
-            v-if="callStatus === 'RINGING'"
-            type="button"
-            @click="answerAiCall"
-            class="flex-1 py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/40 cursor-pointer active:scale-95 transition"
-          >
-            <span class="text-base">📞</span>
-            <span>Nghe Máy (Trả Lời)</span>
-          </button>
-
-          <!-- Nút Cúp máy / Đóng -->
-          <button
-            type="button"
-            @click="hangupAiCall"
-            class="flex-1 py-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-600/40 cursor-pointer active:scale-95 transition"
-          >
-            <span class="text-base">📵</span>
-            <span>{{ callStatus === 'CONNECTED' ? 'Kết Thúc Cuộc Gọi' : 'Từ Chối / Đóng' }}</span>
-          </button>
-        </div>
-      </div>
-    </div>
 
     <Footer />
   </div>

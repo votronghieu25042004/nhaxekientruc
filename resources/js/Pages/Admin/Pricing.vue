@@ -720,7 +720,7 @@
 
 <script setup>
 import { ref, reactive, computed } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, Link } from '@inertiajs/vue3';
 import AdminHeader from '@/Components/AdminHeader.vue';
 
 const props = defineProps({

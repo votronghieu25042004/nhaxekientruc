@@ -4,7 +4,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class Booking extends Model {
     protected $guarded = [];
-    protected $casts = ['checked_in_at' => 'datetime'];
+    protected $casts = [
+        'checked_in_at'       => 'datetime',
+        'reminder_sent_at'    => 'datetime',
+        'payment_confirmed_at'=> 'datetime',
+        'ai_call_at'          => 'datetime',
+    ];
+
     protected $appends = ['passenger_name', 'passenger_phone', 'ticket_code', 'total_price', 'total_seats'];
 
     public function getPassengerNameAttribute() {

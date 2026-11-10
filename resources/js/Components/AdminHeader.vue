@@ -338,7 +338,7 @@
               </div>
             </div>
 
-            <!-- 5. Tài chính & Đối soát -->
+            <!-- 5. Quản lý Doanh thu & Tiền Xe -->
             <Link 
               href="/admin/finance" 
               :class="[
@@ -349,7 +349,7 @@
               ]"
             >
               <span>💰</span>
-              <span>Tài Chính & Đối Soát</span>
+              <span>Quản Lý Doanh Thu & Tiền Xe</span>
             </Link>
 
             <!-- 6. Phân Quyền & Hệ Thống (Dropdown) -->
