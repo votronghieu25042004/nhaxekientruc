@@ -1365,13 +1365,13 @@ const isVoucherSaved = (code) => {
 
 const availableVouchers = ref([
   {
-    code: 'SINHVIEN100',
+    code: 'SINHVIEN0DONG',
     title: 'Vé 0đ Sinh Viên Lần Đầu (Giảm 100%)',
-    discount: '100%',
-    badge: '🎓 VÉ 0-ĐỒNG',
-    desc: 'Tài trợ 100% tiền vé xe chuyến đi đầu tiên cho sinh viên (.edu.vn)',
-    requirement: 'Chỉ áp dụng 1 lần duy nhất cho chuyến đi đầu tiên của Sinh Viên',
-    type: 'STUDENT_100',
+    discount: '0Đ',
+    badge: '🏮 VÉ 0-ĐỒNG',
+    desc: 'Tài trợ 100% tiền vé xe chuyến đi đầu tiên cho sinh viên các trường đại học',
+    requirement: 'Chỉ áp dụng 1 lần duy nhất cho đúng 1 ghế đầu tiên của sinh viên (.edu.vn)',
+    type: 'STUDENT_0D',
   },
   {
     code: 'SINHVIEN30',
@@ -1379,7 +1379,7 @@ const availableVouchers = ref([
     discount: '30%',
     badge: '🎓 SINH VIÊN 1 NĂM',
     desc: 'Giảm 30% giá vé xe xuyên suốt 1 năm cho mọi chuyến đi',
-    requirement: 'Áp dụng cho tài khoản sinh viên có email trường (.edu.vn), dùng cả năm',
+    requirement: 'Áp dụng cho tài khoản sinh viên có email trường (.edu.vn), dùng suốt 1 năm',
     type: 'STUDENT_30',
   },
   {
@@ -1390,15 +1390,6 @@ const availableVouchers = ref([
     desc: 'Giảm 30% cho tài khoản sinh viên',
     requirement: 'Chỉ áp dụng cho tài khoản sinh viên có email trường (.edu.vn)',
     type: 'STUDENT',
-  },
-  {
-    code: 'SINHVIEN0DONG',
-    title: 'Vé 0-Đồng Tết Sinh Viên Kiến Trúc',
-    discount: '0Đ',
-    badge: '🧧 TẾT 0-ĐỒNG',
-    desc: 'Tài trợ 100% tiền vé xe về quê đón Tết cho Sinh Viên Đại Học Kiến Trúc & các trường ĐH',
-    requirement: 'Chỉ áp dụng cho tài khoản sinh viên có email trường (.edu.vn / @dau.edu.vn)',
-    type: 'STUDENT_0D',
   },
   {
     code: 'CHAOBAOMOI',
@@ -1434,6 +1425,7 @@ const isVoucherEligible = (v) => {
   if (v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG') {
     if (!isCustomerStudent.value) return false;
     if (props.hasUsedStudentFirstTrip) return false;
+    if (selectedSeats.value.length > 1) return false;
     return true;
   }
   if (v.code === 'SINHVIEN30' || v.code === 'SINHVIEN') {
@@ -1448,17 +1440,27 @@ const isVoucherEligible = (v) => {
 const applyVoucherFromList = (v) => {
   if (v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG') {
     if (!isCustomerStudent.value) {
-      voucherError.value = 'Mã giảm giá 100% [SINHVIEN100] chỉ dành riêng cho sinh viên (.edu.vn / @dau.edu.vn)! Vui lòng điền email sinh viên ở thông tin hành khách phía trên.';
+      voucherError.value = 'Mã vé 0-Đồng [SINHVIEN0DONG] chỉ dành riêng cho sinh viên (.edu.vn)! Vui lòng điền email sinh viên ở thông tin hành khách phía trên.';
+      return;
+    }
+    if (selectedSeats.value.length > 1) {
+      voucherError.value = 'Mã vé 0-Đồng (SINHVIEN0DONG) chỉ áp dụng tối đa cho đúng 1 ghế cho mỗi sinh viên. Quý khách vui lòng chọn đúng 1 ghế để nhận vé 0Đ!';
       return;
     }
     if (props.hasUsedStudentFirstTrip) {
-      voucherError.value = 'Không đủ điều kiện! Mã giảm giá 100% chỉ áp dụng duy nhất cho lần đầu tiên đặt vé của sinh viên và bạn đã sử dụng.';
+      voucherError.value = 'Không đủ điều kiện! Mã vé 0-Đồng chỉ áp dụng duy nhất 1 lần cho lần đầu tiên đặt vé của sinh viên.';
       return;
     }
   }
 
   if (!isVoucherEligible(v)) {
-    if (v.code === 'SINHVIEN30' || v.code === 'SINHVIEN') {
+    if (v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG') {
+      if (selectedSeats.value.length > 1) {
+        voucherError.value = 'Mã vé 0-Đồng chỉ áp dụng cho đúng 1 ghế cho mỗi sinh viên. Vui lòng chọn 1 ghế!';
+      } else {
+        voucherError.value = 'Không đủ điều kiện áp dụng mã vé 0-Đồng này!';
+      }
+    } else if (v.code === 'SINHVIEN30' || v.code === 'SINHVIEN') {
       voucherError.value = 'Mã giảm giá 30% chỉ dành riêng cho tài khoản sinh viên có email trường (.edu.vn)! Vui lòng điền email sinh viên ở thông tin hành khách phía trên.';
     } else if (v.type === 'MIN_200K') {
       voucherError.value = 'Đơn vé hiện tại chưa đạt 200.000đ để áp dụng mã giảm giá này!';
@@ -1543,6 +1545,13 @@ const handleApplyVoucher = async () => {
   voucherError.value = '';
   if (!voucherCodeInput.value.trim()) return;
 
+  const rawCode = voucherCodeInput.value.trim().toUpperCase();
+  const is0DongCode = ['SINHVIEN0DONG', 'SINHVIEN100', 'SV0DONG', 'TET0DONG', 'VE0DONG'].includes(rawCode);
+  if (is0DongCode && selectedSeats.value.length > 1) {
+    voucherError.value = 'Mã vé 0-Đồng sinh viên (SINHVIEN0DONG) chỉ áp dụng tối đa cho đúng 1 ghế cho mỗi sinh viên. Quý khách vui lòng chỉ chọn 1 ghế!';
+    return;
+  }
+
   if (useRewardPoints.value && pointsToRedeem.value > 0) {
     voucherError.value = 'Quý khách đang sử dụng điểm thưởng tích lũy. Không thể áp dụng đồng thời Voucher!';
     return;
@@ -1559,6 +1568,7 @@ const handleApplyVoucher = async () => {
       body: JSON.stringify({
         code: voucherCodeInput.value.trim(),
         amount: rawSeatPrice.value,
+        seat_count: selectedSeats.value.length,
         email: customerForm.value.email || props.user?.email || '',
       }),
     });
@@ -1578,6 +1588,15 @@ const handleApplyVoucher = async () => {
     voucherLoading.value = false;
   }
 };
+
+watch(() => selectedSeats.value.length, (newCount) => {
+  if (appliedVoucher.value && ['SINHVIEN0DONG', 'SINHVIEN100', 'SV0DONG', 'TET0DONG', 'VE0DONG'].includes((appliedVoucher.value.code || '').toUpperCase())) {
+    if (newCount > 1) {
+      appliedVoucher.value = null;
+      voucherError.value = 'Mã vé 0-Đồng chỉ áp dụng tối đa cho 1 ghế duy nhất. Đã hủy áp dụng mã vé 0-Đồng!';
+    }
+  }
+});
 
 const removeVoucher = () => {
   appliedVoucher.value = null;

@@ -480,23 +480,6 @@
                           class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal outline-none transition focus:ring-2 focus:ring-red-500/20"
                         />
                       </div>
-
-                      <!-- TỰ ĐỘNG NHẬN DIỆN EMAIL SINH VIÊN (BANNER XANH LÁ) -->
-                      <div 
-                        v-if="isStudentEmailLogin" 
-                        class="mt-3 p-3 bg-emerald-50 border-2 border-emerald-400 rounded-2xl text-emerald-950 text-xs flex items-start gap-2.5 shadow-sm animate-in fade-in"
-                      >
-                        <span class="text-xl shrink-0 mt-0.5">🎓</span>
-                        <div>
-                          <p class="font-black text-emerald-800 text-[12.5px] flex items-center gap-1.5">
-                            <span>ĐÃ NHẬN DIỆN EMAIL SINH VIÊN KIẾN TRÚC!</span>
-                            <span class="px-1.5 py-0.2 rounded bg-emerald-600 text-white font-mono text-[9px] font-black uppercase">SINHVIEN</span>
-                          </p>
-                          <p class="text-[11px] text-emerald-700 mt-0.5 leading-snug">
-                            Tài khoản trường <strong>.edu.vn</strong> được kích hoạt <strong>Gói Giảm 30% (Mã: SINHVIEN)</strong> và đặc quyền vé đầu tiên miễn phí 100%!
-                          </p>
-                        </div>
-                      </div>
                     </div>
 
                     <!-- Ô Nhập Mật Khẩu -->
@@ -678,7 +661,7 @@
                             type="tel"
                             required
                             @focus="triggerTurboSpeed"
-                            @blur="stopTurboSpeed"
+                            @blur="onIdentifierBlur"
                             placeholder="Nhập 10 chữ số (VD: 0905123456)"
                             class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
                           />
@@ -707,19 +690,25 @@
                             type="email"
                             required
                             @focus="triggerTurboSpeed"
-                            @blur="stopTurboSpeed"
+                            @blur="onIdentifierBlur"
                             placeholder="Nhập email (VD: sinhvien@dau.edu.vn hoặc yourname@gmail.com)"
                             class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
                           />
                         </div>
                         
-                        <!-- Tự động phát hiện email sinh viên vs email thường -->
-                        <div v-if="regGmail && regGmail.toLowerCase().includes('.edu.vn')" class="mt-2 p-3 bg-emerald-50 border border-emerald-300 rounded-2xl text-xs text-emerald-950 flex items-center gap-2 font-bold animate-in fade-in">
-                          <span class="text-xl">🎓</span>
-                          <div>
-                            <span class="text-emerald-800">Email Sinh Viên Trường Hợp Lệ:</span>
-                            <span class="font-normal text-slate-700 ml-1">Kích hoạt đặc quyền <strong>Mã: SINHVIEN (Giảm 30% vĩnh viễn & vé đầu 0đ)</strong>!</span>
+                        <!-- Tự động phát hiện email sinh viên khi đăng ký -->
+                        <div v-if="isStudentRegEmail" class="mt-2.5 p-3.5 bg-gradient-to-r from-red-50 to-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-950 space-y-1.5 animate-in fade-in shadow-2xs">
+                          <div class="flex items-center gap-1.5 font-black text-red-700">
+                            <span class="text-base">🏮</span>
+                            <span class="text-xs sm:text-sm uppercase tracking-wide">SINH VIÊN ĐẠI HỌC</span>
+                            <span class="ml-auto text-[9.5px] px-2.5 py-0.5 rounded-full bg-red-600 text-white font-mono font-bold">Xác thực: Hợp lệ</span>
                           </div>
+                          <p class="text-[11.5px] text-slate-800 leading-relaxed">
+                            🎉 Bạn được hưởng đặc quyền <strong>VÉ 0Đ cho lần đầu đặt vé (Mã: SINHVIEN0DONG)</strong>, và được hưởng <strong>1 năm đặt vé được giảm 30% (Mã: SINHVIEN30)</strong>!
+                          </p>
+                          <p class="text-[10.5px] text-amber-900/85 font-medium">
+                            ⚠️ <em>Lưu ý: Mỗi sinh viên áp dụng duy nhất 1 lần mã 0 đồng và mỗi lần chỉ được 1 ghế.</em>
+                          </p>
                         </div>
                         <div v-else-if="regGmail" class="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex items-center gap-2 font-medium animate-in fade-in">
                           <span class="text-lg">🎁</span>
@@ -748,13 +737,16 @@
                     <!-- Nút Gửi OTP Bước 1 -->
                     <button
                       type="button"
-                      @click="handleSendOtpStep1"
-                      :disabled="!isStep1Valid || !agreeTerms || isSendingOtp"
-                      class="relative overflow-hidden w-full py-3.5 px-4 rounded-2xl bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white font-black text-xs sm:text-sm shadow-md shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed btn-shimmer"
+                      @click="isAlreadyRegistered ? (switchTab('login'), loginForm.email = activeIdentifier) : handleSendOtpStep1()"
+                      :disabled="!isAlreadyRegistered && (!isStep1Valid || !agreeTerms || isSendingOtp)"
+                      :class="isAlreadyRegistered ? 'bg-amber-600 hover:bg-amber-700 text-white cursor-pointer shadow-md shadow-amber-600/30' : 'bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30'"
+                      class="relative overflow-hidden w-full py-3.5 px-4 rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer"
                     >
                       <span v-if="isSendingOtp" class="animate-spin text-sm">⏳</span>
                       <span>
-                        {{ isSendingOtp ? 'ĐANG GỬI MÃ XÁC THỰC OTP...' : (registerMethod === 'phone' ? 'NHẬN MÃ OTP QUA ZALO / SMS →' : 'NHẬN MÃ OTP QUA EMAIL →') }}
+                        <template v-if="isSendingOtp">ĐANG GỬI MÃ XÁC THỰC OTP...</template>
+                        <template v-else-if="isAlreadyRegistered">👉 TÀI KHOẢN ĐÃ CÓ - BẤM ĐĂNG NHẬP NGAY</template>
+                        <template v-else>{{ registerMethod === 'phone' ? 'NHẬN MÃ OTP QUA ZALO / SMS →' : 'NHẬN MÃ OTP QUA EMAIL →' }}</template>
                       </span>
                     </button>
                   </div>
@@ -802,17 +794,6 @@
                         @paste="onOtpPaste"
                         class="w-11 h-12 sm:w-12 sm:h-14 text-center font-mono font-black text-lg sm:text-xl text-slate-900 bg-slate-50 border-2 border-slate-300 focus:border-red-600 focus:bg-white rounded-2xl outline-none transition focus:ring-2 focus:ring-red-500/20 shadow-xs"
                       />
-                    </div>
-
-                    <!-- Nút Điền Nhanh OTP Mẫu (1-Click Demo OTP Fill Button) -->
-                    <div v-if="receivedOtp" class="text-center">
-                      <button
-                        type="button"
-                        @click="quickFillOtp"
-                        class="text-[11px] font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1 rounded-xl transition cursor-pointer"
-                      >
-                        ⚡ Điền nhanh mã OTP: <span class="font-mono font-black text-red-600">{{ receivedOtp }}</span>
-                      </button>
                     </div>
 
                     <!-- Nút Xác Thực OTP Bước 2 -->
@@ -1204,6 +1185,11 @@ const regGmailValid = computed(() => {
   return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(raw);
 });
 
+const isStudentRegEmail = computed(() => {
+  const e = (regGmail.value || '').toLowerCase().trim();
+  return e.includes('.edu.vn') || e.includes('sinhvien') || e.includes('kientruc');
+});
+
 const isStep1Valid = computed(() => {
   return registerMethod.value === 'phone' ? regPhoneValid.value : regGmailValid.value;
 });
@@ -1295,26 +1281,66 @@ const onOtpPaste = (event) => {
   }
 };
 
-const quickFillOtp = () => {
-  if (!receivedOtp.value) return;
-  const digits = String(receivedOtp.value).split('').slice(0, 6);
-  digits.forEach((d, i) => {
-    otpDigits.value[i] = d;
-  });
-  handleVerifyOtpStep2();
+let checkExistsTimer = null;
+const checkIdentifierExists = async () => {
+  const identifier = activeIdentifier.value;
+  if (!identifier || !isStep1Valid.value) return;
+
+  try {
+    const res = await axios.post('/register/check-exists', {
+      identifier: identifier,
+    }, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (res.data?.exists) {
+      isAlreadyRegistered.value = true;
+      registerStep.value = 1;
+      otpError.value = res.data.message || 'Tài khoản này đã được đăng ký trên hệ thống. Quý khách vui lòng chuyển sang Đăng Nhập!';
+    } else {
+      isAlreadyRegistered.value = false;
+      if (otpError.value && (otpError.value.includes('đã được đăng ký') || otpError.value.includes('đã được sử dụng'))) {
+        otpError.value = '';
+      }
+    }
+  } catch (e) {}
+};
+
+const onIdentifierBlur = () => {
+  stopTurboSpeed();
+  checkIdentifierExists();
 };
 
 const handleSendOtpStep1 = async () => {
   if (!isStep1Valid.value || !agreeTerms.value || isSendingOtp.value) return;
 
+  if (isAlreadyRegistered.value) {
+    switchTab('login');
+    loginForm.email = activeIdentifier.value;
+    return;
+  }
+
   isSendingOtp.value = true;
   otpError.value = '';
-  isAlreadyRegistered.value = false;
 
   const reqIdentifier = activeIdentifier.value;
   const reqType = registerMethod.value === 'phone' ? 'phone' : 'email';
 
   try {
+    // 1. Kiểm tra sự tồn tại của tài khoản trước khi gửi OTP
+    const checkRes = await axios.post('/register/check-exists', {
+      identifier: reqIdentifier,
+    }, {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (checkRes.data?.exists) {
+      isAlreadyRegistered.value = true;
+      registerStep.value = 1;
+      otpError.value = checkRes.data.message || 'Tài khoản này đã được đăng ký trên hệ thống. Quý khách vui lòng chuyển sang Đăng Nhập!';
+      return;
+    }
+
+    // 2. Gửi mã OTP xác thực
     const res = await axios.post('/register/send-otp', {
       identifier: reqIdentifier,
       type: reqType,
@@ -1324,19 +1350,21 @@ const handleSendOtpStep1 = async () => {
 
     if (res.data?.success) {
       registerStep.value = 2;
-      receivedOtp.value = res.data?.otp || '';
+      receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
       otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'zalo' : 'email');
-      startCountdown(119);
+      startCountdown(60);
       nextTick(() => {
         document.getElementById('otp-box-0')?.focus();
       });
     } else {
+      registerStep.value = 1;
       otpError.value = res.data?.message || 'Có lỗi khi gửi mã OTP. Vui lòng thử lại!';
     }
   } catch (err) {
+    registerStep.value = 1;
     const res = err.response?.data;
-    if (res?.code === 'ALREADY_EXISTS') {
+    if (res?.code === 'ALREADY_EXISTS' || res?.is_already_registered || (res?.message && (res.message.includes('đã được đăng ký') || res.message.includes('đã được sử dụng')))) {
       isAlreadyRegistered.value = true;
     }
     otpError.value = res?.message || res?.errors?.identifier?.[0] || 'Không thể gửi mã xác thực. Vui lòng kiểm tra lại thông tin!';
@@ -1363,16 +1391,22 @@ const handleResendOtp = async () => {
     });
 
     if (res.data?.success) {
-      receivedOtp.value = res.data?.otp || '';
+      receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
       otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'zalo' : 'email');
-      startCountdown(119);
+      startCountdown(60);
       nextTick(() => {
         document.getElementById('otp-box-0')?.focus();
       });
+    } else {
+      otpError.value = res.data?.message || 'Có lỗi khi gửi lại OTP.';
     }
   } catch (err) {
     const res = err.response?.data;
+    if (res?.code === 'ALREADY_EXISTS' || res?.is_already_registered) {
+      isAlreadyRegistered.value = true;
+      registerStep.value = 1;
+    }
     otpError.value = res?.message || 'Lỗi khi gửi lại OTP.';
   } finally {
     isSendingOtp.value = false;
@@ -1416,12 +1450,20 @@ const registerForm = useForm({
 });
 
 watch([regPhone, regGmail], () => {
-  otpError.value = '';
+  if (checkExistsTimer) clearTimeout(checkExistsTimer);
   isAlreadyRegistered.value = false;
+  if (otpError.value && (otpError.value.includes('đã được đăng ký') || otpError.value.includes('đã được sử dụng'))) {
+    otpError.value = '';
+  }
   if (page.props.errors) {
     delete page.props.errors.identifier;
     delete page.props.errors.email;
     delete page.props.errors.phone;
+  }
+  if (isStep1Valid.value) {
+    checkExistsTimer = setTimeout(() => {
+      checkIdentifierExists();
+    }, 250);
   }
 });
 
