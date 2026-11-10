@@ -998,31 +998,7 @@ class TripController extends Controller
             }
         }
 
-        // 2. Tự động đối soát & kích hoạt vé khi khách quét mã chuyển tiền:
-        // Đảm bảo khi khách chuyển tiền từ MBBank / MoMo tới 09025042004, hệ thống tự động xác nhận và chuyển trang
-        $pollCount = (int) $request->input('poll', 0);
-        $autoVerify = $request->boolean('auto_verify') || $request->input('auto_confirm') == '1';
-        $secondsSinceCreated = $booking->created_at ? now()->diffInSeconds($booking->created_at) : 999;
 
-        if (!$isPaidStatus && ($autoVerify || $pollCount >= 4 || $secondsSinceCreated >= 6)) {
-            $booking->payment_status = $isDeposit ? 'DEPOSIT_PAID' : 'PAID';
-            $booking->paid_amount = $targetPayAmount;
-            $booking->payment_confirmed_at = now();
-            $booking->payment_method = $isDeposit ? 'DEPOSIT_30' : 'VIETQR';
-            $booking->payment_ref_code = $booking->payment_ref_code ?: ('MB-' . ($isDeposit ? 'DEP-' : 'FULL-') . strtoupper(substr(md5($booking->booking_code . time()), 0, 8)));
-            $booking->save();
-
-            AuditLog::log('AUTO_GATEWAY_PAID', "Tự động nhận diện thanh toán thành công qua MBBank 09025042004 (VO TRONG HIEU) cho vé {$booking->booking_code} (" . ($isDeposit ? "Cọc 30%: " . number_format($targetPayAmount) . "đ" : "100%: " . number_format($booking->total_amount) . "đ") . ")", 'Booking', $booking->id);
-
-            if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
-                try {
-                    \App\Services\EmailService::sendBookingConfirmation($booking);
-                } catch (\Throwable $mailEx) {
-                    \Illuminate\Support\Facades\Log::warning("[EMAIL_SEND_ERR] " . $mailEx->getMessage());
-                }
-            }
-            $isPaidStatus = true;
-        }
 
         return response()->json([
             'booking_code' => $booking->booking_code,

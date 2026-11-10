@@ -420,10 +420,27 @@
                     <span class="w-1.5 h-4 bg-emerald-400 rounded-full animate-bounce [animation-delay:150ms]"></span>
                     <span class="w-1.5 h-4 bg-emerald-300 rounded-full animate-bounce [animation-delay:300ms]"></span>
                   </div>
-                  <span class="text-[11px] text-emerald-700 font-bold">{{ statusMessage }}</span>
+                  <span class="text-[11px] text-emerald-700 font-bold">Đang kết nối tài khoản ngân hàng & MoMo theo thời gian thực...</span>
                 </div>
                 <span class="text-[10px] text-slate-400 font-mono">Tự động kích hoạt vé</span>
               </div>
+            </div>
+
+            <!-- KHỐI DỰ PHÒNG XÁC NHẬN KHI ĐÃ CHUYỂN TIỀN THẬT TỪ APP NGÂN HÀNG -->
+            <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs text-center space-y-2.5">
+              <div class="text-left space-y-0.5">
+                <span class="text-xs font-bold text-slate-800 block">Đã thực hiện chuyển khoản từ App MBBank / MoMo?</span>
+                <span class="text-[11px] text-slate-500 block">Sau khi chuyển tiền xong, nếu cổng ngân hàng chưa kịp đẩy tín hiệu tự động, bạn có thể bấm nút dưới đây để kích hoạt vé ngay:</span>
+              </div>
+              <button
+                @click="manualConfirm"
+                :disabled="isConfirming"
+                type="button"
+                class="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs uppercase tracking-wider transition shadow-md shadow-red-500/20 cursor-pointer disabled:opacity-50 active:scale-95"
+              >
+                <span v-if="isConfirming">⏳ Đang kích hoạt vé & gửi email...</span>
+                <span v-else>✓ Tôi Đã Chuyển Khoản Rồi - Kích Hoạt Vé Ngay</span>
+              </button>
             </div>
 
           </div>
@@ -528,8 +545,7 @@ const isPaid = ref(
 );
 const isExpired = ref(false);
 const copiedField = ref(null);
-const pollCount = ref(0);
-const statusMessage = ref('Đang kết nối tài khoản ngân hàng & MoMo theo thời gian thực...');
+const isConfirming = ref(false);
 
 // Quản lý URL ảnh QR động có fallback
 const mbbankCurrentQr = ref(props.vietQr.mbbank_qr_url || props.vietQr.mbbank_local_qr || '/images/qr/mbbank_qr.png');
@@ -607,29 +623,35 @@ const redirectToTicket = () => {
   }, 1200);
 };
 
+// Xác nhận thủ công nếu khách đã chuyển tiền từ App Ngân Hàng
+const manualConfirm = async () => {
+  if (isConfirming.value || isPaid.value) return;
+  isConfirming.value = true;
+  try {
+    const res = await axios.post(`/api/booking/${props.booking.booking_code}/confirm-payment`);
+    if (res.data?.success) {
+      isPaid.value = true;
+      if (pollInterval) clearInterval(pollInterval);
+      if (timerInterval) clearInterval(timerInterval);
+      redirectToTicket();
+    } else {
+      alert(res.data?.message || 'Chưa nhận được giao dịch.');
+    }
+  } catch (err) {
+    alert('Lỗi xác nhận: ' + (err.response?.data?.message || err.message));
+  } finally {
+    isConfirming.value = false;
+  }
+};
+
 // Polling tự động lắng nghe giao dịch từ máy chủ cứ mỗi 1.5 giây
-// Ngay khi có tiền về (từ Webhook MBBank, SePay, MoMo hoặc đối soát tự động), hệ thống tự động đổi trạng thái và chuyển trang
+// CHỈ tự động chuyển trang khi máy chủ nhận được tiền thật từ Webhook hoặc API SePay
 const checkStatus = async () => {
   if (isPaid.value || isExpired.value) return;
-  pollCount.value++;
-
-  if (pollCount.value >= 2 && pollCount.value < 4) {
-    statusMessage.value = 'Đang đối soát giao dịch chuyển khoản MBBank 09025042004...';
-  } else if (pollCount.value >= 4) {
-    statusMessage.value = 'Đang hoàn tất ghi nhận tiền vào hệ thống & kích hoạt vé...';
-  }
-
   try {
-    const res = await axios.get(`/api/booking/${props.booking.booking_code}/payment-status`, {
-      params: {
-        poll: pollCount.value,
-        auto_verify: pollCount.value >= 4 ? 1 : 0
-      }
-    });
-
+    const res = await axios.get(`/api/booking/${props.booking.booking_code}/payment-status`);
     if (res.data?.is_paid) {
       isPaid.value = true;
-      statusMessage.value = '✓ Chuyển khoản thành công! Đang chuyển sang trang Quản Lý Vé...';
       if (pollInterval) clearInterval(pollInterval);
       if (timerInterval) clearInterval(timerInterval);
       redirectToTicket();
@@ -657,7 +679,7 @@ onMounted(() => {
     }
   }, 1000);
 
-  // Polling tự động kiểm tra mỗi 1.5 giây (KHÔNG cần khách bấm nút)
+  // Polling tự động kiểm tra mỗi 1.5 giây (Lắng nghe webhook/SePay thật từ máy chủ)
   pollInterval = setInterval(checkStatus, 1500);
 });
 
