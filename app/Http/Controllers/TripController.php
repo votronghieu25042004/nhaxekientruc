@@ -851,25 +851,17 @@ class TripController extends Controller
 
         AuditLog::log('CREATE_ONLINE_BOOKING', "Khách {$request->customer_name} ({$request->customer_phone}) đặt vé {$booking->booking_code} ({$totalSeatCount} ghế: {$seatsStr}, {$totalAmount}đ, Cọc: {$paidAmount}đ" . ($voucher ? ", Voucher {$voucher->code}" : "") . "). Mã QR: {$seatQrToken}", 'Booking', $booking->id);
 
-        // Gửi email xác nhận đặt vé & mã QR check-in về Gmail khách hàng (Hỗ trợ Cloud Render qua Webhook Relay cổng 443 + Brevo + SMTP)
-        if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
-            \App\Services\EmailService::sendBookingConfirmation($booking, [
-                'pickupStop' => $pickupStop?->stop_name ?? 'Bến xe xuất phát',
-                'dropoffStop' => $dropoffStop?->stop_name ?? 'Bến xe đến',
-                'seatNumbers' => $seatsStr,
-                'totalAmount' => $totalAmount,
-                'paidAmount' => $paidAmount,
-            ]);
-        }
+        // CHÚ Ý: KHÔNG gửi email khi đơn vé đang UNPAID (chưa thanh toán).
+        // Email vé điện tử & mã QR check-in sẽ CHỈ được gửi khi khách quét mã chuyển khoản thành công (payment_status = PAID).
 
-        $successMsg = "Đặt vé thành công! ";
+        $successMsg = "Đặt chỗ thành công! ";
         if ($voucher) {
             $successMsg .= "Đã áp dụng mã Voucher {$voucher->code} giảm " . number_format($discountAmount) . "đ. ";
         }
         if ($pointsDiscount > 0) {
             $successMsg .= "Đã đổi {$pointsRedeemed} điểm thưởng giảm " . number_format($pointsDiscount) . "đ trực tiếp vào tiền vé. ";
         }
-        $successMsg .= "Mã vé điện tử QR & thông báo tự động xuất bến đã gửi về Gmail {$request->customer_email}.";
+        $successMsg .= "Vui lòng quét mã QR để thanh toán. Vé điện tử và mã QR lên xe sẽ được gửi về Gmail {$request->customer_email} ngay khi thanh toán thành công.";
 
         return redirect()->route('booking.payment', ['code' => $bookingCode])
             ->with('success', $successMsg);

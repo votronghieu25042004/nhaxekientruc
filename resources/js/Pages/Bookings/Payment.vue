@@ -408,22 +408,6 @@
               </div>
             </div>
 
-            <!-- KHỐI DỰ PHÒNG XÁC NHẬN KHI ĐÃ CHUYỂN TIỀN THẬT -->
-            <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs text-center space-y-2">
-              <p class="text-xs text-slate-600 font-medium">
-                Đã chuyển khoản thành công từ App Ngân Hàng hoặc MoMo?
-              </p>
-              <button
-                @click="manualConfirm"
-                :disabled="isConfirming"
-                type="button"
-                class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs uppercase tracking-wider transition shadow-md shadow-red-500/20 cursor-pointer disabled:opacity-50 active:scale-95"
-              >
-                <span v-if="isConfirming">⏳ Đang kết nối máy chủ ngân hàng...</span>
-                <span v-else>✓ Tôi Đã Chuyển Khoản Rồi - Kích Hoạt Vé Ngay</span>
-              </button>
-            </div>
-
           </div>
 
         </div>
@@ -565,29 +549,6 @@ const redirectToTicket = () => {
   setTimeout(() => {
     router.visit(`/booking/${props.booking.booking_code}/detail`);
   }, 1200);
-};
-
-const isConfirming = ref(false);
-
-// Xác nhận thủ công nếu khách đã chuyển tiền mà chưa nhận được tín hiệu Webhook tự động
-const manualConfirm = async () => {
-  if (isConfirming.value || isPaid.value) return;
-  isConfirming.value = true;
-  try {
-    const res = await axios.post(`/api/booking/${props.booking.booking_code}/confirm-payment`);
-    if (res.data?.success) {
-      isPaid.value = true;
-      if (pollInterval) clearInterval(pollInterval);
-      if (timerInterval) clearInterval(timerInterval);
-      redirectToTicket();
-    } else {
-      alert(res.data?.message || 'Chưa nhận được giao dịch.');
-    }
-  } catch (err) {
-    alert('Lỗi xác nhận: ' + (err.response?.data?.message || err.message));
-  } finally {
-    isConfirming.value = false;
-  }
 };
 
 // Polling tự động lắng nghe giao dịch từ máy chủ cứ mỗi 1.5 giây

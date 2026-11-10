@@ -800,16 +800,17 @@ class AuthController extends Controller
         $type = $request->input('type');
         $val = trim($request->input('value'));
         $otp = sprintf("%06d", mt_rand(100000, 999999));
-        $isJson = $request->wantsJson() || $request->ajax() || $request->isJson() || str_contains($request->header('Accept', ''), 'application/json');
+        $isInertia = (bool)$request->header('X-Inertia');
+        $isJson = !$isInertia && ($request->wantsJson() || $request->ajax() || $request->isJson() || str_contains($request->header('Accept', ''), 'application/json'));
 
         if ($type === 'email') {
             if (!preg_match('/^[a-zA-Z0-9._%+-]+@gmail\.com$/i', $val)) {
                 $err = 'Địa chỉ Email bắt buộc phải có đuôi @gmail.com!';
-                return $isJson ? response()->json(['success' => false, 'message' => $err], 422) : back()->withErrors(['otp_error' => $err]);
+                return $isInertia ? back()->withErrors(['otp_error' => $err]) : response()->json(['success' => false, 'message' => $err], 422);
             }
             if (User::where('email', $val)->where('id', '!=', Auth::id())->exists()) {
                 $err = 'Email này đã được liên kết với một tài khoản khác!';
-                return $isJson ? response()->json(['success' => false, 'message' => $err], 422) : back()->withErrors(['otp_error' => $err]);
+                return $isInertia ? back()->withErrors(['otp_error' => $err]) : response()->json(['success' => false, 'message' => $err], 422);
             }
 
             session([
@@ -819,8 +820,18 @@ class AuthController extends Controller
                 'profile_update_expires_at' => now()->addMinutes(10),
             ]);
 
-            $msg = "Mã xác thực OTP đã được gửi về Gmail {$val}: [ {$otp} ]. Vui lòng nhập mã để hoàn tất liên kết.";
-            return $isJson ? response()->json(['success' => true, 'message' => $msg, 'otp' => $otp]) : back()->with('otp_notice', $msg);
+            // Gửi qua Mail Google SMTP thật nếu có thể
+            try {
+                \Illuminate\Support\Facades\Mail::send('emails.register_otp', ['otp' => $otp, 'email' => $val], function ($message) use ($val, $otp) {
+                    $message->to($val)
+                            ->subject("[nhaxekientruc] Mã xác thực OTP liên kết Gmail: {$otp}");
+                });
+                $msg = "Mã xác thực OTP đã gửi về Gmail {$val}. Vui lòng kiểm tra hộp thư (hoặc Thư rác/Spam). Mã OTP của bạn: [ {$otp} ].";
+            } catch (\Throwable $e) {
+                $msg = "Mã xác thực OTP liên kết Gmail {$val}: [ {$otp} ]. Vui lòng nhập mã để hoàn tất.";
+            }
+
+            return $isInertia ? back()->with('otp_notice', $msg) : response()->json(['success' => true, 'message' => $msg, 'otp' => $otp]);
         } else {
             // Chuẩn hóa SĐT
             $cleanPhone = preg_replace('/[^0-9]/', '', $val);
@@ -829,7 +840,7 @@ class AuthController extends Controller
             }
             if (User::where('phone', $cleanPhone)->where('id', '!=', Auth::id())->exists()) {
                 $err = 'Số điện thoại này đã được liên kết với tài khoản khác!';
-                return $isJson ? response()->json(['success' => false, 'message' => $err], 422) : back()->withErrors(['otp_error' => $err]);
+                return $isInertia ? back()->withErrors(['otp_error' => $err]) : response()->json(['success' => false, 'message' => $err], 422);
             }
 
             session([
@@ -839,8 +850,56 @@ class AuthController extends Controller
                 'profile_update_expires_at' => now()->addMinutes(10),
             ]);
 
-            $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo số điện thoại {$cleanPhone}: [ {$otp} ]. Vui lòng nhập mã để xác nhận.";
-            return $isJson ? response()->json(['success' => true, 'message' => $msg, 'otp' => $otp]) : back()->with('otp_notice', $msg);
+            // Thử kết nối gửi qua Zalo ZNS OpenAPI (VNG) hoặc eSMS nếu có token
+            $znsEnabled = env('ZALO_ZNS_ENABLED', false);
+            $zaloAccessToken = env('ZALO_ACCESS_TOKEN');
+            $zaloTemplateId = env('ZALO_TEMPLATE_ID');
+            $esmsApiKey = env('ESMS_API_KEY');
+            $esmsSecretKey = env('ESMS_SECRET_KEY');
+
+            if ($znsEnabled && !empty($zaloAccessToken) && !empty($zaloTemplateId)) {
+                try {
+                    $res = \Illuminate\Support\Facades\Http::withHeaders([
+                        'access_token' => $zaloAccessToken,
+                        'Content-Type' => 'application/json',
+                    ])->timeout(5)->post('https://business.openapi.zalo.me/message/template', [
+                        'phone' => '84' . ltrim($cleanPhone, '0'),
+                        'template_id' => $zaloTemplateId,
+                        'template_data' => [
+                            'otp' => $otp,
+                            'customer_name' => $user->name ?? 'Quý khách'
+                        ]
+                    ]);
+                    if ($res->successful() && ($res->json('error') == 0)) {
+                        $msg = "Mã xác thực OTP đã được gửi trực tiếp vào tin nhắn Zalo tới số điện thoại {$cleanPhone}!";
+                    } else {
+                        $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo số điện thoại {$cleanPhone}: [ {$otp} ]. Vui lòng nhập mã để xác nhận.";
+                    }
+                } catch (\Throwable $e) {
+                    $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo số điện thoại {$cleanPhone}: [ {$otp} ]. Vui lòng nhập mã để xác nhận.";
+                }
+            } elseif (!empty($esmsApiKey) && !empty($esmsSecretKey)) {
+                try {
+                    $res = \Illuminate\Support\Facades\Http::timeout(5)->post('https://api.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json', [
+                        'ApiKey' => $esmsApiKey,
+                        'SecretKey' => $esmsSecretKey,
+                        'Phone' => $cleanPhone,
+                        'Content' => "Ma xac thuc Zalo/nhaxekientruc cua quy khach la: {$otp}",
+                        'SmsType' => '2',
+                    ]);
+                    if ($res->successful() && ($res->json('CodeResult') == '100')) {
+                        $msg = "Mã xác thực OTP đã gửi tới Zalo/SMS số điện thoại {$cleanPhone}!";
+                    } else {
+                        $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo số điện thoại {$cleanPhone}: [ {$otp} ]. Vui lòng nhập mã để xác nhận.";
+                    }
+                } catch (\Throwable $e) {
+                    $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo số điện thoại {$cleanPhone}: [ {$otp} ]. Vui lòng nhập mã để xác nhận.";
+                }
+            } else {
+                $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo số điện thoại {$cleanPhone}: [ {$otp} ]. Vui lòng nhập mã để xác nhận.";
+            }
+
+            return $isInertia ? back()->with('otp_notice', $msg) : response()->json(['success' => true, 'message' => $msg, 'otp' => $otp]);
         }
     }
 
@@ -850,11 +909,12 @@ class AuthController extends Controller
     public function verifyProfileOtp(Request $request)
     {
         $user = Auth::user();
-        $isJson = $request->wantsJson() || $request->ajax() || $request->isJson() || str_contains($request->header('Accept', ''), 'application/json');
+        $isInertia = (bool)$request->header('X-Inertia');
+        $isJson = !$isInertia && ($request->wantsJson() || $request->ajax() || $request->isJson() || str_contains($request->header('Accept', ''), 'application/json'));
 
         if (!$user) {
             $err = 'Vui lòng đăng nhập.';
-            return $isJson ? response()->json(['success' => false, 'message' => $err], 401) : back()->withErrors(['auth' => $err]);
+            return $isInertia ? back()->withErrors(['auth' => $err]) : response()->json(['success' => false, 'message' => $err], 401);
         }
 
         $request->validate([
@@ -867,7 +927,7 @@ class AuthController extends Controller
 
         if ($request->input('otp') !== $savedOtp && $request->input('otp') !== '123456') {
             $err = 'Mã OTP không chính xác hoặc đã hết hạn!';
-            return $isJson ? response()->json(['success' => false, 'message' => $err], 422) : back()->withErrors(['otp_verify_error' => $err]);
+            return $isInertia ? back()->withErrors(['otp_verify_error' => $err]) : response()->json(['success' => false, 'message' => $err], 422);
         }
 
         if ($savedType === 'email') {
@@ -876,17 +936,17 @@ class AuthController extends Controller
             $user->save();
             session()->forget(['profile_update_otp', 'profile_update_type', 'profile_update_value']);
             $msg = "Cập nhật và liên kết Gmail {$savedValue} thành công!";
-            return $isJson ? response()->json(['success' => true, 'message' => $msg, 'email' => $savedValue]) : back()->with('success', $msg);
+            return $isInertia ? back()->with('success', $msg) : response()->json(['success' => true, 'message' => $msg, 'email' => $savedValue]);
         } elseif ($savedType === 'phone') {
             $user->phone = $savedValue;
             $user->save();
             session()->forget(['profile_update_otp', 'profile_update_type', 'profile_update_value']);
             $msg = "Cập nhật và xác thực Số điện thoại {$savedValue} qua Zalo thành công!";
-            return $isJson ? response()->json(['success' => true, 'message' => $msg, 'phone' => $savedValue]) : back()->with('success', $msg);
+            return $isInertia ? back()->with('success', $msg) : response()->json(['success' => true, 'message' => $msg, 'phone' => $savedValue]);
         }
 
         $err = 'Yêu cầu không hợp lệ.';
-        return $isJson ? response()->json(['success' => false, 'message' => $err], 422) : back()->withErrors(['otp_verify_error' => $err]);
+        return $isInertia ? back()->withErrors(['otp_verify_error' => $err]) : response()->json(['success' => false, 'message' => $err], 422);
     }
 
     public function logout(Request $request)
