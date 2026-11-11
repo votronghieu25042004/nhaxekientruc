@@ -809,7 +809,7 @@
                         <button
                           type="button"
                           @click="proceedToChooseMethod"
-                          :disabled="!isStep1Valid || !agreeTerms || isSendingOtp"
+                          :disabled="!isStep1Valid || !agreeTerms || isSendingOtp || isCheckingIdentifier"
                           class="relative overflow-hidden w-full py-3.5 sm:py-4 px-4 min-h-[48px] rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30"
                         >
                           <span v-if="isCheckingIdentifier" class="animate-spin text-sm">⏳</span>
@@ -1064,7 +1064,7 @@
                       </button>
 
                       <div class="text-center pt-1 space-y-2">
-                        <div v-if="loginForm.type === 'phone'" class="space-y-1.5">
+                        <div v-if="registerMethod === 'phone'" class="space-y-1.5">
                           <div class="text-[11px] text-slate-500 font-medium">Chưa nhận được mã hoặc nghe chưa kịp?</div>
                           <div class="flex items-center justify-center gap-2">
                             <button
@@ -1382,6 +1382,7 @@ const stopTurboSpeed = () => {
 
 const switchTab = (tab) => {
   activeTab.value = tab;
+  showPhoneMethodPicker.value = false;
   otpError.value = '';
   isAlreadyRegistered.value = false;
   if (page.props.errors) {
@@ -1467,10 +1468,13 @@ const isVerifyingOtp = ref(false);
 const otpError = ref('');
 const countdownSeconds = ref(119);
 let countdownTimer = null;
+const showPhoneMethodPicker = ref(false);
+const isCheckingIdentifier = ref(false);
 
 const setRegisterMethod = (method) => {
   registerMethod.value = method;
   registerStep.value = 1;
+  showPhoneMethodPicker.value = false;
   otpDigits.value = ['', '', '', '', '', ''];
   receivedOtp.value = '';
   otpChannel.value = '';
@@ -1626,6 +1630,45 @@ const checkIdentifierExists = async () => {
 const onIdentifierBlur = () => {
   stopTurboSpeed();
   checkIdentifierExists();
+};
+
+const proceedToChooseMethod = async () => {
+  if (!isStep1Valid.value || !agreeTerms.value || isSendingOtp.value || isCheckingIdentifier.value) return;
+  isCheckingIdentifier.value = true;
+  otpError.value = '';
+  try {
+    const res = await axios.post('/register/check-exists', {
+      identifier: activeIdentifier.value,
+    }, {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (res.data?.exists) {
+      isAlreadyRegistered.value = true;
+      otpError.value = res.data.message || 'Số điện thoại này đã tồn tại trên hệ thống!';
+      return;
+    }
+    showPhoneMethodPicker.value = true;
+  } catch (e) {
+    showPhoneMethodPicker.value = true;
+  } finally {
+    isCheckingIdentifier.value = false;
+  }
+};
+
+const chooseMethodAndSend = async (method) => {
+  otpDeliveryMethod.value = method;
+  await handleSendOtpStep1();
+};
+
+const goBackFromStep2 = () => {
+  registerStep.value = 1;
+  showPhoneMethodPicker.value = false;
+  otpDigits.value = ['', '', '', '', '', ''];
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
 };
 
 const handleSendOtpStep1 = async () => {
