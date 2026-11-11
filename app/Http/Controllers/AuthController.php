@@ -180,14 +180,12 @@ class AuthController extends Controller
             }
         } else {
             // Chuẩn hóa số điện thoại Việt Nam
-            $msg = "Mã xác thực OTP qua Zalo cho SĐT {$target} là: [ {$otp} ]. Vui lòng nhập mã để đăng nhập!";
+            $msg = "Mã xác thực OTP đã được gửi tới số điện thoại {$target}. Vui lòng kiểm tra tin nhắn và nhập mã!";
         }
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'otp' => $otp,
-                'cloud_fallback_otp' => $otp,
                 'channel' => ($type === 'phone' ? 'zalo' : 'gmail'),
                 'target' => $target,
                 'message' => $msg,
@@ -575,11 +573,10 @@ class AuthController extends Controller
                     $otpMessage = "Mã xác thực Zalo/SMS đã được gửi tới số {$identifier}! Vui lòng kiểm tra tin nhắn và nhập mã OTP để tiếp tục.";
                 }
             }
-            // 3. Kênh OTP nhaxekientruc Zalo SMS trực tiếp
+            // 3. Kênh OTP Zalo SMS
             else {
-                Log::info("[ZALO_DIRECT_OTP] Đã tạo mã OTP Zalo cho SĐT {$identifier}: {$otp}");
-                $cloudFallbackOtp = $otp;
-                $otpMessage = "Mã xác thực OTP qua Zalo cho SĐT {$identifier} là: [ {$otp} ]. Bạn có thể bấm nút bên dưới để điền nhanh.";
+                Log::info("[ZALO_DIRECT_OTP] Yêu cầu gửi mã OTP Zalo cho SĐT {$identifier}");
+                $otpMessage = "Mã xác thực OTP đã được gửi tới số điện thoại {$identifier}! Vui lòng kiểm tra tin nhắn trên điện thoại của bạn.";
             }
         }
 
@@ -589,11 +586,9 @@ class AuthController extends Controller
                 'message' => $otpMessage,
                 'identifier' => $identifier,
                 'type' => $type,
-                'otp' => $otp,
                 'channel' => ($type === 'phone' ? 'zalo' : 'gmail'),
                 'mail_sent' => $mailSentReal,
                 'zns_sent' => $znsSentReal,
-                'cloud_fallback_otp' => $cloudFallbackOtp ?? $otp,
             ]);
         }
 

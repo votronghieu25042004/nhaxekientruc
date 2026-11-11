@@ -890,31 +890,7 @@
                       </p>
                     </div>
 
-                    <!-- BẢNG THÔNG BÁO CLOUD NẾU RENDER FREE CHẶN CỔNG SMTP 587 HOẶC XÁC THỰC ZALO -->
-                    <div v-if="cloudFallbackOtp" class="p-3.5 bg-gradient-to-r from-blue-50 via-amber-50 to-orange-50 border-2 border-blue-300 rounded-2xl text-xs text-slate-900 space-y-2 animate-in fade-in shadow-xs">
-                      <div class="flex items-center gap-1.5 font-black text-blue-900">
-                        <span class="text-base">{{ registerMethod === 'phone' ? '💬' : '☁️' }}</span>
-                        <span class="uppercase tracking-wide text-xs">{{ registerMethod === 'phone' ? 'MÃ XÁC THỰC OTP ZALO / SMS' : 'MÁY CHỦ CLOUD RENDER' }}</span>
-                        <span class="ml-auto text-[10px] px-2 py-0.5 rounded-full font-mono font-bold" :class="registerMethod === 'phone' ? 'bg-blue-600 text-white' : 'bg-amber-600 text-white'">
-                          {{ registerMethod === 'phone' ? 'Zalo OTP' : 'Render Free' }}
-                        </span>
-                      </div>
-                      <p class="text-[11.5px] text-slate-800 leading-relaxed">
-                        Mã xác thực OTP gửi tới <strong class="text-slate-900">{{ activeTargetDisplay }}</strong> là: 
-                        <span class="font-mono font-black text-base text-red-600 bg-white px-2.5 py-0.5 rounded-xl border border-red-300 shadow-2xs select-all ml-1">{{ cloudFallbackOtp }}</span>
-                      </p>
-                      <div class="pt-0.5 flex flex-wrap items-center justify-between gap-1.5">
-                        <button
-                          type="button"
-                          @click="otpDigits = cloudFallbackOtp.split('').slice(0, 6); nextTick(() => document.getElementById('otp-box-5')?.focus())"
-                          class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1 active:scale-95"
-                        >
-                          <span>⚡</span>
-                          <span>Bấm để điền nhanh mã OTP ({{ cloudFallbackOtp }})</span>
-                        </button>
-                        <span class="text-[10.5px] text-slate-600 italic">(Mã dự phòng kiểm thử: 123456)</span>
-                      </div>
-                    </div>
+
 
                     <!-- 6 Ô Input OTP Tự Động Chuyển Ô Khi Gõ -->
                     <div class="flex items-center justify-center gap-1.5 sm:gap-2.5 py-1">
