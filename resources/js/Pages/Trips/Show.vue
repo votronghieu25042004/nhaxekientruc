@@ -1387,23 +1387,27 @@ const handleSendPhoneOtpFirebase = async () => {
     const cleanPhoneVal = customerForm.value.phone.replace(/[^0-9]/g, '');
     const e164Phone = cleanPhoneVal.startsWith('84') ? ('+' + cleanPhoneVal) : ('+84' + cleanPhoneVal.replace(/^0/, ''));
 
-    if (!window.bookingRecaptchaVerifier) {
-      window.bookingRecaptchaVerifier = new RecaptchaVerifier(auth, 'booking-recaptcha-container', {
-        size: 'invisible',
-        callback: () => {}
-      });
-    }
-
     try {
-      const confirmationResult = await signInWithPhoneNumber(auth, e164Phone, window.bookingRecaptchaVerifier);
-      window.bookingPhoneConfirmation = confirmationResult;
-    } catch (fbErr) {
-      console.warn('Booking Phone Auth warning:', fbErr);
-      if (fbErr.code === 'auth/billing-not-enabled' || fbErr.code === 'auth/operation-not-allowed') {
-        window.bookingPhoneConfirmation = null;
-      } else {
-        throw fbErr;
+      const recaptchaDom = document.getElementById('booking-recaptcha-container');
+      if (recaptchaDom) {
+        if (!window.bookingRecaptchaVerifier) {
+          window.bookingRecaptchaVerifier = new RecaptchaVerifier(auth, 'booking-recaptcha-container', {
+            size: 'invisible',
+            callback: () => {}
+          });
+        }
+        const confirmationResult = await signInWithPhoneNumber(auth, e164Phone, window.bookingRecaptchaVerifier);
+        window.bookingPhoneConfirmation = confirmationResult;
       }
+    } catch (fbErr) {
+      console.warn('Booking Phone Auth warning, proceeding to server SMS:', fbErr);
+      window.bookingPhoneConfirmation = null;
+      try {
+        if (window.bookingRecaptchaVerifier && window.bookingRecaptchaVerifier.clear) {
+          window.bookingRecaptchaVerifier.clear();
+        }
+      } catch (e) {}
+      window.bookingRecaptchaVerifier = null;
     }
 
     await axios.post('/user/send-otp', {
