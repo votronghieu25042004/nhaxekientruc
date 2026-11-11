@@ -168,7 +168,7 @@
             </p>
           </div>
 
-          <!-- Type Selector (Gmail vs Số Điện Thoại Zalo) -->
+          <!-- Type Selector (Gmail vs Số Điện Thoại SMS) -->
           <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-2xl border border-slate-200 text-xs">
             <button
               type="button"
@@ -186,7 +186,7 @@
               :class="contactType === 'phone' ? 'bg-white text-blue-600 font-black shadow-xs' : 'text-slate-600 hover:text-slate-900'"
             >
               <span>📱</span>
-              <span>Số Điện Thoại (Zalo)</span>
+              <span>Số Điện Thoại (SMS)</span>
             </button>
           </div>
 
@@ -228,7 +228,7 @@
 
             <div v-else>
               <label class="block text-xs font-bold text-slate-700 mb-1">
-                Số Điện Thoại (Nhận OTP qua Zalo) <span class="text-red-500 font-black">*</span>
+                Số Điện Thoại (Nhận OTP qua SMS) <span class="text-red-500 font-black">*</span>
               </label>
               <input
                 type="tel"
@@ -236,7 +236,7 @@
                 placeholder="vidu: 0912345678"
                 class="w-full px-3.5 py-2.5 rounded-2xl border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
               />
-              <p class="text-[10px] text-slate-400 mt-1">Mã OTP xác thực sẽ được gửi trực tiếp đến Zalo của bạn.</p>
+              <p class="text-[10px] text-slate-400 mt-1">Mã OTP xác thực sẽ được gửi trực tiếp qua tin nhắn SMS tới điện thoại của bạn.</p>
             </div>
 
             <button

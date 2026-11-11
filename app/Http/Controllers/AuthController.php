@@ -380,8 +380,8 @@ class AuthController extends Controller
                     : back()->withErrors(['identifier' => $err]);
             }
             $identifier = $cleanPhone;
-            $targetLabel = "số điện thoại {$identifier} (qua Zalo / SMS)";
-            $channelName = "Zalo / SMS";
+            $targetLabel = "số điện thoại {$identifier} (qua SMS / Cuộc gọi)";
+            $channelName = "SMS / Cuộc gọi";
         }
 
         $otp = sprintf("%06d", mt_rand(100000, 999999));
@@ -679,7 +679,7 @@ class AuthController extends Controller
                 'message' => $otpMessage,
                 'identifier' => $identifier,
                 'type' => $type,
-                'channel' => ($type === 'phone' ? 'zalo' : 'gmail'),
+                'channel' => ($type === 'phone' ? 'phone' : 'gmail'),
                 'mail_sent' => $mailSentReal,
                 'zns_sent' => $znsSentReal,
             ]);
@@ -710,7 +710,7 @@ class AuthController extends Controller
         if (!$isValid) {
             Log::warning("[REGISTER_OTP_VERIFY_FAILED] Mã OTP nhập sai hoặc hết hạn cho {$identifier}: Nhập '{$otp}' nhưng mã trong session là '{$savedOtp}'");
             if ($request->wantsJson() || $request->ajax()) {
-                return response()->json(['success' => false, 'message' => 'Mã OTP không đúng hoặc đã hết hạn! Vui lòng kiểm tra lại email/Zalo và nhập đúng 6 chữ số.'], 422);
+                return response()->json(['success' => false, 'message' => 'Mã OTP không đúng hoặc đã hết hạn! Vui lòng kiểm tra lại tin nhắn SMS / Email và nhập đúng 6 chữ số.'], 422);
             }
             return back()->withErrors(['otp' => 'Mã OTP không đúng hoặc đã hết hạn! Vui lòng kiểm tra lại.']);
         }
@@ -1032,7 +1032,7 @@ class AuthController extends Controller
             $user->phone = $savedValue;
             $user->save();
             session()->forget(['profile_update_otp', 'profile_update_type', 'profile_update_value']);
-            $msg = "Cập nhật và xác thực Số điện thoại {$savedValue} qua Zalo thành công!";
+            $msg = "Cập nhật và xác thực Số điện thoại {$savedValue} thành công!";
             return $isInertia ? back()->with('success', $msg) : response()->json(['success' => true, 'message' => $msg, 'phone' => $savedValue]);
         }
 

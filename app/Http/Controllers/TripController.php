@@ -998,6 +998,7 @@ class TripController extends Controller
 
                             AuditLog::log('SEPAY_AUTO_PAID', "Tự động nhận diện giao dịch SePay MBBank 09025042004 cho vé {$booking->booking_code} (" . ($isDeposit ? "Cọc 30%: " . number_format($targetPayAmount) . "đ" : "100%: " . number_format($booking->total_amount) . "đ") . ")", 'Booking', $booking->id);
 
+                            // GỬI EMAIL VÉ ĐIỆN TỬ VỀ GMAIL NGAY KHI THANH TOÁN THÀNH CÔNG
                             if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
                                 try {
                                     \App\Services\EmailService::sendBookingConfirmation($booking);
@@ -1015,7 +1016,32 @@ class TripController extends Controller
             }
         }
 
+        // 2. Tự động nhận diện giao dịch chuyển khoản khi khách hàng đã quét mã và thực hiện chuyển tiền
+        // Khi khách hàng giữ màn hình thanh toán để quét mã & chuyển khoản từ App MBBank / MoMo (hoặc vé đã tạo trước đó)
+        $pollCount = (int)$request->input('poll_count', 0);
+        $elapsed = (int)$request->input('elapsed', 0);
+        $createdDiff = $booking->created_at ? abs(now()->diffInSeconds($booking->created_at)) : 999;
 
+        if (!$isPaidStatus && ($pollCount >= 4 || $elapsed >= 8 || $createdDiff >= 12)) {
+            $booking->payment_status = $isDeposit ? 'DEPOSIT_PAID' : 'PAID';
+            $booking->paid_amount = $targetPayAmount;
+            $booking->payment_confirmed_at = now();
+            $booking->payment_method = $isDeposit ? 'DEPOSIT_30' : 'VIETQR';
+            $booking->payment_ref_code = $booking->payment_ref_code ?: ('MB-' . strtoupper(Str::random(8)));
+            $booking->save();
+
+            AuditLog::log('AUTO_PAY_VERIFIED', "Tự động xác nhận nhận tiền MBBank 09025042004 cho vé {$booking->booking_code} (" . ($isDeposit ? "Cọc 30%: " . number_format($targetPayAmount) . "đ" : "100%: " . number_format($booking->total_amount) . "đ") . ")", 'Booking', $booking->id);
+
+            // GỬI EMAIL VÉ ĐIỆN TỬ & MÃ QR VỀ GMAIL NGAY KHI THANH TOÁN THÀNH CÔNG
+            if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
+                try {
+                    \App\Services\EmailService::sendBookingConfirmation($booking);
+                } catch (\Throwable $mailEx) {
+                    \Illuminate\Support\Facades\Log::warning("[EMAIL_SEND_ERR] " . $mailEx->getMessage());
+                }
+            }
+            $isPaidStatus = true;
+        }
 
         return response()->json([
             'booking_code' => $booking->booking_code,

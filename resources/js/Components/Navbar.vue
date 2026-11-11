@@ -155,7 +155,7 @@
                       </p>
                       <p class="text-[10px] text-slate-400 font-normal mt-0.5">
                         <span v-if="!$page.props.auth.user.email && $page.props.auth.user.phone">Thêm Gmail để nhận vé điện tử & hóa đơn</span>
-                        <span v-else-if="$page.props.auth.user.email && !$page.props.auth.user.phone">Thêm SĐT nhận tin nhắn Zalo khi xe đón</span>
+                        <span v-else-if="$page.props.auth.user.email && !$page.props.auth.user.phone">Thêm SĐT nhận tin nhắn SMS khi xe đón</span>
                         <span v-else-if="!$page.props.auth.user.email && !$page.props.auth.user.phone">Cập nhật thông tin nhận vé</span>
                         <span v-else class="text-emerald-700 font-medium">✓ Đã xác thực đầy đủ Gmail & SĐT</span>
                       </p>
@@ -237,7 +237,7 @@
                   <span class="text-base">📝</span>
                   <div>
                     <p class="leading-none">Đăng Ký Tài Khoản</p>
-                    <p class="text-[10px] text-slate-400 font-normal mt-0.5">Xác thực OTP qua Gmail hoặc Zalo</p>
+                    <p class="text-[10px] text-slate-400 font-normal mt-0.5">Xác thực OTP qua SMS hoặc Gmail</p>
                   </div>
                 </Link>
               </div>
