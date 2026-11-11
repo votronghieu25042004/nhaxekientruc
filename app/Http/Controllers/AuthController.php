@@ -592,7 +592,7 @@ class AuthController extends Controller
                         'ApiKey' => $esmsApiKey,
                         'SecretKey' => $esmsSecretKey,
                         'Phone' => $cleanPhone,
-                        'Content' => "Ma xac nhan cua ban la {$otp}",
+                        'Content' => "{$otp} la ma xac minh dang ky Baotrixemay cua ban",
                         'Brandname' => 'Baotrixemay',
                         'SmsType' => '2',
                         'IsUnicode' => '0',
@@ -1110,16 +1110,18 @@ class AuthController extends Controller
             // 1. Nếu người dùng chọn Voice Call: gọi tổng đài AI đọc mã
             if ($method === 'voice' && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
-                    $voiceUrl = "https://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
-                    $voiceRes = \Illuminate\Support\Facades\Http::timeout(12)->get($voiceUrl, [
-                        'ApiKey' => $esmsApiKey,
-                        'SecretKey' => $esmsSecretKey,
-                        'Phone' => $cleanPhone,
-                        'Code' => $otp,
-                        'Speed' => '-1',
-                        'MaxRepeat' => '3',
-                        'Voice' => 'female',
-                    ]);
+                    $voiceUrl = "http://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
+                    $voiceRes = \Illuminate\Support\Facades\Http::timeout(12)
+                        ->withoutVerifying()
+                        ->get($voiceUrl, [
+                            'ApiKey' => $esmsApiKey,
+                            'SecretKey' => $esmsSecretKey,
+                            'Phone' => $cleanPhone,
+                            'Code' => $otp,
+                            'Speed' => '-1',
+                            'MaxRepeat' => '3',
+                            'Voice' => 'female',
+                        ]);
                     if ($voiceRes->successful() && ($voiceRes->json('CodeResult') == '100')) {
                         $phoneSent = true;
                         $msg = "Tổng đài AI đang gọi điện thoại tới số {$cleanPhone} để đọc mã OTP 6 số. Quý khách vui lòng nghe máy!";
@@ -1135,7 +1137,7 @@ class AuthController extends Controller
                         'ApiKey' => $esmsApiKey,
                         'SecretKey' => $esmsSecretKey,
                         'Phone' => $cleanPhone,
-                        'Content' => "Ma xac nhan cua ban la {$otp}",
+                        'Content' => "{$otp} la ma xac minh dang ky Baotrixemay cua ban",
                         'Brandname' => 'Baotrixemay',
                         'SmsType' => '2',
                         'IsUnicode' => '0',

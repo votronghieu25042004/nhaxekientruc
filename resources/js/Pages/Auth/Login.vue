@@ -1016,9 +1016,14 @@
                       </p>
                       <div class="text-[11.5px] font-medium text-slate-600">
                         <div v-if="registerMethod === 'phone'">
-                          <div v-if="otpDeliveryMethod === 'sms'" class="text-emerald-700 font-bold flex items-center justify-center gap-1">
-                            <span>💬</span>
-                            <span>Mã xác thực 6 số đã được gửi qua tin nhắn SMS tới điện thoại. Quý khách vui lòng kiểm tra tin nhắn và nhập mã:</span>
+                          <div v-if="otpDeliveryMethod === 'sms'" class="text-emerald-700 font-bold space-y-0.5">
+                            <div class="flex items-center justify-center gap-1">
+                              <span>💬</span>
+                              <span>Mã xác thực 6 số đã được gửi qua tin nhắn SMS tới điện thoại. Quý khách vui lòng kiểm tra tin nhắn và nhập mã:</span>
+                            </div>
+                            <div class="text-[10.5px] text-slate-500 font-normal">
+                              (Tin nhắn SMS hiển thị từ người gửi: <strong>Baotrixemay</strong> do tài khoản đã đăng ký mẫu với nhà mạng)
+                            </div>
                           </div>
                           <div v-else class="text-blue-800 font-bold flex items-center justify-center gap-1">
                             <span>📞</span>
