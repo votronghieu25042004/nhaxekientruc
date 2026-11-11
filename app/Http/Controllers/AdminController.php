@@ -3451,8 +3451,8 @@ class AdminController extends Controller
         }
 
         $userName = $user->name;
-        $userEmail = $user->email;
-        $userPhone = $user->phone;
+        $userEmail = strtolower(trim((string)$user->email));
+        $userPhone = preg_replace('/[^0-9]/', '', (string)$user->phone);
         $userId = $user->id;
 
         try {
@@ -3461,24 +3461,55 @@ class AdminController extends Controller
                 'role' => Auth::user()?->role ?? 'admin',
                 'action' => 'DELETE_USER',
                 'category' => 'USER_MANAGEMENT',
-                'description' => "Admin đã xóa vĩnh viễn tài khoản [{$userName} - {$userPhone} - {$userEmail}]",
+                'description' => "Admin đã xóa vĩnh viễn tài khoản [{$userName} - {$userPhone} - {$userEmail}] và toàn bộ vé xe, dữ liệu liên quan",
                 'severity' => 'HIGH',
                 'ip_address' => $request->ip(),
             ]);
         } catch (\Throwable $e) {}
 
-        // Gỡ liên kết user_id ở các bảng liên quan để bảo toàn tính toàn vẹn dữ liệu
+        // 1. Tìm và xóa sạch tất cả đơn đặt vé (bookings), ghế ngồi (booking_seats), đánh giá (reviews) thuộc về user này
         try {
-            \Illuminate\Support\Facades\DB::table('bookings')->where('user_id', $userId)->update(['user_id' => null]);
-            \Illuminate\Support\Facades\DB::table('drivers')->where('user_id', $userId)->update(['user_id' => null]);
-            \Illuminate\Support\Facades\DB::table('reviews')->where('user_id', $userId)->update(['user_id' => null]);
+            $userBookings = Booking::where('user_id', $userId)
+                ->when($userEmail, function($q) use ($userEmail) {
+                    $q->orWhereRaw('LOWER(TRIM(customer_email)) = ?', [$userEmail]);
+                })
+                ->when($userPhone, function($q) use ($userPhone) {
+                    $q->orWhereRaw("REPLACE(REPLACE(REPLACE(customer_phone, '.', ''), ' ', ''), '-', '') = ?", [$userPhone]);
+                })
+                ->get();
+
+            foreach ($userBookings as $b) {
+                // Xóa ghế giữ chỗ để giải phóng ghế trên chuyến xe
+                \Illuminate\Support\Facades\DB::table('booking_seats')->where('booking_id', $b->id)->delete();
+                // Xóa đánh giá chuyến đi của đơn vé này
+                \Illuminate\Support\Facades\DB::table('reviews')->where('booking_id', $b->id)->delete();
+                // Xóa file ảnh QR hoàn tiền nếu có
+                if ($b->refund_qr_code && str_starts_with($b->refund_qr_code, '/uploads/refund_qrs/')) {
+                    $qrFile = public_path($b->refund_qr_code);
+                    if (file_exists($qrFile)) {
+                        @unlink($qrFile);
+                    }
+                }
+                // Xóa vĩnh viễn đơn vé
+                $b->delete();
+            }
+
+            // 2. Xóa các đánh giá trực tiếp do user viết
+            \Illuminate\Support\Facades\DB::table('reviews')->where('user_id', $userId)->delete();
+
+            // 3. Xóa hồ sơ tài xế nếu tài khoản này liên kết tài xế
+            \Illuminate\Support\Facades\DB::table('drivers')->where('user_id', $userId)->delete();
+
+            // 4. Xóa các phiên đăng nhập (sessions)
             \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $userId)->delete();
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("[DELETE_USER_DATA_ERR] " . $e->getMessage());
+        }
 
-        // Xóa tài khoản vĩnh viễn
-        $user->delete();
+        // 5. Xóa vĩnh viễn User khỏi database (để nếu tạo lại sẽ hoàn toàn như mới 100%)
+        $user->forceDelete();
 
-        $message = "Đã XÓA VĨNH VIỄN tài khoản [{$userName}] thành công!";
+        $message = "Đã XÓA VĨNH VIỄN tài khoản [{$userName}] cùng toàn bộ vé xe và dữ liệu liên quan thành công!";
 
         if ($request->header('X-Inertia')) {
             return back()->with('success', $message);
