@@ -573,8 +573,6 @@
                     class="w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold text-slate-900 focus:outline-none transition shadow-2xs"
                     :class="!isPhoneValid ? 'border-amber-400 bg-amber-50/50 ring-2 ring-amber-400/20' : 'border-slate-300 focus:border-red-500'"
                   />
-                  <!-- Container reCAPTCHA vô hình cho Firebase -->
-                  <div id="booking-recaptcha-container"></div>
 
                   <!-- Khối nút gửi và nhập OTP SMS / Cuộc gọi thoại -->
                   <div v-if="!showPhoneOtpInput" class="space-y-2">
@@ -1332,7 +1330,6 @@ import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import Navbar from '@/Components/Navbar.vue';
 import Footer from '@/Components/Footer.vue';
-import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '@/Services/firebase';
 
 const props = defineProps({
   is_expired: Boolean,
