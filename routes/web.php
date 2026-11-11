@@ -22,8 +22,11 @@ Route::post('login', [AuthController::class, 'login']);
 Route::get('register', [AuthController::class, 'showRegister'])->name('register');
 Route::post('register', [AuthController::class, 'register']);
 Route::post('register/check-exists', [AuthController::class, 'checkRegisterExists'])->name('register.checkExists');
+Route::get('register/check-exists', fn() => redirect()->route('register'));
 Route::post('register/send-otp', [AuthController::class, 'sendRegisterOtp'])->name('register.sendOtp');
+Route::get('register/send-otp', fn() => redirect()->route('register'));
 Route::post('register/verify-otp', [AuthController::class, 'verifyRegisterOtp'])->name('register.verifyOtp');
+Route::get('register/verify-otp', fn() => redirect()->route('register'));
 Route::post('auth/google-login', [AuthController::class, 'googleLogin'])->name('auth.googleLogin');
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 

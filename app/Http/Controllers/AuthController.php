@@ -390,9 +390,36 @@ class AuthController extends Controller
             'register_otp' => $otp,
             'register_identifier' => $identifier,
             'register_type' => $type,
-            'register_otp_expires_at' => now()->addMinutes(10),
+            'register_otp_expires_at' => now()->addMinutes(15),
         ]);
+
+        // 1. Lưu vào Default Cache
         \Illuminate\Support\Facades\Cache::put("register_otp_{$identifier}", $otp, now()->addMinutes(15));
+        $phoneVariants = [];
+        if ($type === 'phone') {
+            $phoneVariants = [
+                $cleanPhone,
+                '0' . ltrim($cleanPhone, '0'),
+                '84' . ltrim($cleanPhone, '0'),
+                '+84' . ltrim($cleanPhone, '0'),
+                ltrim($cleanPhone, '0'),
+            ];
+            foreach ($phoneVariants as $pv) {
+                \Illuminate\Support\Facades\Cache::put("register_otp_{$pv}", $otp, now()->addMinutes(15));
+            }
+        }
+
+        // 2. Lưu đồng bộ trực tiếp vào Database Cache (TiDB Cloud) để mọi worker Render đều đọc được
+        try {
+            \Illuminate\Support\Facades\Cache::store('database')->put("register_otp_{$identifier}", $otp, now()->addMinutes(15));
+            if ($type === 'phone' && !empty($phoneVariants)) {
+                foreach ($phoneVariants as $pv) {
+                    \Illuminate\Support\Facades\Cache::store('database')->put("register_otp_{$pv}", $otp, now()->addMinutes(15));
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning("[CACHE_DB_STORE_ERR] " . $e->getMessage());
+        }
 
         $mailSentReal = false;
         $znsSentReal = false;
@@ -533,16 +560,18 @@ class AuthController extends Controller
             // 0A. Nhánh 1: Cuộc gọi thoại Voice OTP thật 100% (Nếu người dùng chọn Cuộc gọi)
             if ($method === 'voice' && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
-                    $voiceUrl = "https://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
-                    $voiceRes = \Illuminate\Support\Facades\Http::timeout(12)->get($voiceUrl, [
-                        'ApiKey' => $esmsApiKey,
-                        'SecretKey' => $esmsSecretKey,
-                        'Phone' => $cleanPhone,
-                        'Code' => $otp,
-                        'Speed' => '-1', // Đọc chậm rãi, rõ ràng từng chữ số
-                        'MaxRepeat' => '3', // Đọc lặp lại 3 lần để người dùng nghe rõ và ghi chép kịp
-                        'Voice' => 'female',
-                    ]);
+                    $voiceUrl = "http://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
+                    $voiceRes = \Illuminate\Support\Facades\Http::timeout(12)
+                        ->withoutVerifying()
+                        ->get($voiceUrl, [
+                            'ApiKey' => $esmsApiKey,
+                            'SecretKey' => $esmsSecretKey,
+                            'Phone' => $cleanPhone,
+                            'Code' => $otp,
+                            'Speed' => '-1', // Đọc chậm rãi, rõ ràng từng chữ số
+                            'MaxRepeat' => '3', // Đọc lặp lại 3 lần để người dùng nghe rõ và ghi chép kịp
+                            'Voice' => 'female',
+                        ]);
                     if ($voiceRes->successful() && ($voiceRes->json('CodeResult') == '100')) {
                         $znsSentReal = true;
                         $otpMessage = "Tổng đài AI đang gọi điện thoại tới số {$identifier} để đọc mã OTP 6 số. Quý khách vui lòng nghe máy!";
@@ -583,16 +612,18 @@ class AuthController extends Controller
             // 0C. Fallback Cuộc gọi thoại nếu người dùng chọn SMS mà SMS viễn thông lỗi
             if (!$znsSentReal && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
-                    $voiceUrl = "https://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
-                    $voiceRes = \Illuminate\Support\Facades\Http::timeout(12)->get($voiceUrl, [
-                        'ApiKey' => $esmsApiKey,
-                        'SecretKey' => $esmsSecretKey,
-                        'Phone' => $cleanPhone,
-                        'Code' => $otp,
-                        'Speed' => '-1',
-                        'MaxRepeat' => '3',
-                        'Voice' => 'female',
-                    ]);
+                    $voiceUrl = "http://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
+                    $voiceRes = \Illuminate\Support\Facades\Http::timeout(12)
+                        ->withoutVerifying()
+                        ->get($voiceUrl, [
+                            'ApiKey' => $esmsApiKey,
+                            'SecretKey' => $esmsSecretKey,
+                            'Phone' => $cleanPhone,
+                            'Code' => $otp,
+                            'Speed' => '-1',
+                            'MaxRepeat' => '3',
+                            'Voice' => 'female',
+                        ]);
                     if ($voiceRes->successful() && ($voiceRes->json('CodeResult') == '100')) {
                         $znsSentReal = true;
                         $otpMessage = "Tổng đài AI đang gọi điện thoại tới số {$identifier} để đọc mã OTP 6 số. Quý khách vui lòng nghe máy!";
@@ -720,30 +751,84 @@ class AuthController extends Controller
         ]);
 
         $otp = trim($request->input('otp'));
-        $identifier = trim($request->input('identifier'));
-        $savedOtp = session('register_otp') ?? \Illuminate\Support\Facades\Cache::get("register_otp_{$identifier}");
+        $rawIdentifier = trim($request->input('identifier'));
 
-        Log::info("[REGISTER_OTP_VERIFY] Khách hàng xác thực OTP cho {$identifier}", [
-            'input_otp' => $otp,
-            'saved_otp' => $savedOtp,
-            'is_match' => ($savedOtp && $otp === (string)$savedOtp),
-        ]);
+        $cleanPhone = preg_replace('/[^0-9]/', '', $rawIdentifier);
+        if (str_starts_with($cleanPhone, '84') && strlen($cleanPhone) === 11) {
+            $cleanPhone = '0' . substr($cleanPhone, 2);
+        }
+        $cleanEmail = strtolower(trim($rawIdentifier));
+
+        // 1. Kiểm tra Session
+        $savedOtp = session('register_otp');
+
+        // 2. Kiểm tra Default Cache với nhiều biến thể định dạng
+        if (!$savedOtp) {
+            $savedOtp = \Illuminate\Support\Facades\Cache::get("register_otp_{$cleanPhone}")
+                ?? \Illuminate\Support\Facades\Cache::get("register_otp_{$cleanEmail}")
+                ?? \Illuminate\Support\Facades\Cache::get("register_otp_0" . ltrim($cleanPhone, '0'))
+                ?? \Illuminate\Support\Facades\Cache::get("register_otp_84" . ltrim($cleanPhone, '0'))
+                ?? \Illuminate\Support\Facades\Cache::get("register_otp_+84" . ltrim($cleanPhone, '0'))
+                ?? \Illuminate\Support\Facades\Cache::get("register_otp_{$rawIdentifier}");
+        }
+
+        // 3. Kiểm tra TiDB Database Cache (đồng bộ trên mọi worker Render)
+        if (!$savedOtp) {
+            try {
+                $savedOtp = \Illuminate\Support\Facades\Cache::store('database')->get("register_otp_{$cleanPhone}")
+                    ?? \Illuminate\Support\Facades\Cache::store('database')->get("register_otp_{$cleanEmail}")
+                    ?? \Illuminate\Support\Facades\Cache::store('database')->get("register_otp_0" . ltrim($cleanPhone, '0'))
+                    ?? \Illuminate\Support\Facades\Cache::store('database')->get("register_otp_84" . ltrim($cleanPhone, '0'))
+                    ?? \Illuminate\Support\Facades\Cache::store('database')->get("register_otp_{$rawIdentifier}");
+            } catch (\Throwable $e) {}
+        }
+
+        // 4. Truy vấn trực tiếp bảng cache trên TiDB nếu cần
+        if (!$savedOtp && !empty($cleanPhone)) {
+            try {
+                $shortPhone = ltrim($cleanPhone, '0');
+                $rows = \Illuminate\Support\Facades\DB::table('cache')
+                    ->where('key', 'like', "%{$shortPhone}%")
+                    ->where('expiration', '>=', now()->timestamp)
+                    ->get();
+                foreach ($rows as $row) {
+                    $unserialized = @unserialize($row->value);
+                    if ($unserialized && preg_match('/^\d{6}$/', (string)$unserialized)) {
+                        $savedOtp = (string)$unserialized;
+                        break;
+                    } elseif (preg_match('/^\d{6}$/', (string)$row->value)) {
+                        $savedOtp = (string)$row->value;
+                        break;
+                    }
+                }
+            } catch (\Throwable $e) {}
+        }
 
         $isValid = ($savedOtp && $otp === (string)$savedOtp);
 
+        Log::info("[REGISTER_OTP_VERIFY] Khách hàng xác thực OTP cho {$rawIdentifier}", [
+            'input_otp' => $otp,
+            'saved_otp' => $savedOtp,
+            'is_match' => $isValid,
+        ]);
+
         if (!$isValid) {
-            Log::warning("[REGISTER_OTP_VERIFY_FAILED] Mã OTP nhập sai hoặc hết hạn cho {$identifier}: Nhập '{$otp}' nhưng mã trong session là '{$savedOtp}'");
+            Log::warning("[REGISTER_OTP_VERIFY_FAILED] Mã OTP nhập sai hoặc hết hạn cho {$rawIdentifier}: Nhập '{$otp}' nhưng mã hợp lệ là '{$savedOtp}'");
             if ($request->wantsJson() || $request->ajax()) {
-                return response()->json(['success' => false, 'message' => 'Mã OTP không đúng hoặc đã hết hạn! Vui lòng kiểm tra lại tin nhắn SMS / Email và nhập đúng 6 chữ số.'], 422);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mã OTP không đúng hoặc đã hết hạn! Vui lòng kiểm tra lại tin nhắn SMS / nghe cuộc gọi thoại và nhập đúng 6 chữ số.',
+                ], 422);
             }
             return back()->withErrors(['otp' => 'Mã OTP không đúng hoặc đã hết hạn! Vui lòng kiểm tra lại.']);
         }
 
-        Log::info("[REGISTER_OTP_VERIFY_SUCCESS] Xác thực OTP thành công cho {$identifier}");
+        Log::info("[REGISTER_OTP_VERIFY_SUCCESS] Xác thực OTP thành công cho {$rawIdentifier}");
 
+        $finalIdentifier = !empty($cleanPhone) ? $cleanPhone : $cleanEmail;
         session([
             'register_otp_verified' => true,
-            'register_verified_identifier' => $identifier,
+            'register_verified_identifier' => $finalIdentifier,
         ]);
 
         if ($request->wantsJson() || $request->ajax()) {

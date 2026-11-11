@@ -1031,6 +1031,17 @@
                       </div>
                     </div>
 
+                    <!-- Báo lỗi OTP ngay tại Bước 2 nếu có -->
+                    <div 
+                      v-if="otpError" 
+                      class="p-3 bg-red-50 border border-red-300 rounded-2xl text-xs text-red-700 font-bold flex items-center gap-2 animate-in fade-in"
+                    >
+                      <span class="text-base shrink-0">❌</span>
+                      <div class="flex-1 text-left leading-snug">
+                        {{ otpError }}
+                      </div>
+                    </div>
+
                     <!-- 6 Ô Input OTP Tự Động Chuyển Ô Khi Gõ -->
                     <div class="flex items-center justify-center gap-1.5 sm:gap-2.5 py-1">
                       <input
@@ -1044,7 +1055,8 @@
                         @input="onOtpInput($event, idx)"
                         @keydown="onOtpKeydown($event, idx)"
                         @paste="onOtpPaste"
-                        class="w-10 h-12 sm:w-12 sm:h-14 text-center font-mono font-black text-lg sm:text-xl text-slate-900 bg-slate-50 border-2 border-slate-300 focus:border-red-600 focus:bg-white rounded-xl sm:rounded-2xl outline-none transition focus:ring-2 focus:ring-red-500/20 shadow-xs"
+                        class="w-10 h-12 sm:w-12 sm:h-14 text-center font-mono font-black text-lg sm:text-xl rounded-xl sm:rounded-2xl outline-none transition focus:ring-2 shadow-xs"
+                        :class="otpError ? 'border-2 border-red-500 bg-red-50 text-red-700 focus:border-red-600 focus:ring-red-500/20' : 'border-2 border-slate-300 bg-slate-50 text-slate-900 focus:border-red-600 focus:bg-white focus:ring-red-500/20'"
                       />
                     </div>
 
@@ -1548,6 +1560,9 @@ const startCountdown = (sec = 119) => {
 };
 
 const onOtpInput = (event, idx) => {
+  if (otpError.value) {
+    otpError.value = '';
+  }
   const val = event.target.value.replace(/[^0-9]/g, '');
   otpDigits.value[idx] = val ? val.slice(-1) : '';
 
@@ -1796,10 +1811,18 @@ const handleVerifyOtpStep2 = async () => {
       if (countdownTimer) clearInterval(countdownTimer);
     } else {
       otpError.value = res.data?.message || 'Mã OTP không đúng hoặc đã hết hạn!';
+      otpDigits.value = ['', '', '', '', '', ''];
+      nextTick(() => {
+        document.getElementById('otp-box-0')?.focus();
+      });
     }
   } catch (err) {
     const res = err.response?.data;
-    otpError.value = res?.errors?.otp?.[0] || res?.message || 'Mã OTP không đúng hoặc đã hết hạn. Vui lòng thử lại!';
+    otpError.value = res?.errors?.otp?.[0] || res?.message || 'Mã OTP không đúng hoặc đã hết hạn. Vui lòng kiểm tra lại tin nhắn SMS / nghe cuộc gọi thoại!';
+    otpDigits.value = ['', '', '', '', '', ''];
+    nextTick(() => {
+      document.getElementById('otp-box-0')?.focus();
+    });
   } finally {
     isVerifyingOtp.value = false;
   }
