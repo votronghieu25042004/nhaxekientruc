@@ -525,10 +525,37 @@ class AuthController extends Controller
             $esmsApiKey = env('ESMS_API_KEY', '5ADB13F158CB8ECD01BDF4CAFBB04D');
             $esmsSecretKey = env('ESMS_SECRET_KEY', '94FFA280E5A94C1076CAAB9D15CCFA');
 
-            // 0. Cổng Viễn thông eSMS Voice OTP (Cuộc gọi thoại thật 100% đổ chuông và đọc mã OTP bằng tiếng Việt)
-            if (!empty($esmsApiKey) && !empty($esmsSecretKey)) {
+            $method = strtolower($request->input('method', 'sms'));
+            $cleanPhone = preg_replace('/[^0-9]/', '', $identifier);
+
+            // 0A. Nhánh 1: Gửi qua Tin nhắn SMS Viễn thông thật 100% (Nếu người dùng chọn SMS hoặc mặc định)
+            if ($method === 'sms' && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
-                    $cleanPhone = preg_replace('/[^0-9]/', '', $identifier);
+                    $smsUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
+                    $smsRes = \Illuminate\Support\Facades\Http::timeout(10)->post($smsUrl, [
+                        'ApiKey' => $esmsApiKey,
+                        'SecretKey' => $esmsSecretKey,
+                        'Phone' => $cleanPhone,
+                        'Content' => "{$otp} la ma xac minh dang ky Baotrixemay cua ban",
+                        'Brandname' => 'Baotrixemay',
+                        'SmsType' => '2',
+                        'IsUnicode' => '0',
+                    ]);
+                    if ($smsRes->successful() && ($smsRes->json('CodeResult') == '100')) {
+                        $znsSentReal = true;
+                        $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp qua tin nhắn SMS tới số {$identifier}. Quý khách vui lòng kiểm tra hộp thư tin nhắn!";
+                        Log::info("[ESMS_SMS_OTP_SUCCESS] Gửi tin nhắn SMS thành công tới {$cleanPhone}, OTP: {$otp}");
+                    } else {
+                        Log::warning("[ESMS_SMS_OTP_FAIL] eSMS SMS phản hồi: " . $smsRes->body());
+                    }
+                } catch (\Throwable $se) {
+                    Log::warning("[ESMS_SMS_OTP_ERR] Lỗi gửi eSMS SMS: " . $se->getMessage());
+                }
+            }
+
+            // 0B. Nhánh 2: Cuộc gọi thoại Voice OTP thật 100% (Nếu người dùng chọn Cuộc gọi hoặc SMS gặp trục trặc)
+            if (!$znsSentReal && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
+                try {
                     $voiceUrl = "http://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
                     $voiceRes = \Illuminate\Support\Facades\Http::timeout(10)->get($voiceUrl, [
                         'ApiKey' => $esmsApiKey,
@@ -541,7 +568,7 @@ class AuthController extends Controller
                     ]);
                     if ($voiceRes->successful() && ($voiceRes->json('CodeResult') == '100')) {
                         $znsSentReal = true;
-                        $otpMessage = "Tổng đài eSMS đang gọi điện thoại tới số {$identifier} để đọc mã OTP 6 số. Quý khách vui lòng nghe máy!";
+                        $otpMessage = "Tổng đài AI đang gọi điện thoại tới số {$identifier} để đọc mã OTP 6 số. Quý khách vui lòng nghe máy!";
                         Log::info("[ESMS_VOICE_OTP_SUCCESS] Cuộc gọi Voice OTP thành công tới {$cleanPhone}, OTP: {$otp}");
                     } else {
                         Log::warning("[ESMS_VOICE_OTP_FAIL] eSMS Voice phản hồi: " . $voiceRes->body());

@@ -779,6 +779,42 @@
                             class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
                           />
                         </div>
+
+                        <!-- Lựa chọn hình thức nhận mã OTP: Tin nhắn SMS hoặc Cuộc gọi thoại -->
+                        <div class="mt-2.5 p-2.5 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-1.5 shadow-2xs">
+                          <div class="flex items-center justify-between text-[11px] font-black text-slate-700 uppercase tracking-wide">
+                            <span>Phương thức nhận mã:</span>
+                            <span class="text-[10px] text-red-600 lowercase font-medium">miễn phí 100%</span>
+                          </div>
+                          <div class="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              @click="otpDeliveryMethod = 'sms'"
+                              class="py-2 px-2.5 rounded-xl border text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                              :class="otpDeliveryMethod === 'sms' 
+                                ? 'bg-red-600 text-white font-black border-red-600 shadow-sm shadow-red-600/30' 
+                                : 'bg-white text-slate-700 font-bold border-slate-300 hover:border-slate-400'"
+                            >
+                              <span>💬</span>
+                              <span>Tin nhắn SMS</span>
+                            </button>
+                            <button
+                              type="button"
+                              @click="otpDeliveryMethod = 'voice'"
+                              class="py-2 px-2.5 rounded-xl border text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                              :class="otpDeliveryMethod === 'voice' 
+                                ? 'bg-red-600 text-white font-black border-red-600 shadow-sm shadow-red-600/30' 
+                                : 'bg-white text-slate-700 font-bold border-slate-300 hover:border-slate-400'"
+                            >
+                              <span>📞</span>
+                              <span>Gọi điện đọc mã</span>
+                            </button>
+                          </div>
+                          <p class="text-[10.5px] text-slate-500 font-medium pt-0.5">
+                            {{ otpDeliveryMethod === 'sms' ? '✓ Mã 6 số sẽ gửi vào ứng dụng tin nhắn SMS trên điện thoại.' : '✓ Tổng đài AI sẽ gọi điện thoại và đọc mã thật chậm rãi (lặp lại 3 lần).' }}
+                          </p>
+                        </div>
+
                         <!-- Hộp Quà Tặng Mới -->
                         <div class="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex items-center gap-2 font-medium">
                           <span class="text-lg">🎁</span>
@@ -889,17 +925,21 @@
                         {{ activeTargetDisplay }}
                       </p>
                       <p class="text-[11.5px] font-medium text-slate-600">
-                        <span v-if="loginForm.type === 'phone'" class="text-amber-800 font-bold flex items-center justify-center gap-1">
-                          <span>📞</span>
-                          <span>Tổng đài AI đang gọi điện thoại tới số này để đọc mã OTP 6 số. Quý khách vui lòng nghe máy:</span>
+                        <span v-if="loginForm.type === 'phone'">
+                          <span v-if="otpDeliveryMethod === 'sms'" class="text-emerald-700 font-bold flex items-center justify-center gap-1">
+                            <span>💬</span>
+                            <span>Mã xác thực 6 số đã được gửi qua tin nhắn SMS tới điện thoại. Quý khách vui lòng kiểm tra tin nhắn và nhập mã:</span>
+                          </span>
+                          <span v-else class="text-amber-800 font-bold flex items-center justify-center gap-1">
+                            <span>📞</span>
+                            <span>Tổng đài AI đang gọi điện thoại tới số này để đọc mã OTP 6 số. Quý khách vui lòng nghe máy:</span>
+                          </span>
                         </span>
                         <span v-else>
                           Vui lòng kiểm tra hộp thư Gmail (kể cả mục Thư rác/Spam) và nhập 6 chữ số bên dưới:
                         </span>
                       </p>
                     </div>
-
-
 
                     <!-- 6 Ô Input OTP Tự Động Chuyển Ô Khi Gõ -->
                     <div class="flex items-center justify-center gap-1.5 sm:gap-2.5 py-1">
@@ -930,16 +970,44 @@
                         <span>{{ isVerifyingOtp ? 'ĐANG XÁC THỰC...' : 'XÁC THỰC MÃ OTP & TIẾP TỤC →' }}</span>
                       </button>
 
-                      <div class="text-center pt-1">
-                        <button
-                          type="button"
-                          @click="handleResendOtp"
-                          :disabled="countdownSeconds > 0 || isSendingOtp"
-                          class="text-xs font-bold transition cursor-pointer"
-                          :class="countdownSeconds > 0 ? 'text-slate-400 cursor-not-allowed' : 'text-red-600 hover:underline'"
-                        >
-                          {{ countdownSeconds > 0 ? (loginForm.type === 'phone' ? `Tổng đài có thể gọi lại sau (${countdownSeconds}s)` : `Gửi lại mã sau (${countdownSeconds}s)`) : (loginForm.type === 'phone' ? '📞 Chưa nghe kịp mã? Bấm để Tổng đài gọi lại' : '📧 Chưa nhận được mã? Bấm gửi lại OTP') }}
-                        </button>
+                      <div class="text-center pt-1 space-y-2">
+                        <div v-if="loginForm.type === 'phone'" class="space-y-1.5">
+                          <div class="text-[11px] text-slate-500 font-medium">Chưa nhận được mã hoặc nghe chưa kịp?</div>
+                          <div class="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              @click="handleResendOtp('sms')"
+                              :disabled="countdownSeconds > 0 || isSendingOtp"
+                              class="py-1.5 px-3 rounded-xl border border-slate-300 hover:border-red-500 text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs"
+                            >
+                              <span>💬</span>
+                              <span>Nhận qua SMS</span>
+                            </button>
+                            <button
+                              type="button"
+                              @click="handleResendOtp('voice')"
+                              :disabled="countdownSeconds > 0 || isSendingOtp"
+                              class="py-1.5 px-3 rounded-xl border border-slate-300 hover:border-red-500 text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs"
+                            >
+                              <span>📞</span>
+                              <span>Gọi điện thoại</span>
+                            </button>
+                          </div>
+                          <p v-if="countdownSeconds > 0" class="text-[10.5px] font-bold text-slate-400">
+                            Có thể yêu cầu lại sau ({{ countdownSeconds }}s)
+                          </p>
+                        </div>
+                        <div v-else>
+                          <button
+                            type="button"
+                            @click="handleResendOtp('email')"
+                            :disabled="countdownSeconds > 0 || isSendingOtp"
+                            class="text-xs font-bold transition cursor-pointer"
+                            :class="countdownSeconds > 0 ? 'text-slate-400 cursor-not-allowed' : 'text-red-600 hover:underline'"
+                          >
+                            {{ countdownSeconds > 0 ? `Gửi lại mã sau (${countdownSeconds}s)` : '📧 Chưa nhận được mã? Bấm gửi lại OTP' }}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1148,6 +1216,7 @@ const activeTab = ref(props.initialTab || 'login');
 const showPassword = ref(false);
 const showForgotModal = ref(false);
 const agreeTerms = ref(true);
+const otpDeliveryMethod = ref('sms'); // 'sms' | 'voice'
 
 // Sa bàn state
 const skyMode = ref('night'); // 'night' | 'sunset'
@@ -1530,6 +1599,7 @@ const handleSendOtpStep1 = async () => {
     const res = await axios.post('/register/send-otp', {
       identifier: reqIdentifier,
       type: reqType,
+      method: otpDeliveryMethod.value,
     }, {
       headers: { 'Accept': 'application/json' }
     });
@@ -1571,8 +1641,12 @@ const handleSendOtpStep1 = async () => {
   }
 };
 
-const handleResendOtp = async () => {
+const handleResendOtp = async (overrideMethod = null) => {
   if (countdownSeconds.value > 0 || isSendingOtp.value) return;
+
+  if (overrideMethod && (overrideMethod === 'sms' || overrideMethod === 'voice')) {
+    otpDeliveryMethod.value = overrideMethod;
+  }
 
   isSendingOtp.value = true;
   otpError.value = '';
@@ -1607,6 +1681,7 @@ const handleResendOtp = async () => {
     const res = await axios.post('/register/send-otp', {
       identifier: reqIdentifier,
       type: reqType,
+      method: otpDeliveryMethod.value,
     }, {
       headers: { 'Accept': 'application/json' }
     });
