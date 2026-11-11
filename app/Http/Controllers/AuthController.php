@@ -1212,4 +1212,102 @@ class AuthController extends Controller
 
         return redirect($target);
     }
+
+    /**
+     * Khách hàng tự xóa vĩnh viễn tài khoản của mình
+     */
+    public function deleteAccount(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Bạn chưa đăng nhập!'], 401);
+            }
+            return redirect()->route('login');
+        }
+
+        // Không cho phép tài khoản Admin gốc tự xóa
+        if ($user->id === 1 && $user->role === 'admin') {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Không thể xóa tài khoản Quản Trị Viên Tối Cao!'], 403);
+            }
+            return back()->withErrors(['error' => 'Không thể xóa tài khoản Quản Trị Viên Tối Cao!']);
+        }
+
+        $userId = $user->id;
+        $userName = $user->name;
+        $userEmail = strtolower(trim((string)$user->email));
+        $userPhone = preg_replace('/[^0-9]/', '', (string)$user->phone);
+
+        try {
+            // 1. Gỡ liên kết lơ xe và tài xế
+            \Illuminate\Support\Facades\DB::table('trips')->where('conductor_id', $userId)->update(['conductor_id' => null]);
+            if (\Illuminate\Support\Facades\Schema::hasColumn('trips', 'second_conductor_id')) {
+                \Illuminate\Support\Facades\DB::table('trips')->where('second_conductor_id', $userId)->update(['second_conductor_id' => null]);
+            }
+            $driverIds = \Illuminate\Support\Facades\DB::table('drivers')->where('user_id', $userId)->pluck('id')->toArray();
+            if (!empty($driverIds)) {
+                \Illuminate\Support\Facades\DB::table('trips')->whereIn('driver_id', $driverIds)->update(['driver_id' => null]);
+                if (\Illuminate\Support\Facades\Schema::hasColumn('trips', 'second_driver_id')) {
+                    \Illuminate\Support\Facades\DB::table('trips')->whereIn('second_driver_id', $driverIds)->update(['second_driver_id' => null]);
+                }
+                \Illuminate\Support\Facades\DB::table('drivers')->whereIn('id', $driverIds)->delete();
+            }
+
+            // 2. Gỡ liên kết audit_logs
+            \Illuminate\Support\Facades\DB::table('audit_logs')->where('user_id', $userId)->update(['user_id' => null]);
+
+            // 3. Xóa các đơn đặt vé và ghế liên quan
+            $userBookings = \App\Models\Booking::where('user_id', $userId)
+                ->when($userEmail, function($q) use ($userEmail) {
+                    $q->orWhereRaw('LOWER(TRIM(customer_email)) = ?', [$userEmail]);
+                })
+                ->when($userPhone, function($q) use ($userPhone) {
+                    $q->orWhereRaw("REPLACE(REPLACE(REPLACE(customer_phone, '.', ''), ' ', ''), '-', '') = ?", [$userPhone]);
+                })
+                ->get();
+
+            foreach ($userBookings as $b) {
+                \Illuminate\Support\Facades\DB::table('booking_seats')->where('booking_id', $b->id)->delete();
+                \Illuminate\Support\Facades\DB::table('reviews')->where('booking_id', $b->id)->delete();
+                if ($b->refund_qr_code && str_starts_with($b->refund_qr_code, '/uploads/refund_qrs/')) {
+                    $qrFile = public_path($b->refund_qr_code);
+                    if (file_exists($qrFile)) {
+                        @unlink($qrFile);
+                    }
+                }
+                $b->delete();
+            }
+
+            // 4. Xóa đánh giá trực tiếp
+            \Illuminate\Support\Facades\DB::table('reviews')->where('user_id', $userId)->delete();
+
+            // 5. Xóa sessions
+            try {
+                \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $userId)->delete();
+            } catch (\Throwable $e) {}
+
+            // 6. Xóa vĩnh viễn User khỏi database
+            $user->delete();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("[CUSTOMER_DELETE_ACCOUNT_ERR] " . $e->getMessage());
+            try { $user->delete(); } catch (\Throwable $ex) {}
+        }
+
+        // Đăng xuất và dọn sạch session
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tài khoản của bạn đã được xóa vĩnh viễn khỏi hệ thống thành công!',
+                'redirect' => '/',
+            ]);
+        }
+
+        return redirect('/')->with('success', 'Tài khoản của bạn đã được xóa vĩnh viễn khỏi hệ thống thành công!');
+    }
 }

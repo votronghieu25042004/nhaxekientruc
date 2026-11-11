@@ -323,15 +323,25 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
-        <button
-          type="button"
-          @click="logout"
-          class="text-red-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-        >
-          <span>🚪</span>
-          <span>Đăng Xuất Khỏi Thiết Bị</span>
-        </button>
+      <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            @click="logout"
+            class="text-slate-600 hover:text-slate-900 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>🚪</span>
+            <span>Đăng Xuất</span>
+          </button>
+          <button
+            type="button"
+            @click="showDeleteSelfConfirm = true"
+            class="text-red-600 hover:text-red-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>🗑️</span>
+            <span>Xóa Tài Khoản</span>
+          </button>
+        </div>
         <button
           type="button"
           @click="closeModal"
@@ -339,6 +349,36 @@
         >
           Đóng
         </button>
+      </div>
+
+      <!-- MODAL XÁC NHẬN XÓA TÀI KHOẢN CÁ NHÂN -->
+      <div v-if="showDeleteSelfConfirm" class="absolute inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl border border-slate-200 max-w-sm w-full p-5 space-y-3 shadow-2xl text-center animate-in zoom-in-95">
+          <div class="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center text-xl mx-auto shadow-2xs">
+            🗑️
+          </div>
+          <h4 class="font-black text-slate-900 text-sm">Xác Nhận Xóa Vĩnh Viễn Tài Khoản?</h4>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Hành động này sẽ <strong>xóa hoàn toàn</strong> thông tin tài khoản, điểm thưởng và lịch sử vé của bạn. Bạn sẽ được đăng xuất và có thể đăng ký mới bất cứ lúc nào.
+          </p>
+          <div class="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              @click="showDeleteSelfConfirm = false"
+              class="flex-1 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-100 transition cursor-pointer"
+            >
+              Hủy Bỏ
+            </button>
+            <button
+              type="button"
+              :disabled="isDeletingAccount"
+              @click="handleDeleteOwnAccount"
+              class="flex-1 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md transition cursor-pointer disabled:opacity-50"
+            >
+              {{ isDeletingAccount ? 'Đang xóa...' : 'Đồng Ý Xóa' }}
+            </button>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -521,5 +561,26 @@ const submitChangePassword = () => {
 const logout = () => {
   closeModal()
   router.post('/logout')
+}
+
+const showDeleteSelfConfirm = ref(false)
+const isDeletingAccount = ref(false)
+
+const handleDeleteOwnAccount = async () => {
+  isDeletingAccount.value = true
+  try {
+    const res = await axios.post('/user/delete-account')
+    if (res.data?.success) {
+      showDeleteSelfConfirm.value = false
+      closeModal()
+      window.location.href = '/'
+    } else {
+      alert(res.data?.message || 'Có lỗi khi xóa tài khoản!')
+    }
+  } catch (err) {
+    alert(err.response?.data?.message || 'Không thể xóa tài khoản. Vui lòng thử lại!')
+  } finally {
+    isDeletingAccount.value = false
+  }
 }
 </script>
