@@ -864,11 +864,11 @@
                                   1. Nhận Mã OTP Qua Tin Nhắn SMS
                                 </span>
                                 <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold shrink-0">
-                                  Miễn phí 100%
+                                  ⚡ Khuyên dùng (Nhận sau 2s)
                                 </span>
                               </div>
                               <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                                Mã 6 chữ số sẽ được gửi ngay vào hộp thư tin nhắn SMS của điện thoại.
+                                Mã 6 số gửi thẳng vào hộp thư SMS điện thoại (từ: <strong>Baotrixemay</strong> - Nhận tức thì).
                               </p>
                             </div>
                             <span class="text-slate-400 group-hover:text-red-600 font-black text-base shrink-0">➔</span>
@@ -890,11 +890,11 @@
                                   2. Nhận Mã OTP Qua Cuộc Gọi Thoại
                                 </span>
                                 <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold shrink-0">
-                                  Tổng đài AI
+                                  Tổng đài AI + Gửi kèm SMS
                                 </span>
                               </div>
                               <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                                Tổng đài AI sẽ tự động gọi điện thoại và đọc chậm rãi mã 6 số (nghe lặp lại 3 lần).
+                                Tổng đài kết nối cuộc gọi đọc mã, đồng thời gửi kèm 1 SMS dự phòng để luôn nhận được mã.
                               </p>
                             </div>
                             <span class="text-slate-400 group-hover:text-blue-600 font-black text-base shrink-0">➔</span>
@@ -1025,9 +1025,20 @@
                               (Tin nhắn SMS hiển thị từ người gửi: <strong>Baotrixemay</strong> do tài khoản đã đăng ký mẫu với nhà mạng)
                             </div>
                           </div>
-                          <div v-else class="text-blue-800 font-bold flex items-center justify-center gap-1">
-                            <span>📞</span>
-                            <span>Tổng đài AI đang gọi điện thoại tới số này để đọc mã OTP 6 số. Quý khách vui lòng nghe máy:</span>
+                          <div v-else class="text-blue-900 font-bold space-y-1.5">
+                            <div class="flex items-center justify-center gap-1.5 text-blue-800">
+                              <span class="text-base">📞</span>
+                              <span>Tổng đài AI đang kết nối cuộc gọi đọc mã OTP 6 số tới điện thoại.</span>
+                            </div>
+                            <div class="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 font-medium text-left space-y-1">
+                              <div class="flex items-center gap-1 font-bold text-emerald-900">
+                                <span>💡</span>
+                                <span>Đã gửi kèm mã 6 số qua Tin Nhắn SMS:</span>
+                              </div>
+                              <p class="text-[11px] leading-relaxed">
+                                Để quý khách nhận được mã ngay cả khi sóng yếu hoặc nhà mạng chặn cuộc gọi lạ, hệ thống đã gửi đồng thời 1 tin nhắn SMS (từ <strong>Baotrixemay</strong>) về máy. Quý khách có thể mở tin nhắn lấy mã nhập ngay!
+                              </p>
+                            </div>
                           </div>
                         </div>
                         <div v-else>
@@ -1734,7 +1745,7 @@ const handleSendOtpStep1 = async () => {
       receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
       otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'phone' : 'email');
-      startCountdown(60);
+      startCountdown(30);
       nextTick(() => {
         document.getElementById('otp-box-0')?.focus();
       });
@@ -1780,7 +1791,7 @@ const handleResendOtp = async (overrideMethod = null) => {
       receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
       otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'phone' : 'email');
-      startCountdown(60);
+      startCountdown(30);
       nextTick(() => {
         document.getElementById('otp-box-0')?.focus();
       });

@@ -574,7 +574,7 @@ class AuthController extends Controller
                         ]);
                     if ($voiceRes->successful() && ($voiceRes->json('CodeResult') == '100')) {
                         $znsSentReal = true;
-                        $otpMessage = "Tổng đài AI đang gọi điện thoại tới số {$identifier} để đọc mã OTP 6 số. Quý khách vui lòng nghe máy!";
+                        $otpMessage = "Tổng đài AI đang kết nối cuộc gọi đọc mã OTP 6 số tới {$identifier}. Hệ thống cũng đã gửi kèm tin nhắn SMS (từ Baotrixemay) để bạn thuận tiện nhận mã ngay!";
                         Log::info("[ESMS_VOICE_OTP_SUCCESS] Cuộc gọi Voice OTP thành công tới {$cleanPhone}, OTP: {$otp}");
                     } else {
                         Log::warning("[ESMS_VOICE_OTP_FAIL] eSMS Voice phản hồi: " . $voiceRes->body());
@@ -582,9 +582,30 @@ class AuthController extends Controller
                 } catch (\Throwable $ve) {
                     Log::warning("[ESMS_VOICE_OTP_ERR] Lỗi gọi eSMS Voice: " . $ve->getMessage());
                 }
+
+                // Gửi kèm ngay 1 tin nhắn SMS viễn thông chuẩn để người dùng luôn nhận được mã
+                try {
+                    $smsUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
+                    $smsRes = \Illuminate\Support\Facades\Http::timeout(10)->post($smsUrl, [
+                        'ApiKey' => $esmsApiKey,
+                        'SecretKey' => $esmsSecretKey,
+                        'Phone' => $cleanPhone,
+                        'Content' => "{$otp} la ma xac minh dang ky Baotrixemay cua ban",
+                        'Brandname' => 'Baotrixemay',
+                        'SmsType' => '2',
+                        'IsUnicode' => '0',
+                    ]);
+                    if ($smsRes->successful() && ($smsRes->json('CodeResult') == '100')) {
+                        $znsSentReal = true;
+                        if (empty($otpMessage)) {
+                            $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp qua tin nhắn SMS tới số {$identifier}. Quý khách vui lòng kiểm tra hộp thư tin nhắn!";
+                        }
+                        Log::info("[ESMS_SMS_FALLBACK_SUCCESS] Đã gửi kèm SMS viễn thông tới {$cleanPhone}");
+                    }
+                } catch (\Throwable $se) {}
             }
 
-            // 0B. Nhánh 2: Gửi qua Tin nhắn SMS Viễn thông thật 100% (Sử dụng mẫu chuẩn telecom không chứa tên riêng cũ)
+            // 0B. Nhánh 2: Gửi qua Tin nhắn SMS Viễn thông thật 100% (Mẫu template chuẩn viễn thông)
             if (!$znsSentReal && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
                     $smsUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
@@ -1124,9 +1145,29 @@ class AuthController extends Controller
                         ]);
                     if ($voiceRes->successful() && ($voiceRes->json('CodeResult') == '100')) {
                         $phoneSent = true;
-                        $msg = "Tổng đài AI đang gọi điện thoại tới số {$cleanPhone} để đọc mã OTP 6 số. Quý khách vui lòng nghe máy!";
+                        $msg = "Tổng đài AI đang kết nối cuộc gọi đọc mã OTP 6 số tới {$cleanPhone}. Hệ thống cũng đã gửi kèm mã qua tin nhắn SMS!";
                     }
                 } catch (\Throwable $ve) {}
+
+                // Gửi kèm ngay 1 tin nhắn SMS viễn thông chuẩn để người dùng luôn nhận được mã
+                try {
+                    $smsUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
+                    $smsRes = \Illuminate\Support\Facades\Http::timeout(10)->post($smsUrl, [
+                        'ApiKey' => $esmsApiKey,
+                        'SecretKey' => $esmsSecretKey,
+                        'Phone' => $cleanPhone,
+                        'Content' => "{$otp} la ma xac minh dang ky Baotrixemay cua ban",
+                        'Brandname' => 'Baotrixemay',
+                        'SmsType' => '2',
+                        'IsUnicode' => '0',
+                    ]);
+                    if ($smsRes->successful() && ($smsRes->json('CodeResult') == '100')) {
+                        $phoneSent = true;
+                        if (empty($msg)) {
+                            $msg = "Mã xác thực OTP đã được gửi qua tin nhắn SMS tới số {$cleanPhone}. Quý khách vui lòng kiểm tra hộp thư tin nhắn!";
+                        }
+                    }
+                } catch (\Throwable $se) {}
             }
 
             // 2. Nếu chọn SMS hoặc Voice chưa kích hoạt: gửi SMS viễn thông thật
