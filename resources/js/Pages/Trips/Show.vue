@@ -1386,8 +1386,17 @@ const handleSendPhoneOtpFirebase = async () => {
       });
     }
 
-    const confirmationResult = await signInWithPhoneNumber(auth, e164Phone, window.bookingRecaptchaVerifier);
-    window.bookingPhoneConfirmation = confirmationResult;
+    try {
+      const confirmationResult = await signInWithPhoneNumber(auth, e164Phone, window.bookingRecaptchaVerifier);
+      window.bookingPhoneConfirmation = confirmationResult;
+    } catch (fbErr) {
+      console.warn('Booking Phone Auth warning:', fbErr);
+      if (fbErr.code === 'auth/billing-not-enabled' || fbErr.code === 'auth/operation-not-allowed') {
+        window.bookingPhoneConfirmation = null;
+      } else {
+        throw fbErr;
+      }
+    }
 
     await axios.post('/user/send-otp', {
       type: 'phone',

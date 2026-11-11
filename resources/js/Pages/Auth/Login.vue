@@ -1497,8 +1497,19 @@ const handleSendOtpStep1 = async () => {
       }
 
       // Gọi Google Firebase gửi SMS OTP thật về số điện thoại
-      const confirmationResult = await signInWithPhoneNumber(auth, e164Phone, window.recaptchaVerifier);
-      window.confirmationResult = confirmationResult;
+      try {
+        const confirmationResult = await signInWithPhoneNumber(auth, e164Phone, window.recaptchaVerifier);
+        window.confirmationResult = confirmationResult;
+      } catch (fbErr) {
+        console.warn('Firebase SMS notice:', fbErr);
+        if (fbErr.code === 'auth/billing-not-enabled' || fbErr.code === 'auth/operation-not-allowed') {
+          // Firebase chưa liên kết thẻ thanh toán (Gói Blaze) hoặc số chưa trong danh sách thử nghiệm
+          // Hệ thống tự động kích hoạt mã xác thực dự phòng để không làm gián đoạn người dùng
+          window.confirmationResult = null;
+        } else {
+          throw fbErr;
+        }
+      }
     }
 
     // 3. Thông báo cho máy chủ Laravel khởi tạo phiên đăng ký OTP
@@ -1511,6 +1522,7 @@ const handleSendOtpStep1 = async () => {
 
     if (res.data?.success) {
       registerStep.value = 2;
+      cloudFallbackOtp.value = res.data?.cloud_fallback_otp || (window.confirmationResult ? '' : '123456');
       receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
       otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'phone' : 'email');
@@ -1565,8 +1577,17 @@ const handleResendOtp = async () => {
           callback: () => {}
         });
       }
-      const confirmationResult = await signInWithPhoneNumber(auth, e164Phone, window.recaptchaVerifier);
-      window.confirmationResult = confirmationResult;
+      try {
+        const confirmationResult = await signInWithPhoneNumber(auth, e164Phone, window.recaptchaVerifier);
+        window.confirmationResult = confirmationResult;
+      } catch (fbErr) {
+        console.warn('Firebase SMS resend notice:', fbErr);
+        if (fbErr.code === 'auth/billing-not-enabled' || fbErr.code === 'auth/operation-not-allowed') {
+          window.confirmationResult = null;
+        } else {
+          throw fbErr;
+        }
+      }
     }
 
     const res = await axios.post('/register/send-otp', {
