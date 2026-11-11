@@ -601,13 +601,7 @@
                         placeholder="6 số OTP"
                         class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 font-mono font-bold text-center text-sm focus:border-red-500 bg-white"
                       />
-                      <button
-                        type="button"
-                        @click="phoneOtpCode = '123456'; handleVerifyPhoneOtpFirebase()"
-                        class="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs cursor-pointer shadow-xs whitespace-nowrap"
-                      >
-                        ⚡ Điền 123456
-                      </button>
+
                       <button
                         type="button"
                         @click="handleVerifyPhoneOtpFirebase"

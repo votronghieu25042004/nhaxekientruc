@@ -525,6 +525,33 @@ class AuthController extends Controller
             $esmsApiKey = env('ESMS_API_KEY');
             $esmsSecretKey = env('ESMS_SECRET_KEY');
 
+            // 0. Gửi qua Cổng Viễn Thông Twilio SMS (Tin nhắn thật quốc tế & Việt Nam)
+            $twilioSid   = env('TWILIO_ACCOUNT_SID');
+            $twilioToken = env('TWILIO_AUTH_TOKEN');
+            $twilioFrom  = env('TWILIO_PHONE_NUMBER');
+            if (!empty($twilioSid) && !empty($twilioToken) && !empty($twilioFrom)) {
+                $phoneE164 = '+84' . ltrim($identifier, '0');
+                try {
+                    $twilioRes = \Illuminate\Support\Facades\Http::withBasicAuth($twilioSid, $twilioToken)
+                        ->asForm()
+                        ->timeout(8)
+                        ->post("https://api.twilio.com/2010-04-01/Accounts/{$twilioSid}/Messages.json", [
+                            'To' => $phoneE164,
+                            'From' => $twilioFrom,
+                            'Body' => "[nhaxekientruc] Ma xac thuc OTP dang ky cua ban la: {$otp}",
+                        ]);
+                    if ($twilioRes->successful()) {
+                        $znsSentReal = true;
+                        $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp qua tin nhắn SMS tới số điện thoại {$identifier}!";
+                        Log::info("[TWILIO_OTP_SUCCESS] Đã gửi tin nhắn SMS thật tới {$phoneE164}");
+                    } else {
+                        Log::warning("[TWILIO_OTP_FAIL] Twilio phản hồi: " . $twilioRes->body());
+                    }
+                } catch (\Throwable $te) {
+                    Log::warning("[TWILIO_OTP_ERR] Lỗi Twilio: " . $te->getMessage());
+                }
+            }
+
             // 1. Gửi qua Cổng SpeedSMS.vn (Tin nhắn SMS viễn thông thật đến Viettel/Vina/Mobi)
             $speedSmsToken = env('SPEEDSMS_ACCESS_TOKEN');
             if (!empty($speedSmsToken)) {
@@ -624,7 +651,7 @@ class AuthController extends Controller
             'is_match' => ($otp === $savedOtp || $otp === '123456'),
         ]);
 
-        $isValid = ($otp === $savedOtp || $otp === '123456');
+        $isValid = ($otp === $savedOtp);
 
         if (!$isValid) {
             Log::warning("[REGISTER_OTP_VERIFY_FAILED] Mã OTP nhập sai hoặc hết hạn cho {$identifier}: Nhập '{$otp}' nhưng mã trong session là '{$savedOtp}'");
