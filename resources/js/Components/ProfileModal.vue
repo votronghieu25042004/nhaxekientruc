@@ -447,10 +447,7 @@ const sendContactOtp = async () => {
     const data = res.data
     if (data?.success) {
       otpSent.value = true
-      feedbackSuccess.value = data.message || 'Mã xác thực OTP đã được tạo thành công!'
-      if (data.otp) {
-        otpCode.value = data.otp
-      }
+      feedbackSuccess.value = data.message || 'Mã xác thực OTP đã được gửi thành công!'
     } else {
       feedbackError.value = data?.message || 'Không thể gửi mã xác thực. Vui lòng thử lại!'
     }

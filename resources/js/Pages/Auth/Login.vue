@@ -1596,7 +1596,8 @@ const onOtpPaste = (event) => {
 };
 
 const autoFillFallbackOtp = () => {
-  const digits = String(cloudFallbackOtp.value || '123456').split('');
+  if (!cloudFallbackOtp.value) return;
+  const digits = String(cloudFallbackOtp.value).split('');
   for (let i = 0; i < 6; i++) {
     otpDigits.value[i] = digits[i] || '';
   }
@@ -1702,8 +1703,8 @@ const handleSendOtpStep1 = async () => {
       return;
     }
 
-    // 2. Thử kích hoạt Firebase Phone Auth trong bọc an toàn (không bao giờ throw làm chặn người dùng)
-    if (reqType === 'phone') {
+    // 2. Thử kích hoạt Firebase Phone Auth trong bọc an toàn (chỉ khi nhận bằng SMS)
+    if (reqType === 'phone' && otpDeliveryMethod.value === 'sms') {
       try {
         const cleanPhone = reqIdentifier.replace(/[^0-9]/g, '');
         const e164Phone = cleanPhone.startsWith('84') ? ('+' + cleanPhone) : ('+84' + cleanPhone.replace(/^0/, ''));
@@ -1729,6 +1730,8 @@ const handleSendOtpStep1 = async () => {
         } catch (e) {}
         window.recaptchaVerifier = null;
       }
+    } else {
+      window.confirmationResult = null;
     }
 
     // 3. Thông báo cho máy chủ Laravel khởi tạo phiên đăng ký OTP & gửi qua SMS/Voice/Email
@@ -1742,7 +1745,7 @@ const handleSendOtpStep1 = async () => {
 
     if (res.data?.success) {
       registerStep.value = 2;
-      cloudFallbackOtp.value = res.data?.cloud_fallback_otp || (window.confirmationResult ? '' : '123456');
+      cloudFallbackOtp.value = res.data?.cloud_fallback_otp || '';
       receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
       otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'phone' : 'email');
@@ -1792,7 +1795,7 @@ const handleResendOtp = async (overrideMethod = null) => {
   const reqType = registerMethod.value === 'phone' ? 'phone' : 'email';
 
   try {
-    if (reqType === 'phone') {
+    if (reqType === 'phone' && otpDeliveryMethod.value === 'sms') {
       try {
         const cleanPhone = reqIdentifier.replace(/[^0-9]/g, '');
         const e164Phone = cleanPhone.startsWith('84') ? ('+' + cleanPhone) : ('+84' + cleanPhone.replace(/^0/, ''));
@@ -1818,6 +1821,8 @@ const handleResendOtp = async (overrideMethod = null) => {
         } catch (e) {}
         window.recaptchaVerifier = null;
       }
+    } else {
+      window.confirmationResult = null;
     }
 
     const res = await axios.post('/register/send-otp', {

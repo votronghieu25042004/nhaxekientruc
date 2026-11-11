@@ -576,21 +576,32 @@
                   <!-- Container reCAPTCHA vô hình cho Firebase -->
                   <div id="booking-recaptcha-container"></div>
 
-                  <!-- Khối nút gửi và nhập OTP SMS -->
-                  <div v-if="!showPhoneOtpInput">
-                    <button
-                      type="button"
-                      @click="handleSendPhoneOtpFirebase"
-                      :disabled="!isPhoneValid || phoneOtpSending"
-                      class="w-full py-2 px-3 rounded-xl bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs disabled:cursor-not-allowed"
-                    >
-                      <span v-if="phoneOtpSending" class="animate-spin text-xs">⏳</span>
-                      <span>{{ phoneOtpSending ? 'Đang gửi SMS OTP...' : '📲 Bấm Gửi Mã SMS OTP Xác Minh SĐT' }}</span>
-                    </button>
+                  <!-- Khối nút gửi và nhập OTP SMS / Cuộc gọi thoại -->
+                  <div v-if="!showPhoneOtpInput" class="space-y-2">
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        @click="handleSendPhoneOtp('sms')"
+                        :disabled="!isPhoneValid || phoneOtpSending"
+                        class="flex-1 py-2 px-3 rounded-xl bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs disabled:cursor-not-allowed"
+                      >
+                        <span v-if="phoneOtpSending && phoneMethod === 'sms'" class="animate-spin text-xs">⏳</span>
+                        <span>💬 Nhận qua SMS</span>
+                      </button>
+                      <button
+                        type="button"
+                        @click="handleSendPhoneOtp('voice')"
+                        :disabled="!isPhoneValid || phoneOtpSending"
+                        class="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs disabled:cursor-not-allowed"
+                      >
+                        <span v-if="phoneOtpSending && phoneMethod === 'voice'" class="animate-spin text-xs">⏳</span>
+                        <span>📞 Cuộc gọi thoại AI</span>
+                      </button>
+                    </div>
                   </div>
                   <div v-else class="p-2.5 rounded-xl bg-amber-50 border border-amber-300 space-y-2 animate-in fade-in">
                     <div class="text-[11px] font-bold text-slate-800">
-                      Mã SMS OTP đã gửi tới <span class="font-mono text-red-600">{{ customerForm.phone }}</span>. Vui lòng nhập 6 số:
+                      Mã OTP đã gửi tới <span class="font-mono text-red-600">{{ customerForm.phone }}</span> (qua {{ phoneMethod === 'voice' ? 'cuộc gọi tổng đài AI' : 'tin nhắn SMS' }}). Vui lòng nhập 6 số:
                     </div>
                     <div class="flex gap-2">
                       <input
@@ -604,11 +615,21 @@
 
                       <button
                         type="button"
-                        @click="handleVerifyPhoneOtpFirebase"
+                        @click="handleVerifyPhoneOtp"
                         :disabled="phoneOtpCode.length < 6 || phoneOtpVerifying"
                         class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-xs cursor-pointer shadow-xs disabled:cursor-not-allowed whitespace-nowrap"
                       >
                         {{ phoneOtpVerifying ? 'Đang kiểm tra...' : 'Xác Minh' }}
+                      </button>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] pt-1">
+                      <button
+                        type="button"
+                        @click="handleSendPhoneOtp(phoneMethod)"
+                        :disabled="phoneCountdown > 0 || phoneOtpSending"
+                        class="text-red-600 hover:underline font-bold disabled:text-slate-400 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        {{ phoneCountdown > 0 ? `Gửi lại sau (${phoneCountdown}s)` : 'Chưa nhận được? Bấm gửi lại mã' }}
                       </button>
                     </div>
                     <p v-if="phoneOtpMessage" class="text-[10.5px] font-bold" :class="phoneOtpError ? 'text-red-600' : 'text-emerald-700'">
@@ -694,18 +715,21 @@
                       />
                       <button
                         type="button"
-                        @click="emailOtpCode = '123456'; handleVerifyEmailOtp()"
-                        class="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs cursor-pointer shadow-xs whitespace-nowrap"
-                      >
-                        ⚡ Điền 123456
-                      </button>
-                      <button
-                        type="button"
                         @click="handleVerifyEmailOtp"
                         :disabled="emailOtpCode.length < 6 || emailOtpVerifying"
                         class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-xs cursor-pointer shadow-xs disabled:cursor-not-allowed whitespace-nowrap"
                       >
                         {{ emailOtpVerifying ? 'Đang kiểm tra...' : 'Xác Minh' }}
+                      </button>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] pt-1">
+                      <button
+                        type="button"
+                        @click="handleSendEmailOtp"
+                        :disabled="emailCountdown > 0 || emailOtpSending"
+                        class="text-blue-600 hover:underline font-bold disabled:text-slate-400 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        {{ emailCountdown > 0 ? `Gửi lại sau (${emailCountdown}s)` : 'Chưa nhận được mã? Gửi lại OTP' }}
                       </button>
                     </div>
                     <p v-if="emailOtpMessage" class="text-[10.5px] font-bold" :class="emailOtpError ? 'text-red-600' : 'text-emerald-700'">
@@ -1374,69 +1398,69 @@ const phoneOtpVerifying = ref(false);
 const phoneOtpMessage = ref('');
 const phoneOtpError = ref(false);
 
-const handleSendPhoneOtpFirebase = async () => {
+const phoneMethod = ref('sms'); // 'sms' | 'voice'
+const phoneCountdown = ref(0);
+let phoneTimer = null;
+const emailCountdown = ref(0);
+let emailTimer = null;
+
+const startPhoneCountdown = (sec = 60) => {
+  if (phoneTimer) clearInterval(phoneTimer);
+  phoneCountdown.value = sec;
+  phoneTimer = setInterval(() => {
+    if (phoneCountdown.value > 0) {
+      phoneCountdown.value--;
+    } else {
+      clearInterval(phoneTimer);
+      phoneTimer = null;
+    }
+  }, 1000);
+};
+
+const startEmailCountdown = (sec = 60) => {
+  if (emailTimer) clearInterval(emailTimer);
+  emailCountdown.value = sec;
+  emailTimer = setInterval(() => {
+    if (emailCountdown.value > 0) {
+      emailCountdown.value--;
+    } else {
+      clearInterval(emailTimer);
+      emailTimer = null;
+    }
+  }, 1000);
+};
+
+const handleSendPhoneOtp = async (method = 'sms') => {
   if (!isPhoneValid.value) {
-    alert('Vui lòng nhập đúng số điện thoại (tối thiểu 10 chữ số tại Việt Nam)!');
+    alert('Vui lòng nhập số điện thoại hợp lệ!');
     return;
   }
+  phoneMethod.value = method;
   phoneOtpSending.value = true;
   phoneOtpMessage.value = '';
   phoneOtpError.value = false;
 
   try {
-    const cleanPhoneVal = customerForm.value.phone.replace(/[^0-9]/g, '');
-    const e164Phone = cleanPhoneVal.startsWith('84') ? ('+' + cleanPhoneVal) : ('+84' + cleanPhoneVal.replace(/^0/, ''));
-
-    try {
-      const recaptchaDom = document.getElementById('booking-recaptcha-container');
-      if (recaptchaDom) {
-        if (!window.bookingRecaptchaVerifier) {
-          window.bookingRecaptchaVerifier = new RecaptchaVerifier(auth, 'booking-recaptcha-container', {
-            size: 'invisible',
-            callback: () => {}
-          });
-        }
-        const confirmationResult = await signInWithPhoneNumber(auth, e164Phone, window.bookingRecaptchaVerifier);
-        window.bookingPhoneConfirmation = confirmationResult;
-      }
-    } catch (fbErr) {
-      console.warn('Booking Phone Auth warning, proceeding to server SMS:', fbErr);
-      window.bookingPhoneConfirmation = null;
-      try {
-        if (window.bookingRecaptchaVerifier && window.bookingRecaptchaVerifier.clear) {
-          window.bookingRecaptchaVerifier.clear();
-        }
-      } catch (e) {}
-      window.bookingRecaptchaVerifier = null;
-    }
-
-    await axios.post('/user/send-otp', {
+    const res = await axios.post('/user/send-otp', {
       type: 'phone',
-      value: customerForm.value.phone,
+      value: customerForm.value.phone.trim(),
+      method: method,
     }, {
       headers: { 'Accept': 'application/json' }
     });
 
     showPhoneOtpInput.value = true;
-    phoneOtpMessage.value = 'Mã SMS OTP đã được gửi thật về số điện thoại của bạn!';
+    startPhoneCountdown(60);
+    phoneOtpMessage.value = res.data?.message || (method === 'voice' ? 'Tổng đài AI đang gọi tới số của bạn để đọc mã OTP.' : 'Mã SMS OTP đã được gửi về số điện thoại của bạn!');
   } catch (err) {
     phoneOtpError.value = true;
-    if (window.bookingRecaptchaVerifier && window.bookingRecaptchaVerifier.clear) {
-      try { window.bookingRecaptchaVerifier.clear(); window.bookingRecaptchaVerifier = null; } catch(e) {}
-    }
-    if (err.code === 'auth/invalid-phone-number') {
-      phoneOtpMessage.value = 'Số điện thoại không đúng định dạng!';
-    } else if (err.code === 'auth/too-many-requests') {
-      phoneOtpMessage.value = 'Bạn đã gửi yêu cầu quá nhiều lần. Vui lòng chờ ít phút rồi thử lại!';
-    } else {
-      phoneOtpMessage.value = err.message || 'Lỗi gửi tin nhắn SMS OTP. Vui lòng kiểm tra lại!';
-    }
+    phoneOtpMessage.value = err.response?.data?.message || err.message || 'Lỗi gửi mã OTP. Vui lòng thử lại!';
   } finally {
     phoneOtpSending.value = false;
   }
 };
 
-const handleVerifyPhoneOtpFirebase = async () => {
+const handleVerifyPhoneOtp = async () => {
   if (!phoneOtpCode.value || phoneOtpCode.value.length < 6) {
     phoneOtpError.value = true;
     phoneOtpMessage.value = 'Vui lòng nhập đủ 6 chữ số!';
@@ -1446,19 +1470,6 @@ const handleVerifyPhoneOtpFirebase = async () => {
   phoneOtpError.value = false;
 
   try {
-    if (window.bookingPhoneConfirmation) {
-      try {
-        await window.bookingPhoneConfirmation.confirm(phoneOtpCode.value.trim());
-      } catch (fbErr) {
-        if (phoneOtpCode.value.trim() !== '123456') {
-          phoneOtpError.value = true;
-          phoneOtpMessage.value = 'Mã OTP SMS nhập không chính xác hoặc đã hết hạn!';
-          phoneOtpVerifying.value = false;
-          return;
-        }
-      }
-    }
-
     const res = await axios.post('/user/verify-otp', {
       otp: phoneOtpCode.value.trim(),
     }, {
@@ -1468,6 +1479,7 @@ const handleVerifyPhoneOtpFirebase = async () => {
     if (res.data?.success) {
       isPhoneVerified.value = true;
       showPhoneOtpInput.value = false;
+      if (phoneTimer) clearInterval(phoneTimer);
       phoneOtpMessage.value = '✓ Xác thực số điện thoại thành công!';
     } else {
       phoneOtpError.value = true;
@@ -1508,6 +1520,7 @@ const handleSendEmailOtp = async () => {
 
     if (res.data?.success) {
       showEmailOtpInput.value = true;
+      startEmailCountdown(60);
       emailOtpMessage.value = res.data?.message || 'Mã OTP đã được gửi về Gmail của bạn. Vui lòng kiểm tra hộp thư!';
     } else {
       emailOtpError.value = true;
@@ -1540,6 +1553,7 @@ const handleVerifyEmailOtp = async () => {
     if (res.data?.success) {
       isEmailVerified.value = true;
       showEmailOtpInput.value = false;
+      if (emailTimer) clearInterval(emailTimer);
       emailOtpMessage.value = '✓ Xác thực Gmail thành công!';
     } else {
       emailOtpError.value = true;

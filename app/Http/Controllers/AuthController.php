@@ -205,10 +205,11 @@ class AuthController extends Controller
             'target' => 'required|string',
         ]);
 
-        $savedOtp = session('auth_otp');
+        $target = trim($request->target);
+        $savedOtp = session('auth_otp') ?? \Illuminate\Support\Facades\Cache::get("auth_otp_{$target}");
         $inputOtp = trim($request->otp);
 
-        if ($inputOtp !== $savedOtp && $inputOtp !== '123456') {
+        if (!$savedOtp || $inputOtp !== (string)$savedOtp) {
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json(['success' => false, 'message' => 'Mã OTP không đúng hoặc đã hết hạn. Vui lòng thử lại.'], 422);
             }
@@ -529,36 +530,11 @@ class AuthController extends Controller
             $method = strtolower($request->input('method', 'sms'));
             $cleanPhone = preg_replace('/[^0-9]/', '', $identifier);
 
-            // 0A. Nhánh 1: Gửi qua Tin nhắn SMS Viễn thông thật 100% (Nếu người dùng chọn SMS hoặc mặc định)
-            if ($method === 'sms' && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
+            // 0A. Nhánh 1: Cuộc gọi thoại Voice OTP thật 100% (Nếu người dùng chọn Cuộc gọi)
+            if ($method === 'voice' && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
-                    $smsUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
-                    $smsRes = \Illuminate\Support\Facades\Http::timeout(10)->post($smsUrl, [
-                        'ApiKey' => $esmsApiKey,
-                        'SecretKey' => $esmsSecretKey,
-                        'Phone' => $cleanPhone,
-                        'Content' => "{$otp} la ma xac minh dang ky Baotrixemay cua ban",
-                        'Brandname' => 'Baotrixemay',
-                        'SmsType' => '2',
-                        'IsUnicode' => '0',
-                    ]);
-                    if ($smsRes->successful() && ($smsRes->json('CodeResult') == '100')) {
-                        $znsSentReal = true;
-                        $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp qua tin nhắn SMS tới số {$identifier}. Quý khách vui lòng kiểm tra hộp thư tin nhắn!";
-                        Log::info("[ESMS_SMS_OTP_SUCCESS] Gửi tin nhắn SMS thành công tới {$cleanPhone}, OTP: {$otp}");
-                    } else {
-                        Log::warning("[ESMS_SMS_OTP_FAIL] eSMS SMS phản hồi: " . $smsRes->body());
-                    }
-                } catch (\Throwable $se) {
-                    Log::warning("[ESMS_SMS_OTP_ERR] Lỗi gửi eSMS SMS: " . $se->getMessage());
-                }
-            }
-
-            // 0B. Nhánh 2: Cuộc gọi thoại Voice OTP thật 100% (Nếu người dùng chọn Cuộc gọi hoặc SMS gặp trục trặc)
-            if (!$znsSentReal && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
-                try {
-                    $voiceUrl = "http://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
-                    $voiceRes = \Illuminate\Support\Facades\Http::timeout(10)->get($voiceUrl, [
+                    $voiceUrl = "https://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
+                    $voiceRes = \Illuminate\Support\Facades\Http::timeout(12)->get($voiceUrl, [
                         'ApiKey' => $esmsApiKey,
                         'SecretKey' => $esmsSecretKey,
                         'Phone' => $cleanPhone,
@@ -576,6 +552,54 @@ class AuthController extends Controller
                     }
                 } catch (\Throwable $ve) {
                     Log::warning("[ESMS_VOICE_OTP_ERR] Lỗi gọi eSMS Voice: " . $ve->getMessage());
+                }
+            }
+
+            // 0B. Nhánh 2: Gửi qua Tin nhắn SMS Viễn thông thật 100% (Sử dụng mẫu chuẩn telecom không chứa tên riêng cũ)
+            if (!$znsSentReal && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
+                try {
+                    $smsUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
+                    $smsRes = \Illuminate\Support\Facades\Http::timeout(10)->post($smsUrl, [
+                        'ApiKey' => $esmsApiKey,
+                        'SecretKey' => $esmsSecretKey,
+                        'Phone' => $cleanPhone,
+                        'Content' => "Ma xac nhan cua ban la {$otp}",
+                        'Brandname' => 'Baotrixemay',
+                        'SmsType' => '2',
+                        'IsUnicode' => '0',
+                    ]);
+                    if ($smsRes->successful() && ($smsRes->json('CodeResult') == '100')) {
+                        $znsSentReal = true;
+                        $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp qua tin nhắn SMS tới số {$identifier}. Quý khách vui lòng kiểm tra hộp thư tin nhắn!";
+                        Log::info("[ESMS_SMS_OTP_SUCCESS] Gửi tin nhắn SMS thành công tới {$cleanPhone}, OTP: {$otp}");
+                    } else {
+                        Log::warning("[ESMS_SMS_OTP_FAIL] eSMS SMS phản hồi: " . $smsRes->body());
+                    }
+                } catch (\Throwable $se) {
+                    Log::warning("[ESMS_SMS_OTP_ERR] Lỗi gửi eSMS SMS: " . $se->getMessage());
+                }
+            }
+
+            // 0C. Fallback Cuộc gọi thoại nếu người dùng chọn SMS mà SMS viễn thông lỗi
+            if (!$znsSentReal && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
+                try {
+                    $voiceUrl = "https://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
+                    $voiceRes = \Illuminate\Support\Facades\Http::timeout(12)->get($voiceUrl, [
+                        'ApiKey' => $esmsApiKey,
+                        'SecretKey' => $esmsSecretKey,
+                        'Phone' => $cleanPhone,
+                        'Code' => $otp,
+                        'Speed' => '-1',
+                        'MaxRepeat' => '3',
+                        'Voice' => 'female',
+                    ]);
+                    if ($voiceRes->successful() && ($voiceRes->json('CodeResult') == '100')) {
+                        $znsSentReal = true;
+                        $otpMessage = "Tổng đài AI đang gọi điện thoại tới số {$identifier} để đọc mã OTP 6 số. Quý khách vui lòng nghe máy!";
+                        Log::info("[ESMS_VOICE_FALLBACK_SUCCESS] Cuộc gọi Voice OTP fallback thành công tới {$cleanPhone}, OTP: {$otp}");
+                    }
+                } catch (\Throwable $ve) {
+                    Log::warning("[ESMS_VOICE_FALLBACK_ERR] " . $ve->getMessage());
                 }
             }
 
@@ -702,10 +726,10 @@ class AuthController extends Controller
         Log::info("[REGISTER_OTP_VERIFY] Khách hàng xác thực OTP cho {$identifier}", [
             'input_otp' => $otp,
             'saved_otp' => $savedOtp,
-            'is_match' => ($otp === $savedOtp || $otp === '123456'),
+            'is_match' => ($savedOtp && $otp === (string)$savedOtp),
         ]);
 
-        $isValid = ($otp === $savedOtp || $otp === '123456');
+        $isValid = ($savedOtp && $otp === (string)$savedOtp);
 
         if (!$isValid) {
             Log::warning("[REGISTER_OTP_VERIFY_FAILED] Mã OTP nhập sai hoặc hết hạn cho {$identifier}: Nhập '{$otp}' nhưng mã trong session là '{$savedOtp}'");
@@ -911,19 +935,69 @@ class AuthController extends Controller
                 'profile_update_value' => $val,
                 'profile_update_expires_at' => now()->addMinutes(10),
             ]);
+            \Illuminate\Support\Facades\Cache::put("profile_otp_{$val}", $otp, now()->addMinutes(15));
 
-            // Gửi qua Mail Google SMTP thật nếu có thể
-            try {
-                \Illuminate\Support\Facades\Mail::send('emails.register_otp', ['otp' => $otp, 'email' => $val], function ($message) use ($val, $otp) {
-                    $message->to($val)
-                            ->subject("[nhaxekientruc] Mã xác thực OTP liên kết Gmail: {$otp}");
-                });
-                $msg = "Mã xác thực OTP đã gửi về Gmail {$val}. Vui lòng kiểm tra hộp thư (hoặc Thư rác/Spam). Mã OTP của bạn: [ {$otp} ].";
-            } catch (\Throwable $e) {
-                $msg = "Mã xác thực OTP liên kết Gmail {$val}: [ {$otp} ]. Vui lòng nhập mã để hoàn tất.";
+            $mailSent = false;
+            $resendKey = env('RESEND_API_KEY');
+            $brevoKey = env('BREVO_API_KEY');
+            $webhookUrl = env('EMAIL_WEBHOOK_URL', 'https://script.google.com/macros/s/AKfycbzApD7OrDIllIWztGiO_Ory8m-eYOYLCvjUclzeThdOhz4pWTf8fUgPU67vuYIhwvCI/exec');
+
+            // 1. Thử Resend API (cổng 443 - không bị chặn trên Render)
+            if (!empty($resendKey)) {
+                try {
+                    $res = \Illuminate\Support\Facades\Http::withToken($resendKey)->timeout(6)->post('https://api.resend.com/emails', [
+                        'from' => env('MAIL_FROM_ADDRESS', 'onboarding@resend.dev'),
+                        'to' => [$val],
+                        'subject' => "[nhaxekientruc] Mã xác thực OTP liên kết Gmail: {$otp}",
+                        'html' => view('emails.register_otp', ['otp' => $otp, 'email' => $val])->render(),
+                    ]);
+                    if ($res->successful()) $mailSent = true;
+                } catch (\Throwable $e) {}
             }
 
-            return $isInertia ? back()->with('otp_notice', $msg) : response()->json(['success' => true, 'message' => $msg, 'otp' => $otp]);
+            // 2. Thử Brevo API (cổng 443)
+            if (!$mailSent && !empty($brevoKey)) {
+                try {
+                    $res = \Illuminate\Support\Facades\Http::withHeaders([
+                        'api-key' => $brevoKey,
+                        'Content-Type' => 'application/json; charset=utf-8',
+                    ])->timeout(6)->post('https://api.brevo.com/v3/smtp/email', [
+                        'sender' => ['name' => 'Nhà Xe Kiến Trúc', 'email' => env('MAIL_FROM_ADDRESS', 'volananh2k4@gmail.com')],
+                        'to' => [['email' => $val]],
+                        'subject' => "[nhaxekientruc] Mã xác thực OTP liên kết Gmail: {$otp}",
+                        'htmlContent' => view('emails.register_otp', ['otp' => $otp, 'email' => $val])->render(),
+                    ]);
+                    if ($res->successful()) $mailSent = true;
+                } catch (\Throwable $e) {}
+            }
+
+            // 3. Thử Google Apps Script Webhook Relay (cổng 443)
+            if (!$mailSent && !empty($webhookUrl)) {
+                try {
+                    $res = \Illuminate\Support\Facades\Http::withHeaders([
+                        'Content-Type' => 'application/json; charset=utf-8',
+                        'Accept' => 'application/json',
+                    ])->timeout(12)->post($webhookUrl, [
+                        'to' => $val,
+                        'subject' => "[nhaxekientruc] Mã xác thực OTP liên kết Gmail: {$otp}",
+                        'html' => view('emails.register_otp', ['otp' => $otp, 'email' => $val])->render(),
+                    ]);
+                    if ($res->successful()) $mailSent = true;
+                } catch (\Throwable $e) {}
+            }
+
+            // 4. Thử SMTP
+            if (!$mailSent) {
+                try {
+                    \Illuminate\Support\Facades\Mail::send('emails.register_otp', ['otp' => $otp, 'email' => $val], function ($message) use ($val, $otp) {
+                        $message->to($val)->subject("[nhaxekientruc] Mã xác thực OTP liên kết Gmail: {$otp}");
+                    });
+                    $mailSent = true;
+                } catch (\Throwable $e) {}
+            }
+
+            $msg = "Mã xác thực OTP đã được gửi về Gmail {$val}. Quý khách vui lòng kiểm tra hộp thư đến (hoặc Thư rác/Spam) và nhập mã!";
+            return $isInertia ? back()->with('otp_notice', $msg) : response()->json(['success' => true, 'message' => $msg]);
         } else {
             // Chuẩn hóa SĐT
             $cleanPhone = preg_replace('/[^0-9]/', '', $val);
@@ -941,61 +1015,63 @@ class AuthController extends Controller
                 'profile_update_value' => $cleanPhone,
                 'profile_update_expires_at' => now()->addMinutes(10),
             ]);
+            \Illuminate\Support\Facades\Cache::put("profile_otp_{$cleanPhone}", $otp, now()->addMinutes(15));
 
-            // Thử kết nối gửi qua Zalo ZNS OpenAPI (VNG) hoặc eSMS nếu có token
-            $znsEnabled = env('ZALO_ZNS_ENABLED', false);
-            $zaloAccessToken = env('ZALO_ACCESS_TOKEN');
-            $zaloTemplateId = env('ZALO_TEMPLATE_ID');
-            $esmsApiKey = env('ESMS_API_KEY');
-            $esmsSecretKey = env('ESMS_SECRET_KEY');
+            $method = strtolower($request->input('method', 'sms'));
+            $esmsApiKey = env('ESMS_API_KEY', '5ADB13F158CB8ECD01BDF4CAFBB04D');
+            $esmsSecretKey = env('ESMS_SECRET_KEY', '94FFA280E5A94C1076CAAB9D15CCFA');
+            $phoneSent = false;
 
-            // Gửi qua SpeedSMS.vn trước nếu có token
-            $speedSmsToken = env('SPEEDSMS_ACCESS_TOKEN');
-            $smsSent = false;
-            if (!empty($speedSmsToken)) {
+            // 1. Nếu người dùng chọn Voice Call: gọi tổng đài AI đọc mã
+            if ($method === 'voice' && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
-                    $speedSms = new \App\Services\SpeedSmsService($speedSmsToken);
-                    $smsRes = $speedSms->sendOtpSms($cleanPhone, $otp);
-                    if (isset($smsRes['status']) && $smsRes['status'] === 'success') {
-                        $smsSent = true;
-                        $msg = "Mã xác thực OTP đã được gửi trực tiếp qua tin nhắn SMS tới số điện thoại {$cleanPhone}!";
-                    }
-                } catch (\Throwable $e) {
-                    // Ignore
-                }
-            }
-
-            if (!$smsSent && $znsEnabled && !empty($zaloAccessToken) && !empty($zaloTemplateId)) {
-                try {
-                    $res = \Illuminate\Support\Facades\Http::withHeaders([
-                        'access_token' => $zaloAccessToken,
-                        'Content-Type' => 'application/json',
-                    ])->timeout(5)->post('https://business.openapi.zalo.me/message/template', [
-                        'phone' => '84' . ltrim($cleanPhone, '0'),
-                        'template_id' => $zaloTemplateId,
-                        'template_data' => [
-                            'otp' => $otp,
-                            'customer_name' => $user->name ?? 'Quý khách'
-                        ]
+                    $voiceUrl = "https://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
+                    $voiceRes = \Illuminate\Support\Facades\Http::timeout(12)->get($voiceUrl, [
+                        'ApiKey' => $esmsApiKey,
+                        'SecretKey' => $esmsSecretKey,
+                        'Phone' => $cleanPhone,
+                        'Code' => $otp,
+                        'Speed' => '-1',
+                        'MaxRepeat' => '3',
+                        'Voice' => 'female',
                     ]);
-                    if ($res->successful() && ($res->json('error') == 0)) {
-                        $msg = "Mã xác thực OTP đã được gửi trực tiếp vào tin nhắn Zalo tới số điện thoại {$cleanPhone}!";
-                    } else {
-                        $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo/SMS số điện thoại {$cleanPhone}!";
+                    if ($voiceRes->successful() && ($voiceRes->json('CodeResult') == '100')) {
+                        $phoneSent = true;
+                        $msg = "Tổng đài AI đang gọi điện thoại tới số {$cleanPhone} để đọc mã OTP 6 số. Quý khách vui lòng nghe máy!";
                     }
-                } catch (\Throwable $e) {
-                    $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo/SMS số điện thoại {$cleanPhone}!";
-                }
-            } elseif (!$smsSent) {
-                $msg = "Mã xác thực OTP đã gửi tới số điện thoại {$cleanPhone}!";
+                } catch (\Throwable $ve) {}
             }
 
-            return $isInertia ? back()->with('otp_notice', $msg) : response()->json(['success' => true, 'message' => $msg, 'otp' => $otp]);
+            // 2. Nếu chọn SMS hoặc Voice chưa kích hoạt: gửi SMS viễn thông thật
+            if (!$phoneSent && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
+                try {
+                    $smsUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
+                    $smsRes = \Illuminate\Support\Facades\Http::timeout(10)->post($smsUrl, [
+                        'ApiKey' => $esmsApiKey,
+                        'SecretKey' => $esmsSecretKey,
+                        'Phone' => $cleanPhone,
+                        'Content' => "Ma xac nhan cua ban la {$otp}",
+                        'Brandname' => 'Baotrixemay',
+                        'SmsType' => '2',
+                        'IsUnicode' => '0',
+                    ]);
+                    if ($smsRes->successful() && ($smsRes->json('CodeResult') == '100')) {
+                        $phoneSent = true;
+                        $msg = "Mã xác thực OTP đã được gửi qua tin nhắn SMS tới số {$cleanPhone}. Quý khách vui lòng kiểm tra hộp thư tin nhắn!";
+                    }
+                } catch (\Throwable $se) {}
+            }
+
+            if (!$phoneSent && !isset($msg)) {
+                $msg = "Mã xác thực OTP đã được gửi tới số điện thoại {$cleanPhone}!";
+            }
+
+            return $isInertia ? back()->with('otp_notice', $msg) : response()->json(['success' => true, 'message' => $msg]);
         }
     }
 
     /**
-     * Xác thực OTP cập nhật bổ sung Email hoặc SĐT
+     * Xác thực OTP cập nhật bổ sung Email hoặc SĐT (Yêu cầu mã thật, không hiển thị mã giả)
      */
     public function verifyProfileOtp(Request $request)
     {
@@ -1012,12 +1088,17 @@ class AuthController extends Controller
             'otp' => 'required|string',
         ]);
 
-        $savedOtp = session('profile_update_otp');
+        $inputOtp = trim($request->input('otp', ''));
         $savedType = session('profile_update_type');
         $savedValue = session('profile_update_value');
+        $savedOtp = session('profile_update_otp');
 
-        if ($request->input('otp') !== $savedOtp && $request->input('otp') !== '123456') {
-            $err = 'Mã OTP không chính xác hoặc đã hết hạn!';
+        if (empty($savedOtp) && !empty($savedValue)) {
+            $savedOtp = \Illuminate\Support\Facades\Cache::get("profile_otp_{$savedValue}");
+        }
+
+        if (empty($inputOtp) || $inputOtp !== (string)$savedOtp) {
+            $err = 'Mã OTP không chính xác hoặc đã hết hạn. Vui lòng kiểm tra lại!';
             return $isInertia ? back()->withErrors(['otp_verify_error' => $err]) : response()->json(['success' => false, 'message' => $err], 422);
         }
 
@@ -1026,12 +1107,14 @@ class AuthController extends Controller
             $user->email_verified_at = now();
             $user->save();
             session()->forget(['profile_update_otp', 'profile_update_type', 'profile_update_value']);
+            \Illuminate\Support\Facades\Cache::forget("profile_otp_{$savedValue}");
             $msg = "Cập nhật và liên kết Gmail {$savedValue} thành công!";
             return $isInertia ? back()->with('success', $msg) : response()->json(['success' => true, 'message' => $msg, 'email' => $savedValue]);
         } elseif ($savedType === 'phone') {
             $user->phone = $savedValue;
             $user->save();
             session()->forget(['profile_update_otp', 'profile_update_type', 'profile_update_value']);
+            \Illuminate\Support\Facades\Cache::forget("profile_otp_{$savedValue}");
             $msg = "Cập nhật và xác thực Số điện thoại {$savedValue} thành công!";
             return $isInertia ? back()->with('success', $msg) : response()->json(['success' => true, 'message' => $msg, 'phone' => $savedValue]);
         }

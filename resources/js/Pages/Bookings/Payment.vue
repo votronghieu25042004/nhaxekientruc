@@ -426,6 +426,23 @@
               </div>
             </div>
 
+            <!-- KHỐI DỰ PHÒNG XÁC NHẬN KHI ĐÃ CHUYỂN TIỀN THẬT TỪ APP NGÂN HÀNG -->
+            <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs text-center space-y-2.5">
+              <div class="text-left space-y-0.5">
+                <span class="text-xs font-bold text-slate-800 block">Đã thực hiện chuyển khoản từ App MBBank / MoMo?</span>
+                <span class="text-[11px] text-slate-500 block">Sau khi chuyển tiền xong, nếu cổng ngân hàng chưa kịp đẩy tín hiệu tự động, bạn có thể bấm nút dưới đây để kích hoạt vé ngay:</span>
+              </div>
+              <button
+                @click="manualConfirm"
+                :disabled="isConfirming"
+                type="button"
+                class="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs uppercase tracking-wider transition shadow-md shadow-red-500/20 cursor-pointer disabled:opacity-50 active:scale-95"
+              >
+                <span v-if="isConfirming">⏳ Đang kích hoạt vé & gửi email...</span>
+                <span v-else>✓ Tôi Đã Chuyển Khoản Rồi - Kích Hoạt Vé Ngay</span>
+              </button>
+            </div>
+
           </div>
 
         </div>
@@ -528,6 +545,7 @@ const isPaid = ref(
 );
 const isExpired = ref(false);
 const copiedField = ref(null);
+const isConfirming = ref(false);
 
 // Quản lý URL ảnh QR động có fallback
 const mbbankCurrentQr = ref(props.vietQr.mbbank_qr_url || props.vietQr.mbbank_local_qr || '/images/qr/mbbank_qr.png');
@@ -605,21 +623,32 @@ const redirectToTicket = () => {
   }, 1200);
 };
 
-// Polling tự động kiểm tra giao dịch chuyển khoản thời gian thực cứ mỗi 1.5 giây
-let pollCount = 0;
-let elapsedSeconds = 0;
+// Xác nhận thủ công nếu khách đã chuyển tiền từ App Ngân Hàng
+const manualConfirm = async () => {
+  if (isConfirming.value || isPaid.value) return;
+  isConfirming.value = true;
+  try {
+    const res = await axios.post(`/api/booking/${props.booking.booking_code}/confirm-payment`);
+    if (res.data?.success) {
+      isPaid.value = true;
+      if (pollInterval) clearInterval(pollInterval);
+      if (timerInterval) clearInterval(timerInterval);
+      redirectToTicket();
+    } else {
+      alert(res.data?.message || 'Chưa nhận được giao dịch.');
+    }
+  } catch (err) {
+    alert('Lỗi xác nhận: ' + (err.response?.data?.message || err.message));
+  } finally {
+    isConfirming.value = false;
+  }
+};
 
+// Polling tự động lắng nghe giao dịch từ máy chủ (chỉ chuyển khi có tiền thật từ SePay hoặc Xác nhận)
 const checkStatus = async () => {
   if (isPaid.value || isExpired.value) return;
-  pollCount++;
-  elapsedSeconds += 1.5;
   try {
-    const res = await axios.get(`/api/booking/${props.booking.booking_code}/payment-status`, {
-      params: {
-        poll_count: pollCount,
-        elapsed: Math.round(elapsedSeconds)
-      }
-    });
+    const res = await axios.get(`/api/booking/${props.booking.booking_code}/payment-status`);
     if (res.data?.is_paid) {
       isPaid.value = true;
       if (pollInterval) clearInterval(pollInterval);
