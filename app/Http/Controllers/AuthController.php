@@ -522,14 +522,39 @@ class AuthController extends Controller
             $znsEnabled = env('ZALO_ZNS_ENABLED', false);
             $zaloAccessToken = env('ZALO_ACCESS_TOKEN');
             $zaloTemplateId = env('ZALO_TEMPLATE_ID');
-            $esmsApiKey = env('ESMS_API_KEY');
-            $esmsSecretKey = env('ESMS_SECRET_KEY');
+            $esmsApiKey = env('ESMS_API_KEY', '5ADB13F158CB8ECD01BDF4CAFBB04D');
+            $esmsSecretKey = env('ESMS_SECRET_KEY', '94FFA280E5A94C1076CAAB9D15CCFA');
 
-            // 0. Gửi qua Cổng Viễn Thông Twilio SMS (Tin nhắn thật quốc tế & Việt Nam)
+            // 0. Cổng Viễn thông eSMS Voice OTP (Cuộc gọi thoại thật 100% đổ chuông và đọc mã OTP bằng tiếng Việt)
+            if (!empty($esmsApiKey) && !empty($esmsSecretKey)) {
+                try {
+                    $cleanPhone = preg_replace('/[^0-9]/', '', $identifier);
+                    $voiceUrl = "http://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
+                    $voiceRes = \Illuminate\Support\Facades\Http::timeout(10)->get($voiceUrl, [
+                        'ApiKey' => $esmsApiKey,
+                        'SecretKey' => $esmsSecretKey,
+                        'Phone' => $cleanPhone,
+                        'Code' => $otp,
+                        'Speed' => '0',
+                        'Voice' => 'female',
+                    ]);
+                    if ($voiceRes->successful() && ($voiceRes->json('CodeResult') == '100')) {
+                        $znsSentReal = true;
+                        $otpMessage = "Tổng đài eSMS đang gọi điện thoại tới số {$identifier} để đọc mã OTP 6 số. Quý khách vui lòng nghe máy!";
+                        Log::info("[ESMS_VOICE_OTP_SUCCESS] Cuộc gọi Voice OTP thành công tới {$cleanPhone}, OTP: {$otp}");
+                    } else {
+                        Log::warning("[ESMS_VOICE_OTP_FAIL] eSMS Voice phản hồi: " . $voiceRes->body());
+                    }
+                } catch (\Throwable $ve) {
+                    Log::warning("[ESMS_VOICE_OTP_ERR] Lỗi gọi eSMS Voice: " . $ve->getMessage());
+                }
+            }
+
+            // 0b. Gửi qua Cổng Viễn Thông Twilio SMS (Tin nhắn thật quốc tế & Việt Nam)
             $twilioSid   = env('TWILIO_ACCOUNT_SID');
             $twilioToken = env('TWILIO_AUTH_TOKEN');
             $twilioFrom  = env('TWILIO_PHONE_NUMBER');
-            if (!empty($twilioSid) && !empty($twilioToken) && !empty($twilioFrom)) {
+            if (!$znsSentReal && !empty($twilioSid) && !empty($twilioToken) && !empty($twilioFrom)) {
                 $phoneE164 = '+84' . ltrim($identifier, '0');
                 try {
                     $twilioRes = \Illuminate\Support\Facades\Http::withBasicAuth($twilioSid, $twilioToken)

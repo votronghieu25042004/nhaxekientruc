@@ -87,9 +87,43 @@ class AiCallService
         $telecomSuccess  = false;
         $telecomDetail   = '';
 
-        // 0. Cổng Viễn thông SpeedSMS.vn (Gửi SMS thật & Gọi điện Voice Call tới mạng di động VN)
+        // 0. Cổng Viễn thông eSMS Voice Call (Gọi điện thoại thật 100% tới mạng di động VN)
+        $esmsApiKey = env('ESMS_API_KEY', '5ADB13F158CB8ECD01BDF4CAFBB04D');
+        $esmsSecretKey = env('ESMS_SECRET_KEY', '94FFA280E5A94C1076CAAB9D15CCFA');
+        if (!empty($esmsApiKey) && !empty($esmsSecretKey)) {
+            $telecomProvider = 'ESMS_VOICE';
+            try {
+                $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+                // Tạo mã thông báo vé 6 chữ số
+                $ticketCode = preg_replace('/[^0-9]/', '', $booking->booking_code ?? '1234');
+                if (strlen($ticketCode) < 4) { $ticketCode = '1234'; }
+                $ticketCode = substr($ticketCode, 0, 6);
+
+                $voiceUrl = "http://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
+                $res = Http::timeout(10)->get($voiceUrl, [
+                    'ApiKey' => $esmsApiKey,
+                    'SecretKey' => $esmsSecretKey,
+                    'Phone' => $cleanPhone,
+                    'Code' => $ticketCode,
+                    'Speed' => '0',
+                    'Voice' => 'female',
+                ]);
+                if ($res->successful() && ($res->json('CodeResult') == '100')) {
+                    $telecomSuccess = true;
+                    $telecomDetail = "Tổng đài eSMS đã gọi điện thoại thật tới số {$phone} (Mã cuộc gọi: " . ($res->json('SMSID') ?? 'OK') . ")";
+                    Log::info("[AI_CALL_ESMS_SUCCESS] Gọi thoại eSMS thành công tới {$phone}");
+                } else {
+                    $telecomDetail = "eSMS phản hồi: " . ($res->json('ErrorMessage') ?? $res->body());
+                }
+            } catch (\Throwable $ee) {
+                $telecomDetail = "Lỗi kết nối eSMS Voice: " . $ee->getMessage();
+                Log::warning("[AI_CALL_ESMS_ERR] " . $ee->getMessage());
+            }
+        }
+
+        // 0b. Cổng Viễn thông SpeedSMS.vn (Gửi SMS thật & Gọi điện Voice Call tới mạng di động VN)
         $speedSmsToken = env('SPEEDSMS_ACCESS_TOKEN');
-        if (!empty($speedSmsToken)) {
+        if (!$telecomSuccess && !empty($speedSmsToken)) {
             $telecomProvider = 'SPEEDSMS';
             try {
                 $speedSms = new \App\Services\SpeedSmsService($speedSmsToken);

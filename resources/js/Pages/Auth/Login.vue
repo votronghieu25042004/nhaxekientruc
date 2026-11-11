@@ -888,8 +888,14 @@
                       <p class="font-mono font-black text-slate-900 text-sm sm:text-base">
                         {{ activeTargetDisplay }}
                       </p>
-                      <p class="text-[11px] text-slate-500">
-                        Vui lòng kiểm tra tin nhắn/hộp thư (hộp thư đến hoặc mục Thư rác/Spam) và nhập 6 chữ số bên dưới:
+                      <p class="text-[11.5px] font-medium text-slate-600">
+                        <span v-if="loginForm.type === 'phone'" class="text-amber-800 font-bold flex items-center justify-center gap-1">
+                          <span>📞</span>
+                          <span>Tổng đài AI đang gọi điện thoại tới số này để đọc mã OTP 6 số. Quý khách vui lòng nghe máy:</span>
+                        </span>
+                        <span v-else>
+                          Vui lòng kiểm tra hộp thư Gmail (kể cả mục Thư rác/Spam) và nhập 6 chữ số bên dưới:
+                        </span>
                       </p>
                     </div>
 
