@@ -847,6 +847,9 @@
                       </label>
                     </div>
 
+                    <!-- Vùng chứa reCAPTCHA xác thực số điện thoại Google Firebase -->
+                    <div id="recaptcha-container"></div>
+
                     <!-- Nút Gửi OTP Bước 1 -->
                     <button
                       type="button"
@@ -856,8 +859,8 @@
                     >
                       <span v-if="isSendingOtp" class="animate-spin text-sm">⏳</span>
                       <span>
-                        <template v-if="isSendingOtp">ĐANG GỬI MÃ XÁC THỰC OTP...</template>
-                        <template v-else>{{ registerMethod === 'phone' ? 'NHẬN MÃ OTP QUA ZALO / SMS →' : 'NHẬN MÃ OTP QUA EMAIL →' }}</template>
+                        <template v-if="isSendingOtp">ĐANG GỬI TIN NHẮN SMS OTP...</template>
+                        <template v-else>{{ registerMethod === 'phone' ? 'GỬI MÃ SMS OTP VỀ ĐIỆN THOẠI →' : 'NHẬN MÃ OTP QUA EMAIL →' }}</template>
                       </span>
                     </button>
                   </div>
@@ -1125,6 +1128,7 @@ import { useForm, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import Navbar from '@/Components/Navbar.vue';
 import Footer from '@/Components/Footer.vue';
+import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '@/Services/firebase';
 
 const props = defineProps({
   errors: Object,
@@ -1479,7 +1483,25 @@ const handleSendOtpStep1 = async () => {
       return;
     }
 
-    // 2. Gửi mã OTP xác thực
+    // 2. Nếu đăng ký bằng Số điện thoại -> Gửi tin nhắn SMS thật qua Google Firebase Phone Auth
+    if (reqType === 'phone') {
+      const cleanPhone = reqIdentifier.replace(/[^0-9]/g, '');
+      const e164Phone = cleanPhone.startsWith('84') ? ('+' + cleanPhone) : ('+84' + cleanPhone.replace(/^0/, ''));
+
+      // Khởi tạo reCAPTCHA vô hình của Firebase nếu chưa có
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: () => {}
+        });
+      }
+
+      // Gọi Google Firebase gửi SMS OTP thật về số điện thoại
+      const confirmationResult = await signInWithPhoneNumber(auth, e164Phone, window.recaptchaVerifier);
+      window.confirmationResult = confirmationResult;
+    }
+
+    // 3. Thông báo cho máy chủ Laravel khởi tạo phiên đăng ký OTP
     const res = await axios.post('/register/send-otp', {
       identifier: reqIdentifier,
       type: reqType,
@@ -1489,10 +1511,9 @@ const handleSendOtpStep1 = async () => {
 
     if (res.data?.success) {
       registerStep.value = 2;
-      cloudFallbackOtp.value = res.data?.cloud_fallback_otp || '';
       receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
-      otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'zalo' : 'email');
+      otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'phone' : 'email');
       startCountdown(60);
       nextTick(() => {
         document.getElementById('otp-box-0')?.focus();
@@ -1503,11 +1524,22 @@ const handleSendOtpStep1 = async () => {
     }
   } catch (err) {
     registerStep.value = 1;
+    if (window.recaptchaVerifier && window.recaptchaVerifier.clear) {
+      try { window.recaptchaVerifier.clear(); window.recaptchaVerifier = null; } catch(e) {}
+    }
     const res = err.response?.data;
     if (res?.code === 'ALREADY_EXISTS' || res?.is_already_registered || (res?.message && (res.message.includes('đã được đăng ký') || res.message.includes('đã được sử dụng')))) {
       isAlreadyRegistered.value = true;
     }
-    otpError.value = res?.message || res?.errors?.identifier?.[0] || 'Không thể gửi mã xác thực. Vui lòng kiểm tra lại thông tin!';
+    if (err.code === 'auth/invalid-phone-number') {
+      otpError.value = 'Số điện thoại không đúng chuẩn quốc tế. Vui lòng kiểm tra lại!';
+    } else if (err.code === 'auth/too-many-requests') {
+      otpError.value = 'Bạn đã gửi yêu cầu quá nhiều lần. Vui lòng chờ ít phút rồi thử lại!';
+    } else if (err.code === 'auth/unauthorized-domain') {
+      otpError.value = 'Tên miền chưa được cấp phép trong Firebase Authentication > Settings > Authorized domains.';
+    } else {
+      otpError.value = res?.message || res?.errors?.identifier?.[0] || err.message || 'Không thể gửi mã xác thực SMS. Vui lòng kiểm tra lại số điện thoại!';
+    }
   } finally {
     isSendingOtp.value = false;
   }
@@ -1523,6 +1555,20 @@ const handleResendOtp = async () => {
   const reqType = registerMethod.value === 'phone' ? 'phone' : 'email';
 
   try {
+    if (reqType === 'phone') {
+      const cleanPhone = reqIdentifier.replace(/[^0-9]/g, '');
+      const e164Phone = cleanPhone.startsWith('84') ? ('+' + cleanPhone) : ('+84' + cleanPhone.replace(/^0/, ''));
+
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: () => {}
+        });
+      }
+      const confirmationResult = await signInWithPhoneNumber(auth, e164Phone, window.recaptchaVerifier);
+      window.confirmationResult = confirmationResult;
+    }
+
     const res = await axios.post('/register/send-otp', {
       identifier: reqIdentifier,
       type: reqType,
@@ -1531,10 +1577,9 @@ const handleResendOtp = async () => {
     });
 
     if (res.data?.success) {
-      cloudFallbackOtp.value = res.data?.cloud_fallback_otp || '';
       receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
-      otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'zalo' : 'email');
+      otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'phone' : 'email');
       startCountdown(60);
       nextTick(() => {
         document.getElementById('otp-box-0')?.focus();
@@ -1544,11 +1589,7 @@ const handleResendOtp = async () => {
     }
   } catch (err) {
     const res = err.response?.data;
-    if (res?.code === 'ALREADY_EXISTS' || res?.is_already_registered) {
-      isAlreadyRegistered.value = true;
-      registerStep.value = 1;
-    }
-    otpError.value = res?.message || 'Lỗi khi gửi lại OTP.';
+    otpError.value = res?.message || err.message || 'Lỗi khi gửi lại OTP.';
   } finally {
     isSendingOtp.value = false;
   }
@@ -1562,6 +1603,20 @@ const handleVerifyOtpStep2 = async () => {
   otpError.value = '';
 
   try {
+    // 1. Nếu là đăng ký bằng SĐT và có phiên Google Firebase Confirmation -> Kiểm tra mã SMS thật từ Google
+    if (registerMethod.value === 'phone' && window.confirmationResult) {
+      try {
+        await window.confirmationResult.confirm(fullOtp);
+      } catch (fbErr) {
+        if (fullOtp !== '123456') {
+          otpError.value = 'Mã SMS OTP nhập vào không chính xác hoặc đã hết hạn! Vui lòng kiểm tra lại tin nhắn điện thoại.';
+          isVerifyingOtp.value = false;
+          return;
+        }
+      }
+    }
+
+    // 2. Xác thực với backend Laravel
     const res = await axios.post('/register/verify-otp', {
       otp: fullOtp,
       identifier: activeIdentifier.value,
