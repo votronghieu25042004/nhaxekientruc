@@ -603,9 +603,16 @@
                       />
                       <button
                         type="button"
+                        @click="phoneOtpCode = '123456'; handleVerifyPhoneOtpFirebase()"
+                        class="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs cursor-pointer shadow-xs whitespace-nowrap"
+                      >
+                        ⚡ Điền 123456
+                      </button>
+                      <button
+                        type="button"
                         @click="handleVerifyPhoneOtpFirebase"
                         :disabled="phoneOtpCode.length < 6 || phoneOtpVerifying"
-                        class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-xs cursor-pointer shadow-xs disabled:cursor-not-allowed"
+                        class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-xs cursor-pointer shadow-xs disabled:cursor-not-allowed whitespace-nowrap"
                       >
                         {{ phoneOtpVerifying ? 'Đang kiểm tra...' : 'Xác Minh' }}
                       </button>
@@ -693,9 +700,16 @@
                       />
                       <button
                         type="button"
+                        @click="emailOtpCode = '123456'; handleVerifyEmailOtp()"
+                        class="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs cursor-pointer shadow-xs whitespace-nowrap"
+                      >
+                        ⚡ Điền 123456
+                      </button>
+                      <button
+                        type="button"
                         @click="handleVerifyEmailOtp"
                         :disabled="emailOtpCode.length < 6 || emailOtpVerifying"
-                        class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-xs cursor-pointer shadow-xs disabled:cursor-not-allowed"
+                        class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-xs cursor-pointer shadow-xs disabled:cursor-not-allowed whitespace-nowrap"
                       >
                         {{ emailOtpVerifying ? 'Đang kiểm tra...' : 'Xác Minh' }}
                       </button>

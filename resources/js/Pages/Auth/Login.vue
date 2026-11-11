@@ -893,6 +893,30 @@
                       </p>
                     </div>
 
+                    <!-- Banner Hỗ Trợ Đồ Án / Kiểm Thử Khi Chưa Gắn Thẻ Viễn Thông -->
+                    <div v-if="cloudFallbackOtp" class="p-3 bg-amber-50 rounded-2xl border border-amber-300 text-xs text-amber-900 space-y-2 animate-in fade-in">
+                      <div class="flex items-center justify-between">
+                        <span class="font-bold flex items-center gap-1.5">
+                          <span>💡</span>
+                          <span>Mã OTP thử nghiệm đồ án:</span>
+                        </span>
+                        <span class="font-mono text-base font-black text-red-600 bg-white px-2.5 py-0.5 rounded-lg border border-amber-300 shadow-2xs tracking-widest">
+                          {{ cloudFallbackOtp }}
+                        </span>
+                      </div>
+                      <p class="text-[11px] text-slate-600 leading-snug">
+                        (Hệ thống tự động cấp mã để phục vụ kiểm thử / chấm điểm đồ án khi chưa gắn thẻ cổng viễn thông SMS Brandname).
+                      </p>
+                      <button
+                        type="button"
+                        @click="autoFillFallbackOtp"
+                        class="w-full py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-xl font-black text-xs cursor-pointer shadow-xs transition active:scale-95 flex items-center justify-center gap-1.5"
+                      >
+                        <span>⚡</span>
+                        <span>Bấm vào đây để tự động điền mã [ {{ cloudFallbackOtp }} ]</span>
+                      </button>
+                    </div>
+
 
 
                     <!-- 6 Ô Input OTP Tự Động Chuyển Ô Khi Gõ -->
@@ -1421,6 +1445,14 @@ const onOtpPaste = (event) => {
       handleVerifyOtpStep2();
     }
   }
+};
+
+const autoFillFallbackOtp = () => {
+  const digits = String(cloudFallbackOtp.value || '123456').split('');
+  for (let i = 0; i < 6; i++) {
+    otpDigits.value[i] = digits[i] || '';
+  }
+  handleVerifyOtpStep2();
 };
 
 let checkExistsTimer = null;
