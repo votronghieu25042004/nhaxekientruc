@@ -525,8 +525,27 @@ class AuthController extends Controller
             $esmsApiKey = env('ESMS_API_KEY');
             $esmsSecretKey = env('ESMS_SECRET_KEY');
 
-            // 1. Thử gửi qua Zalo OpenAPI (Zalo ZNS chính thức của VNG) nếu có cấu hình
-            if ($znsEnabled && !empty($zaloAccessToken) && !empty($zaloTemplateId)) {
+            // 1. Gửi qua Cổng SpeedSMS.vn (Tin nhắn SMS viễn thông thật đến Viettel/Vina/Mobi)
+            $speedSmsToken = env('SPEEDSMS_ACCESS_TOKEN');
+            if (!empty($speedSmsToken)) {
+                try {
+                    $speedSms = new \App\Services\SpeedSmsService($speedSmsToken);
+                    $smsRes = $speedSms->sendOtpSms($identifier, $otp);
+                    if (isset($smsRes['status']) && $smsRes['status'] === 'success') {
+                        $znsSentReal = true;
+                        $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp qua tin nhắn SMS tới số điện thoại {$identifier}!";
+                        Log::info("[SPEEDSMS_OTP_SUCCESS] Gửi tin nhắn SMS thành công tới SĐT {$identifier}");
+                    } else {
+                        Log::warning("[SPEEDSMS_OTP_FAIL] SpeedSMS phản hồi: " . json_encode($smsRes, JSON_UNESCAPED_UNICODE));
+                        $otpMessage = "Mã xác thực OTP đã được gửi tới số {$identifier}!";
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning("[SPEEDSMS_OTP_ERR] Lỗi kết nối SpeedSMS: " . $e->getMessage());
+                }
+            }
+
+            // 2. Thử gửi qua Zalo OpenAPI (Zalo ZNS chính thức của VNG) nếu có cấu hình
+            if (!$znsSentReal && $znsEnabled && !empty($zaloAccessToken) && !empty($zaloTemplateId)) {
                 Log::info("[ZALO_OPENAPI] Gọi API Zalo ZNS tới https://business.openapi.zalo.me/message/template...");
                 try {
                     $res = \Illuminate\Support\Facades\Http::withHeaders([
@@ -544,17 +563,13 @@ class AuthController extends Controller
                         $znsSentReal = true;
                         $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp vào tin nhắn Zalo tới số điện thoại {$identifier}!";
                         Log::info("[ZALO_OTP_SUCCESS] Gửi tin nhắn ZNS thành công tới SĐT {$identifier}");
-                    } else {
-                        Log::warning("[ZALO_OTP_FALLBACK] Zalo API phản hồi: " . json_encode($res->json()) . " -> Sử dụng kênh OTP xác thực nhaxekientruc cho {$identifier}");
-                        $otpMessage = "Mã xác thực Zalo đã được gửi tới số {$identifier}! (Mã OTP của bạn: {$otp})";
                     }
                 } catch (\Throwable $e) {
-                    Log::warning("[ZALO_OTP_EXCEPTION] Lỗi kết nối Zalo: " . $e->getMessage() . " -> Sử dụng kênh OTP xác thực nhaxekientruc");
-                    $otpMessage = "Mã xác thực Zalo đã được gửi tới số {$identifier}! (Mã OTP của bạn: {$otp})";
+                    Log::warning("[ZALO_OTP_EXCEPTION] Lỗi kết nối Zalo: " . $e->getMessage());
                 }
             } 
-            // 2. Thử gửi qua Cổng Zalo eSMS.vn nếu có API Key
-            elseif (!empty($esmsApiKey) && !empty($esmsSecretKey)) {
+            // 3. Thử gửi qua Cổng Zalo eSMS.vn nếu có API Key
+            elseif (!$znsSentReal && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
                     $res = \Illuminate\Support\Facades\Http::timeout(5)->post('https://api.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json', [
                         'ApiKey' => $esmsApiKey,
@@ -566,16 +581,13 @@ class AuthController extends Controller
                     if ($res->successful() && ($res->json('CodeResult') == '100')) {
                         $znsSentReal = true;
                         $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp tới số điện thoại {$identifier}!";
-                    } else {
-                        $otpMessage = "Mã xác thực Zalo/SMS đã được gửi tới số {$identifier}! (Mã OTP của bạn: {$otp})";
                     }
                 } catch (\Throwable $e) {
-                    $otpMessage = "Mã xác thực Zalo/SMS đã được gửi tới số {$identifier}! Vui lòng kiểm tra tin nhắn và nhập mã OTP để tiếp tục.";
+                    // Ignore
                 }
             }
-            // 3. Kênh OTP Zalo SMS
-            else {
-                Log::info("[ZALO_DIRECT_OTP] Yêu cầu gửi mã OTP Zalo cho SĐT {$identifier}");
+
+            if (!$znsSentReal && empty($otpMessage)) {
                 $otpMessage = "Mã xác thực OTP đã được gửi tới số điện thoại {$identifier}! Vui lòng kiểm tra tin nhắn trên điện thoại của bạn.";
             }
         }
@@ -856,7 +868,23 @@ class AuthController extends Controller
             $esmsApiKey = env('ESMS_API_KEY');
             $esmsSecretKey = env('ESMS_SECRET_KEY');
 
-            if ($znsEnabled && !empty($zaloAccessToken) && !empty($zaloTemplateId)) {
+            // Gửi qua SpeedSMS.vn trước nếu có token
+            $speedSmsToken = env('SPEEDSMS_ACCESS_TOKEN');
+            $smsSent = false;
+            if (!empty($speedSmsToken)) {
+                try {
+                    $speedSms = new \App\Services\SpeedSmsService($speedSmsToken);
+                    $smsRes = $speedSms->sendOtpSms($cleanPhone, $otp);
+                    if (isset($smsRes['status']) && $smsRes['status'] === 'success') {
+                        $smsSent = true;
+                        $msg = "Mã xác thực OTP đã được gửi trực tiếp qua tin nhắn SMS tới số điện thoại {$cleanPhone}!";
+                    }
+                } catch (\Throwable $e) {
+                    // Ignore
+                }
+            }
+
+            if (!$smsSent && $znsEnabled && !empty($zaloAccessToken) && !empty($zaloTemplateId)) {
                 try {
                     $res = \Illuminate\Support\Facades\Http::withHeaders([
                         'access_token' => $zaloAccessToken,
@@ -872,30 +900,13 @@ class AuthController extends Controller
                     if ($res->successful() && ($res->json('error') == 0)) {
                         $msg = "Mã xác thực OTP đã được gửi trực tiếp vào tin nhắn Zalo tới số điện thoại {$cleanPhone}!";
                     } else {
-                        $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo số điện thoại {$cleanPhone}: [ {$otp} ]. Vui lòng nhập mã để xác nhận.";
+                        $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo/SMS số điện thoại {$cleanPhone}!";
                     }
                 } catch (\Throwable $e) {
-                    $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo số điện thoại {$cleanPhone}: [ {$otp} ]. Vui lòng nhập mã để xác nhận.";
+                    $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo/SMS số điện thoại {$cleanPhone}!";
                 }
-            } elseif (!empty($esmsApiKey) && !empty($esmsSecretKey)) {
-                try {
-                    $res = \Illuminate\Support\Facades\Http::timeout(5)->post('https://api.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json', [
-                        'ApiKey' => $esmsApiKey,
-                        'SecretKey' => $esmsSecretKey,
-                        'Phone' => $cleanPhone,
-                        'Content' => "Ma xac thuc Zalo/nhaxekientruc cua quy khach la: {$otp}",
-                        'SmsType' => '2',
-                    ]);
-                    if ($res->successful() && ($res->json('CodeResult') == '100')) {
-                        $msg = "Mã xác thực OTP đã gửi tới Zalo/SMS số điện thoại {$cleanPhone}!";
-                    } else {
-                        $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo số điện thoại {$cleanPhone}: [ {$otp} ]. Vui lòng nhập mã để xác nhận.";
-                    }
-                } catch (\Throwable $e) {
-                    $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo số điện thoại {$cleanPhone}: [ {$otp} ]. Vui lòng nhập mã để xác nhận.";
-                }
-            } else {
-                $msg = "Mã xác thực OTP đã gửi qua ứng dụng Zalo số điện thoại {$cleanPhone}: [ {$otp} ]. Vui lòng nhập mã để xác nhận.";
+            } elseif (!$smsSent) {
+                $msg = "Mã xác thực OTP đã gửi tới số điện thoại {$cleanPhone}!";
             }
 
             return $isInertia ? back()->with('otp_notice', $msg) : response()->json(['success' => true, 'message' => $msg, 'otp' => $otp]);

@@ -87,6 +87,44 @@ class AiCallService
         $telecomSuccess  = false;
         $telecomDetail   = '';
 
+        // 0. Cổng Viễn thông SpeedSMS.vn (Gửi SMS thật & Gọi điện Voice Call tới mạng di động VN)
+        $speedSmsToken = env('SPEEDSMS_ACCESS_TOKEN');
+        if (!empty($speedSmsToken)) {
+            $telecomProvider = 'SPEEDSMS';
+            try {
+                $speedSms = new \App\Services\SpeedSmsService($speedSmsToken);
+                $trip = $booking->trip;
+                
+                // Gửi tin nhắn SMS viễn thông nhắc xe
+                $smsRes = $speedSms->sendTripReminderSms(
+                    $phone,
+                    $booking->customer_name ?? 'Quý khách',
+                    $trip?->route?->name ?? 'Liên tỉnh',
+                    $trip?->bus?->license_plate ?? 'Xe chất lượng cao',
+                    $trip?->departure_time ? Carbon::parse($trip->departure_time)->format('H:i d/m/Y') : 'sắp tới',
+                    $booking->pickupStop?->stop_name ?? ($trip?->pickup_point ?? 'Điểm đón nhà xe'),
+                    $trip?->driver?->name ?? 'Bác tài',
+                    $trip?->driver?->phone ?? ''
+                );
+
+                // Đồng thời gọi cuộc gọi Voice OTP tới số điện thoại
+                $voiceRes = $speedSms->sendVoiceOtp($phone, '1234');
+
+                $smsOk = isset($smsRes['status']) && $smsRes['status'] === 'success';
+                $voiceOk = isset($voiceRes['status']) && $voiceRes['status'] === 'success';
+
+                if ($smsOk || $voiceOk) {
+                    $telecomSuccess = true;
+                    $telecomDetail = "Đã gửi thành công SMS viễn thông " . ($voiceOk ? "& kích hoạt cuộc gọi Voice" : "") . " tới số {$phone} qua cổng SpeedSMS";
+                } else {
+                    $telecomDetail = "SpeedSMS phản hồi: " . ($smsRes['message'] ?? 'Số dư tài khoản chưa đủ');
+                }
+            } catch (\Throwable $e) {
+                $telecomDetail = "Lỗi kết nối SpeedSMS: " . $e->getMessage();
+                Log::warning("[AI_CALL_SPEEDSMS_ERR] " . $e->getMessage());
+            }
+        }
+
         // 1. Thử gọi qua Twilio Voice API nếu có cấu hình
         $twilioSid   = env('TWILIO_ACCOUNT_SID');
         $twilioToken = env('TWILIO_AUTH_TOKEN');
