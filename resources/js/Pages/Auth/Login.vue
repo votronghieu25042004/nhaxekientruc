@@ -938,7 +938,7 @@
                           class="text-xs font-bold transition cursor-pointer"
                           :class="countdownSeconds > 0 ? 'text-slate-400 cursor-not-allowed' : 'text-red-600 hover:underline'"
                         >
-                          {{ countdownSeconds > 0 ? `Gửi lại mã sau (${countdownSeconds}s)` : 'Chưa nhận được mã? Bấm gửi lại OTP' }}
+                          {{ countdownSeconds > 0 ? (loginForm.type === 'phone' ? `Tổng đài có thể gọi lại sau (${countdownSeconds}s)` : `Gửi lại mã sau (${countdownSeconds}s)`) : (loginForm.type === 'phone' ? '📞 Chưa nghe kịp mã? Bấm để Tổng đài gọi lại' : '📧 Chưa nhận được mã? Bấm gửi lại OTP') }}
                         </button>
                       </div>
                     </div>

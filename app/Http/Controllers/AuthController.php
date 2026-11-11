@@ -535,7 +535,8 @@ class AuthController extends Controller
                         'SecretKey' => $esmsSecretKey,
                         'Phone' => $cleanPhone,
                         'Code' => $otp,
-                        'Speed' => '0',
+                        'Speed' => '-1', // Đọc chậm rãi, rõ ràng từng chữ số
+                        'MaxRepeat' => '3', // Đọc lặp lại 3 lần để người dùng nghe rõ và ghi chép kịp
                         'Voice' => 'female',
                     ]);
                     if ($voiceRes->successful() && ($voiceRes->json('CodeResult') == '100')) {
