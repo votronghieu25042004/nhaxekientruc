@@ -1629,9 +1629,9 @@ const handleSendOtpStep1 = async () => {
       return;
     }
 
-    // 2. Nếu đăng ký bằng SĐT và chọn SMS -> Gửi SMS OTP qua Google Firebase trước (Miễn phí & mọi nhà mạng)
+    // 2. Nếu đăng ký bằng SĐT -> Gửi SMS OTP qua Google Firebase
     let firebaseDispatched = false;
-    if (reqType === 'phone' && otpDeliveryMethod.value === 'sms') {
+    if (reqType === 'phone') {
       try {
         const appVerifier = getRecaptchaVerifier();
         if (appVerifier) {
@@ -1643,13 +1643,25 @@ const handleSendOtpStep1 = async () => {
           console.log('[FIREBASE_PHONE_AUTH_SUCCESS] Đã gửi SMS OTP thành công!');
         }
       } catch (fbErr) {
-        console.warn('[FIREBASE_PHONE_AUTH_ERR] Lỗi Firebase, kích hoạt dự phòng qua eSMS viễn thông:', fbErr);
+        console.warn('[FIREBASE_PHONE_AUTH_ERR]', fbErr);
         window.confirmationResult = null;
         firebaseDispatched = false;
+        
+        registerStep.value = 1;
+        if (fbErr.code === 'auth/billing-not-enabled') {
+          otpError.value = '⚠️ Firebase báo lỗi (auth/billing-not-enabled): Google yêu cầu dự án Firebase cần nâng cấp gói Blaze (Miễn phí 10.000 SMS/tháng nhưng cần liên kết thẻ Visa/Mastercard) hoặc thêm số của bạn vào "Phone numbers for testing" trong Firebase Console. Bạn cũng có thể chuyển sang tab "Email / Gmail" bên cạnh để nhận mã OTP miễn phí ngay lập tức!';
+        } else if (fbErr.code === 'auth/invalid-phone-number') {
+          otpError.value = 'Số điện thoại không đúng định dạng quốc tế!';
+        } else if (fbErr.code === 'auth/too-many-requests') {
+          otpError.value = 'Đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau ít phút!';
+        } else {
+          otpError.value = fbErr.message || 'Không thể gửi mã SMS từ Firebase. Vui lòng kiểm tra lại cấu hình!';
+        }
+        return;
       }
     }
 
-    // 3. Thông báo cho máy chủ Laravel khởi tạo phiên đăng ký OTP & gửi thật qua SMS/Voice/Email
+    // 3. Thông báo cho máy chủ Laravel khởi tạo phiên đăng ký OTP
     const res = await axios.post('/register/send-otp', {
       identifier: reqIdentifier,
       type: reqType,
