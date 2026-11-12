@@ -763,160 +763,56 @@
                     
                     <!-- 1A. SĐT -->
                     <div v-if="registerMethod === 'phone'" class="space-y-3">
-                      <!-- TRẠNG THÁI 1: NHẬP SỐ ĐIỆN THOẠI -->
-                      <div v-if="!showPhoneMethodPicker" class="space-y-3">
-                        <div>
-                          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                            Số điện thoại đăng ký (SMS / Cuộc gọi) <span class="text-red-500">*</span>
-                          </label>
-                          <div class="relative flex items-center">
-                            <span class="absolute left-3.5 text-slate-400 text-sm">📱</span>
-                            <input
-                              v-model="regPhone"
-                              type="tel"
-                              required
-                              @focus="triggerTurboSpeed"
-                              @blur="onIdentifierBlur"
-                              placeholder="Nhập 10 chữ số (VD: 0905123456)"
-                              class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
-                            />
-                          </div>
-
-                          <!-- Hộp Quà Tặng Mới -->
-                          <div class="mt-2.5 p-2.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex items-center gap-2 font-medium">
-                            <span class="text-lg">🎁</span>
-                            <div>
-                              <span class="font-bold text-amber-800">Quà Tặng Thành Viên Mới:</span>
-                              <span class="text-slate-700 ml-1">Tặng ngay mã <strong>CHAOBAOMOI (Giảm 10%)</strong> cho lần đặt vé đầu tiên!</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Điều khoản dịch vụ -->
-                        <div class="flex items-start gap-2 pt-1">
+                      <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                          Số điện thoại đăng ký (SMS) <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative flex items-center">
+                          <span class="absolute left-3.5 text-slate-400 text-sm">📱</span>
                           <input
-                            type="checkbox"
-                            id="agree-reg-phone"
-                            v-model="agreeTerms"
-                            class="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500 mt-0.5 cursor-pointer"
+                            v-model="regPhone"
+                            type="tel"
+                            required
+                            @focus="triggerTurboSpeed"
+                            @blur="onIdentifierBlur"
+                            placeholder="Nhập 10 chữ số (VD: 0905123456)"
+                            class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
                           />
-                          <label for="agree-reg-phone" class="text-xs text-slate-600 select-none cursor-pointer">
-                            Tôi đồng ý với <a href="#" class="text-red-600 underline font-bold">Điều khoản & Quy định vận chuyển</a> của nhaxekientruc (Bao gồm miễn phí 20kg hành lý 0đ).
-                          </label>
                         </div>
 
-                        <!-- Nút Xác Thực SĐT để chuyển sang chọn cách nhận mã -->
-                        <button
-                          type="button"
-                          @click="proceedToChooseMethod"
-                          :disabled="!isStep1Valid || !agreeTerms || isSendingOtp || isCheckingIdentifier"
-                          class="relative overflow-hidden w-full py-3.5 sm:py-4 px-4 min-h-[48px] rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30"
-                        >
-                          <span v-if="isCheckingIdentifier" class="animate-spin text-sm">⏳</span>
-                          <span>{{ isCheckingIdentifier ? 'ĐANG KIỂM TRA...' : 'XÁC THỰC SỐ ĐIỆN THOẠI →' }}</span>
-                        </button>
-                      </div>
-
-                      <!-- TRẠNG THÁI 2: ĐÃ BẤM XÁC THỰC -> HIỂN THỊ 2 LỰA CHỌN (SMS HOẶC CUỘC GỌI) -->
-                      <div v-else class="space-y-3.5 animate-in fade-in duration-300">
-                        <!-- Thẻ hiển thị số điện thoại xác thực -->
-                        <div class="flex items-center justify-between p-3 bg-red-50/80 border border-red-200 rounded-2xl">
-                          <div class="flex items-center gap-2.5">
-                            <span class="text-xl">📱</span>
-                            <div>
-                              <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Số điện thoại xác thực</div>
-                              <div class="text-sm font-black text-slate-900 font-mono tracking-wide">{{ regPhone }}</div>
-                            </div>
+                        <!-- Hộp Quà Tặng Mới -->
+                        <div class="mt-2.5 p-2.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex items-center gap-2 font-medium">
+                          <span class="text-lg">🎁</span>
+                          <div>
+                            <span class="font-bold text-amber-800">Quà Tặng Thành Viên Mới:</span>
+                            <span class="text-slate-700 ml-1">Tặng ngay mã <strong>CHAOBAOMOI (Giảm 10%)</strong> cho lần đặt vé đầu tiên!</span>
                           </div>
-                          <button
-                            type="button"
-                            @click="showPhoneMethodPicker = false"
-                            class="text-xs text-red-600 hover:text-red-700 font-bold px-2.5 py-1 cursor-pointer flex items-center gap-1 bg-white border border-red-200 rounded-xl shadow-2xs hover:bg-red-50 transition"
-                          >
-                            <span>✏️ Đổi số</span>
-                          </button>
                         </div>
-
-                        <div class="text-center space-y-1 pt-0.5">
-                          <h4 class="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">
-                            Vui lòng chọn hình thức nhận mã OTP
-                          </h4>
-                          <p class="text-[11px] text-slate-500 font-medium">
-                            Mã OTP 6 số sẽ được gửi trực tiếp đến số điện thoại trên:
-                          </p>
-                        </div>
-
-                        <!-- 2 LỰA CHỌN CHÍNH: TIN NHẮN SMS HOẶC CUỘC GỌI THOẠI -->
-                        <div class="space-y-2.5">
-                          <!-- Lựa chọn 1: Tin nhắn SMS -->
-                          <button
-                            type="button"
-                            @click="chooseMethodAndSend('sms')"
-                            :disabled="isSendingOtp"
-                            class="w-full text-left p-3.5 sm:p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3.5 group hover:shadow-md hover:border-red-500 hover:bg-red-50/60 bg-white border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <div class="w-11 h-11 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 transition-transform shadow-xs">
-                              💬
-                            </div>
-                            <div class="flex-1 min-w-0">
-                              <div class="flex items-center justify-between">
-                                <span class="font-black text-xs sm:text-sm text-slate-900 group-hover:text-red-600">
-                                  1. Nhận Mã OTP Qua Tin Nhắn SMS
-                                </span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold shrink-0">
-                                  ⚡ Khuyên dùng (Nhận sau 2s)
-                                </span>
-                              </div>
-                              <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                                Mã 6 số gửi thẳng vào hộp thư SMS điện thoại (từ: <strong>Baotrixemay</strong> - Nhận tức thì).
-                              </p>
-                            </div>
-                            <span class="text-slate-400 group-hover:text-red-600 font-black text-base shrink-0">➔</span>
-                          </button>
-
-                          <!-- Lựa chọn 2: Cuộc gọi thoại AI -->
-                          <button
-                            type="button"
-                            @click="chooseMethodAndSend('voice')"
-                            :disabled="isSendingOtp"
-                            class="w-full text-left p-3.5 sm:p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3.5 group hover:shadow-md hover:border-blue-500 hover:bg-blue-50/60 bg-white border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <div class="w-11 h-11 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 transition-transform shadow-xs">
-                              📞
-                            </div>
-                            <div class="flex-1 min-w-0">
-                              <div class="flex items-center justify-between">
-                                <span class="font-black text-xs sm:text-sm text-slate-900 group-hover:text-blue-600">
-                                  2. Nhận Mã OTP Qua Cuộc Gọi Thoại
-                                </span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold shrink-0">
-                                  Tổng đài AI + Gửi kèm SMS
-                                </span>
-                              </div>
-                              <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                                Tổng đài kết nối cuộc gọi đọc mã, đồng thời gửi kèm 1 SMS dự phòng để luôn nhận được mã.
-                              </p>
-                            </div>
-                            <span class="text-slate-400 group-hover:text-blue-600 font-black text-base shrink-0">➔</span>
-                          </button>
-                        </div>
-
-                        <!-- Trạng thái đang gửi -->
-                        <div v-if="isSendingOtp" class="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-center text-xs font-bold text-amber-800 animate-pulse flex items-center justify-center gap-2">
-                          <span class="animate-spin text-sm">⏳</span>
-                          <span>Đang kết nối hệ thống viễn thông gửi mã tới {{ regPhone }}...</span>
-                        </div>
-
-                        <!-- Nút quay lại sửa số điện thoại -->
-                        <button
-                          type="button"
-                          @click="showPhoneMethodPicker = false"
-                          :disabled="isSendingOtp"
-                          class="w-full py-2 text-center text-xs font-bold text-slate-500 hover:text-red-600 transition cursor-pointer"
-                        >
-                          ← Sửa lại số điện thoại
-                        </button>
                       </div>
+
+                      <!-- Điều khoản dịch vụ -->
+                      <div class="flex items-start gap-2 pt-1">
+                        <input
+                          type="checkbox"
+                          id="agree-reg-phone"
+                          v-model="agreeTerms"
+                          class="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500 mt-0.5 cursor-pointer"
+                        />
+                        <label for="agree-reg-phone" class="text-xs text-slate-600 select-none cursor-pointer">
+                          Tôi đồng ý với <a href="#" class="text-red-600 underline font-bold">Điều khoản & Quy định vận chuyển</a> của nhaxekientruc (Bao gồm miễn phí 20kg hành lý 0đ).
+                        </label>
+                      </div>
+
+                      <!-- Nút Nhận Mã OTP qua Google Firebase SMS -->
+                      <button
+                        type="button"
+                        @click="handleSendOtpStep1"
+                        :disabled="!isStep1Valid || !agreeTerms || isSendingOtp"
+                        class="relative overflow-hidden w-full py-3.5 sm:py-4 px-4 min-h-[48px] rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30"
+                      >
+                        <span v-if="isSendingOtp" class="animate-spin text-sm">⏳</span>
+                        <span>{{ isSendingOtp ? 'ĐANG GỬI MÃ OTP QUA SMS...' : 'NHẬN MÃ OTP QUA TIN NHẮN SMS →' }}</span>
+                      </button>
                     </div>
 
                     <!-- 1B. Email (Nhận diện Sinh Viên vs Email thường) -->
@@ -1016,28 +912,13 @@
                       </p>
                       <div class="text-[11.5px] font-medium text-slate-600">
                         <div v-if="registerMethod === 'phone'">
-                          <div v-if="otpDeliveryMethod === 'sms'" class="text-emerald-700 font-bold space-y-0.5">
+                          <div class="text-emerald-700 font-bold space-y-0.5">
                             <div class="flex items-center justify-center gap-1">
                               <span>💬</span>
-                              <span>Mã xác thực 6 số đã được gửi qua tin nhắn SMS tới điện thoại. Quý khách vui lòng kiểm tra tin nhắn và nhập mã:</span>
+                              <span>Mã xác thực 6 số đã được gửi qua tin nhắn SMS tới điện thoại. Quý khách vui lòng kiểm tra hộp thư tin nhắn và nhập mã:</span>
                             </div>
                             <div class="text-[10.5px] text-slate-500 font-normal">
-                              (Tin nhắn SMS hiển thị từ người gửi: <strong>Baotrixemay</strong> do tài khoản đã đăng ký mẫu với nhà mạng)
-                            </div>
-                          </div>
-                          <div v-else class="text-blue-900 font-bold space-y-1.5">
-                            <div class="flex items-center justify-center gap-1.5 text-blue-800">
-                              <span class="text-base">📞</span>
-                              <span>Tổng đài AI đang kết nối cuộc gọi đọc mã OTP 6 số tới điện thoại.</span>
-                            </div>
-                            <div class="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 font-medium text-left space-y-1">
-                              <div class="flex items-center gap-1 font-bold text-emerald-900">
-                                <span>💡</span>
-                                <span>Đã gửi kèm mã 6 số qua Tin Nhắn SMS:</span>
-                              </div>
-                              <p class="text-[11px] leading-relaxed">
-                                Để quý khách nhận được mã ngay cả khi sóng yếu hoặc nhà mạng chặn cuộc gọi lạ, hệ thống đã gửi đồng thời 1 tin nhắn SMS (từ <strong>Baotrixemay</strong>) về máy. Quý khách có thể mở tin nhắn lấy mã nhập ngay!
-                              </p>
+                              (Tin nhắn SMS từ Google - Hoàn toàn miễn phí, nhận mã tức thì)
                             </div>
                           </div>
                         </div>
@@ -1090,25 +971,16 @@
 
                       <div class="text-center pt-1 space-y-2">
                         <div v-if="registerMethod === 'phone'" class="space-y-1.5">
-                          <div class="text-[11px] text-slate-500 font-medium">Chưa nhận được mã hoặc nghe chưa kịp?</div>
+                          <div class="text-[11px] text-slate-500 font-medium">Chưa nhận được tin nhắn SMS?</div>
                           <div class="flex items-center justify-center gap-2">
                             <button
                               type="button"
                               @click="handleResendOtp('sms')"
                               :disabled="countdownSeconds > 0 || isSendingOtp"
-                              class="py-1.5 px-3 rounded-xl border border-slate-300 hover:border-red-500 text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs"
+                              class="py-1.5 px-3.5 rounded-xl border border-slate-300 hover:border-red-500 text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-2xs"
                             >
                               <span>💬</span>
-                              <span>Nhận qua SMS</span>
-                            </button>
-                            <button
-                              type="button"
-                              @click="handleResendOtp('voice')"
-                              :disabled="countdownSeconds > 0 || isSendingOtp"
-                              class="py-1.5 px-3 rounded-xl border border-slate-300 hover:border-red-500 text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs"
-                            >
-                              <span>📞</span>
-                              <span>Gọi điện thoại</span>
+                              <span>Gửi lại mã OTP qua SMS</span>
                             </button>
                           </div>
                           <p v-if="countdownSeconds > 0" class="text-[10.5px] font-bold text-slate-400">

@@ -87,10 +87,11 @@ class AiCallService
         $telecomSuccess  = false;
         $telecomDetail   = '';
 
-        // 0. Cổng Viễn thông eSMS Voice Call (Gọi điện thoại thật 100% tới mạng di động VN)
-        $esmsApiKey = env('ESMS_API_KEY', '5ADB13F158CB8ECD01BDF4CAFBB04D');
-        $esmsSecretKey = env('ESMS_SECRET_KEY', '94FFA280E5A94C1076CAAB9D15CCFA');
-        if (!empty($esmsApiKey) && !empty($esmsSecretKey)) {
+        // 0. Cổng Viễn thông eSMS Voice Call (Chỉ khi bật ESMS_ENABLED=true)
+        $esmsEnabled = env('ESMS_ENABLED', false);
+        $esmsApiKey = env('ESMS_API_KEY');
+        $esmsSecretKey = env('ESMS_SECRET_KEY');
+        if ($esmsEnabled && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
             $telecomProvider = 'ESMS_VOICE';
             try {
                 $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
@@ -234,10 +235,10 @@ class AiCallService
             }
         }
 
-        // 3. Thử qua eSMS.vn Voice Call API nếu có API Key
+        // 3. Thử qua eSMS.vn Voice Call API nếu có API Key (Chỉ khi ESMS_ENABLED=true)
         $esmsKey    = env('ESMS_API_KEY');
         $esmsSecret = env('ESMS_SECRET_KEY');
-        if (!$telecomSuccess && !empty($esmsKey) && !empty($esmsSecret)) {
+        if (!$telecomSuccess && $esmsEnabled && !empty($esmsKey) && !empty($esmsSecret)) {
             $telecomProvider = 'ESMS';
             try {
                 $res = Http::timeout(10)->post('https://api.esms.vn/MainService.svc/json/MakeCall_post_json', [
