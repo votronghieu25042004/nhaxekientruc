@@ -44,35 +44,10 @@ class SendDepartureReminders extends Command
             $routeName = $trip->route?->name ?? 'Tuyến đường';
 
             foreach ($validBookings as $b) {
-                $recipient = $b->customer_email ?: ($b->user?->email ?: null);
-                if ($recipient && filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
-                    try {
-                        $seatCodes = $b->bookingSeats->pluck('seat_number')->join(', ') ?: ($b->seat_code ?: 'Ghế');
-                        $pickupName = $b->pickupStop?->stop_name ?? ($trip->pickup_point ?? 'Bến xe Trung tâm Đà Nẵng');
-
-                        Mail::send('emails.departure_reminder_45m', [
-                            'customerName' => $b->customer_name ?: 'Quý Khách',
-                            'tripCode' => $trip->trip_code,
-                            'routeName' => $routeName,
-                            'departureTime' => $depDate,
-                            'busPlate' => $plate,
-                            'busType' => $busType,
-                            'driverName' => $driverName,
-                            'driverPhone' => $driverPhone,
-                            'pickupStop' => $pickupName,
-                            'seatNumbers' => $seatCodes,
-                            'bookingCode' => $b->booking_code,
-                            'ticketUrl' => url('/booking/' . $b->booking_code),
-                        ], function ($message) use ($recipient, $trip, $routeName) {
-                            $message->to($recipient)
-                                    ->subject("⏰ [BusHub] Nhắc nhở xuất bến trước 45 phút - Chuyến {$trip->trip_code} ({$routeName})");
-                        });
-
-                        Log::info("🔔 [AUTO-REMINDER 45P] Đã gửi email nhắc nhở cho khách {$b->customer_name} ({$recipient}) - Vé {$b->booking_code}");
-                        $totalSent++;
-                    } catch (\Throwable $e) {
-                        Log::warning("Lỗi gửi email reminder trong command cho {$recipient}: " . $e->getMessage());
-                    }
+                $sent = \App\Services\EmailService::sendDepartureReminder($b);
+                if ($sent) {
+                    Log::info("🔔 [AUTO-REMINDER 45P] Đã gửi email nhắc nhở cho khách {$b->customer_name} - Vé {$b->booking_code}");
+                    $totalSent++;
                 }
             }
         }

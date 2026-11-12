@@ -958,14 +958,37 @@ const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currenc
                             </div>
 
                             <!-- Footer Card Actions -->
-                            <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+                            <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
                                 <button 
                                     @click="openSeatMapModal(t)"
-                                    class="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs transition cursor-pointer text-center shadow-xs flex items-center justify-center gap-1.5"
+                                    class="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs transition cursor-pointer text-center shadow-xs flex items-center justify-center gap-1.5"
                                 >
                                     <span>💺</span>
-                                    <span>Xem Sơ Đồ 30 Ghế</span>
+                                    <span>Sơ Đồ Ghế</span>
                                 </button>
+                                <template v-if="!['COMPLETED', 'ARRIVED', 'CLOSED'].includes(t.status)">
+                                    <button 
+                                        @click="sendReminderForTrip(t)"
+                                        class="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs transition cursor-pointer"
+                                        title="Gửi email nhắc 45P cho chuyến xe này"
+                                    >
+                                        🔔
+                                    </button>
+                                    <button 
+                                        @click="openIncidentModal(t)"
+                                        class="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs transition cursor-pointer"
+                                        title="Báo sự cố dời giờ chạy"
+                                    >
+                                        ⚠️
+                                    </button>
+                                    <button 
+                                        @click="openPriceModal(t)"
+                                        class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
+                                        title="Chỉnh sửa giá vé"
+                                    >
+                                        ✏️
+                                    </button>
+                                </template>
                             </div>
                         </div>
                     </div>

@@ -19,7 +19,7 @@ class SeatSegmentService
     {
         $occupiedSeats = BookingSeat::where('trip_id', $tripId)
             ->whereHas('booking', function ($query) {
-                $query->whereNotIn('checkin_status', ['CANCELLED'])
+                $query->whereNotIn('checkin_status', ['CANCELLED', 'NO_SHOW'])
                       ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
             })
             ->pluck('seat_number')
@@ -30,7 +30,7 @@ class SeatSegmentService
 
     /**
      * Lấy danh sách các ghế bị trùng/chiếm trên đoạn đường từ pickupOrder đến dropoffOrder
-     * Bỏ qua các vé đã bị Hủy hoặc Hoàn tiền (CANCELLED, REFUNDED)
+     * Bỏ qua các vé đã bị Hủy hoặc Hoàn tiền (CANCELLED, REFUNDED) hoặc Bỏ chuyến (NO_SHOW)
      */
     public static function getOccupiedSeats(int $tripId, int $pickupOrder, int $dropoffOrder): array
     {
@@ -40,7 +40,7 @@ class SeatSegmentService
 
         $occupiedSeats = BookingSeat::where('trip_id', $tripId)
             ->whereHas('booking', function ($query) {
-                $query->whereNotIn('checkin_status', ['CANCELLED'])
+                $query->whereNotIn('checkin_status', ['CANCELLED', 'NO_SHOW'])
                       ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
             })
             ->where(function ($query) use ($pickupOrder, $dropoffOrder) {

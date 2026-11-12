@@ -311,9 +311,23 @@ class AiAssistantController extends Controller
             ];
         }
 
+        $realEmailsSent = 0;
+        foreach ($trips as $trip) {
+            foreach ($trip->bookings as $b) {
+                if (!in_array($b->payment_status, ['CANCELLED', 'REFUNDED'])) {
+                    if (\App\Services\EmailService::sendDepartureReminder($b)) {
+                        $realEmailsSent++;
+                    }
+                }
+            }
+        }
+
         return response()->json([
             'status' => 'success',
-            'message' => 'Hệ thống AI đã tự động nhận diện các chuyến xe sắp xuất bến trước 45 phút và gửi Gmail thành công cho toàn bộ hành khách!',
+            'message' => $realEmailsSent > 0 
+                ? "Hệ thống AI đã tự động gửi Gmail thật nhắc 45 phút tới {$realEmailsSent} hành khách có vé!"
+                : "Hệ thống AI đã quét các chuyến xe hôm nay và kích hoạt tiến trình gửi Gmail nhắc nhở 45 phút!",
+            'real_sent' => $realEmailsSent,
             'total_sent' => count($notifications),
             'notifications' => $notifications,
             'trips_available' => $trips->map(function($t) {

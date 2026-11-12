@@ -717,7 +717,7 @@ class TripController extends Controller
             if (!$isStudent) {
                 return back()->withErrors(['voucher' => 'Mã giảm giá 100% (SINHVIEN0DONG) chỉ dành riêng cho sinh viên có email trường (.edu.vn)!']);
             }
-            if (count($seatIds) > 1) {
+            if ($totalSeatCount > 1) {
                 return back()->withErrors(['voucher' => 'Mã vé 0-Đồng sinh viên (SINHVIEN0DONG) chỉ áp dụng tối đa cho đúng 1 ghế cho mỗi sinh viên. Quý khách vui lòng chọn đúng 1 ghế!']);
             }
             if ($userId) {
