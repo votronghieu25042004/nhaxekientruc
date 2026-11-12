@@ -1721,7 +1721,7 @@ class AdminController extends Controller
         if (!empty($callRes['telecom_detail'])) {
             $msg .= " (" . $callRes['telecom_detail'] . ")";
         } elseif (!($callRes['telecom_success'] ?? false)) {
-            $msg .= " [Lưu ý viễn thông]: Để điện thoại thật {$booking->customer_phone} đổ chuông ngoài đời thực, máy chủ cần kết nối API Tổng đài viễn thông (Twilio / Stringee / eSMS) trong file .env.";
+            $msg .= " [Lưu ý viễn thông]: Để điện thoại thật {$booking->customer_phone} đổ chuông ngoài đời thực, máy chủ cần kích hoạt cổng viễn thông eSMS trong file .env.";
         }
 
         return response()->json([

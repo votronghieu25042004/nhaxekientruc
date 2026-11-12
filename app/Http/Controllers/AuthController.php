@@ -551,22 +551,15 @@ class AuthController extends Controller
             $znsEnabled = env('ZALO_ZNS_ENABLED', false);
             $zaloAccessToken = env('ZALO_ACCESS_TOKEN');
             $zaloTemplateId = env('ZALO_TEMPLATE_ID');
-            $esmsEnabled = env('ESMS_ENABLED', false); // ĐÃ TẮT: Dừng toàn bộ eSMS để không trừ tiền tài khoản SMS
-            $esmsApiKey = env('ESMS_API_KEY');
-            $esmsSecretKey = env('ESMS_SECRET_KEY');
+            $esmsEnabled = env('ESMS_ENABLED', true); // KÍCH HOẠT CỔNG ESMS (Brandname Baotrixemay & Voice OTP)
+            $esmsApiKey = env('ESMS_API_KEY', '5ADB13F158CB8ECD01BDF4CAFBB04D');
+            $esmsSecretKey = env('ESMS_SECRET_KEY', '94FFA280E5A94C1076CAAB9D15CCFA');
 
             $method = strtolower($request->input('method', 'sms'));
             $cleanPhone = preg_replace('/[^0-9]/', '', $identifier);
-            $skipTelecom = $request->boolean('skip_telecom');
 
-            if ($skipTelecom) {
-                $znsSentReal = true;
-                $otpMessage = "Mã xác thực OTP đã được Google gửi qua tin nhắn SMS tới số {$identifier}. Quý khách vui lòng kiểm tra hộp thư tin nhắn!";
-                Log::info("[FIREBASE_SMS_DISPATCHED] Bỏ qua cổng viễn thông vì mã đã được Google gửi qua SMS tới {$identifier}");
-            }
-
-            // 0A. Nhánh 1: Cuộc gọi thoại Voice OTP (Chỉ chạy khi bật ESMS_ENABLED=true)
-            if (!$skipTelecom && $esmsEnabled && $method === 'voice' && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
+            // 0A. Nhánh 1: Cuộc gọi thoại Voice OTP thật (Khi người dùng chọn Cuộc gọi)
+            if ($esmsEnabled && $method === 'voice' && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
                     $voiceUrl = "http://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
                     $voiceRes = \Illuminate\Support\Facades\Http::timeout(12)
@@ -582,7 +575,7 @@ class AuthController extends Controller
                         ]);
                     if ($voiceRes->successful() && ($voiceRes->json('CodeResult') == '100')) {
                         $znsSentReal = true;
-                        $otpMessage = "Tổng đài AI đang kết nối cuộc gọi đọc mã OTP 6 số tới {$identifier}.";
+                        $otpMessage = "Tổng đài AI đang kết nối cuộc gọi đọc mã OTP 6 số tới {$identifier}. Hệ thống cũng đã gửi kèm tin nhắn SMS (từ Baotrixemay) để bạn thuận tiện nhận mã ngay!";
                         Log::info("[ESMS_VOICE_OTP_SUCCESS] Cuộc gọi Voice OTP thành công tới {$cleanPhone}, OTP: {$otp}");
                     } else {
                         Log::warning("[ESMS_VOICE_OTP_FAIL] eSMS Voice phản hồi: " . $voiceRes->body());
@@ -591,7 +584,7 @@ class AuthController extends Controller
                     Log::warning("[ESMS_VOICE_OTP_ERR] Lỗi gọi eSMS Voice: " . $ve->getMessage());
                 }
 
-                // Gửi kèm ngay 1 tin nhắn SMS viễn thông chuẩn để người dùng luôn nhận được mã
+                // Gửi kèm ngay 1 tin nhắn SMS viễn thông Brandname Baotrixemay để người dùng luôn nhận được mã
                 try {
                     $smsUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
                     $smsRes = \Illuminate\Support\Facades\Http::timeout(10)->post($smsUrl, [
@@ -613,7 +606,7 @@ class AuthController extends Controller
                 } catch (\Throwable $se) {}
             }
 
-            // 0B. Nhánh 2: Gửi qua Tin nhắn SMS Viễn thông eSMS (Chỉ chạy khi bật ESMS_ENABLED=true)
+            // 0B. Nhánh 2: Gửi qua Tin nhắn SMS Viễn thông thật 100% (Brandname Baotrixemay)
             if (!$znsSentReal && $esmsEnabled && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
                     $smsUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
@@ -638,7 +631,7 @@ class AuthController extends Controller
                 }
             }
 
-            // 0C. Fallback Cuộc gọi thoại nếu người dùng chọn SMS mà SMS viễn thông lỗi (Chỉ chạy khi bật ESMS_ENABLED=true)
+            // 0C. Fallback Cuộc gọi thoại nếu người dùng chọn SMS mà SMS viễn thông lỗi
             if (!$znsSentReal && $esmsEnabled && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
                     $voiceUrl = "http://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
@@ -663,51 +656,6 @@ class AuthController extends Controller
                 }
             }
 
-            // 0b. Gửi qua Cổng Viễn Thông Twilio SMS (Tin nhắn thật quốc tế & Việt Nam)
-            $twilioSid   = env('TWILIO_ACCOUNT_SID');
-            $twilioToken = env('TWILIO_AUTH_TOKEN');
-            $twilioFrom  = env('TWILIO_PHONE_NUMBER');
-            if (!$znsSentReal && !empty($twilioSid) && !empty($twilioToken) && !empty($twilioFrom)) {
-                $phoneE164 = '+84' . ltrim($identifier, '0');
-                try {
-                    $twilioRes = \Illuminate\Support\Facades\Http::withBasicAuth($twilioSid, $twilioToken)
-                        ->asForm()
-                        ->timeout(8)
-                        ->post("https://api.twilio.com/2010-04-01/Accounts/{$twilioSid}/Messages.json", [
-                            'To' => $phoneE164,
-                            'From' => $twilioFrom,
-                            'Body' => "[nhaxekientruc] Ma xac thuc OTP dang ky cua ban la: {$otp}",
-                        ]);
-                    if ($twilioRes->successful()) {
-                        $znsSentReal = true;
-                        $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp qua tin nhắn SMS tới số điện thoại {$identifier}!";
-                        Log::info("[TWILIO_OTP_SUCCESS] Đã gửi tin nhắn SMS thật tới {$phoneE164}");
-                    } else {
-                        Log::warning("[TWILIO_OTP_FAIL] Twilio phản hồi: " . $twilioRes->body());
-                    }
-                } catch (\Throwable $te) {
-                    Log::warning("[TWILIO_OTP_ERR] Lỗi Twilio: " . $te->getMessage());
-                }
-            }
-
-            // 1. Gửi qua Cổng SpeedSMS.vn (Tin nhắn SMS viễn thông thật đến Viettel/Vina/Mobi)
-            $speedSmsToken = env('SPEEDSMS_ACCESS_TOKEN');
-            if (!empty($speedSmsToken)) {
-                try {
-                    $speedSms = new \App\Services\SpeedSmsService($speedSmsToken);
-                    $smsRes = $speedSms->sendOtpSms($identifier, $otp);
-                    if (isset($smsRes['status']) && $smsRes['status'] === 'success') {
-                        $znsSentReal = true;
-                        $otpMessage = "Mã xác thực OTP đã được gửi trực tiếp qua tin nhắn SMS tới số điện thoại {$identifier}!";
-                        Log::info("[SPEEDSMS_OTP_SUCCESS] Gửi tin nhắn SMS thành công tới SĐT {$identifier}");
-                    } else {
-                        Log::warning("[SPEEDSMS_OTP_FAIL] SpeedSMS phản hồi: " . json_encode($smsRes, JSON_UNESCAPED_UNICODE));
-                        $otpMessage = "Mã xác thực OTP đã được gửi tới số {$identifier}!";
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning("[SPEEDSMS_OTP_ERR] Lỗi kết nối SpeedSMS: " . $e->getMessage());
-                }
-            }
 
             // 2. Thử gửi qua Zalo OpenAPI (Zalo ZNS chính thức của VNG) nếu có cấu hình
             if (!$znsSentReal && $znsEnabled && !empty($zaloAccessToken) && !empty($zaloTemplateId)) {
@@ -1140,9 +1088,9 @@ class AuthController extends Controller
             \Illuminate\Support\Facades\Cache::put("profile_otp_{$cleanPhone}", $otp, now()->addMinutes(15));
 
             $method = strtolower($request->input('method', 'sms'));
-            $esmsEnabled = env('ESMS_ENABLED', false); // ĐÃ TẮT: Dừng toàn bộ eSMS để không trừ tiền tài khoản
-            $esmsApiKey = env('ESMS_API_KEY');
-            $esmsSecretKey = env('ESMS_SECRET_KEY');
+            $esmsEnabled = env('ESMS_ENABLED', true);
+            $esmsApiKey = env('ESMS_API_KEY', '5ADB13F158CB8ECD01BDF4CAFBB04D');
+            $esmsSecretKey = env('ESMS_SECRET_KEY', '94FFA280E5A94C1076CAAB9D15CCFA');
             $phoneSent = false;
 
             // 1. Nếu người dùng chọn Voice Call (Chỉ khi bật ESMS_ENABLED=true)

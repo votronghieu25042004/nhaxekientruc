@@ -59,10 +59,8 @@ class AiCallService
     /**
      * Thực hiện cuộc gọi nhắc nhở AI tới khách hàng
      * Hỗ trợ tích hợp:
-     * 1. Twilio Voice API (Gọi quốc tế E.164 tới số di động Việt Nam)
-     * 2. Stringee Voice API (Cổng gọi thoại hàng đầu Việt Nam)
-     * 3. eSMS.vn Voice Call OTP / Voice Campaign
-     * 4. Webhook tổng đài trung gian / Android Call Gateway
+     * 1. eSMS.vn Voice Call OTP & Brandname SMS Baotrixemay
+     * 2. Webhook tổng đài trung gian / Android Call Gateway
      *
      * @param Booking $booking
      * @param string $sentBy 'auto' (cron) hoặc 'manual' (admin bấm tay)
@@ -87,15 +85,15 @@ class AiCallService
         $telecomSuccess  = false;
         $telecomDetail   = '';
 
-        // 0. Cổng Viễn thông eSMS Voice Call (Chỉ khi bật ESMS_ENABLED=true)
-        $esmsEnabled = env('ESMS_ENABLED', false);
-        $esmsApiKey = env('ESMS_API_KEY');
-        $esmsSecretKey = env('ESMS_SECRET_KEY');
+        // 1. Cổng Viễn thông eSMS Voice Call & Brandname SMS Baotrixemay
+        $esmsEnabled = env('ESMS_ENABLED', true);
+        $esmsApiKey = env('ESMS_API_KEY', '5ADB13F158CB8ECD01BDF4CAFBB04D');
+        $esmsSecretKey = env('ESMS_SECRET_KEY', '94FFA280E5A94C1076CAAB9D15CCFA');
         if ($esmsEnabled && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
             $telecomProvider = 'ESMS_VOICE';
             try {
                 $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
-                // Tạo mã thông báo vé 6 chữ số
+                // Lấy mã số vé hoặc 4 số cuối số điện thoại
                 $ticketCode = preg_replace('/[^0-9]/', '', $booking->booking_code ?? '1234');
                 if (strlen($ticketCode) < 4) { $ticketCode = '1234'; }
                 $ticketCode = substr($ticketCode, 0, 6);
@@ -106,7 +104,7 @@ class AiCallService
                     'SecretKey' => $esmsSecretKey,
                     'Phone' => $cleanPhone,
                     'Code' => $ticketCode,
-                    'Speed' => '0',
+                    'Speed' => '-1',
                     'Voice' => 'female',
                 ]);
                 if ($res->successful() && ($res->json('CodeResult') == '100')) {
@@ -120,142 +118,25 @@ class AiCallService
                 $telecomDetail = "Lỗi kết nối eSMS Voice: " . $ee->getMessage();
                 Log::warning("[AI_CALL_ESMS_ERR] " . $ee->getMessage());
             }
-        }
 
-        // 0b. Cổng Viễn thông SpeedSMS.vn (Gửi SMS thật & Gọi điện Voice Call tới mạng di động VN)
-        $speedSmsToken = env('SPEEDSMS_ACCESS_TOKEN');
-        if (!$telecomSuccess && !empty($speedSmsToken)) {
-            $telecomProvider = 'SPEEDSMS';
+            // Gửi tin nhắn SMS viễn thông Brandname Baotrixemay đồng thời
             try {
-                $speedSms = new \App\Services\SpeedSmsService($speedSmsToken);
-                $trip = $booking->trip;
-                
-                // Gửi tin nhắn SMS viễn thông nhắc xe
-                $smsRes = $speedSms->sendTripReminderSms(
-                    $phone,
-                    $booking->customer_name ?? 'Quý khách',
-                    $trip?->route?->name ?? 'Liên tỉnh',
-                    $trip?->bus?->license_plate ?? 'Xe chất lượng cao',
-                    $trip?->departure_time ? Carbon::parse($trip->departure_time)->format('H:i d/m/Y') : 'sắp tới',
-                    $booking->pickupStop?->stop_name ?? ($trip?->pickup_point ?? 'Điểm đón nhà xe'),
-                    $trip?->driver?->name ?? 'Bác tài',
-                    $trip?->driver?->phone ?? ''
-                );
+                $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+                $ticketCode = preg_replace('/[^0-9]/', '', $booking->booking_code ?? '1234');
+                if (strlen($ticketCode) < 4) { $ticketCode = '1234'; }
+                $ticketCode = substr($ticketCode, 0, 6);
 
-                // Đồng thời gọi cuộc gọi Voice OTP tới số điện thoại
-                $voiceRes = $speedSms->sendVoiceOtp($phone, '1234');
-
-                $smsOk = isset($smsRes['status']) && $smsRes['status'] === 'success';
-                $voiceOk = isset($voiceRes['status']) && $voiceRes['status'] === 'success';
-
-                if ($smsOk || $voiceOk) {
-                    $telecomSuccess = true;
-                    $telecomDetail = "Đã gửi thành công SMS viễn thông " . ($voiceOk ? "& kích hoạt cuộc gọi Voice" : "") . " tới số {$phone} qua cổng SpeedSMS";
-                } else {
-                    $telecomDetail = "SpeedSMS phản hồi: " . ($smsRes['message'] ?? 'Số dư tài khoản chưa đủ');
-                }
-            } catch (\Throwable $e) {
-                $telecomDetail = "Lỗi kết nối SpeedSMS: " . $e->getMessage();
-                Log::warning("[AI_CALL_SPEEDSMS_ERR] " . $e->getMessage());
-            }
-        }
-
-        // 1. Thử gọi qua Twilio Voice API nếu có cấu hình
-        $twilioSid   = env('TWILIO_ACCOUNT_SID');
-        $twilioToken = env('TWILIO_AUTH_TOKEN');
-        $twilioFrom  = env('TWILIO_PHONE_NUMBER');
-
-        if (!empty($twilioSid) && !empty($twilioToken) && !empty($twilioFrom)) {
-            $telecomProvider = 'TWILIO';
-            try {
-                $twiml = '<Response><Say voice="Polly.Thoai-Neural" language="vi-VN">' . htmlspecialchars($script) . '</Say></Response>';
-                $res = Http::withBasicAuth($twilioSid, $twilioToken)
-                    ->asForm()
-                    ->timeout(10)
-                    ->post("https://api.twilio.com/2010-04-01/Accounts/{$twilioSid}/Calls.json", [
-                        'To'    => $phoneE164,
-                        'From'  => $twilioFrom,
-                        'Twiml' => $twiml,
-                    ]);
-
-                if ($res->successful()) {
-                    $telecomSuccess = true;
-                    $telecomDetail  = "Đã gửi lệnh gọi ra mạng di động qua Twilio Voice (Call SID: " . ($res->json('sid') ?? 'OK') . ")";
-                } else {
-                    $telecomDetail = "Twilio phản hồi lỗi: " . $res->body();
-                    Log::warning("[AI_CALL_TWILIO] " . $telecomDetail);
-                }
-            } catch (\Throwable $e) {
-                $telecomDetail = "Lỗi kết nối Twilio: " . $e->getMessage();
-                Log::warning("[AI_CALL_TWILIO_ERROR] " . $e->getMessage());
-            }
-        }
-
-        // 2. Thử gọi qua Cổng viễn thông Stringee Việt Nam nếu có cấu hình
-        if (!$telecomSuccess && !empty(env('STRINGEE_KEY_SID')) && !empty(env('STRINGEE_KEY_SECRET'))) {
-            $telecomProvider = 'STRINGEE';
-            try {
-                // Stringee callout REST API
-                $stringeeFrom = env('STRINGEE_PHONE_NUMBER', '02888888888');
-                $res = Http::timeout(10)
-                    ->withHeaders([
-                        'X-STRINGEE-AUTH' => env('STRINGEE_AUTH_TOKEN') ?? env('STRINGEE_KEY_SECRET'),
-                    ])
-                    ->post('https://api.stringee.com/v1/call/callout', [
-                        'from' => [
-                            'type'   => 'external',
-                            'number' => $stringeeFrom,
-                            'alias'  => 'nhaxekientruc'
-                        ],
-                        'to' => [
-                            [
-                                'type'   => 'external',
-                                'number' => $phone,
-                                'alias'  => $booking->customer_name
-                            ]
-                        ],
-                        'actions' => [
-                            [
-                                'action' => 'talk',
-                                'text'   => $script,
-                                'voice'  => 'hn_female_thutrang_phrase_48k-fhq',
-                                'speed'  => 0
-                            ]
-                        ]
-                    ]);
-
-                if ($res->successful() && ($res->json('r') === 0 || $res->json('call_id'))) {
-                    $telecomSuccess = true;
-                    $telecomDetail  = "Đã gọi thành công qua tổng đài Stringee Việt Nam (Call ID: " . ($res->json('call_id') ?? 'OK') . ")";
-                } else {
-                    $telecomDetail = "Stringee phản hồi: " . $res->body();
-                }
-            } catch (\Throwable $e) {
-                $telecomDetail = "Lỗi kết nối Stringee: " . $e->getMessage();
-            }
-        }
-
-        // 3. Thử qua eSMS.vn Voice Call API nếu có API Key (Chỉ khi ESMS_ENABLED=true)
-        $esmsKey    = env('ESMS_API_KEY');
-        $esmsSecret = env('ESMS_SECRET_KEY');
-        if (!$telecomSuccess && $esmsEnabled && !empty($esmsKey) && !empty($esmsSecret)) {
-            $telecomProvider = 'ESMS';
-            try {
-                $res = Http::timeout(10)->post('https://api.esms.vn/MainService.svc/json/MakeCall_post_json', [
-                    'ApiKey'    => $esmsKey,
-                    'SecretKey' => $esmsSecret,
-                    'Phone'     => $phone,
-                    'Content'   => $script,
+                $smsUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
+                Http::timeout(8)->post($smsUrl, [
+                    'ApiKey' => $esmsApiKey,
+                    'SecretKey' => $esmsSecretKey,
+                    'Phone' => $cleanPhone,
+                    'Content' => "{$ticketCode} la ma xac minh dang ky Baotrixemay cua ban",
+                    'Brandname' => 'Baotrixemay',
+                    'SmsType' => '2',
+                    'IsUnicode' => '0',
                 ]);
-                if ($res->successful() && $res->json('CodeResult') == '100') {
-                    $telecomSuccess = true;
-                    $telecomDetail  = "Đã gọi qua tổng đài eSMS Voice tới " . $phone;
-                } else {
-                    $telecomDetail = "eSMS phản hồi: " . ($res->json('ErrorMessage') ?? $res->body());
-                }
-            } catch (\Throwable $e) {
-                $telecomDetail = "Lỗi kết nối eSMS: " . $e->getMessage();
-            }
+            } catch (\Throwable $se) {}
         }
 
         // 4. Webhook tổng đài trung gian (VoIP Gateway / Android Gateway)
@@ -303,7 +184,7 @@ class AiCallService
         if ($telecomSuccess) {
             $returnMessage .= " [Cổng {$telecomProvider}]: {$telecomDetail}";
         } else {
-            $returnMessage .= " [Lưu ý]: Để điện thoại thật {$phone} đổ chuông ngoài đời thực, máy chủ cần kết nối API Tổng đài viễn thông (Twilio, Stringee hoặc eSMS) trong file .env.";
+            $returnMessage .= " [Lưu ý]: Để điện thoại thật {$phone} đổ chuông ngoài đời thực, máy chủ cần kích hoạt cổng viễn thông eSMS trong file .env.";
         }
 
         return [

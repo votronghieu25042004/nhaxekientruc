@@ -562,7 +562,7 @@
                   type="tel"
                   class="w-full px-3.5 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50/50 text-xs font-black text-emerald-950 cursor-not-allowed select-none shadow-2xs"
                 />
-                <!-- Nếu tài khoản chưa có SĐT (Đăng ký bằng Gmail): Cho phép nhập và xác minh bằng Firebase SMS OTP -->
+                <!-- Nếu tài khoản chưa có SĐT (Đăng ký bằng Gmail): Cho phép nhập và xác minh bằng eSMS OTP -->
                 <div v-else class="space-y-2">
                   <input
                     id="customer-phone-input"
@@ -1387,7 +1387,7 @@ const isEmailValid = computed(() => {
 const isPhoneVerified = ref(userHasRealPhone.value);
 const isEmailVerified = ref(userHasRealEmail.value);
 
-// Phone OTP (Firebase Phone Auth SMS)
+// Phone OTP (eSMS Brandname Baotrixemay & Voice OTP)
 const showPhoneOtpInput = ref(false);
 const phoneOtpCode = ref('');
 const phoneOtpSending = ref(false);
