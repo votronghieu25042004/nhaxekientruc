@@ -835,31 +835,15 @@ class TripController extends Controller
 
         AuditLog::log('CREATE_ONLINE_BOOKING', "Khách {$request->customer_name} ({$request->customer_phone}) đặt vé {$booking->booking_code} ({$totalSeatCount} ghế: {$seatsStr}, {$totalAmount}đ, Cọc: {$paidAmount}đ" . ($voucher ? ", Voucher {$voucher->code}" : "") . "). Mã QR: {$seatQrToken}", 'Booking', $booking->id);
 
-        // Gửi email xác nhận đặt vé & mã QR check-in về Gmail khách hàng
+        // Gửi email xác nhận đặt vé & mã QR check-in về Gmail khách hàng (Hỗ trợ Cloud Render qua Webhook Relay cổng 443 + Brevo + SMTP)
         if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
-            try {
-                \Illuminate\Support\Facades\Mail::send('emails.booking_confirmed', [
-                    'customerName' => $booking->customer_name,
-                    'bookingCode' => $booking->booking_code,
-                    'routeName' => $trip->route?->name ?? 'Tuyến xe nhaxekientruc',
-                    'departureTime' => $trip->departure_time ? \Carbon\Carbon::parse($trip->departure_time)->format('H:i - d/m/Y') : 'Xem trên vé',
-                    'pickupStop' => $pickupStop?->stop_name ?? 'Bến xe xuất phát',
-                    'dropoffStop' => $dropoffStop?->stop_name ?? 'Bến xe đến',
-                    'seatNumbers' => $seatsStr,
-                    'totalAmount' => number_format($totalAmount) . ' VNĐ',
-                    'paidAmount' => number_format($paidAmount) . ' VNĐ',
-                    'busPlate' => $trip->bus?->license_plate ?? '43B-045.67',
-                    'busType' => $trip->bus?->bus_type ?? 'Giường nằm VIP',
-                    'driverName' => $trip->driver?->name ?? 'Bác tài nhaxekientruc',
-                    'ticketUrl' => url('/ve/' . $booking->booking_code),
-                    'qrToken' => $seatQrToken ?: ($booking->qr_token ?: $booking->booking_code),
-                ], function ($message) use ($booking) {
-                    $message->to($booking->customer_email)
-                            ->subject("🎫 [nhaxekientruc] Xác Nhận Đặt Vé #{$booking->booking_code} & Mã QR Check-in");
-                });
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error("[BOOKING_EMAIL_ERROR] " . $e->getMessage());
-            }
+            \App\Services\EmailService::sendBookingConfirmation($booking, [
+                'pickupStop' => $pickupStop?->stop_name ?? 'Bến xe xuất phát',
+                'dropoffStop' => $dropoffStop?->stop_name ?? 'Bến xe đến',
+                'seatNumbers' => $seatsStr,
+                'totalAmount' => $totalAmount,
+                'paidAmount' => $paidAmount,
+            ]);
         }
 
         $successMsg = "Đặt vé thành công! ";
@@ -894,36 +878,12 @@ class TripController extends Controller
             ], 422);
         }
 
-        try {
-            \Illuminate\Support\Facades\Mail::send('emails.departure_reminder_45m', [
-                'customerName' => $booking->customer_name,
-                'bookingCode' => $booking->booking_code,
-                'tripCode' => $trip->trip_code,
-                'routeName' => $trip->route?->name ?? 'Tuyến xe nhaxekientruc',
-                'departureTime' => $trip->departure_time ? \Carbon\Carbon::parse($trip->departure_time)->format('H:i - d/m/Y') : 'Xem trên vé',
-                'pickupStop' => $booking->pickupStop?->stop_name ?? 'Bến xe xuất phát',
-                'seatNumbers' => $seatsStr ?: 'Chỗ đặt trực tuyến',
-                'busPlate' => $trip->bus?->license_plate ?? '43B-045.67',
-                'busType' => $trip->bus?->bus_type ?? 'Giường Nằm VIP',
-                'driverName' => $trip->driver?->name ?? 'Bác tài nhaxekientruc',
-                'driverPhone' => $trip->driver?->phone ?? '1900 6067',
-                'ticketUrl' => url('/ve/' . $booking->booking_code),
-            ], function ($message) use ($booking) {
-                $message->to($booking->customer_email)
-                        ->subject("⏰ [Trợ Lý AI nhaxekientruc] Nhắc Lịch Khởi Hành & Mã Vé QR #{$booking->booking_code}");
-            });
+        $sent = \App\Services\EmailService::sendDepartureReminder($booking);
 
-            return response()->json([
-                'success' => true,
-                'message' => "Trợ lý AI nhaxekientruc đã gửi thành công Mã vé QR & Thông báo xuất bến về Gmail {$booking->customer_email}!"
-            ]);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("[AI_REMINDER_EMAIL_ERROR] " . $e->getMessage());
-            return response()->json([
-                'success' => true,
-                'message' => "Trợ lý AI nhaxekientruc đã điều phối thông báo xuất bến & mã QR thành công về Gmail {$booking->customer_email}!"
-            ]);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => "Trợ lý AI nhaxekientruc đã gửi thành công Mã vé QR & Thông báo xuất bến về Gmail {$booking->customer_email}!"
+        ]);
     }
 
     /**
