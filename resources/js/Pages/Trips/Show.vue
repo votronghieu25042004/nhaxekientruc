@@ -425,9 +425,9 @@
             <div class="space-y-2">
               <label 
                 v-for="st in pickupStops" 
-                :key="'pickup-' + st.id"
+                :key="'pickup-' + (st.unique_key || st.id || st.name)"
                 class="p-3.5 rounded-2xl border flex items-start space-x-3 cursor-pointer transition select-none"
-                :class="selectedPickup?.id === st.id ? 'bg-red-50/70 border-red-500 ring-2 ring-red-500/20 shadow-xs' : 'border-slate-200 hover:bg-slate-50'">
+                :class="((selectedPickup?.unique_key && selectedPickup.unique_key === st.unique_key) || selectedPickup?.name === st.name) ? 'bg-red-50/70 border-red-500 ring-2 ring-red-500/20 shadow-xs' : 'border-slate-200 hover:bg-slate-50'">
                 <input type="radio" name="pickup" :value="st" v-model="selectedPickup" class="w-4 h-4 text-red-600 accent-red-600 mt-0.5" />
                 <div class="text-xs">
                   <div class="font-bold text-slate-800">{{ st.time }} - {{ st.name }}</div>
@@ -446,9 +446,9 @@
             <div class="space-y-2">
               <label 
                 v-for="st in dropoffStops" 
-                :key="'dropoff-' + st.id"
+                :key="'dropoff-' + (st.unique_key || st.id || st.name)"
                 class="p-3.5 rounded-2xl border flex items-start space-x-3 cursor-pointer transition select-none"
-                :class="selectedDropoff?.id === st.id ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs' : 'border-slate-200 hover:bg-slate-50'">
+                :class="((selectedDropoff?.unique_key && selectedDropoff.unique_key === st.unique_key) || selectedDropoff?.name === st.name) ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs' : 'border-slate-200 hover:bg-slate-50'">
                 <input type="radio" name="dropoff" :value="st" v-model="selectedDropoff" class="w-4 h-4 text-emerald-600 accent-emerald-600 mt-0.5" />
                 <div class="text-xs">
                   <div class="font-bold text-slate-800">{{ st.time }} - {{ st.name }}</div>

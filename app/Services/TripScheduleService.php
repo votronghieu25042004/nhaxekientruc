@@ -54,10 +54,10 @@ class TripScheduleService
     }
 
     /**
-     * Đảm bảo luôn luôn có đủ lịch xe chạy và ĐẦY ĐỦ HÀNH KHÁCH trên xe cho cả ngày quá khứ (-3 ngày: 01, 02, 03/11) 
-     * lẫn hôm nay (04/11) và tương lai (+3 ngày: 05, 06, 07/11).
+     * Đảm bảo luôn luôn có đủ lịch xe chạy và ĐẦY ĐỦ HÀNH KHÁCH trên xe cho cả ngày quá khứ (-3 ngày)
+     * lẫn hôm nay và tương lai (+7 ngày).
      */
-    public static function ensureUpcomingTripsExist(int $daysAhead = 3): void
+    public static function ensureUpcomingTripsExist(int $daysAhead = 7): void
     {
         $today = Carbon::today('Asia/Ho_Chi_Minh');
         $todayStr = $today->toDateString();
@@ -70,17 +70,10 @@ class TripScheduleService
 
         $now = Carbon::now('Asia/Ho_Chi_Minh');
 
-        // Quét từ 2 ngày trước đến 3 ngày tới để ĐẦY ĐỦ chuyến cũ (cho tài xế, lơ xe, admin) và chuyến mới (cho khách đặt vé)
-        for ($i = -2; $i <= $daysAhead; $i++) {
+        // Quét từ 3 ngày trước đến 7 ngày tới để ĐẦY ĐỦ chuyến cũ (cho tài xế, lơ xe, admin) và chuyến mới (cho khách đặt vé)
+        for ($i = -3; $i <= $daysAhead; $i++) {
             $targetDate = $today->copy()->addDays($i);
-            $targetDateStr = $targetDate->toDateString();
-
-            $existingCount = Trip::whereDate('departure_time', $targetDateStr)->count();
-
-            // Nếu ngày này chưa có chuyến xe nào, sinh 20 chuyến
-            if ($existingCount < 10) {
-                self::generateTripsForDate($targetDate, $now);
-            }
+            self::ensureTripsForDate($targetDate, $now);
         }
 
         // Tự động đảm bảo các Bác tài luôn có đầy đủ Đánh giá (Reviews) từ hành khách
@@ -88,6 +81,23 @@ class TripScheduleService
 
         // Lưu vào Cache 2 giờ để không phải quét lại
         Cache::put($cacheKey, true, now()->addHours(2));
+    }
+
+    /**
+     * Đảm bảo một ngày cụ thể (dù là ngày cũ hay ngày mới) luôn có đầy đủ chuyến xe hoạt động
+     */
+    public static function ensureTripsForDate(Carbon $date, ?Carbon $now = null): void
+    {
+        if (!$now) {
+            $now = Carbon::now('Asia/Ho_Chi_Minh');
+        }
+        $targetDateStr = $date->toDateString();
+        $existingCount = Trip::whereDate('departure_time', $targetDateStr)->count();
+
+        // Nếu ngày này chưa có đủ chuyến xe chuẩn mực (ít nhất 10 chuyến), sinh đầy đủ 20 chuyến
+        if ($existingCount < 10) {
+            self::generateTripsForDate($date, $now);
+        }
     }
 
     /**
@@ -294,13 +304,18 @@ class TripScheduleService
                 $bookedAt = $now->copy()->subMinutes(rand(5, 180));
             }
 
+            static $cachedPasswordHash = null;
+            if (!$cachedPasswordHash) {
+                $cachedPasswordHash = \Illuminate\Support\Facades\Hash::make('123456');
+            }
+
             $custEmail = $cust['email'] ?? (Str::slug($cust['name'], '.') . '@gmail.com');
             $user = User::firstOrCreate(
                 ['email' => $custEmail],
                 [
                     'name' => $cust['name'],
                     'phone' => $cust['phone'],
-                    'password' => bcrypt('password123'),
+                    'password' => $cachedPasswordHash,
                     'role' => 'customer',
                     'is_student' => !empty($cust['is_student']) || str_contains($custEmail, '.edu.vn'),
                     'reward_points' => rand(50, 300),
@@ -366,13 +381,17 @@ class TripScheduleService
             return;
         }
 
-        // Tuyến đường
-        $rDN_Hue = $routes->firstWhere('start_point', 'Đà Nẵng') ?? $routes[0];
-        $rHue_DN = $routes->firstWhere('end_point', 'Đà Nẵng') ?? ($routes[1] ?? $routes[0]);
-        $rDN_QB  = $routes->firstWhere('end_point', 'Quảng Bình') ?? ($routes[2] ?? $routes[0]);
-        $rQB_DN  = $routes->firstWhere('start_point', 'Quảng Bình') ?? ($routes[3] ?? $routes[0]);
-        $rDN_QN  = $routes->firstWhere('end_point', 'Quy Nhơn') ?? ($routes[4] ?? $routes[0]);
-        $rDN_BMT = $routes->firstWhere('end_point', 'Buôn Ma Thuột') ?? ($routes[5] ?? $routes[0]);
+        // 10 Tuyến đường chuẩn
+        $rDN_Hue = $routes->first(fn($r) => str_contains($r->origin, 'Đà Nẵng') && str_contains($r->destination, 'Huế')) ?? $routes[0];
+        $rHue_DN = $routes->first(fn($r) => str_contains($r->origin, 'Huế') && str_contains($r->destination, 'Đà Nẵng')) ?? ($routes[1] ?? $routes[0]);
+        $rDN_QT  = $routes->first(fn($r) => str_contains($r->origin, 'Đà Nẵng') && str_contains($r->destination, 'Quảng Trị')) ?? ($routes[2] ?? $routes[0]);
+        $rQT_DN  = $routes->first(fn($r) => str_contains($r->origin, 'Quảng Trị') && str_contains($r->destination, 'Đà Nẵng')) ?? ($routes[3] ?? $routes[0]);
+        $rDN_QB  = $routes->first(fn($r) => str_contains($r->origin, 'Đà Nẵng') && str_contains($r->destination, 'Quảng Bình')) ?? ($routes[4] ?? $routes[0]);
+        $rQB_DN  = $routes->first(fn($r) => str_contains($r->origin, 'Quảng Bình') && str_contains($r->destination, 'Đà Nẵng')) ?? ($routes[5] ?? $routes[0]);
+        $rDN_QN  = $routes->first(fn($r) => str_contains($r->origin, 'Đà Nẵng') && str_contains($r->destination, 'Quy Nhơn')) ?? ($routes[6] ?? $routes[0]);
+        $rQN_DN  = $routes->first(fn($r) => str_contains($r->origin, 'Quy Nhơn') && str_contains($r->destination, 'Đà Nẵng')) ?? ($routes[7] ?? $routes[0]);
+        $rDN_BMT = $routes->first(fn($r) => str_contains($r->origin, 'Đà Nẵng') && str_contains($r->destination, 'Buôn Ma Thuột')) ?? ($routes[8] ?? $routes[0]);
+        $rBMT_DN = $routes->first(fn($r) => str_contains($r->origin, 'Buôn Ma Thuột') && str_contains($r->destination, 'Đà Nẵng')) ?? ($routes[9] ?? $routes[0]);
 
         // Cấu hình 10 xe x 2 chuyến/ngày = 20 chuyến/ngày
         $scheduleTemplates = [
@@ -392,12 +411,12 @@ class TripScheduleService
                     ['route' => $rHue_DN, 'dep' => '16:30', 'dur' => 2.5, 'price' => 140000],
                 ]
             ],
-            // Xe 3: Đà Nẵng ⇄ Huế (11:00 & 18:30)
+            // Xe 3: Đà Nẵng ⇄ Quảng Trị (07:15 & 14:15)
             [
                 'bus_idx' => 2, 'driver_idx' => 2, 'conductor_idx' => 2,
                 'trips' => [
-                    ['route' => $rDN_Hue, 'dep' => '11:00', 'dur' => 2.5, 'price' => 140000],
-                    ['route' => $rHue_DN, 'dep' => '18:30', 'dur' => 2.5, 'price' => 140000],
+                    ['route' => $rDN_QT, 'dep' => '07:15', 'dur' => 3.5, 'price' => 160000],
+                    ['route' => $rQT_DN, 'dep' => '14:15', 'dur' => 3.5, 'price' => 160000],
                 ]
             ],
             // Xe 4: Đà Nẵng ⇄ Quảng Bình (07:00 & 14:00)
@@ -429,7 +448,7 @@ class TripScheduleService
                 'bus_idx' => 6, 'driver_idx' => 6, 'conductor_idx' => 6,
                 'trips' => [
                     ['route' => $rDN_QN, 'dep' => '07:30', 'dur' => 6.0, 'price' => 240000],
-                    ['route' => $rDN_QN, 'dep' => '19:30', 'dur' => 6.0, 'price' => 240000],
+                    ['route' => $rQN_DN, 'dep' => '19:30', 'dur' => 6.0, 'price' => 240000],
                 ]
             ],
             // Xe 8: Đà Nẵng ⇄ Buôn Ma Thuột (08:00 & 20:30)
@@ -437,7 +456,7 @@ class TripScheduleService
                 'bus_idx' => 7, 'driver_idx' => 7, 'conductor_idx' => 7,
                 'trips' => [
                     ['route' => $rDN_BMT, 'dep' => '08:00', 'dur' => 10.0, 'price' => 320000],
-                    ['route' => $rDN_BMT, 'dep' => '20:30', 'dur' => 10.0, 'price' => 330000],
+                    ['route' => $rBMT_DN, 'dep' => '20:30', 'dur' => 10.0, 'price' => 330000],
                 ]
             ],
             // Xe 9: Đà Nẵng ⇄ Huế (14:30 & 21:00)
@@ -448,12 +467,12 @@ class TripScheduleService
                     ['route' => $rHue_DN, 'dep' => '21:00', 'dur' => 2.5, 'price' => 140000],
                 ]
             ],
-            // Xe 10: Đà Nẵng ⇄ Huế (08:00 & 17:00)
+            // Xe 10: Đà Nẵng ⇄ Quảng Trị (11:00 & 18:30)
             [
                 'bus_idx' => 9, 'driver_idx' => 9, 'conductor_idx' => 9,
                 'trips' => [
-                    ['route' => $rDN_Hue, 'dep' => '08:00', 'dur' => 2.5, 'price' => 150000],
-                    ['route' => $rHue_DN, 'dep' => '17:00', 'dur' => 2.5, 'price' => 150000],
+                    ['route' => $rDN_QT, 'dep' => '11:00', 'dur' => 3.5, 'price' => 160000],
+                    ['route' => $rQT_DN, 'dep' => '18:30', 'dur' => 3.5, 'price' => 160000],
                 ]
             ],
         ];
