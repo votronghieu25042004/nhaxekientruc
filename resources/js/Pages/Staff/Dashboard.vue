@@ -585,8 +585,11 @@ const closeQrScanner = () => {
 
 const startCamera = async () => {
     try {
+        await stopCamera()
+        await nextTick()
         const readerEl = document.getElementById('qr-reader')
         if (!readerEl) return
+        readerEl.innerHTML = ''
 
         html5QrCode = new Html5Qrcode('qr-reader')
         isCameraActive.value = true
@@ -601,22 +604,25 @@ const startCamera = async () => {
             (decodedText) => {
                 handleScanSuccess(decodedText)
             },
-            (err) => {}
+            () => {}
         )
     } catch (err) {
         isCameraActive.value = false
-        scannerError.value = 'Không thể mở camera. Vui lòng nhập mã vé hoặc số điện thoại bên dưới để kiểm tra.'
+        scannerError.value = 'Không thể mở camera. Vui lòng cấp quyền truy cập camera trong cài đặt trình duyệt hoặc nhập mã vé / SĐT bên dưới.'
     }
 }
 
 const stopCamera = async () => {
-    if (html5QrCode && isCameraActive.value) {
+    if (html5QrCode) {
         try {
-            await html5QrCode.stop()
+            if (html5QrCode.isScanning) {
+                await html5QrCode.stop()
+            }
             html5QrCode.clear()
         } catch (e) {}
-        isCameraActive.value = false
+        html5QrCode = null
     }
+    isCameraActive.value = false
 }
 
 const handleScanSuccess = async (code) => {
@@ -3016,6 +3022,14 @@ onBeforeUnmount(() => {
                   <div class="p-2 rounded-xl bg-emerald-100 text-emerald-900 font-bold text-center mt-2">
                     ✓ Hệ thống đã tự động Check-in. Lơ xe chỉ cần mời khách lên đúng ghế!
                   </div>
+
+                  <button
+                    @click="startCamera(); qrScanResult = null; qrScanInput = ''"
+                    class="w-full mt-2.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition"
+                  >
+                    <i class="fa-solid fa-camera"></i>
+                    <span>Quét Vé Khách Tiếp Theo</span>
+                  </button>
                 </div>
               </template>
 
@@ -3081,6 +3095,14 @@ onBeforeUnmount(() => {
                     <p class="text-xs mt-0.5 font-bold text-red-800 leading-relaxed">{{ qrScanResult.message }}</p>
                   </div>
                 </div>
+
+                <button
+                  @click="startCamera(); qrScanResult = null; qrScanInput = ''"
+                  class="w-full mt-2.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition"
+                >
+                  <i class="fa-solid fa-rotate-right"></i>
+                  <span>Quét Lại Mã Khác</span>
+                </button>
               </template>
             </div>
           </div>

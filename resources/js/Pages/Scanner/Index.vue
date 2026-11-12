@@ -31,7 +31,7 @@
           <button
             v-if="!cameraActive"
             @click="startScanner"
-            class="flex-1 py-3 rounded-2xl bg-blue-600 hover:bg-blue-600 font-bold text-sm text-slate-900 transition-colors cursor-pointer"
+            class="flex-1 py-3 rounded-2xl bg-red-600 hover:bg-red-700 font-bold text-sm text-white shadow-md transition-colors cursor-pointer"
           >
             Bật Camera Quét Mã
           </button>
@@ -47,17 +47,18 @@
 
       <!-- Manual QR Token Input (For Testing/Demo) -->
       <div class="bg-white/60 border border-slate-200 p-4 rounded-2xl">
-        <label class="text-xs font-bold text-slate-400 block mb-1">Hoặc nhập mã vé/mã QR để kiểm tra:</label>
+        <label class="text-xs font-bold text-slate-600 block mb-1">Hoặc nhập mã vé / link vé / SĐT để kiểm tra:</label>
         <div class="flex gap-2">
           <input
             v-model="manualToken"
             type="text"
-            placeholder="Ví dụ: SB-XXXXXX hoặc mã QR..."
+            placeholder="Ví dụ: KT-XXXXXX hoặc SĐT hoặc link vé..."
             class="flex-1 bg-[#F8FAFC] border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900"
+            @keyup.enter="verifyToken(manualToken)"
           />
           <button
             @click="verifyToken(manualToken)"
-            class="px-4 py-2 bg-slate-100 hover:bg-blue-600 text-slate-900 font-bold text-xs rounded-xl transition-colors"
+            class="px-4 py-2 bg-slate-900 hover:bg-red-600 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
           >
             Kiểm tra
           </button>
@@ -65,11 +66,11 @@
       </div>
 
       <!-- Verified Ticket Modal / Card -->
-      <div v-if="verifiedTicket" class="bg-white border-2 border-blue-500 p-6 rounded-3xl space-y-4 animate-fade-in shadow-2xl">
+      <div v-if="verifiedTicket" class="bg-white border-2 border-red-500 p-6 rounded-3xl space-y-4 animate-fade-in shadow-2xl">
         <div class="flex items-center justify-between pb-3 border-b border-slate-200">
           <div>
             <span class="text-xs text-slate-400">Mã vé:</span>
-            <span class="text-lg font-black text-blue-600 font-mono block">{{ verifiedTicket.booking_code }}</span>
+            <span class="text-lg font-black text-red-600 font-mono block">{{ verifiedTicket.booking_code }}</span>
           </div>
           <span
             :class="['boarded', 'CHECKED_IN'].includes(verifiedTicket.checkin_status) ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 'bg-green-500/20 text-green-600 border-green-500/30'"
@@ -90,7 +91,7 @@
           </div>
           <div>
             <span class="text-slate-400 block">Vị trí ghế:</span>
-            <span class="text-base font-black text-amber-400">{{ verifiedTicket.seats.join(', ') }}</span>
+            <span class="text-base font-black text-red-600 font-mono">{{ verifiedTicket.seats.join(', ') }}</span>
           </div>
           <div>
             <span class="text-slate-400 block">Chuyến:</span>
@@ -100,16 +101,16 @@
 
         <!-- Financial Breakdown & Action -->
         <div class="bg-[#F8FAFC] p-4 rounded-2xl border border-slate-200 space-y-2">
-          <div class="flex justify-between text-xs text-slate-400">
-            <span>Tổng vé:</span>
+          <div class="flex justify-between text-xs text-slate-500">
+            <span>Tổng tiền vé:</span>
             <span class="text-slate-900 font-bold">{{ formatPrice(verifiedTicket.total_amount) }}đ</span>
           </div>
-          <div class="flex justify-between text-xs text-green-400 font-bold">
-            <span>Đã cọc online (30%):</span>
+          <div class="flex justify-between text-xs text-emerald-600 font-bold">
+            <span>Đã thanh toán:</span>
             <span>{{ formatPrice(verifiedTicket.deposit_amount) }}đ</span>
           </div>
-          <div class="flex justify-between text-sm font-black text-amber-400 pt-2 border-t border-slate-200">
-            <span>CẦN THU NỐT (70%):</span>
+          <div class="flex justify-between text-sm font-black text-red-600 pt-2 border-t border-slate-200">
+            <span>CÒN PHẢI THU:</span>
             <span>{{ formatPrice(verifiedTicket.remaining_amount) }}đ</span>
           </div>
         </div>
@@ -118,12 +119,12 @@
           <button
             @click="confirmCheckin"
             :disabled="checkingIn"
-            class="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-slate-900 font-black text-base shadow-xl shadow-green-500/30 transition-all cursor-pointer flex items-center justify-center gap-2"
+            class="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-black text-base shadow-xl shadow-green-500/30 transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
             </svg>
-            XÁC NHẬN ĐÃ THU {{ formatPrice(verifiedTicket.remaining_amount) }}đ & CHECK-IN
+            {{ verifiedTicket.remaining_amount > 0 ? `XÁC NHẬN ĐÃ THU ${formatPrice(verifiedTicket.remaining_amount)}đ & CHECK-IN` : 'XÁC NHẬN CHECK-IN LÊN XE' }}
           </button>
         </div>
         <div v-else class="text-center p-3 bg-rose-500/10 rounded-2xl text-xs text-rose-500 font-bold">
@@ -144,31 +145,48 @@ let html5QrCode = null;
 const manualToken = ref('');
 const verifiedTicket = ref(null);
 const checkingIn = ref(false);
+const isScanning = ref(false);
 
 const formatPrice = (val) => new Intl.NumberFormat('vi-VN').format(val || 0);
 
 const startScanner = async () => {
   try {
+    await stopScanner();
+    const readerEl = document.getElementById('qr-reader');
+    if (readerEl) readerEl.innerHTML = '';
+
     html5QrCode = new Html5Qrcode('qr-reader');
     await html5QrCode.start(
       { facingMode: 'environment' },
-      { fps: 10, qrbox: 250 },
-      (decodedText) => {
-        verifyToken(decodedText);
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      async (decodedText) => {
+        if (isScanning.value || checkingIn.value) return;
+        isScanning.value = true;
+        await verifyToken(decodedText);
+        setTimeout(() => {
+          isScanning.value = false;
+        }, 1500);
       },
       () => {}
     );
     cameraActive.value = true;
   } catch (err) {
-    alert('Không thể mở camera. Bạn có thể nhập mã vé trực tiếp để kiểm tra!');
+    cameraActive.value = false;
+    alert('Không thể mở camera. Bạn có thể nhập mã vé trực tiếp bên dưới để kiểm tra!');
   }
 };
 
 const stopScanner = async () => {
-  if (html5QrCode && cameraActive.value) {
-    await html5QrCode.stop();
-    cameraActive.value = false;
+  if (html5QrCode) {
+    try {
+      if (html5QrCode.isScanning) {
+        await html5QrCode.stop();
+      }
+      html5QrCode.clear();
+    } catch (e) {}
+    html5QrCode = null;
   }
+  cameraActive.value = false;
 };
 
 const verifyToken = async (token) => {
@@ -181,7 +199,7 @@ const verifyToken = async (token) => {
       alert(res.data.message || 'Mã QR không hợp lệ!');
     }
   } catch (err) {
-    alert('Không tìm thấy thông tin vé!');
+    alert(err.response?.data?.message || 'Không tìm thấy thông tin vé!');
   }
 };
 
@@ -197,11 +215,12 @@ const confirmCheckin = async () => {
       alert(res.data.message);
       verifiedTicket.value.checkin_status = 'CHECKED_IN';
       verifiedTicket.value.checked_in_at = res.data.checked_in_at;
+      verifiedTicket.value.remaining_amount = 0;
     } else {
       alert(res.data.message);
     }
   } catch (err) {
-    alert('Lỗi check-in');
+    alert(err.response?.data?.message || 'Lỗi check-in');
   } finally {
     checkingIn.value = false;
   }

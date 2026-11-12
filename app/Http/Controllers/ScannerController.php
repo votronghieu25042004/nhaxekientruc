@@ -16,15 +16,12 @@ class ScannerController extends Controller
 
     public function verify(Request $request)
     {
-        $token = $request->input('qr_token');
+        $token = $request->input('qr_token') ?? $request->input('code') ?? '';
         if (!$token) {
-            return response()->json(['valid' => false, 'message' => 'Mã QR không hợp lệ.'], 400);
+            return response()->json(['valid' => false, 'message' => 'Vui lòng cung cấp mã QR hoặc mã vé để kiểm tra.'], 400);
         }
 
-        $booking = Booking::with(['trip.route.stops', 'trip.bus', 'trip.driver', 'bookingSeats'])
-            ->where('qr_token', $token)
-            ->orWhere('booking_code', $token)
-            ->first();
+        $booking = Booking::findByQrOrCode($token, null, ['trip.route.stops', 'trip.bus', 'trip.driver', 'bookingSeats']);
 
         if (!$booking) {
             return response()->json([
@@ -38,6 +35,10 @@ class ScannerController extends Controller
         $firstStop = $booking->trip?->route?->stops?->first()?->stop_name ?? 'Bến xe trung tâm';
         $lastStop = $booking->trip?->route?->stops?->last()?->stop_name ?? 'Bến xe trả khách';
 
+        $totalAmt = (float) $booking->total_amount;
+        $paidAmt = (float) ($booking->paid_amount ?: 0);
+        $remainingAmt = max(0, $totalAmt - $paidAmt);
+
         return response()->json([
             'valid' => true,
             'booking' => [
@@ -46,9 +47,9 @@ class ScannerController extends Controller
                 'customer_name' => $booking->customer_name,
                 'customer_phone' => $booking->customer_phone,
                 'seats' => $booking->bookingSeats->pluck('seat_number')->toArray(),
-                'total_amount' => (float) $booking->total_amount,
-                'deposit_amount' => (float) $booking->deposit_amount,
-                'remaining_amount' => (float) $booking->remaining_amount,
+                'total_amount' => $totalAmt,
+                'deposit_amount' => $paidAmt,
+                'remaining_amount' => $remainingAmt,
                 'payment_status' => $booking->payment_status,
                 'checkin_status' => $booking->checkin_status,
                 'checked_in_at' => $booking->checked_in_at ? $booking->checked_in_at->format('H:i - d/m/Y') : null,
@@ -76,21 +77,22 @@ class ScannerController extends Controller
             ]);
         }
 
+        $remainingAmt = max(0, (float)$booking->total_amount - (float)($booking->paid_amount ?: 0));
+
         $booking->update([
             'payment_status' => 'PAID',
             'paid_amount' => $booking->total_amount,
             'checkin_status' => 'CHECKED_IN',
-            'boarding_status' => 'BOARDED',
-            'is_boarded' => 1,
+            'checkin_method' => 'QR_SCAN',
             'checked_in_at' => Carbon::now(),
             'checked_in_by' => $staffName,
         ]);
 
-        $booking->bookingSeats()->update(['checkin_status' => 'boarded']);
-
         return response()->json([
             'success' => true,
-            'message' => 'Xác nhận thu ' . number_format($booking->remaining_amount, 0, ',', '.') . 'đ và Check-in cho khách lên xe THÀNH CÔNG!',
+            'message' => $remainingAmt > 0
+                ? 'Xác nhận thu ' . number_format($remainingAmt, 0, ',', '.') . 'đ và Check-in cho khách lên xe THÀNH CÔNG!'
+                : 'Check-in cho khách lên xe THÀNH CÔNG!',
             'checked_in_at' => Carbon::now()->format('H:i - d/m/Y'),
         ]);
     }

@@ -309,7 +309,10 @@ const props = defineProps({
 })
 
 const qrCodeValue = computed(() => {
-  return props.booking?.qr_token || props.booking?.booking_code || 'QR-nhaxekientruc';
+  if (typeof window !== 'undefined' && window.location.origin) {
+    return `${window.location.origin}/ve/${props.booking?.booking_code}`;
+  }
+  return props.booking?.booking_code || props.booking?.qr_token || 'KT-TICKET';
 })
 
 const formatPrice = (p) => {
