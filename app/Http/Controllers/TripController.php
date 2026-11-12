@@ -44,8 +44,8 @@ class TripController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
-        // Lấy các chuyến xe trong ngày được chọn
-        $tripsOfDay = Trip::with(['route', 'bus', 'driver', 'bookings'])
+        // Lấy các chuyến xe trong ngày được chọn kèm ghế đã đặt (tránh N+1)
+        $tripsOfDay = Trip::with(['route', 'bus', 'driver', 'bookings.bookingSeats'])
             ->whereDate('departure_time', $dateString)
             ->where('status', '!=', 'CANCELLED')
             ->orderBy('departure_time', 'asc')
@@ -153,7 +153,10 @@ class TripController extends Controller
         $today = Carbon::today('Asia/Ho_Chi_Minh');
         $routes = Route::with(['stops'])->get();
         
-        $todayTrips = Trip::with(['route'])->whereDate('departure_time', $today)->where('status', '!=', 'CANCELLED')->get();
+        $todayTrips = Trip::select(['id', 'route_id'])
+            ->whereDate('departure_time', $today)
+            ->where('status', '!=', 'CANCELLED')
+            ->get();
         
         $destinationsToday = $routes->map(function($r) use ($todayTrips) {
             $count = $todayTrips->where('route_id', $r->id)->count();
@@ -169,7 +172,7 @@ class TripController extends Controller
             ];
         });
 
-        $featuredTrips = Trip::with(['route.stops', 'bus', 'driver'])
+        $featuredTrips = Trip::with(['route.stops', 'bus', 'driver', 'bookings.bookingSeats'])
             ->whereDate('departure_time', '>=', $today)
             ->where('status', '!=', 'CANCELLED')
             ->orderBy('departure_time', 'asc')
@@ -1909,5 +1912,25 @@ class TripController extends Controller
             'description' => $voucher->description,
             'message' => "Áp dụng thành công mã {$voucher->code} (Dành cho {$audienceLabel})! Giảm -" . number_format($discount) . " VNĐ",
         ]);
+    }
+
+    /**
+     * Diagnostic Route (100% Cacheable)
+     */
+    public function debugCheck()
+    {
+        $results = [
+            'php_version' => PHP_VERSION,
+            'app_env' => config('app.env'),
+            'app_debug' => config('app.debug'),
+            'db_connection' => config('database.default'),
+        ];
+        try {
+            \Illuminate\Support\Facades\DB::connection()->getPdo();
+            $results['db_status'] = 'CONNECTED';
+        } catch (\Throwable $e) {
+            $results['db_status'] = 'FAILED: ' . $e->getMessage();
+        }
+        return response()->json($results);
     }
 }

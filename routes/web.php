@@ -22,11 +22,11 @@ Route::post('login', [AuthController::class, 'login']);
 Route::get('register', [AuthController::class, 'showRegister'])->name('register');
 Route::post('register', [AuthController::class, 'register']);
 Route::post('register/check-exists', [AuthController::class, 'checkRegisterExists'])->name('register.checkExists');
-Route::get('register/check-exists', fn() => redirect()->route('register'));
+Route::redirect('register/check-exists', '/register');
 Route::post('register/send-otp', [AuthController::class, 'sendRegisterOtp'])->name('register.sendOtp');
-Route::get('register/send-otp', fn() => redirect()->route('register'));
+Route::redirect('register/send-otp', '/register');
 Route::post('register/verify-otp', [AuthController::class, 'verifyRegisterOtp'])->name('register.verifyOtp');
-Route::get('register/verify-otp', fn() => redirect()->route('register'));
+Route::redirect('register/verify-otp', '/register');
 Route::post('auth/google-login', [AuthController::class, 'googleLogin'])->name('auth.googleLogin');
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -48,28 +48,8 @@ Route::post('user/delete-account', [AuthController::class, 'deleteAccount'])->na
 // 2. Schedules Route
 Route::get('schedules', [TripController::class, 'schedules'])->name('schedules.index');
 
-// Diagnostic route
-Route::get('debug-check', function () {
-    $results = [];
-    $results['php_version'] = PHP_VERSION;
-    $results['app_env'] = config('app.env');
-    $results['app_debug'] = config('app.debug');
-    $results['db_connection'] = config('database.default');
-    $results['db_host'] = config('database.connections.mysql.host');
-    $results['db_port'] = config('database.connections.mysql.port');
-    $results['db_database'] = config('database.connections.mysql.database');
-    $results['session_driver'] = config('session.driver');
-    
-    try {
-        \Illuminate\Support\Facades\DB::connection()->getPdo();
-        $results['db_status'] = 'CONNECTED';
-        $results['tables'] = \Illuminate\Support\Facades\DB::select('SHOW TABLES');
-    } catch (\Throwable $e) {
-        $results['db_status'] = 'FAILED: ' . $e->getMessage();
-    }
-    
-    return response()->json($results);
-});
+// Diagnostic route (Cacheable)
+Route::get('debug-check', [TripController::class, 'debugCheck']);
 
 // 2. Customer Routes
 Route::get('/', [TripController::class, 'home'])->name('home');
