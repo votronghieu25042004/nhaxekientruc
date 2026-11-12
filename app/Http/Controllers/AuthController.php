@@ -556,9 +556,16 @@ class AuthController extends Controller
 
             $method = strtolower($request->input('method', 'sms'));
             $cleanPhone = preg_replace('/[^0-9]/', '', $identifier);
+            $skipTelecom = $request->boolean('skip_telecom');
+
+            if ($skipTelecom) {
+                $znsSentReal = true;
+                $otpMessage = "Mã xác thực OTP đã được Google gửi qua tin nhắn SMS tới số {$identifier}. Quý khách vui lòng kiểm tra hộp thư tin nhắn!";
+                Log::info("[FIREBASE_SMS_DISPATCHED] Bỏ qua cổng viễn thông vì mã đã được Google gửi qua SMS tới {$identifier}");
+            }
 
             // 0A. Nhánh 1: Cuộc gọi thoại Voice OTP thật 100% (Nếu người dùng chọn Cuộc gọi)
-            if ($method === 'voice' && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
+            if (!$skipTelecom && $method === 'voice' && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
                     $voiceUrl = "http://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
                     $voiceRes = \Illuminate\Support\Facades\Http::timeout(12)
@@ -825,12 +832,20 @@ class AuthController extends Controller
             } catch (\Throwable $e) {}
         }
 
-        $isValid = ($savedOtp && $otp === (string)$savedOtp);
+        $verifiedByFirebase = $request->boolean('verified_by_firebase');
+
+        if ($verifiedByFirebase) {
+            $isValid = true;
+            Log::info("[REGISTER_OTP_FIREBASE_VERIFIED] Xác thực thành công qua Google Firebase Phone Auth cho {$rawIdentifier}");
+        } else {
+            $isValid = ($savedOtp && $otp === (string)$savedOtp);
+        }
 
         Log::info("[REGISTER_OTP_VERIFY] Khách hàng xác thực OTP cho {$rawIdentifier}", [
             'input_otp' => $otp,
-            'saved_otp' => $savedOtp,
+            'saved_otp' => $savedOtp ?? ($verifiedByFirebase ? 'FIREBASE_VERIFIED' : null),
             'is_match' => $isValid,
+            'firebase' => $verifiedByFirebase,
         ]);
 
         if (!$isValid) {

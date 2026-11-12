@@ -1273,6 +1273,9 @@
     <!-- 3. FOOTER 4 CỘT HIỆN ĐẠI -->
     <Footer />
 
+    <!-- Container cho Firebase Phone Auth reCAPTCHA (vô hình) -->
+    <div id="recaptcha-container"></div>
+
     <!-- MODAL QUÊN MẬT KHẨU -->
     <div
       v-if="showForgotModal"
@@ -1320,6 +1323,30 @@ import { useForm, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import Navbar from '@/Components/Navbar.vue';
 import Footer from '@/Components/Footer.vue';
+import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '@/Services/firebase';
+
+let recaptchaVerifier = null;
+const getRecaptchaVerifier = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    if (!recaptchaVerifier) {
+      recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {},
+        'expired-callback': () => {
+          try {
+            recaptchaVerifier?.clear();
+          } catch (e) {}
+          recaptchaVerifier = null;
+        }
+      });
+    }
+    return recaptchaVerifier;
+  } catch (e) {
+    console.warn('[RECAPTCHA_INIT_ERROR]', e);
+    return null;
+  }
+};
 
 const props = defineProps({
   errors: Object,
@@ -1730,11 +1757,32 @@ const handleSendOtpStep1 = async () => {
       return;
     }
 
-    // 2. Thông báo cho máy chủ Laravel khởi tạo phiên đăng ký OTP & gửi thật qua SMS/Voice/Email
+    // 2. Nếu đăng ký bằng SĐT và chọn SMS -> Gửi SMS OTP qua Google Firebase trước (Miễn phí & mọi nhà mạng)
+    let firebaseDispatched = false;
+    if (reqType === 'phone' && otpDeliveryMethod.value === 'sms') {
+      try {
+        const appVerifier = getRecaptchaVerifier();
+        if (appVerifier) {
+          const phoneE164 = '+84' + reqIdentifier.replace(/^0+/, '');
+          console.log('[FIREBASE_PHONE_AUTH] Bắt đầu gửi SMS qua Firebase tới:', phoneE164);
+          const confirmationResult = await signInWithPhoneNumber(auth, phoneE164, appVerifier);
+          window.confirmationResult = confirmationResult;
+          firebaseDispatched = true;
+          console.log('[FIREBASE_PHONE_AUTH_SUCCESS] Đã gửi SMS OTP thành công!');
+        }
+      } catch (fbErr) {
+        console.warn('[FIREBASE_PHONE_AUTH_ERR] Lỗi Firebase, kích hoạt dự phòng qua eSMS viễn thông:', fbErr);
+        window.confirmationResult = null;
+        firebaseDispatched = false;
+      }
+    }
+
+    // 3. Thông báo cho máy chủ Laravel khởi tạo phiên đăng ký OTP & gửi thật qua SMS/Voice/Email
     const res = await axios.post('/register/send-otp', {
       identifier: reqIdentifier,
       type: reqType,
       method: otpDeliveryMethod.value,
+      skip_telecom: firebaseDispatched,
     }, {
       headers: { 'Accept': 'application/json' }
     });
@@ -1778,11 +1826,29 @@ const handleResendOtp = async (overrideMethod = null) => {
   const reqIdentifier = activeIdentifier.value;
   const reqType = registerMethod.value === 'phone' ? 'phone' : 'email';
 
+  let firebaseDispatched = false;
+  if (reqType === 'phone' && otpDeliveryMethod.value === 'sms') {
+    try {
+      const appVerifier = getRecaptchaVerifier();
+      if (appVerifier) {
+        const phoneE164 = '+84' + reqIdentifier.replace(/^0+/, '');
+        const confirmationResult = await signInWithPhoneNumber(auth, phoneE164, appVerifier);
+        window.confirmationResult = confirmationResult;
+        firebaseDispatched = true;
+      }
+    } catch (fbErr) {
+      console.warn('[FIREBASE_RESEND_ERR] Fallback qua eSMS viễn thông:', fbErr);
+      window.confirmationResult = null;
+      firebaseDispatched = false;
+    }
+  }
+
   try {
     const res = await axios.post('/register/send-otp', {
       identifier: reqIdentifier,
       type: reqType,
       method: otpDeliveryMethod.value,
+      skip_telecom: firebaseDispatched,
     }, {
       headers: { 'Accept': 'application/json' }
     });
@@ -1813,11 +1879,23 @@ const handleVerifyOtpStep2 = async () => {
   isVerifyingOtp.value = true;
   otpError.value = '';
 
+  let verifiedByFirebase = false;
+  if (window.confirmationResult) {
+    try {
+      await window.confirmationResult.confirm(fullOtp);
+      verifiedByFirebase = true;
+      console.log('[FIREBASE_VERIFY_SUCCESS] Firebase đã xác thực mã OTP thành công!');
+    } catch (fbErr) {
+      console.warn('[FIREBASE_VERIFY_ERR] Thử tiếp xác thực mã với máy chủ Laravel:', fbErr);
+    }
+  }
+
   try {
     // Xác thực với backend Laravel
     const res = await axios.post('/register/verify-otp', {
       otp: fullOtp,
       identifier: activeIdentifier.value,
+      verified_by_firebase: verifiedByFirebase,
     }, {
       headers: { 'Accept': 'application/json' }
     });
