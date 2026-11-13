@@ -4,7 +4,7 @@
     <Navbar />
 
     <!-- 2. MAIN AUTH CONTAINER (SPLIT-CARD 12 CỘT SÁNG ĐẸP HIỆN ĐẠI) -->
-    <main class="flex-1 py-8 sm:py-12 px-4 sm:px-6 flex items-center justify-center bg-gradient-to-br from-slate-50 via-rose-50/25 to-slate-100 relative overflow-hidden">
+    <main class="flex-1 py-4 sm:py-10 px-2.5 sm:px-6 flex items-center justify-center bg-gradient-to-br from-slate-50 via-rose-50/25 to-slate-100 relative overflow-hidden">
       
       <!-- Ambient Background Glows -->
       <div class="absolute top-10 left-1/4 w-96 h-96 bg-red-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -13,15 +13,108 @@
       <div class="max-w-6xl w-full relative z-10">
         
         <!-- MAIN CARD CONTAINER -->
-        <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/80 border border-slate-200 overflow-hidden flex flex-col">
+        <div class="bg-white rounded-2xl sm:rounded-3xl shadow-xl shadow-slate-200/80 border border-slate-200 overflow-hidden flex flex-col">
           
-          <div class="grid grid-cols-1 lg:grid-cols-12 min-h-[680px]">
+          <!-- ========================================================================= -->
+          <!-- MOBILE BRAND BANNER & MINI SA BÀN TOGGLE (Chỉ hiển thị trên Mobile < lg)  -->
+          <!-- ========================================================================= -->
+          <div class="lg:hidden p-4 sm:p-6 bg-gradient-to-br from-red-600 via-rose-600 to-amber-600 text-white relative overflow-hidden">
+            <!-- Glow background -->
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-amber-400/20 rounded-full blur-2xl pointer-events-none"></div>
+
+            <div class="relative z-10">
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center text-2xl shadow-inner shrink-0">
+                    🚌
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <h1 class="text-xl font-black text-white tracking-tight">nhaxekientruc</h1>
+                      <span class="text-[9px] px-2 py-0.5 rounded-full bg-white/20 text-amber-200 font-extrabold uppercase font-mono">Đà Nẵng</span>
+                    </div>
+                    <p class="text-xs text-rose-100 font-medium">Hệ Thống Đặt Vé Xe Công Nghệ Cao</p>
+                  </div>
+                </div>
+
+                <!-- Nút Bật/Tắt Sa Bàn Mini Trên Mobile -->
+                <button
+                  type="button"
+                  @click="showMobileSaBan = !showMobileSaBan"
+                  class="px-2.5 py-1.5 rounded-xl bg-black/25 hover:bg-black/35 backdrop-blur-md border border-white/20 text-[11px] font-bold text-amber-300 flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-xs shrink-0"
+                  :title="showMobileSaBan ? 'Thu gọn sa bàn' : 'Mở xem sa bàn xa lộ'"
+                >
+                  <span>{{ showMobileSaBan ? '▲ Ẩn sa bàn' : '🚌 Sa bàn' }}</span>
+                </button>
+              </div>
+
+              <!-- Dải 3 Điểm Nổi Bật Dạng Pill Cuộn Ngang -->
+              <div class="flex items-center gap-2 mt-3 overflow-x-auto no-scrollbar py-0.5 text-[11px]">
+                <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 whitespace-nowrap">
+                  <span>🎓</span>
+                  <span class="font-bold text-amber-200">SV Vé 0đ & -30%</span>
+                </div>
+                <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 whitespace-nowrap">
+                  <span>💺</span>
+                  <span class="font-bold text-white">Giữ 100% Chỗ Thật</span>
+                </div>
+                <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 whitespace-nowrap">
+                  <span>📱</span>
+                  <span class="font-bold text-white">Vé QR Quét Lên Xe</span>
+                </div>
+              </div>
+
+              <!-- SA BÀN COLLAPSIBLE CHO MOBILE NẾU NGƯỜI DÙNG BẤM XEM -->
+              <div v-if="showMobileSaBan" class="mt-3 p-3 rounded-2xl bg-black/50 border border-white/20 backdrop-blur-md animate-in fade-in duration-200">
+                <div class="flex items-center justify-between text-[11px] font-bold text-slate-200 mb-2">
+                  <span class="flex items-center gap-1.5 text-amber-300">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    Xa lộ Đà Nẵng ⇄ Liên Tỉnh
+                  </span>
+                  <div class="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      @click="triggerHeadlightsAndHorn"
+                      class="px-2 py-0.5 rounded-lg bg-amber-500 text-slate-950 font-black text-[10px] active:scale-95"
+                    >
+                      📢 Còi xe
+                    </button>
+                    <button
+                      type="button"
+                      @click="toggleSkyMode"
+                      class="px-2 py-0.5 rounded-lg bg-white/20 text-white font-bold text-[10px] active:scale-95"
+                    >
+                      {{ skyMode === 'night' ? '🌙 Đêm' : '🌅 Chiều' }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Làn xe thu nhỏ trên mobile -->
+                <div class="relative h-16 w-full rounded-xl bg-slate-900 border border-slate-700 overflow-hidden flex flex-col justify-around px-2">
+                  <div class="relative h-6 w-full flex items-center">
+                    <div class="bus-lane-1 absolute flex items-center gap-1 text-[9px] font-bold text-white bg-red-700 px-2 py-0.5 rounded border border-amber-400 shadow-sm">
+                      🚌 NHAXEKIENTRUC 43B-067.89
+                    </div>
+                  </div>
+                  <div class="border-t border-dashed border-amber-400/50"></div>
+                  <div class="relative h-6 w-full flex items-center">
+                    <div class="bus-lane-2 absolute flex items-center gap-1 text-[8.5px] font-bold text-slate-950 bg-amber-300 px-2 py-0.5 rounded border border-white shadow-sm">
+                      🚐 TRUNG CHUYỂN 0Đ
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 lg:min-h-[680px]">
             
             <!-- ========================================================================= -->
             <!-- A. CỘT TRÁI (5/12): SA BÀN XA LỘ ĐÀ NẴNG & HIỆU ỨNG XE CHẠY 2 CHIỀU       -->
             <!-- ========================================================================= -->
             <div 
-              class="lg:col-span-5 relative text-white p-6 sm:p-8 flex flex-col justify-between overflow-hidden transition-colors duration-700 select-none"
+              class="hidden lg:flex lg:col-span-5 relative text-white p-6 sm:p-8 flex-col justify-between overflow-hidden transition-colors duration-700 select-none"
               :class="skyMode === 'night' ? 'bg-gradient-to-br from-[#1a0508] via-[#380811] to-[#540b17]' : 'bg-gradient-to-br from-[#b91c1c] via-[#dc2626] to-[#ea580c]'"
             >
               <!-- Stars in Night Mode (Ở NGOÀI) -->
@@ -375,41 +468,33 @@
             <!-- ========================================================================= -->
             <!-- B. CỘT PHẢI (7/12): FORM ĐĂNG NHẬP & ĐĂNG KÝ 3 BƯỚC HOẠT ĐỘNG THỰC TẾ    -->
             <!-- ========================================================================= -->
-            <div class="lg:col-span-7 p-6 sm:p-9 flex flex-col justify-between bg-white text-slate-900">
+            <div class="lg:col-span-7 p-4 sm:p-8 flex flex-col justify-between bg-white text-slate-900">
               <div>
                 
-                <!-- THANH CHUYỂN ĐỔI 2 TAB (ĐĂNG NHẬP vs ĐĂNG KÝ) -->
-                <div class="flex border-b border-slate-200 mb-6">
+                <!-- THANH CHUYỂN ĐỔI 2 TAB (SEGMENTED PILL CONTROL CAO CẤP) -->
+                <div class="p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 mb-5 flex items-center gap-1">
                   <button
                     type="button"
                     @click="switchTab('login')"
-                    class="flex-1 pb-3 text-center text-sm font-black transition relative cursor-pointer"
-                    :class="activeTab === 'login' ? 'text-red-600' : 'text-slate-400 hover:text-slate-700'"
+                    class="flex-1 py-2.5 sm:py-3 px-3 rounded-xl text-center text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    :class="activeTab === 'login' 
+                      ? 'bg-white text-red-600 shadow-sm shadow-slate-200 ring-1 ring-slate-200/50' 
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'"
                   >
-                    <span class="flex items-center justify-center gap-1.5">
-                      <span>🔐</span>
-                      <span>ĐĂNG NHẬP</span>
-                    </span>
-                    <div
-                      v-if="activeTab === 'login'"
-                      class="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600 rounded-t-full shadow-sm"
-                    ></div>
+                    <span>🔐</span>
+                    <span>ĐĂNG NHẬP</span>
                   </button>
 
                   <button
                     type="button"
                     @click="switchTab('register')"
-                    class="flex-1 pb-3 text-center text-sm font-black transition relative cursor-pointer"
-                    :class="activeTab === 'register' ? 'text-red-600' : 'text-slate-400 hover:text-slate-700'"
+                    class="flex-1 py-2.5 sm:py-3 px-3 rounded-xl text-center text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    :class="activeTab === 'register' 
+                      ? 'bg-white text-red-600 shadow-sm shadow-slate-200 ring-1 ring-slate-200/50' 
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'"
                   >
-                    <span class="flex items-center justify-center gap-1.5">
-                      <span>📝</span>
-                      <span>ĐĂNG KÝ TÀI KHOẢN</span>
-                    </span>
-                    <div
-                      v-if="activeTab === 'register'"
-                      class="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600 rounded-t-full shadow-sm"
-                    ></div>
+                    <span>📝</span>
+                    <span>ĐĂNG KÝ TÀI KHOẢN</span>
                   </button>
                 </div>
 
@@ -422,6 +507,59 @@
                 <!-- ==================== TAB 1: FORM ĐĂNG NHẬP ==================== -->
                 <div v-if="activeTab === 'login'" class="space-y-4">
                   
+                  <!-- THANH ĐĂNG NHẬP NHANH 1 CHẠM (TIỆN LỢI TRÊN ĐIỆN THOẠI & TEST ĐỒ ÁN) -->
+                  <div class="p-3 bg-gradient-to-r from-rose-50 via-red-50 to-amber-50 rounded-2xl border border-red-200/70 mb-4 shadow-2xs">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-[11px] font-black text-red-800 uppercase tracking-wider flex items-center gap-1">
+                        <span>⚡</span>
+                        <span>Đăng nhập nhanh 1 chạm (Tài khoản mẫu):</span>
+                      </span>
+                      <span class="text-[10px] text-red-600 font-bold bg-white px-2 py-0.5 rounded-full border border-red-200">Mật khẩu: 123456</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                      <button
+                        type="button"
+                        @click="quickLoginAs('student')"
+                        class="px-2 py-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-slate-800 hover:text-red-600 font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
+                        title="Sinh viên Trường ĐH Kiến Trúc Đà Nẵng (sinhvien@dau.edu.vn)"
+                      >
+                        <span>🎓</span>
+                        <span>Sinh viên</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        @click="quickLoginAs('driver')"
+                        class="px-2 py-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-slate-800 hover:text-red-600 font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
+                        title="Bác tài lái xe khách (taixe1@nhaxekientruc.vn)"
+                      >
+                        <span>👨‍✈️</span>
+                        <span>Bác tài</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        @click="quickLoginAs('conductor')"
+                        class="px-2 py-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-slate-800 hover:text-red-600 font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
+                        title="Lơ xe soát vé QR (loxe1@nhaxekientruc.vn)"
+                      >
+                        <span>🎫</span>
+                        <span>Lơ xe QR</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        @click="quickLoginAs('admin')"
+                        class="px-2 py-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-slate-800 hover:text-red-600 font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
+                        title="Quản trị viên hệ thống (admin@nhaxekientruc.vn)"
+                      >
+                        <span>👔</span>
+                        <span>Admin</span>
+                      </button>
+                    </div>
+                  </div>
+
                   <!-- Báo Lỗi Đăng Nhập -->
                   <div 
                     v-if="loginErrorText" 
@@ -477,7 +615,7 @@
                           @blur="stopTurboSpeed"
                           @input="triggerTurboSpeed"
                           placeholder="Nhập SĐT (10 số) hoặc Email (VD: sinhvien@dau.edu.vn)"
-                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal outline-none transition focus:ring-2 focus:ring-red-500/20"
+                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal outline-none transition focus:ring-2 focus:ring-red-500/20"
                         />
                       </div>
                     </div>
@@ -507,7 +645,7 @@
                           @focus="triggerTurboSpeed"
                           @blur="stopTurboSpeed"
                           placeholder="Nhập mật khẩu tài khoản"
-                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-10 py-3 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal outline-none transition focus:ring-2 focus:ring-red-500/20"
+                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-10 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal outline-none transition focus:ring-2 focus:ring-red-500/20"
                         />
                         <button
                           type="button"
@@ -536,7 +674,7 @@
                     <button
                       type="submit"
                       :disabled="loginForm.processing"
-                      class="relative overflow-hidden w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-red-600 via-red-500 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs sm:text-sm shadow-lg shadow-red-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] disabled:bg-slate-300 btn-shimmer"
+                      class="relative overflow-hidden w-full py-3.5 sm:py-4 px-4 min-h-[48px] rounded-2xl bg-gradient-to-r from-red-600 via-red-500 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-sm sm:text-base shadow-lg shadow-red-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] disabled:bg-slate-300 btn-shimmer"
                     >
                       <span>{{ loginForm.processing ? 'ĐANG ĐĂNG NHẬP...' : 'ĐĂNG NHẬP VÀO HỆ THỐNG' }}</span>
                       <span class="text-base">➔</span>
@@ -652,7 +790,7 @@
                             @focus="triggerTurboSpeed"
                             @blur="onIdentifierBlur"
                             placeholder="Nhập 10 chữ số (VD: 0905123456)"
-                            class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
+                            class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
                           />
                         </div>
                         <!-- Hộp Quà Tặng Mới -->
@@ -681,7 +819,7 @@
                             @focus="triggerTurboSpeed"
                             @blur="onIdentifierBlur"
                             placeholder="Nhập email (VD: sinhvien@dau.edu.vn hoặc yourname@gmail.com)"
-                            class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
+                            class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
                           />
                         </div>
                         
@@ -728,7 +866,7 @@
                       type="button"
                       @click="handleSendOtpStep1"
                       :disabled="!isStep1Valid || !agreeTerms || isSendingOtp"
-                      class="relative overflow-hidden w-full py-3.5 px-4 rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30"
+                      class="relative overflow-hidden w-full py-3.5 sm:py-4 px-4 min-h-[48px] rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30"
                     >
                       <span v-if="isSendingOtp" class="animate-spin text-sm">⏳</span>
                       <span>
@@ -791,7 +929,7 @@
                     </div>
 
                     <!-- 6 Ô Input OTP Tự Động Chuyển Ô Khi Gõ -->
-                    <div class="flex items-center justify-center gap-2 sm:gap-2.5 py-1">
+                    <div class="flex items-center justify-center gap-1.5 sm:gap-2.5 py-1">
                       <input
                         v-for="(digit, idx) in otpDigits"
                         :key="'otp-' + idx"
@@ -803,7 +941,7 @@
                         @input="onOtpInput($event, idx)"
                         @keydown="onOtpKeydown($event, idx)"
                         @paste="onOtpPaste"
-                        class="w-11 h-12 sm:w-12 sm:h-14 text-center font-mono font-black text-lg sm:text-xl text-slate-900 bg-slate-50 border-2 border-slate-300 focus:border-red-600 focus:bg-white rounded-2xl outline-none transition focus:ring-2 focus:ring-red-500/20 shadow-xs"
+                        class="w-10 h-12 sm:w-12 sm:h-14 text-center font-mono font-black text-lg sm:text-xl text-slate-900 bg-slate-50 border-2 border-slate-300 focus:border-red-600 focus:bg-white rounded-xl sm:rounded-2xl outline-none transition focus:ring-2 focus:ring-red-500/20 shadow-xs"
                       />
                     </div>
 
@@ -813,7 +951,7 @@
                         type="button"
                         @click="handleVerifyOtpStep2"
                         :disabled="!isOtpFilled || isVerifyingOtp"
-                        class="w-full py-3.5 px-4 rounded-2xl bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white font-black text-xs sm:text-sm shadow-md shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed btn-shimmer"
+                        class="w-full py-3.5 sm:py-4 px-4 min-h-[48px] rounded-2xl bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white font-black text-xs sm:text-sm shadow-md shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed btn-shimmer"
                       >
                         <span v-if="isVerifyingOtp" class="animate-spin text-sm">⏳</span>
                         <span>{{ isVerifyingOtp ? 'ĐANG XÁC THỰC...' : 'XÁC THỰC MÃ OTP & TIẾP TỤC →' }}</span>
@@ -853,7 +991,7 @@
                           @focus="triggerTurboSpeed"
                           @blur="stopTurboSpeed"
                           placeholder="Ví dụ: Nguyễn Văn An"
-                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition"
+                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
                         />
                       </div>
 
@@ -870,7 +1008,7 @@
                           @focus="triggerTurboSpeed"
                           @blur="stopTurboSpeed"
                           placeholder="Tối thiểu 6 ký tự"
-                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition"
+                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
                         />
                       </div>
 
@@ -887,7 +1025,7 @@
                           @focus="triggerTurboSpeed"
                           @blur="stopTurboSpeed"
                           placeholder="Nhập lại mật khẩu vừa đặt"
-                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 outline-none transition"
+                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
                         />
                       </div>
 
@@ -895,7 +1033,7 @@
                       <button
                         type="submit"
                         :disabled="registerForm.processing"
-                        class="relative overflow-hidden w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs sm:text-sm shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:bg-slate-300 btn-shimmer"
+                        class="relative overflow-hidden w-full py-3.5 sm:py-4 px-4 min-h-[48px] rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs sm:text-sm shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:bg-slate-300 btn-shimmer"
                       >
                         <span>{{ registerForm.processing ? 'ĐANG TẠO TÀI KHOẢN...' : 'HOÀN TẤT ĐĂNG KÝ TÀI KHOẢN 🎉' }}</span>
                       </button>
@@ -922,7 +1060,7 @@
           <!-- ========================================================================= -->
           <!-- C. DẢI XA LỘ TOÀN CẢNH CHẠY XUYÊN SUỐT DƯỚI ĐÁY CARD                       -->
           <!-- ========================================================================= -->
-          <div class="w-full h-9 bg-slate-950 border-t-2 border-slate-800 relative overflow-hidden flex items-center select-none">
+          <div class="hidden lg:flex w-full h-9 bg-slate-950 border-t-2 border-slate-800 relative overflow-hidden items-center select-none">
             <!-- Mặt đường bê tông & Vạch sơn tim đường di chuyển liên tục -->
             <div 
               class="absolute inset-0 bg-repeat-x road-strip"
@@ -1029,6 +1167,7 @@ const agreeTerms = ref(true);
 const skyMode = ref('night'); // 'night' | 'sunset'
 const isHornActive = ref(false);
 const isTurboActive = ref(false);
+const showMobileSaBan = ref(false);
 let hornTimeout = null;
 
 const toggleSkyMode = () => {
@@ -1126,6 +1265,28 @@ const fillLoginCredential = (identifier) => {
   nextTick(() => {
     passwordInputRef.value?.focus();
   });
+};
+
+const quickLoginAs = (role) => {
+  switch (role) {
+    case 'student':
+      loginForm.email = 'sinhvien@dau.edu.vn';
+      loginForm.password = '123456';
+      break;
+    case 'driver':
+      loginForm.email = 'taixe1@nhaxekientruc.vn';
+      loginForm.password = '123456';
+      break;
+    case 'conductor':
+      loginForm.email = 'loxe1@nhaxekientruc.vn';
+      loginForm.password = '123456';
+      break;
+    case 'admin':
+      loginForm.email = 'admin@nhaxekientruc.vn';
+      loginForm.password = '123456';
+      break;
+  }
+  submitLogin();
 };
 
 const loginErrorText = computed(() => {
