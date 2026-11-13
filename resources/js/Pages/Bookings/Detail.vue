@@ -51,50 +51,7 @@
         </div>
       </div>
 
-      <!-- ==================== BANNER TRỢ LÝ AI GỬI MÃ QR & NHẮC LỊCH QUA GMAIL (REQUEST 6) ==================== -->
-      <div 
-        v-if="booking.payment_status !== 'CANCELLED' && booking.payment_status !== 'REFUNDED'"
-        class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-2 border-indigo-500/40 rounded-3xl p-5 sm:p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden"
-      >
-        <div class="space-y-2 z-10 max-w-xl">
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/40 text-[10.5px] font-black uppercase tracking-wider text-indigo-300">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Hệ Thống Trợ Lý AI nhaxekientruc</span>
-          </div>
 
-          <h3 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
-            <span>🤖</span>
-            <span>Tự Động Gửi Mã QR Vé & Nhắc Lịch Về Gmail</span>
-          </h3>
-
-          <p class="text-xs text-slate-300 leading-relaxed font-normal">
-            Hệ thống đã tự động gửi xác nhận đặt vé và mã QR check-in về hòm thư <strong class="text-amber-300 font-mono">{{ booking.customer_email }}</strong>. Trước giờ xuất bến 45 phút, AI sẽ tự động gửi thêm thông báo nhắc lịch và cập nhật vị trí đón xe.
-          </p>
-
-          <div class="flex items-center gap-4 text-[11px] text-slate-300 pt-1 flex-wrap">
-            <span class="flex items-center gap-1.5 text-emerald-400 font-bold">
-              <span>✓</span> Email xác nhận đã gửi
-            </span>
-            <span class="flex items-center gap-1.5 text-amber-300 font-bold">
-              <span>⏰</span> Tự động nhắc trước 45 phút
-            </span>
-          </div>
-        </div>
-
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 z-10 shrink-0">
-          <button
-            type="button"
-            @click="triggerAiReminderEmail"
-            :disabled="isSendingAiEmail"
-            class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs shadow-md shadow-red-600/30 flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-60"
-          >
-            <span>{{ isSendingAiEmail ? '⏳ Đang gửi...' : '📧 Gửi Mã QR Về Gmail Ngay' }}</span>
-          </button>
-        </div>
-
-        <!-- Ambient decorative shapes -->
-        <div class="absolute -right-8 -bottom-8 w-48 h-48 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none"></div>
-      </div>
 
       <!-- ==================== BANNER TRẠNG THÁI HOÀN TIỀN NỔI BẬT ==================== -->
       <!-- Case 1: ĐANG CHỜ ADMIN DUYỆT HOÀN TIỀN -->

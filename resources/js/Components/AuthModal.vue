@@ -14,8 +14,8 @@
         <!-- Header -->
         <div class="flex items-center justify-between pb-3.5 border-b border-slate-100">
           <div class="flex items-center gap-2.5">
-            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-600 flex items-center justify-center text-white font-black text-xl shadow-md shadow-red-500/20">
-              🚌
+            <div class="w-10 h-10 rounded-2xl bg-white border border-red-200 flex items-center justify-center p-1 shadow-sm">
+              <img src="/images/logo.png" alt="Logo Trường ĐH Kiến Trúc Đà Nẵng" class="w-full h-full object-contain" />
             </div>
             <div>
               <h3 class="text-base sm:text-lg font-black text-slate-900 leading-tight">Đăng Nhập Tài Khoản</h3>

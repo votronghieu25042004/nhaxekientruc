@@ -10,17 +10,17 @@
         <!-- Col 1 & 2: Company Info -->
         <div class="lg:col-span-2 space-y-4">
           <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-500 text-white flex items-center justify-center font-black text-lg shadow-md shadow-red-500/20 border border-white/20">
-              🚌
+            <div class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center p-1 shadow-md shadow-red-500/20 border border-red-200">
+              <img src="/images/logo.png" alt="Logo Trường ĐH Kiến Trúc Đà Nẵng" class="w-full h-full object-contain" />
             </div>
             <div>
               <div 
                 class="font-black text-base tracking-tight"
                 :class="dark ? 'text-white' : 'text-slate-900'"
               >
-                HỆ THỐNG VẬN TẢI NHAXEKIENTRUC TERMINAL
+                TRƯỜNG ĐẠI HỌC KIẾN TRÚC ĐÀ NẴNG
               </div>
-              <div class="text-[10px] text-red-500 font-bold tracking-wider uppercase">NHAXEKIENTRUC - HÀNH TRÌNH THÔNG MINH & TIỆN NGHI</div>
+              <div class="text-[10px] text-red-500 font-bold tracking-wider uppercase">NHAXEKIENTRUC TERMINAL - HỆ THỐNG VÉ XE THÔNG MINH</div>
             </div>
           </div>
 

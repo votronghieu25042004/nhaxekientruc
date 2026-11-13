@@ -4,16 +4,8 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
       <!-- Left: Logo & Brand -->
       <div class="flex items-center space-x-3.5">
-        <Link href="/admin" class="w-11 h-11 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center font-black text-white shrink-0 hover:bg-black transition duration-200">
-          <!-- Modern Bus Icon -->
-          <svg class="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M8 6v6"></path>
-            <path d="M15 6v6"></path>
-            <path d="M2 12h19.6"></path>
-            <path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-3.3-2.7-6-6-6H7c-3.3 0-6 2.7-6 6 0 .4.1.8.2 1.2.3 1.1.8 2.8.8 2.8h3"></path>
-            <circle cx="7" cy="18" r="2"></circle>
-            <circle cx="16" cy="18" r="2"></circle>
-          </svg>
+        <Link href="/admin" class="w-11 h-11 rounded-xl bg-white border border-red-200 flex items-center justify-center p-1.5 shadow-xs hover:border-red-500 transition duration-200">
+          <img src="/images/logo.png" alt="Logo Trường ĐH Kiến Trúc Đà Nẵng" class="w-full h-full object-contain" />
         </Link>
         <div>
           <div class="flex items-center space-x-2">

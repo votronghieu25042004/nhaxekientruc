@@ -5,14 +5,14 @@
         
         <!-- Logo Brand nhaxekientruc -->
         <Link href="/" class="flex items-center gap-2.5 group flex-shrink-0">
-          <div class="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-white text-xl shadow-sm group-hover:scale-105 transition-all">
-            🚌
+          <div class="w-10 h-10 rounded-xl bg-white border border-red-200/90 flex items-center justify-center p-1 shadow-xs group-hover:scale-105 transition-all">
+            <img src="/images/logo.png" alt="Logo Trường ĐH Kiến Trúc Đà Nẵng" class="w-full h-full object-contain" />
           </div>
           <div>
             <span class="text-xl font-black tracking-tight text-red-600 block leading-none">
               nhaxekientruc
             </span>
-            <span class="text-[9.5px] text-slate-400 font-bold block tracking-wider uppercase mt-1">HỆ THỐNG VÉ XE</span>
+            <span class="text-[9.5px] text-slate-400 font-bold block tracking-wider uppercase mt-1">ĐH KIẾN TRÚC ĐÀ NẴNG</span>
           </div>
         </Link>
 
