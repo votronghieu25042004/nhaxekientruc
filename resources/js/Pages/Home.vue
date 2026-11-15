@@ -635,64 +635,43 @@
           </h2>
           <div class="flex items-center justify-between mt-1">
             <p class="text-xs text-slate-500 font-medium">Cập nhật những thông tin mới từ nhaxekientruc</p>
-            <a href="#" class="text-xs font-bold text-red-600 hover:underline">Xem tất cả &gt;</a>
+            <button 
+              type="button" 
+              @click="openNews(0)" 
+              class="text-xs font-bold text-red-600 hover:underline cursor-pointer"
+            >
+              Xem tất cả &gt;
+            </button>
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-xs hover:shadow-md transition group cursor-pointer flex flex-col justify-between">
-            <div class="h-44 overflow-hidden bg-slate-100">
+          <div 
+            v-for="(item, idx) in newsList" 
+            :key="item.id"
+            @click="openNews(idx)"
+            class="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-xs hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-pointer flex flex-col justify-between"
+          >
+            <div class="h-44 overflow-hidden bg-slate-100 relative">
               <img
-                src="https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=600&auto=format&fit=crop&q=80"
-                alt="Chủ động hành trình"
+                :src="item.image"
+                :alt="item.title"
                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
+              <span class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-slate-900/80 backdrop-blur-xs text-white text-[10px] font-bold">
+                {{ item.tag }}
+              </span>
             </div>
-            <div class="p-4 space-y-2">
+            <div class="p-4 space-y-2 flex-1 flex flex-col justify-between">
               <h3 class="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-red-600 transition uppercase line-clamp-2">
-                CHỦ ĐỘNG HÀNH TRÌNH, AN TÂM GIỮ CHỖ CÙNG APP nhaxekientruc
+                {{ item.title }}
               </h3>
-              <div class="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
-                <span>🕒 18/09/2026</span>
-                <span class="text-red-600 font-bold">Chi tiết &gt;</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-xs hover:shadow-md transition group cursor-pointer flex flex-col justify-between">
-            <div class="h-44 overflow-hidden bg-slate-100">
-              <img
-                src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=600&auto=format&fit=crop&q=80"
-                alt="Mở tuyến mới"
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-            </div>
-            <div class="p-4 space-y-2">
-              <h3 class="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-red-600 transition uppercase line-clamp-2">
-                ĐÀ NẴNG - QUY NHƠN - TÂY NGUYÊN: MỞ TUYẾN MỚI THÊM TIỆN ÍCH
-              </h3>
-              <div class="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
-                <span>🕒 15/09/2026</span>
-                <span class="text-red-600 font-bold">Chi tiết &gt;</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-xs hover:shadow-md transition group cursor-pointer flex flex-col justify-between">
-            <div class="h-44 overflow-hidden bg-slate-100">
-              <img
-                src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&auto=format&fit=crop&q=80"
-                alt="Thông báo lịch xe"
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-            </div>
-            <div class="p-4 space-y-2">
-              <h3 class="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-red-600 transition uppercase line-clamp-2">
-                TĂNG CƯỜNG 100 CHUYẾN XE PHỤC VỤ HÀNH KHÁCH CAO ĐIỂM DỊP LỄ
-              </h3>
-              <div class="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
-                <span>🕒 25/08/2026</span>
-                <span class="text-red-600 font-bold">Chi tiết &gt;</span>
+              <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                {{ item.summary }}
+              </p>
+              <div class="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100 mt-2">
+                <span>🕒 {{ item.date }}</span>
+                <span class="text-red-600 font-bold group-hover:translate-x-0.5 transition-transform">Chi tiết &gt;</span>
               </div>
             </div>
           </div>
@@ -1104,6 +1083,105 @@
       </div>
     </Teleport>
 
+    <!-- Modal Đọc Tin Tức Chi Tiết -->
+    <Teleport to="body">
+      <div 
+        v-if="showNewsModal && newsList[activeNewsIndex]" 
+        class="fixed inset-0 z-[99998] flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200"
+        @click.self="closeNews"
+      >
+        <div 
+          class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden text-slate-800 animate-in zoom-in-95 duration-150"
+        >
+          <!-- Header ảnh bài viết -->
+          <div class="relative h-48 sm:h-56 w-full bg-slate-900 flex-shrink-0 overflow-hidden">
+            <img 
+              :src="newsList[activeNewsIndex].image" 
+              :alt="newsList[activeNewsIndex].title" 
+              class="w-full h-full object-cover opacity-90"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20"></div>
+            
+            <button 
+              type="button" 
+              @click="closeNews"
+              class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition cursor-pointer font-bold text-sm"
+            >
+              ✕
+            </button>
+
+            <div class="absolute bottom-3 left-4 right-4 text-white space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-full bg-red-600 text-[10px] font-black uppercase tracking-wide">
+                  {{ newsList[activeNewsIndex].tag }}
+                </span>
+                <span class="text-xs text-slate-300">🕒 {{ newsList[activeNewsIndex].date }}</span>
+              </div>
+              <h2 class="text-sm sm:text-base font-black leading-snug line-clamp-2">
+                {{ newsList[activeNewsIndex].title }}
+              </h2>
+            </div>
+          </div>
+
+          <!-- Nội dung chi tiết bài viết -->
+          <div class="p-5 sm:p-6 overflow-y-auto space-y-3.5 text-xs sm:text-[13px] leading-relaxed text-slate-700">
+            <p class="font-bold text-slate-900 bg-slate-50 p-3 rounded-2xl border-l-4 border-red-600">
+              {{ newsList[activeNewsIndex].summary }}
+            </p>
+
+            <div class="space-y-2.5">
+              <p 
+                v-for="(p, pIdx) in newsList[activeNewsIndex].content" 
+                :key="pIdx"
+                class="text-slate-600"
+              >
+                {{ p }}
+              </p>
+            </div>
+
+            <!-- Bài viết khác trong danh mục -->
+            <div class="pt-4 border-t border-slate-100">
+              <h4 class="font-black text-slate-900 uppercase text-xs mb-2">Các Tin Tức Khác:</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div 
+                  v-for="(other, oIdx) in newsList" 
+                  :key="other.id"
+                  v-show="oIdx !== activeNewsIndex"
+                  @click="activeNewsIndex = oIdx"
+                  class="p-2.5 rounded-xl border border-slate-200 hover:border-red-500 hover:bg-red-50/40 transition cursor-pointer flex items-center gap-2.5 group"
+                >
+                  <img :src="other.image" :alt="other.title" class="w-12 h-10 rounded-lg object-cover flex-shrink-0" />
+                  <div class="min-w-0 flex-1">
+                    <p class="font-bold text-[11px] text-slate-800 group-hover:text-red-600 truncate">{{ other.title }}</p>
+                    <span class="text-[10px] text-slate-400">🕒 {{ other.date }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer hành động -->
+          <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3 flex-shrink-0">
+            <button 
+              type="button" 
+              @click="closeNews"
+              class="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold text-xs transition cursor-pointer"
+            >
+              Đóng
+            </button>
+            <Link
+              href="/trips"
+              @click="closeNews"
+              class="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition cursor-pointer shadow-xs flex items-center gap-1.5"
+            >
+              <span>🚌 Tìm & Đặt Chuyến Này Ngay</span>
+              <span>➔</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <Footer />
     <AiChatModal />
 
@@ -1124,7 +1202,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { router, usePage } from '@inertiajs/vue3';
+import { router, usePage, Link } from '@inertiajs/vue3';
 import Navbar from '@/Components/Navbar.vue';
 import Footer from '@/Components/Footer.vue';
 import SearchWidget from '@/Components/SearchWidget.vue';
@@ -1137,6 +1215,64 @@ const props = defineProps({
   destinations_today: Array,
   featured_trips: Array,
 });
+
+// Danh sách tin tức mới tương tác
+const newsList = [
+  {
+    id: 1,
+    title: 'CHỦ ĐỘNG HÀNH TRÌNH, AN TÂM GIỮ CHỖ CÙNG APP NHAXEKIENTRUC',
+    date: '18/09/2026',
+    tag: 'Công Nghệ Đặt Vé',
+    image: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=1000&auto=format&fit=crop&q=80',
+    summary: 'Trải nghiệm đặt vé trực tuyến nhanh chóng với tính năng chọn giường nằm 2 tầng 3D, cọc trước 30% linh hoạt và nhận vé điện tử kèm mã QR Code.',
+    content: [
+      'Hệ thống đặt vé xe trực tuyến nhaxekientruc mang đến giải pháp di chuyển toàn diện cho hành khách từ Đà Nẵng kết nối các tỉnh thành miền Trung và Tây Nguyên.',
+      'Với giao diện trực quan, khách hàng có thể dễ dàng chọn đúng giường nằm tầng trên/tầng dưới theo ý thích, kiểm tra biển số xe, thông tin tài xế và phụ xe trước giờ khởi hành.',
+      'Đặc biệt, tính năng đặt cọc linh hoạt 30% giúp hành khách an tâm giữ chỗ trong những dịp cao điểm mà không phải thanh toán toàn bộ ngay lập tức. Số tiền còn lại sẽ thanh toán khi lên xe.',
+      'Vé điện tử được đồng bộ ngay vào mục Vé Của Tôi và gửi qua tin nhắn SMS/Email, kèm mã QR Code giúp rút ngắn thời gian làm thủ tục chỉ còn 5 giây.'
+    ]
+  },
+  {
+    id: 2,
+    title: 'ĐÀ NẴNG - QUY NHƠN - TÂY NGUYÊN: MỞ TUYẾN MỚI THÊM TIỆN ÍCH',
+    date: '15/09/2026',
+    tag: 'Mở Tuyến Mới',
+    image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=1000&auto=format&fit=crop&q=80',
+    summary: 'Khai trương loạt tuyến xe Limousine giường nằm cao cấp kết nối Đà Nẵng với Quy Nhơn, Pleiku, Buôn Ma Thuột với nhiều ưu đãi hấp dẫn.',
+    content: [
+      'Đáp ứng nhu cầu đi lại, học tập và công tác ngày càng tăng cao, nhaxekientruc chính thức đưa vào khai thác các tuyến xe giường nằm chất lượng cao kết nối Đà Nẵng với Bình Định và các tỉnh Tây Nguyên.',
+      'Dàn xe được trang bị đầy đủ tiện nghi: giường nằm bọc da cao cấp tích hợp massage, cổng sạc Type-C/USB tại từng vị trí, wifi 5G tốc độ cao, nước uống và khăn lạnh miễn phí suốt hành trình.',
+      'Mỗi ngày có từ 4 đến 6 chuyến xuất bến theo các khung giờ sáng và tối, giúp hành khách linh hoạt sắp xếp thời gian biểu phù hợp.',
+      'Đặc biệt, trong tháng khai trương, hành khách đặt vé tuyến mới sẽ nhận ngay mã giảm giá 10% cùng chính sách tích điểm hoàn tiền hấp dẫn.'
+    ]
+  },
+  {
+    id: 3,
+    title: 'TĂNG CƯỜNG 100 CHUYẾN XE PHỤC VỤ HÀNH KHÁCH CAO ĐIỂM DỊP LỄ',
+    date: '25/08/2026',
+    tag: 'Thông Báo Vận Hành',
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1000&auto=format&fit=crop&q=80',
+    summary: 'Nhà xe tăng cường 100 chuyến xe bổ sung, cam kết giữ nguyên giá vé niêm yết, không chèn ép và phục vụ nước uống khăn lạnh chu đáo.',
+    content: [
+      'Nhằm đảm bảo 100% người dân, sinh viên và người lao động có xe về quê và đi du lịch an toàn trong dịp cao điểm, nhaxekientruc đã lên kế hoạch tăng cường hơn 100 chuyến xe bổ sung.',
+      'Ban lãnh đạo cam kết giữ đúng giá vé niêm yết công khai, tuyệt đối không tăng giá bất hợp lý, không chở quá số người quy định và tuân thủ nghiêm ngặt tốc độ an toàn giao thông.',
+      'Đội ngũ tài xế và tiếp viên được tập huấn kỹ lưỡng về phong cách phục vụ chu đáo, văn minh và tận tình hỗ trợ hành khách mang hành lý.',
+      'Hành khách nên chủ động đặt vé sớm qua website hoặc tổng đài 1900 6067 để chọn được vị trí giường ưng ý nhất.'
+    ]
+  }
+];
+
+const showNewsModal = ref(false);
+const activeNewsIndex = ref(0);
+
+const openNews = (index = 0) => {
+  activeNewsIndex.value = index;
+  showNewsModal.value = true;
+};
+
+const closeNews = () => {
+  showNewsModal.value = false;
+};
 
 const showWelcomeVoucherModal = ref(false);
 const welcomeVoucherType = ref('NORMAL'); // 'STUDENT' | 'NORMAL'

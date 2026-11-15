@@ -799,7 +799,7 @@
                           class="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500 mt-0.5 cursor-pointer"
                         />
                         <label for="agree-reg-phone" class="text-xs text-slate-600 select-none cursor-pointer">
-                          Tôi đồng ý với <a href="#" class="text-red-600 underline font-bold">Điều khoản & Quy định vận chuyển</a> của nhaxekientruc (Bao gồm miễn phí 20kg hành lý 0đ).
+                          Tôi đồng ý với <button type="button" @click.prevent="showTermsModal = true" class="text-red-600 underline font-bold hover:text-red-700 cursor-pointer inline text-left">Điều khoản & Quy định vận chuyển</button> của nhaxekientruc (Bao gồm miễn phí 20kg hành lý 0đ).
                         </label>
                       </div>
 
@@ -883,7 +883,7 @@
                           class="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500 mt-0.5 cursor-pointer"
                         />
                         <label for="agree-reg-email" class="text-xs text-slate-600 select-none cursor-pointer">
-                          Tôi đồng ý với <a href="#" class="text-red-600 underline font-bold">Điều khoản & Quy định vận chuyển</a> của nhaxekientruc (Bao gồm miễn phí 20kg hành lý 0đ).
+                          Tôi đồng ý với <button type="button" @click.prevent="showTermsModal = true" class="text-red-600 underline font-bold hover:text-red-700 cursor-pointer inline text-left">Điều khoản & Quy định vận chuyển</button> của nhaxekientruc (Bao gồm miễn phí 20kg hành lý 0đ).
                         </label>
                       </div>
 
@@ -1208,6 +1208,103 @@
         </button>
       </div>
     </div>
+
+    <!-- MODAL ĐIỀU KHOẢN & QUY ĐỊNH VẬN CHUYỂN -->
+    <div
+      v-if="showTermsModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in"
+      @click.self="showTermsModal = false"
+    >
+      <div class="bg-white rounded-3xl max-w-xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200 text-slate-800 animate-in zoom-in-95 duration-150">
+        <!-- Header -->
+        <div class="px-5 py-4 bg-gradient-to-r from-red-600 to-rose-600 text-white flex items-center justify-between flex-shrink-0">
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">📜</span>
+            <div>
+              <h3 class="font-black text-sm sm:text-base leading-tight">Điều Khoản & Quy Định Vận Chuyển</h3>
+              <p class="text-[11px] text-white/80">Quy định áp dụng cho tất cả hành khách của nhaxekientruc</p>
+            </div>
+          </div>
+          <button 
+            @click="showTermsModal = false" 
+            class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center font-bold text-sm cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed text-slate-700">
+          <div class="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-950">
+            <span class="text-2xl">🧳</span>
+            <div>
+              <p class="font-bold text-xs uppercase tracking-wide">Miễn Phí 20kg Hành Lý Ký Gửi 0Đ</p>
+              <p class="text-[11px] text-red-800">Mỗi hành khách được miễn cước 20kg hành lý gửi gầm xe kèm 1 kiện xách tay dưới 7kg.</p>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <h4 class="font-black text-slate-900 uppercase text-xs flex items-center gap-1.5">
+              <span>⏰</span>
+              <span>1. Thời Gian Có Mặt & Thủ Tục Lên Xe:</span>
+            </h4>
+            <p class="text-slate-600">
+              Hành khách có mặt tại bến xe hoặc điểm đón trước <strong>15 - 30 phút</strong> so với giờ xuất bến để nhân viên soát vé QR Code điện tử và hỗ trợ sắp xếp hành lý.
+            </p>
+          </div>
+
+          <div class="space-y-1.5">
+            <h4 class="font-black text-slate-900 uppercase text-xs flex items-center gap-1.5">
+              <span>🎓</span>
+              <span>2. Đặc Quyền Dành Riêng Cho Sinh Viên:</span>
+            </h4>
+            <p class="text-slate-600">
+              Sinh viên đăng ký bằng email nhà trường (đuôi .edu.vn) được nhận ngay mã <strong>SINHVIEN0DONG</strong> (Vé 0đ chuyến đầu) và mã <strong>SINHVIEN30</strong> (Giảm 30% suốt 1 năm học).
+            </p>
+          </div>
+
+          <div class="space-y-1.5">
+            <h4 class="font-black text-slate-900 uppercase text-xs flex items-center gap-1.5">
+              <span>🔄</span>
+              <span>3. Quy Định Hủy Vé & Hoàn Tiền Cọc:</span>
+            </h4>
+            <ul class="list-disc pl-5 space-y-1 text-slate-600">
+              <li>Hủy trước 24 giờ: <strong>Hoàn 100%</strong> tiền cọc giữ chỗ.</li>
+              <li>Hủy từ 12 giờ đến 24 giờ: <strong>Hoàn 50%</strong> tiền cọc.</li>
+              <li>Dưới 12 giờ trước giờ chạy: Không hỗ trợ hoàn cọc.</li>
+            </ul>
+          </div>
+
+          <div class="space-y-1.5">
+            <h4 class="font-black text-slate-900 uppercase text-xs flex items-center gap-1.5">
+              <span>🛡️</span>
+              <span>4. An Toàn & Bảo Mật:</span>
+            </h4>
+            <p class="text-slate-600">
+              Toàn bộ thông tin cá nhân và số điện thoại được mã hóa chuẩn an ninh mạng, cam kết không cung cấp cho bên thứ ba.
+            </p>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3 flex-shrink-0">
+          <button
+            type="button"
+            @click="showTermsModal = false"
+            class="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold text-xs transition cursor-pointer"
+          >
+            Đóng
+          </button>
+          <button
+            type="button"
+            @click="agreeTerms = true; showTermsModal = false"
+            class="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition cursor-pointer shadow-xs"
+          >
+            Tôi Đã Hiểu & Đồng Ý
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1229,6 +1326,7 @@ const page = usePage();
 const activeTab = ref(props.initialTab || 'login');
 const showPassword = ref(false);
 const showForgotModal = ref(false);
+const showTermsModal = ref(false);
 const agreeTerms = ref(true);
 const otpDeliveryMethod = ref('sms'); // 'sms' | 'voice'
 
