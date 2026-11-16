@@ -349,6 +349,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
+import axios from 'axios'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -426,7 +427,7 @@ const submitUpdateName = () => {
   })
 }
 
-const sendContactOtp = () => {
+const sendContactOtp = async () => {
   feedbackSuccess.value = ''
   feedbackError.value = ''
 
@@ -436,43 +437,55 @@ const sendContactOtp = () => {
   }
 
   isSubmitting.value = true
-  router.post('/user/send-otp', {
-    type: contactType.value,
-    value: contactValue.value
-  }, {
-    preserveScroll: true,
-    onSuccess: (page) => {
-      isSubmitting.value = false
+  try {
+    const res = await axios.post('/user/send-otp', {
+      type: contactType.value,
+      value: contactValue.value
+    }, {
+      headers: { 'Accept': 'application/json' }
+    })
+    const data = res.data
+    if (data?.success) {
       otpSent.value = true
-      feedbackSuccess.value = page.props.flash?.otp_notice || (contactType.value === 'email' ? 'Mã xác thực đã được gửi về Gmail của bạn!' : 'Mã xác thực OTP đã gửi qua ứng dụng Zalo!')
-    },
-    onError: (err) => {
-      isSubmitting.value = false
-      feedbackError.value = err.otp_error || 'Gửi mã xác thực thất bại. Vui lòng kiểm tra lại thông tin.'
+      feedbackSuccess.value = data.message || 'Mã xác thực OTP đã được tạo thành công!'
+      if (data.otp) {
+        otpCode.value = data.otp
+      }
+    } else {
+      feedbackError.value = data?.message || 'Không thể gửi mã xác thực. Vui lòng thử lại!'
     }
-  })
+  } catch (err) {
+    feedbackError.value = err.response?.data?.message || err.message || 'Gửi mã xác thực thất bại. Vui lòng kiểm tra lại thông tin.'
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
-const verifyContactOtp = () => {
+const verifyContactOtp = async () => {
   feedbackSuccess.value = ''
   feedbackError.value = ''
   isSubmitting.value = true
 
-  router.post('/user/verify-otp', {
-    otp: otpCode.value
-  }, {
-    preserveScroll: true,
-    onSuccess: (page) => {
-      isSubmitting.value = false
+  try {
+    const res = await axios.post('/user/verify-otp', {
+      otp: otpCode.value
+    }, {
+      headers: { 'Accept': 'application/json' }
+    })
+    const data = res.data
+    if (data?.success) {
       otpSent.value = false
       otpCode.value = ''
-      feedbackSuccess.value = page.props.flash?.success || 'Cập nhật và xác thực thông tin thành công!'
-    },
-    onError: (err) => {
-      isSubmitting.value = false
-      feedbackError.value = err.otp_verify_error || 'Mã OTP không chính xác hoặc đã hết hạn.'
+      feedbackSuccess.value = data.message || 'Cập nhật và xác thực thông tin thành công!'
+      router.reload({ only: ['auth'] })
+    } else {
+      feedbackError.value = data?.message || 'Mã OTP không chính xác hoặc đã hết hạn.'
     }
-  })
+  } catch (err) {
+    feedbackError.value = err.response?.data?.message || err.message || 'Mã OTP không chính xác hoặc đã hết hạn.'
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 const submitChangePassword = () => {

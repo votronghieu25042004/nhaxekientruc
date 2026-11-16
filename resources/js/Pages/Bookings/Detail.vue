@@ -278,11 +278,20 @@
               <div class="text-right">
                 <span class="text-[11px] font-bold text-slate-400 uppercase block">TỔNG TIỀN VÉ</span>
                 <span class="text-2xl font-black text-emerald-700 font-mono block">{{ formatCurrency(booking.total_amount) }}</span>
-                <span class="text-[11px] text-slate-500 block">
+                
+                <div v-if="booking.is_deposit || booking.payment_status === 'DEPOSIT_PAID'" class="mt-1 text-[11px] font-medium space-y-0.5">
+                  <div class="text-amber-800 font-bold">
+                    ⚡ Đã cọc 30%: {{ formatCurrency(booking.paid_amount) }}
+                  </div>
+                  <div class="text-red-600 font-bold">
+                    Còn lại 70%: {{ formatCurrency(booking.remaining_amount) }} (Thu khi lên xe)
+                  </div>
+                </div>
+                <span v-else class="text-[11px] text-slate-500 block">
                   {{ booking.payment_method === 'CASH' ? 'Tiền mặt' : (booking.payment_method === 'TRANSFER' ? 'Chuyển khoản' : (booking.payment_method === 'VIETQR' ? 'VietQR Napas 247' : 'Online')) }}
                 </span>
                 <Link 
-                  v-if="booking.payment_status !== 'PAID' && booking.payment_status !== 'CANCELLED' && booking.payment_status !== 'REFUNDED'"
+                  v-if="booking.payment_status !== 'PAID' && booking.payment_status !== 'DEPOSIT_PAID' && booking.payment_status !== 'CANCELLED' && booking.payment_status !== 'REFUNDED'"
                   :href="`/booking/${booking.booking_code}/payment`"
                   class="mt-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs shadow-md shadow-red-500/25 transition cursor-pointer active:scale-95"
                 >
@@ -1090,6 +1099,9 @@ const bookingBadgeClass = computed(() => {
   if (props.booking.refund_status === 'REJECTED' || props.booking.payment_status === 'CANCELLED') {
     return 'bg-rose-500 text-white';
   }
+  if (props.booking.payment_status === 'DEPOSIT_PAID' || (props.booking.is_deposit && props.booking.paid_amount > 0)) {
+    return 'bg-amber-500 text-white font-bold';
+  }
   return props.booking.payment_status === 'PAID' ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-slate-950';
 });
 
@@ -1106,7 +1118,10 @@ const bookingBadgeText = computed(() => {
   if (props.booking.payment_status === 'CANCELLED') {
     return '✕ ĐÃ HỦY VÉ';
   }
-  return props.booking.payment_status === 'PAID' ? '✓ ĐÃ THANH TOÁN' : '⏳ CHỜ THANH TOÁN';
+  if (props.booking.payment_status === 'DEPOSIT_PAID' || (props.booking.is_deposit && props.booking.paid_amount > 0)) {
+    return '⚡ ĐÃ CỌC 30% (CÒN THIẾU 70%)';
+  }
+  return props.booking.payment_status === 'PAID' ? '✓ ĐÃ THANH TOÁN 100%' : '⏳ CHỜ THANH TOÁN';
 });
 
 const printTicket = () => {

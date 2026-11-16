@@ -90,10 +90,18 @@ class VietQrService
     {
         $config = self::getBankConfig();
 
-        // 1. Số tiền cần thanh toán
+        // 1. Số tiền cần thanh toán (Hỗ trợ tự động nhận diện đơn cọc 30% hoặc thanh toán đủ 100%)
         $amount = $customAmount;
         if ($amount === null) {
-            if ($booking->payment_status === 'PARTIAL') {
+            $isDeposit = ($booking->payment_method === 'DEPOSIT_30') 
+                || in_array($booking->payment_status, ['DEPOSIT_PAID', 'PARTIALLY_PAID'])
+                || str_contains($booking->notes ?? '', 'Cọc trước 30%');
+
+            if ($isDeposit && in_array($booking->payment_status, ['UNPAID', 'PENDING', null])) {
+                // Khách đang thanh toán tiền cọc 30%
+                $amount = round((float)$booking->total_amount * 0.3);
+            } elseif ($booking->payment_status === 'PARTIAL' || $booking->payment_status === 'DEPOSIT_PAID') {
+                // Đã cọc rồi, thanh toán phần còn lại 70%
                 $amount = max(0, (float)$booking->total_amount - (float)$booking->paid_amount);
             } else {
                 $amount = (float)($booking->paid_amount ?: $booking->total_amount);
