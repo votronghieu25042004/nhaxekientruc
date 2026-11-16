@@ -591,6 +591,12 @@ class TripController extends Controller
             'cancellationSchedule' => $cancellationSchedule,
             'user' => $user,
             'hasUsedStudentFirstTrip' => $hasUsedStudentFirstTrip,
+            'vouchers' => Voucher::where('is_active', true)
+                ->where(function ($q) {
+                    $q->whereNull('valid_until')->orWhereDate('valid_until', '>=', now()->toDateString());
+                })
+                ->orderBy('id', 'asc')
+                ->get(),
         ]);
     }
 
@@ -668,7 +674,10 @@ class TripController extends Controller
                     $discountAmount = min((float)$voucher->discount_value, $seatPrice * $totalSeatCount);
                     $discountPerSeat = round($discountAmount / max(1, $totalSeatCount));
                 }
-                $voucher->increment('used_count');
+                $voucher->increment('usage_count');
+                if (\Illuminate\Support\Facades\Schema::hasColumn('vouchers', 'used_count')) {
+                    $voucher->increment('used_count');
+                }
             }
         }
 
@@ -744,9 +753,15 @@ class TripController extends Controller
             $discountAmount += $newMemberDiscount;
         }
 
-        $isFull = ($request->payment_choice === 'FULL') || ($totalAmount == 0);
-        $paidAmount = ($totalAmount == 0) ? 0 : ($isFull ? $totalAmount : round($totalAmount * 0.3));
-        $paymentStatus = ($totalAmount == 0 || $isFull) ? 'PAID' : 'PARTIALLY_PAID';
+        // Đặt vé trực tuyến: ban đầu trạng thái là UNPAID và paid_amount = 0 (trừ khi vé 0đ được tài trợ)
+        // Khách hàng phải quét mã QR VietQR MBBank / MoMo chuyển khoản thì mới xác nhận PAID!
+        if ($totalAmount == 0) {
+            $paidAmount = 0;
+            $paymentStatus = 'PAID';
+        } else {
+            $paidAmount = 0;
+            $paymentStatus = 'UNPAID';
+        }
 
         $bookingCode = 'KT-' . strtoupper(Str::random(6));
 
@@ -797,7 +812,8 @@ class TripController extends Controller
             'total_amount' => $totalAmount,
             'paid_amount' => $paidAmount,
             'payment_status' => $paymentStatus,
-            'payment_method' => 'ONLINE',
+            'payment_method' => $request->input('payment_method', 'VIETQR'),
+            'payment_ref_code' => 'VE' . $bookingCode,
             'checkin_status' => 'PENDING',
             'qr_token' => $seatQrToken,
             'voucher_code' => $voucher ? $voucher->code : null,
@@ -855,8 +871,232 @@ class TripController extends Controller
         }
         $successMsg .= "Mã vé điện tử QR & thông báo tự động xuất bến đã gửi về Gmail {$request->customer_email}.";
 
-        return redirect()->route('booking.detail', ['code' => $bookingCode])
+        return redirect()->route('booking.payment', ['code' => $bookingCode])
             ->with('success', $successMsg);
+    }
+
+    /**
+     * Màn hình Thanh toán VietQR Napas 247
+     */
+    public function paymentScreen(Request $request, $code)
+    {
+        $booking = Booking::with([
+            'trip.route.stops',
+            'trip.bus',
+            'trip.driver',
+            'pickupStop',
+            'dropoffStop',
+            'bookingSeats',
+        ])->where('booking_code', $code)->firstOrFail();
+
+        $vietQr = \App\Services\VietQrService::generatePaymentData($booking);
+
+        $trip = $booking->trip;
+        $seatsArr = $booking->bookingSeats->pluck('seat_number')->toArray();
+
+        return Inertia::render('Bookings/Payment', [
+            'booking' => [
+                'id' => $booking->id,
+                'booking_code' => $booking->booking_code,
+                'customer_name' => $booking->customer_name,
+                'customer_phone' => $booking->customer_phone,
+                'customer_email' => $booking->customer_email,
+                'total_amount' => (float)$booking->total_amount,
+                'paid_amount' => (float)$booking->paid_amount,
+                'remaining_amount' => max(0, (float)$booking->total_amount - (float)$booking->paid_amount),
+                'payment_status' => $booking->payment_status,
+                'payment_method' => $booking->payment_method,
+                'payment_confirmed_at' => $booking->payment_confirmed_at ? $booking->payment_confirmed_at->format('H:i d/m/Y') : null,
+                'seats' => $seatsArr,
+                'seats_label' => implode(', ', $seatsArr),
+                'pickup' => $booking->pickupStop?->stop_name ?? ($trip?->route?->origin ?? 'Bến xe TT'),
+                'dropoff' => $booking->dropoffStop?->stop_name ?? ($trip?->route?->destination ?? 'Bến đến'),
+                'departure_time' => $trip?->departure_time ? Carbon::parse($trip->departure_time)->format('H:i - d/m/Y') : 'Xem trên vé',
+                'route_name' => $trip?->route?->name ?? 'Tuyến xe nhaxekientruc',
+                'bus_plate' => $trip?->bus?->license_plate ?? '43B-012.34',
+                'trip_id' => $trip?->id,
+                'ticket_url' => url('/ve/' . $booking->booking_code),
+            ],
+            'vietQr' => $vietQr,
+            'is_admin' => (bool)(session('admin_mode') || Auth::user()?->role === 'ADMIN'),
+        ]);
+    }
+
+    /**
+     * API kiểm tra trạng thái thanh toán theo thời gian thực (Polling)
+     * CHỈ xác nhận thanh toán khi thực sự có Webhook tiền vào MBBank 09025042004 hoặc SePay API ghi nhận
+     */
+    public function checkPaymentStatus(Request $request, $code)
+    {
+        $booking = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])
+            ->where('booking_code', $code)
+            ->firstOrFail();
+
+        // 1. Tự động kiểm tra API SePay nếu có cấu hình SEPAY_API_TOKEN
+        $sepayToken = env('SEPAY_API_TOKEN');
+        if (!empty($sepayToken) && $booking->payment_status !== 'PAID') {
+            try {
+                $accNo = env('VIETQR_ACCOUNT_NO', '09025042004');
+                $response = \Illuminate\Support\Facades\Http::timeout(5)
+                    ->withHeaders(['Authorization' => 'Apikey ' . $sepayToken])
+                    ->get('https://my.sepay.vn/userapi/transactions/list', [
+                        'account_number' => $accNo,
+                        'limit' => 20,
+                    ]);
+
+                if ($response->successful()) {
+                    $transactions = $response->json('transactions') ?? [];
+                    foreach ($transactions as $tx) {
+                        $txContent = strtoupper($tx['transaction_content'] ?? '');
+                        $rawBookingCode = strtoupper($booking->booking_code); // KT-2QFWP1
+                        $cleanBookingCode = preg_replace('/[^A-Z0-9]/', '', $rawBookingCode); // KT2QFWP1
+                        $cleanTx = preg_replace('/[^A-Z0-9]/', '', $txContent);
+                        $shortCode = preg_replace('/^KT/', '', $cleanBookingCode); // 2QFWP1
+
+                        $isMatched = str_contains($txContent, $rawBookingCode)
+                            || str_contains($cleanTx, $cleanBookingCode)
+                            || str_contains($cleanTx, 'VE' . $cleanBookingCode)
+                            || (strlen($shortCode) >= 4 && str_contains($cleanTx, $shortCode));
+
+                        if ($isMatched) {
+                            $booking->payment_status = 'PAID';
+                            $booking->paid_amount = $booking->total_amount;
+                            $booking->payment_confirmed_at = now();
+                            $booking->payment_method = 'VIETQR';
+                            $booking->payment_ref_code = $tx['reference_number'] ?? ('SEPAY-' . ($tx['id'] ?? time()));
+                            $booking->save();
+
+                            AuditLog::log('SEPAY_AUTO_PAID', "Tự động nhận diện giao dịch SePay MBBank 09025042004 cho vé {$booking->booking_code}", 'Booking', $booking->id);
+
+                            if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
+                                \App\Services\EmailService::sendBookingConfirmation($booking);
+                            }
+                            break;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("[SEPAY_CHECK_ERROR] " . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'booking_code' => $booking->booking_code,
+            'payment_status' => $booking->payment_status,
+            'is_paid' => $booking->payment_status === 'PAID',
+            'paid_amount' => (float)$booking->paid_amount,
+            'payment_confirmed_at' => $booking->payment_confirmed_at ? $booking->payment_confirmed_at->format('H:i d/m/Y') : null,
+        ]);
+    }
+
+    /**
+     * Xác nhận thanh toán VietQR thành công (Khách bấm hoặc mô phỏng Webhook ngân hàng)
+     */
+    public function confirmPayment(Request $request, $code)
+    {
+        $booking = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])
+            ->where('booking_code', $code)
+            ->firstOrFail();
+
+        $booking->payment_status = 'PAID';
+        $booking->paid_amount = $booking->total_amount;
+        $booking->payment_confirmed_at = now();
+        $booking->payment_method = 'VIETQR';
+        $booking->payment_ref_code = $booking->payment_ref_code ?: ('VE' . $booking->booking_code);
+        $booking->save();
+
+        AuditLog::log('CONFIRM_VIETQR_PAYMENT', "Khách hàng xác nhận đã chuyển khoản VietQR thành công đơn vé {$booking->booking_code} ({$booking->total_amount}đ)", 'Booking', $booking->id);
+
+        // Tự động gửi email xác nhận đặt vé đính kèm file vé PDF về Gmail khách
+        if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
+            \App\Services\EmailService::sendBookingConfirmation($booking);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Xác nhận thanh toán VietQR thành công! Vé điện tử kèm file PDF đã gửi về Gmail của Quý khách.',
+            'redirect_url' => url('/ve/' . $booking->booking_code),
+        ]);
+    }
+
+    /**
+     * Webhook tự động nhận thông báo tiền thật về tài khoản MBBank từ SePay / Casso / Ngân hàng
+     * Khớp lệnh khi tiền thật vào tài khoản 09025042004 - VO TRONG HIEU
+     */
+    public function handlePaymentWebhook(Request $request)
+    {
+        // SePay payload: content, transferAmount, transactionDate, referenceCode, id...
+        // Casso payload: data: [{ description, amount, ... }]
+        $content = $request->input('content') 
+            ?? $request->input('description') 
+            ?? $request->input('data.0.description') 
+            ?? '';
+
+        $amount = (float)($request->input('transferAmount') 
+            ?? $request->input('amount') 
+            ?? $request->input('data.0.amount') 
+            ?? 0);
+
+        if (empty($content)) {
+            return response()->json(['success' => false, 'message' => 'No transfer content found in payload'], 400);
+        }
+
+        $normalizedContent = preg_replace('/[^A-Z0-9]/', '', strtoupper($content));
+        $booking = null;
+
+        // 1. Thử khớp dạng KT-XXXX hoặc KTXXXX
+        if (preg_match('/(?:VE)?(KT[A-Z0-9]+)/i', $normalizedContent, $matches)) {
+            $rawCode = strtoupper($matches[1]);
+            $cleanCode = 'KT-' . substr($rawCode, 2);
+            $booking = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])
+                ->where('booking_code', $cleanCode)
+                ->orWhere('booking_code', $rawCode)
+                ->first();
+        }
+
+        // 2. Nếu chưa tìm thấy, quét tất cả đơn vé đang chờ thanh toán
+        if (!$booking) {
+            $pendingBookings = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])
+                ->whereIn('payment_status', ['UNPAID', 'PENDING'])
+                ->where('created_at', '>=', now()->subHours(48))
+                ->get();
+
+            foreach ($pendingBookings as $pb) {
+                $cleanPb = preg_replace('/[^A-Z0-9]/', '', strtoupper($pb->booking_code));
+                $shortPb = preg_replace('/^KT/', '', $cleanPb);
+                if (str_contains($normalizedContent, $cleanPb) || (strlen($shortPb) >= 4 && str_contains($normalizedContent, $shortPb))) {
+                    $booking = $pb;
+                    break;
+                }
+            }
+        }
+
+        if ($booking) {
+            $booking->payment_status = 'PAID';
+            $booking->paid_amount = max($booking->total_amount, $amount ?: $booking->total_amount);
+            $booking->payment_confirmed_at = now();
+            $booking->payment_method = 'VIETQR';
+            $booking->payment_ref_code = $request->input('referenceCode') ?? ('MB-' . now()->format('YmdHis'));
+            $booking->save();
+
+            AuditLog::log('WEBHOOK_VIETQR_PAID', "Tự động nhận tiền thật từ MBBank 09025042004 (VO TRONG HIEU) cho vé {$booking->booking_code}. Số tiền: " . number_format($amount) . "đ. Nội dung: {$content}", 'Booking', $booking->id);
+
+            // Tự động gửi email xác nhận kèm file vé PDF
+            if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
+                \App\Services\EmailService::sendBookingConfirmation($booking);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Đã tự động xác nhận thanh toán vé {$booking->booking_code} thành công!",
+                'booking_code' => $booking->booking_code,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => "Không tìm thấy đơn vé tương ứng với nội dung chuyển khoản: {$content}",
+        ], 404);
     }
 
     /**
@@ -879,66 +1119,21 @@ class TripController extends Controller
         }
 
         $sent = \App\Services\EmailService::sendDepartureReminder($booking);
+        // AI Gọi điện thoại thông báo
+        \App\Services\AiCallService::makeReminderCallAuto($booking);
 
         return response()->json([
             'success' => true,
-            'message' => "Trợ lý AI nhaxekientruc đã gửi thành công Mã vé QR & Thông báo xuất bến về Gmail {$booking->customer_email}!"
+            'message' => "Trợ lý AI nhaxekientruc đã gửi thành công Mã vé QR về Gmail {$booking->customer_email} & thực hiện cuộc gọi nhắc xuất bến!"
         ]);
     }
 
     /**
-     * Xem Vé Điện Tử
+     * Xem Vé Điện Tử & Quản Lý Vé (Đồng bộ cùng 1 trang Quản Lý Vé duy nhất với Bookings/Detail.vue)
      */
-    public function ticket($code)
+    public function ticket(Request $request, $code)
     {
-        $booking = Booking::with(['trip.route.stops', 'trip.bus', 'trip.driver', 'trip.conductor', 'pickupStop', 'dropoffStop', 'bookingSeats', 'review'])
-            ->where('booking_code', $code)
-            ->firstOrFail();
-
-        return Inertia::render('Bookings/Ticket', [
-            'booking' => [
-                'id' => $booking->id,
-                'booking_code' => $booking->booking_code,
-                'customer_name' => $booking->customer_name,
-                'customer_phone' => $booking->customer_phone,
-                'customer_email' => $booking->customer_email,
-                'seats' => $booking->bookingSeats->pluck('seat_number')->toArray(),
-                'from_location' => $booking->trip->route?->origin ?? 'Bến xuất phát',
-                'to_location' => $booking->trip->route?->destination ?? 'Bến đến',
-                'notes' => $booking->notes,
-                'total_amount' => (float) $booking->total_amount,
-                'paid_amount' => (float) $booking->paid_amount,
-                'remaining_due' => (float) ($booking->total_amount - $booking->paid_amount),
-                'payment_status' => $booking->payment_status,
-                'checkin_status' => $booking->checkin_status,
-                'checked_in_at' => $booking->checked_in_at ? $booking->checked_in_at->format('H:i - d/m/Y') : null,
-                'qr_token' => $booking->qr_token,
-                'departure_time' => $booking->trip->departure_time->format('H:i'),
-                'departure_date' => $booking->trip->departure_time->format('d/m/Y'),
-                'bus_type' => str_contains(strtolower($booking->trip->bus?->bus_type ?? ''), 'ngồi') ? 'Ghế ngồi VIP' : 'Xe giường nằm VIP',
-                'license_plate' => $booking->trip->bus?->license_plate ?? '43B-012.34',
-                'driver' => $booking->trip->driver ? [
-                    'id' => $booking->trip->driver->id,
-                    'name' => $booking->trip->driver->name,
-                    'phone' => $booking->trip->driver->phone,
-                    'avg_rating' => $booking->trip->driver->avg_rating ?? '4.9',
-                    'license_class' => $booking->trip->driver->license_class ?? 'E',
-                ] : null,
-                'conductor' => $booking->trip->conductor ? [
-                    'id' => $booking->trip->conductor->id,
-                    'name' => $booking->trip->conductor->name,
-                    'phone' => $booking->trip->conductor->phone,
-                ] : null,
-                'trip' => [
-                    'id' => $booking->trip->id,
-                    'trip_code' => $booking->trip->trip_code,
-                    'status' => $booking->trip->status,
-                    'current_speed' => $booking->trip->current_speed_kmh ?? 65,
-                ],
-                'has_reviewed' => $booking->review !== null,
-            ],
-            'user' => Auth::user(),
-        ]);
+        return $this->bookingDetail($request, $code);
     }
 
     /**
@@ -1455,37 +1650,133 @@ class TripController extends Controller
     /**
      * Xác thực và tính giá chiết khấu Voucher trực tiếp từ Database
      */
+    /**
+     * API: Lấy danh sách Voucher đang kích hoạt từ Database
+     */
+    public function activeVouchersApi(Request $request)
+    {
+        $vouchers = Voucher::where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('valid_until')->orWhereDate('valid_until', '>=', now()->toDateString());
+            })
+            ->orderBy('id', 'asc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'vouchers' => $vouchers,
+        ]);
+    }
+
+    /**
+     * Xác thực và tính giá chiết khấu Voucher trực tiếp từ Database
+     * Hỗ trợ phân quyền đối tượng: Sinh Viên (STUDENT), Cá Nhân (INDIVIDUAL), Tất Cả (ALL)
+     */
     public function applyVoucher(Request $request)
     {
-        $code = strtoupper(trim($request->input('code', '')));
+        $inputCode = strtoupper(trim($request->input('code', '')));
         $amount = (float)$request->input('amount', 0);
 
-        if (!$code) {
+        if (!$inputCode) {
             return response()->json(['valid' => false, 'message' => 'Vui lòng nhập mã Voucher!'], 422);
+        }
+
+        // Ánh xạ các alias phổ biến về mã chuẩn trong Database
+        $codeMap = [
+            'SINHVIEN100' => 'SINHVIEN0DONG',
+            'SV0DONG' => 'SINHVIEN0DONG',
+            'VE0DONG' => 'SINHVIEN0DONG',
+            'SVVN' => 'SINHVIEN30',
+            'SV2026' => 'SINHVIEN30',
+            'BANMOI10' => 'CHAOBAOMOI',
+            'KHACHMOI10' => 'CHAOBAOMOI',
+            'CHAOBANMOI' => 'CHAOBANMOI',
+        ];
+        $code = $codeMap[$inputCode] ?? $inputCode;
+
+        $voucher = Voucher::where('code', $code)->first();
+        if (!$voucher && isset($codeMap[$inputCode])) {
+            $voucher = Voucher::where('code', $inputCode)->first();
+        }
+
+        if (!$voucher) {
+            return response()->json([
+                'valid' => false,
+                'message' => "Mã khuyến mãi \"{$inputCode}\" không tồn tại trên hệ thống nhà xe!"
+            ], 404);
+        }
+
+        if (!$voucher->is_active) {
+            return response()->json([
+                'valid' => false,
+                'message' => "Mã khuyến mãi \"{$voucher->code}\" hiện đang tạm dừng áp dụng!"
+            ], 422);
+        }
+
+        if ($voucher->valid_until && Carbon::parse($voucher->valid_until)->endOfDay()->isPast()) {
+            return response()->json([
+                'valid' => false,
+                'message' => "Mã khuyến mãi \"{$voucher->code}\" đã hết hạn sử dụng!"
+            ], 422);
+        }
+
+        if ($voucher->usage_limit && $voucher->usage_count >= $voucher->usage_limit) {
+            return response()->json([
+                'valid' => false,
+                'message' => "Mã khuyến mãi \"{$voucher->code}\" đã hết lượt sử dụng toàn sàn!"
+            ], 422);
         }
 
         $authUser = Auth::user();
         $userEmail = strtolower($authUser?->email ?? $request->input('email', ''));
-        $isStudent = str_contains($userEmail, '.edu.vn') || str_contains($userEmail, 'sinhvien') || ($authUser && $authUser->is_student);
+        $isStudent = str_contains($userEmail, '.edu.vn') || str_contains($userEmail, 'sinhvien') || (bool)($authUser && $authUser->is_student);
 
-        // 0. VOUCHER SINH VIÊN GIẢM 100% CHO LẦN ĐẦU TIÊN (SINHVIEN100 / SINHVIEN0DONG)
-        if (in_array($code, ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])) {
+        // 1. KIỂM TRA ĐỐI TƯỢNG ÁP DỤNG (target_audience: STUDENT, INDIVIDUAL, ALL):
+        if ($voucher->target_audience === 'STUDENT') {
             if (!$isStudent) {
                 return response()->json([
                     'valid' => false,
-                    'message' => 'Mã vé 0-Đồng [SINHVIEN0DONG] chỉ dành riêng cho sinh viên có email trường (.edu.vn)! Vui lòng đăng ký/dùng email sinh viên để áp dụng.',
+                    'message' => "Mã [{$voucher->code}] dành riêng cho đối tượng Sinh viên (email .edu.vn hoặc tài khoản đã xác minh thẻ sinh viên)! Vui lòng đăng nhập hoặc dùng email sinh viên.",
                 ], 422);
             }
+        }
 
+        // 2. KIỂM TRA ĐƠN HÀNG TỐI THIỂU:
+        if ($voucher->min_order_value && $amount < $voucher->min_order_value) {
+            return response()->json([
+                'valid' => false,
+                'message' => "Mã [{$voucher->code}] chỉ áp dụng cho đơn vé từ " . number_format($voucher->min_order_value) . " VNĐ trở lên! (Hiện tại: " . number_format($amount) . " VNĐ)",
+            ], 422);
+        }
+
+        // 3. KIỂM TRA GIỚI HẠN SỐ LẦN SỬ DỤNG / 1 TÀI KHOẢN (max_uses_per_user):
+        $maxUsesPerUser = $voucher->max_uses_per_user ?: 2;
+        if ($authUser) {
+            $usedByUserCount = Booking::where('user_id', $authUser->id)
+                ->where(function ($q) use ($voucher, $code) {
+                    $q->where('voucher_code', $voucher->code)->orWhere('voucher_code', $code);
+                })
+                ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
+                ->count();
+
+            if ($usedByUserCount >= $maxUsesPerUser) {
+                return response()->json([
+                    'valid' => false,
+                    'message' => "Tài khoản của bạn đã sử dụng hết số lần cho phép của mã [{$voucher->code}] ({$maxUsesPerUser} lần/tài khoản)!",
+                ], 422);
+            }
+        }
+
+        // 4. TRƯỜNG HỢP VÉ 0-ĐỒNG (discount_value == 100 hoặc code SINHVIEN0DONG):
+        if (($voucher->discount_type === 'PERCENT' && (float)$voucher->discount_value >= 100) || $voucher->code === 'SINHVIEN0DONG') {
             $seatCount = (int)$request->input('seat_count', 1);
             if ($seatCount > 1) {
                 return response()->json([
                     'valid' => false,
-                    'message' => 'Mã vé 0-Đồng (SINHVIEN0DONG) chỉ áp dụng tối đa cho đúng 1 ghế cho mỗi sinh viên. Quý khách vui lòng chọn đúng 1 ghế!',
+                    'message' => 'Mã vé 0-Đồng chỉ áp dụng tối đa cho đúng 1 ghế cho mỗi sinh viên. Quý khách vui lòng chọn đúng 1 ghế!',
                 ], 422);
             }
 
-            // Kiểm tra điều kiện: CHỈ DÀNH CHO LẦN ĐẦU TIÊN CỦA SINH VIÊN
             if ($authUser) {
                 $hasUsedFirstTrip = Booking::where('user_id', $authUser->id)
                     ->where(function ($q) {
@@ -1504,141 +1795,40 @@ class TripController extends Controller
 
             return response()->json([
                 'valid' => true,
-                'code' => 'SINHVIEN0DONG',
+                'code' => $voucher->code,
+                'target_audience' => $voucher->target_audience,
                 'discount_type' => 'PERCENT',
                 'discount_value' => 100,
                 'discount_amount' => $amount,
-                'description' => 'Đặc quyền Sinh Viên: Miễn phí 100% (0 VNĐ) cho 1 ghế đầu tiên',
-                'message' => "🎉 Chúc mừng bạn đã áp dụng thành công VÉ 0-ĐỒNG LẦN ĐẦU! Giá vé 0 VNĐ, tài trợ 100% bởi nhaxekientruc!",
+                'is_student_first_trip' => true,
+                'description' => $voucher->description,
+                'message' => "🎉 Chúc mừng bạn đã áp dụng thành công VÉ 0-ĐỒNG LẦN ĐẦU! Tài trợ 100% tiền vé bởi nhaxekientruc!",
             ]);
         }
 
-        // 1. VOUCHER SINH VIÊN GIẢM 30% TRONG 1 NĂM (SINHVIEN30 / SINHVIEN)
-        if (in_array($code, ['SINHVIEN30', 'SINHVIEN', 'SVVN', 'SV2026'])) {
-            if (!$isStudent) {
-                return response()->json([
-                    'valid' => false,
-                    'message' => 'Mã giảm giá 30% [SINHVIEN30] chỉ dành riêng cho tài khoản sinh viên có email trường (.edu.vn)! Vui lòng đăng ký/dùng email sinh viên để áp dụng.',
-                ], 422);
-            }
-
-            $discount = round($amount * 0.30);
-            return response()->json([
-                'valid' => true,
-                'code' => 'SINHVIEN30',
-                'discount_type' => 'PERCENT',
-                'discount_value' => 30,
-                'discount_amount' => $discount,
-                'description' => 'Đặc quyền Sinh Viên 1 Năm: Giảm 30% giá vé xe xuyên suốt cả năm',
-                'message' => "Áp dụng thành công mã ưu đãi sinh viên 1 năm! Giảm -" . number_format($discount) . " VNĐ (30%) và miễn phí 100% hành lý!",
-            ]);
-        }
-
-        // 2. GÓI ƯU ĐÃI THÀNH VIÊN MỚI (GIẢM 10%)
-        if (in_array($code, ['CHAOBAOMOI', 'CHAOBANMOI', 'KHACHMOI10', 'BANMOI10'])) {
-            $discount = round($amount * 0.10);
-            return response()->json([
-                'valid' => true,
-                'code' => 'CHAOBAOMOI',
-                'discount_type' => 'PERCENT',
-                'discount_value' => 10,
-                'discount_amount' => $discount,
-                'description' => 'Gói ưu đãi Thành Viên Mới: Giảm 10% cho lần đầu tiên đặt vé xe tại nhaxekientruc',
-                'message' => "Áp dụng thành công mã CHAOBAOMOI! Giảm -" . number_format($discount) . " VNĐ (10%) và miễn phí 100% hành lý!",
-            ]);
-        }
-
-        $voucher = Voucher::where('code', $code)->where('is_active', 1)->first();
-        if (!$voucher) {
-            return response()->json(['valid' => false, 'message' => "Mã khuyến mãi \"{$code}\" không tồn tại hoặc đã bị tạm dừng!"], 404);
-        }
-
-        if ($voucher->valid_until && Carbon::parse($voucher->valid_until)->endOfDay()->isPast()) {
-            return response()->json(['valid' => false, 'message' => "Mã khuyến mãi \"{$code}\" đã hết hạn sử dụng!"], 422);
-        }
-
-        if ($voucher->usage_limit && $voucher->used_count >= $voucher->usage_limit) {
-            return response()->json(['valid' => false, 'message' => "Mã khuyến mãi \"{$code}\" đã hết lượt sử dụng!"], 422);
-        }
-
-        $user = Auth::user();
-        $isStudentUser = false;
-        if ($user) {
-            $isStudentUser = (bool)($user->is_student || str_contains($user->email ?? '', '.edu.vn') || str_contains($user->name ?? '', 'Sinh viên'));
-        }
-
-        // 1. KIỂM TRA ĐẶC QUYỀN VOUCHER SINHVIEN:
-        if ($code === 'SINHVIEN') {
-            if (!$user) {
-                return response()->json([
-                    'valid' => false,
-                    'message' => 'Vui lòng đăng nhập tài khoản Sinh viên (email .edu.vn) để sử dụng mã ưu đãi SINHVIEN!'
-                ], 403);
-            }
-            if (!$isStudentUser) {
-                return response()->json([
-                    'valid' => false,
-                    'message' => 'Mã SINHVIEN chỉ áp dụng cho tài khoản Học sinh / Sinh viên (đã xác thực email .edu.vn hoặc thẻ SV)!'
-                ], 403);
-            }
-        }
-
-        // 2. KIỂM TRA GIỚI HẠN SỐ LẦN SỬ DỤNG / 1 TÀI KHOẢN (max_uses_per_user):
-        $maxUsesPerUser = $voucher->max_uses_per_user ?: ($code === 'SINHVIEN' ? 1 : 2);
-        if ($user) {
-            $usedByUserCount = Booking::where('user_id', $user->id)
-                ->where('voucher_code', $code)
-                ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
-                ->count();
-
-            if ($usedByUserCount >= $maxUsesPerUser) {
-                return response()->json([
-                    'valid' => false,
-                    'message' => "Tài khoản của bạn đã sử dụng hết số lần cho phép của voucher \"{$code}\" ({$maxUsesPerUser} lần/tài khoản)!"
-                ], 422);
-            }
-        }
-
-        // 3. XỬ LÝ GÓI ƯU ĐÃI SINH VIÊN TRONG 1 NĂM:
-        // Lần đầu tiên đặt vé: MIỄN PHÍ 100% (vé 0 VNĐ)
-        // Từ các lần tiếp theo: Giảm 30% (tối đa theo cấu hình Admin)
-        if ($code === 'SINHVIEN' && $user && $isStudentUser) {
-            $pastBookingsCount = Booking::where('user_id', $user->id)
+        // 5. TRƯỜNG HỢP ĐẶC BIỆT GÓI SINH VIÊN 1 NĂM (SINHVIEN):
+        if ($voucher->code === 'SINHVIEN' && $authUser && $isStudent) {
+            $pastBookingsCount = Booking::where('user_id', $authUser->id)
                 ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
                 ->count();
 
             if ($pastBookingsCount === 0) {
-                // MIỄN PHÍ 100% CHO LẦN ĐẦU ĐẶT VÉ!
-                $discount = $amount;
+                // MIỄN PHÍ 100% CHO LẦN ĐẦU ĐẶT VÉ
                 return response()->json([
                     'valid' => true,
                     'code' => 'SINHVIEN',
+                    'target_audience' => 'STUDENT',
                     'discount_type' => 'PERCENT',
                     'discount_value' => 100,
-                    'discount_amount' => $discount,
+                    'discount_amount' => $amount,
                     'is_student_first_trip' => true,
                     'description' => 'Gói Sinh Viên: MIỄN PHÍ 100% chuyến xe đầu tiên',
                     'message' => '🎓 Chúc mừng Sinh viên! Chuyến xe đầu tiên của bạn được MIỄN PHÍ 100% (0 VNĐ)!',
                 ]);
-            } else {
-                // TỪ LẦN THỨ 2 TRỞ ĐI: GIẢM 30%
-                $discount = round($amount * 0.30);
-                if ($voucher->max_discount && $discount > $voucher->max_discount) {
-                    $discount = (float)$voucher->max_discount;
-                }
-                return response()->json([
-                    'valid' => true,
-                    'code' => 'SINHVIEN',
-                    'discount_type' => 'PERCENT',
-                    'discount_value' => 30,
-                    'discount_amount' => $discount,
-                    'is_student_first_trip' => false,
-                    'description' => 'Gói Sinh Viên 1 Năm: Giảm 30% giá vé',
-                    'message' => '🎓 Áp dụng thành công Gói Sinh Viên: Giảm 30% (-' . number_format($discount) . ' VNĐ)!',
-                ]);
             }
         }
 
+        // 6. TÍNH TOÁN CHIẾT KHẤU TIÊU CHUẨN TỪ RECORD DATABASE:
         $discount = 0;
         if ($voucher->discount_type === 'PERCENT') {
             $discount = round($amount * ($voucher->discount_value / 100));
@@ -1649,14 +1839,21 @@ class TripController extends Controller
             $discount = min($amount, (float)$voucher->discount_value);
         }
 
+        $audienceLabel = match ($voucher->target_audience) {
+            'STUDENT' => 'Sinh Viên',
+            'INDIVIDUAL' => 'Cá Nhân',
+            default => 'Tất Cả Khách Hàng',
+        };
+
         return response()->json([
             'valid' => true,
             'code' => $voucher->code,
+            'target_audience' => $voucher->target_audience,
             'discount_type' => $voucher->discount_type,
             'discount_value' => (float)$voucher->discount_value,
             'discount_amount' => $discount,
             'description' => $voucher->description,
-            'message' => "Áp dụng thành công mã {$voucher->code}! Giảm -" . number_format($discount) . " VNĐ (Tối đa {$maxUsesPerUser} lần/tài khoản)",
+            'message' => "Áp dụng thành công mã {$voucher->code} (Dành cho {$audienceLabel})! Giảm -" . number_format($discount) . " VNĐ",
         ]);
     }
 }

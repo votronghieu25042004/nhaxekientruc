@@ -506,60 +506,6 @@
 
                 <!-- ==================== TAB 1: FORM ĐĂNG NHẬP ==================== -->
                 <div v-if="activeTab === 'login'" class="space-y-4">
-                  
-                  <!-- THANH ĐĂNG NHẬP NHANH 1 CHẠM (TIỆN LỢI TRÊN ĐIỆN THOẠI & TEST ĐỒ ÁN) -->
-                  <div class="p-3 bg-gradient-to-r from-rose-50 via-red-50 to-amber-50 rounded-2xl border border-red-200/70 mb-4 shadow-2xs">
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="text-[11px] font-black text-red-800 uppercase tracking-wider flex items-center gap-1">
-                        <span>⚡</span>
-                        <span>Đăng nhập nhanh 1 chạm (Tài khoản mẫu):</span>
-                      </span>
-                      <span class="text-[10px] text-red-600 font-bold bg-white px-2 py-0.5 rounded-full border border-red-200">Mật khẩu: 123456</span>
-                    </div>
-
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                      <button
-                        type="button"
-                        @click="quickLoginAs('student')"
-                        class="px-2 py-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-slate-800 hover:text-red-600 font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
-                        title="Sinh viên Trường ĐH Kiến Trúc Đà Nẵng (sinhvien@dau.edu.vn)"
-                      >
-                        <span>🎓</span>
-                        <span>Sinh viên</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        @click="quickLoginAs('driver')"
-                        class="px-2 py-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-slate-800 hover:text-red-600 font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
-                        title="Bác tài lái xe khách (taixe1@nhaxekientruc.vn)"
-                      >
-                        <span>👨‍✈️</span>
-                        <span>Bác tài</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        @click="quickLoginAs('conductor')"
-                        class="px-2 py-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-slate-800 hover:text-red-600 font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
-                        title="Lơ xe soát vé QR (loxe1@nhaxekientruc.vn)"
-                      >
-                        <span>🎫</span>
-                        <span>Lơ xe QR</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        @click="quickLoginAs('admin')"
-                        class="px-2 py-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-slate-800 hover:text-red-600 font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
-                        title="Quản trị viên hệ thống (admin@nhaxekientruc.vn)"
-                      >
-                        <span>👔</span>
-                        <span>Admin</span>
-                      </button>
-                    </div>
-                  </div>
-
                   <!-- Báo Lỗi Đăng Nhập -->
                   <div 
                     v-if="loginErrorText" 
@@ -681,10 +627,38 @@
                     </button>
                   </form>
 
+                  <!-- CHUYỂN NHANH SANG ĐĂNG KÝ NẾU CHƯA CÓ TÀI KHOẢN -->
+                  <div class="pt-2 text-center text-xs text-slate-500">
+                    <span>Chưa có tài khoản nhaxekientruc? </span>
+                    <button
+                      type="button"
+                      @click="switchTab('register')"
+                      class="font-bold text-red-600 hover:underline cursor-pointer"
+                    >
+                      Đăng ký tài khoản mới ➔
+                    </button>
+                  </div>
+
                 </div>
 
                 <!-- ==================== TAB 2: FORM ĐĂNG KÝ (3 BƯỚC ĐẦY ĐỦ) ==================== -->
                 <div v-if="activeTab === 'register'" class="space-y-4">
+
+                  <!-- GỢI Ý ĐĂNG NHẬP NHANH CHO KHÁCH HÀNG ĐÃ CÓ TÀI KHOẢN -->
+                  <div class="p-3 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200/80 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-2xs">
+                    <div class="flex items-center gap-2 text-slate-800 font-semibold">
+                      <span class="text-base">💡</span>
+                      <span>Khách hàng đã có tài khoản rồi?</span>
+                    </div>
+                    <button
+                      type="button"
+                      @click="switchTab('login')"
+                      class="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1 shrink-0"
+                    >
+                      <span>Đăng nhập ngay</span>
+                      <span>➔</span>
+                    </button>
+                  </div>
                   
                   <!-- 1. BỘ CHUYỂN ĐỔI PHƯƠNG THỨC: SĐT vs EMAIL -->
                   <div class="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 text-xs">
@@ -768,6 +742,18 @@
                         <p :class="isRegisterLocked ? 'font-black text-sm text-red-900' : 'font-bold'">
                           {{ registerErrorText }}
                         </p>
+                        <!-- Nút đăng nhập ngay nếu tài khoản đã tồn tại trên hệ thống -->
+                        <div v-if="isAlreadyRegistered && !isRegisterLocked" class="pt-1.5">
+                          <button
+                            type="button"
+                            @click="switchToLoginWithIdentifier"
+                            class="w-full py-2.5 px-3 bg-red-600 hover:bg-red-700 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <span>🔐</span>
+                            <span>Đăng nhập ngay với tài khoản [{{ activeIdentifier }}]</span>
+                            <span>➔</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1040,6 +1026,18 @@
                     </form>
                   </div>
 
+                  <!-- LINK ĐĂNG NHẬP Ở ĐÁY TAB ĐĂNG KÝ -->
+                  <div class="pt-2 text-center text-xs text-slate-500">
+                    <span>Đã có tài khoản nhaxekientruc? </span>
+                    <button
+                      type="button"
+                      @click="switchTab('login')"
+                      class="font-bold text-red-600 hover:underline cursor-pointer"
+                    >
+                      Đăng nhập ngay ➔
+                    </button>
+                  </div>
+
                 </div>
 
               </div>
@@ -1267,27 +1265,15 @@ const fillLoginCredential = (identifier) => {
   });
 };
 
-const quickLoginAs = (role) => {
-  switch (role) {
-    case 'student':
-      loginForm.email = 'sinhvien@dau.edu.vn';
-      loginForm.password = '123456';
-      break;
-    case 'driver':
-      loginForm.email = 'taixe1@nhaxekientruc.vn';
-      loginForm.password = '123456';
-      break;
-    case 'conductor':
-      loginForm.email = 'loxe1@nhaxekientruc.vn';
-      loginForm.password = '123456';
-      break;
-    case 'admin':
-      loginForm.email = 'admin@nhaxekientruc.vn';
-      loginForm.password = '123456';
-      break;
-  }
-  submitLogin();
+const switchToLoginWithIdentifier = () => {
+  loginForm.email = activeIdentifier.value;
+  loginForm.password = '';
+  switchTab('login');
+  nextTick(() => {
+    passwordInputRef.value?.focus();
+  });
 };
+
 
 const loginErrorText = computed(() => {
   return loginForm.errors.email || loginForm.errors.status || loginForm.errors.phone || page.props.errors?.email || page.props.errors?.status || page.props.errors?.phone || null;

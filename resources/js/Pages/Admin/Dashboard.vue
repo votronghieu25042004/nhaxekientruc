@@ -228,12 +228,13 @@
           <table class="w-full text-left text-xs table-fixed">
             <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-black text-[10px] tracking-wider">
               <tr>
-                <th class="px-3 py-2.5 w-[16%]">Mã Vé & Ngày Đặt</th>
-                <th class="px-3 py-2.5 w-[20%]">Khách Hàng</th>
-                <th class="px-3 py-2.5 w-[24%]">Tuyến Đường & Xe</th>
-                <th class="px-3 py-2.5 w-[18%]">Khởi Hành</th>
-                <th class="px-3 py-2.5 w-[10%] text-center">Ghế</th>
-                <th class="px-3 py-2.5 w-[12%] text-right">Tổng Tiền & TT</th>
+                <th class="px-3 py-2.5 w-[14%]">Mã Vé & Ngày Đặt</th>
+                <th class="px-3 py-2.5 w-[16%]">Khách Hàng</th>
+                <th class="px-3 py-2.5 w-[18%]">Tuyến Đường & Xe</th>
+                <th class="px-3 py-2.5 w-[14%]">Khởi Hành</th>
+                <th class="px-3 py-2.5 w-[8%] text-center">Ghế</th>
+                <th class="px-3 py-2.5 w-[13%] text-right">Tổng Tiền & TT</th>
+                <th class="px-3 py-2.5 w-[17%] text-center">Nhắc 45P (Gmail & AI)</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 font-medium">
@@ -332,9 +333,63 @@
                     </span>
                   </div>
                 </td>
+
+                <!-- 7. Thao Tác Nhắc 45P (Gửi Gmail & Kích Hoạt AI Gọi Điện) -->
+                <td class="px-3 py-2.5 align-middle text-center">
+                  <div v-if="b.reminder_sent_at || b.ai_call_at" class="space-y-1">
+                    <span 
+                      v-if="b.reminder_sent_by === 'auto' || b.ai_call_by === 'auto'"
+                      class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-200 inline-flex items-center gap-1"
+                    >
+                      <span>🤖 AI ĐÃ GỌI & GỬI</span>
+                      <span class="font-mono">({{ b.reminder_sent_at || b.ai_call_at }})</span>
+                    </span>
+                    <span 
+                      v-else
+                      class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-200 inline-flex items-center gap-1"
+                    >
+                      <span>✍️ ADMIN ĐÃ GỌI & GỬI</span>
+                      <span class="font-mono">({{ b.reminder_sent_at || b.ai_call_at }})</span>
+                    </span>
+                    <div class="flex items-center justify-center gap-1 flex-wrap">
+                      <button 
+                        v-if="b.ai_call_audio_url || b.ai_call_script"
+                        @click.stop="playAiCallAudio(b)"
+                        type="button"
+                        class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer shadow-2xs"
+                        title="Nghe lại cuộc gọi AI đã thông báo cho khách"
+                      >
+                        <span>🎧 Nghe AI</span>
+                      </button>
+
+                      <button
+                        @click.stop="notifyAndCallSingleBooking(b)"
+                        :disabled="notifyingBookingId === b.id"
+                        type="button"
+                        class="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[9.5px] transition flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50"
+                        title="Gửi lại Gmail nhắc 45P và kích hoạt gọi điện thoại AI lần nữa"
+                      >
+                        <span v-if="notifyingBookingId === b.id" class="w-2.5 h-2.5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></span>
+                        <span v-else>🔄 Gửi & Gọi Lại</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div v-else>
+                    <button
+                      @click.stop="notifyAndCallSingleBooking(b)"
+                      :disabled="notifyingBookingId === b.id"
+                      type="button"
+                      class="px-2.5 py-1 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-[10px] tracking-tight transition inline-flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+                      title="Gửi Gmail trước 45P & Kích hoạt AI tự động gọi điện tới SĐT của khách hàng này"
+                    >
+                      <span v-if="notifyingBookingId === b.id" class="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      <span v-else>📞 Gửi & Gọi AI</span>
+                    </button>
+                  </div>
+                </td>
               </tr>
               <tr v-if="filteredBookings.length === 0">
-                <td colspan="6" class="text-center py-8 text-slate-400 font-bold">
+                <td colspan="7" class="text-center py-8 text-slate-400 font-bold">
                   Không tìm thấy vé đặt nào trong khoảng thời gian đã chọn. Hãy bấm <button @click="setBookingFilter('ALL')" class="text-red-600 underline font-black cursor-pointer">"Tất cả các ngày"</button> để xem toàn bộ danh sách.
                 </td>
               </tr>
@@ -937,6 +992,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
+import axios from 'axios';
 import AdminHeader from '@/Components/AdminHeader.vue';
 import AiChatModal from '@/Components/AiChatModal.vue';
 
@@ -1187,5 +1243,55 @@ const paginatedBookings = computed(() => {
 
 const formatCurrency = (val) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
+};
+
+const notifyingBookingId = ref(null);
+
+const notifyAndCallSingleBooking = async (b) => {
+  if (notifyingBookingId.value) return;
+  notifyingBookingId.value = b.id;
+  try {
+    const res = await axios.post(`/admin/bookings/${b.id}/notify-and-call`);
+    if (res.data?.success) {
+      const updated = res.data.booking;
+      b.reminder_sent_at = updated.reminder_sent_at;
+      b.reminder_sent_by = 'manual';
+      b.ai_call_at = updated.ai_call_at;
+      b.ai_call_by = 'manual';
+      b.ai_call_status = updated.ai_call_status;
+      b.ai_call_audio_url = updated.ai_call_audio_url;
+      b.ai_call_script = updated.ai_call_script;
+      alert(`🎉 ${res.data.message}`);
+    } else {
+      alert(res.data?.message || 'Có lỗi xảy ra khi gọi AI & gửi thông báo.');
+    }
+  } catch (err) {
+    alert(err.response?.data?.message || 'Không thể kết nối đến máy chủ.');
+  } finally {
+    notifyingBookingId.value = null;
+  }
+};
+
+const playAiCallAudio = (b) => {
+  if (b.ai_call_audio_url) {
+    const audio = new Audio(b.ai_call_audio_url);
+    audio.play().catch(() => {
+      if ('speechSynthesis' in window && b.ai_call_script) {
+        const utterance = new SpeechSynthesisUtterance(b.ai_call_script);
+        utterance.lang = 'vi-VN';
+        window.speechSynthesis.speak(utterance);
+      } else {
+        alert(`Lời thoại AI: "${b.ai_call_script}"`);
+      }
+    });
+  } else if (b.ai_call_script) {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(b.ai_call_script);
+      utterance.lang = 'vi-VN';
+      window.speechSynthesis.speak(utterance);
+    } else {
+      alert(`Lời thoại AI: "${b.ai_call_script}"`);
+    }
+  }
 };
 </script>

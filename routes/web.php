@@ -76,6 +76,11 @@ Route::get('booking/ticket/{code}', [TripController::class, 'ticket'])->name('bo
 Route::get('ve/{code}', [TripController::class, 'ticket'])->name('booking.ticket.alias');
 Route::get('booking/{code}', [TripController::class, 'ticket'])->name('booking.ticket.short');
 Route::get('booking/{code}/detail', [TripController::class, 'bookingDetail'])->name('booking.detail');
+Route::get('booking/{code}/payment', [TripController::class, 'paymentScreen'])->name('booking.payment');
+Route::get('api/booking/{code}/payment-status', [TripController::class, 'checkPaymentStatus'])->name('api.booking.paymentStatus');
+Route::post('api/booking/{code}/confirm-payment', [TripController::class, 'confirmPayment'])->name('api.booking.confirmPayment');
+Route::post('api/payment/webhook', [TripController::class, 'handlePaymentWebhook'])->name('api.payment.webhook');
+Route::post('api/payment/sepay-webhook', [TripController::class, 'handlePaymentWebhook']);
 Route::post('booking/{code}/send-ai-reminder', [TripController::class, 'sendAiReminderEmail'])->name('booking.sendAiReminder');
 Route::post('booking/{code}/cancel-request', [TripController::class, 'requestBookingRefund'])->name('booking.cancelRequest');
 Route::get('trips/{id}/live-tracking', [TripController::class, 'liveTracking'])->name('trips.liveTracking');
@@ -84,6 +89,7 @@ Route::post('trips/{id}/update-gps', [TripController::class, 'updateGps'])->name
 // Customer booking history (by phone/email)
 Route::get('my-bookings', [TripController::class, 'myBookings'])->name('my.bookings');
 Route::get('api/my-bookings', [TripController::class, 'myBookingsApi'])->name('api.myBookings');
+Route::get('api/vouchers', [TripController::class, 'activeVouchersApi'])->name('api.vouchers.list');
 Route::post('api/vouchers/apply', [TripController::class, 'applyVoucher'])->name('api.vouchers.apply');
 
 // Customer Reviews
@@ -165,6 +171,7 @@ Route::prefix('admin')->group(function () {
     Route::post('trips/{id}/notify-incident', [AdminController::class, 'notifyIncident'])->name('admin.trips.notifyIncident');
     Route::post('trips/{id}/notify-reminder', [AdminController::class, 'notifyReminder'])->name('admin.trips.notifyReminder');
     Route::post('trips/notify-all-reminders', [AdminController::class, 'notifyAllReminders'])->name('admin.trips.notifyAllReminders');
+    Route::post('bookings/{id}/notify-and-call', [AdminController::class, 'notifyAndCallBooking'])->name('admin.bookings.notifyAndCall');
 
     Route::post('counter-booking', [AdminController::class, 'counterBook'])->name('admin.counterBooking');
 
@@ -203,6 +210,7 @@ Route::prefix('admin')->group(function () {
 
     // Pricing & Promotions (Giá & Khuyến Mãi)
     Route::get('pricing', [AdminController::class, 'pricingScreen'])->name('admin.pricing');
+    Route::get('vouchers', [AdminController::class, 'vouchersScreen'])->name('admin.vouchers');
     Route::post('pricing/rules', [AdminController::class, 'storePricingRule'])->name('admin.pricing.storeRule');
     Route::post('pricing/rules/{id}/toggle', [AdminController::class, 'togglePricingRule'])->name('admin.pricing.toggleRule');
     Route::post('pricing/vouchers', [AdminController::class, 'storeVoucher'])->name('admin.pricing.storeVoucher');

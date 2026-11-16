@@ -18,38 +18,33 @@ class Voucher extends Model
         'max_uses_per_user' => 'integer',
     ];
 
+    public function getTypeAttribute()
+    {
+        return $this->attributes['discount_type'] ?? null;
+    }
+
+    public function getValueAttribute()
+    {
+        return $this->attributes['discount_value'] ?? null;
+    }
+
+    public function getMinOrderAmountAttribute()
+    {
+        return $this->attributes['min_order_value'] ?? null;
+    }
+
+    public function getExpiresAtAttribute()
+    {
+        return $this->attributes['valid_until'] ?? null;
+    }
+
     protected static function booted()
     {
         static::saving(function ($voucher) {
-            // Đồng bộ giữa các trường modern và legacy
-            if ($voucher->discount_type && !$voucher->type) {
-                $voucher->type = $voucher->discount_type;
-            } elseif ($voucher->type && !$voucher->discount_type) {
-                $voucher->discount_type = $voucher->type;
-            }
-
-            if ($voucher->discount_value !== null && $voucher->value === null) {
-                $voucher->value = $voucher->discount_value;
-            } elseif ($voucher->value !== null && $voucher->discount_value === null) {
-                $voucher->discount_value = $voucher->value;
-            }
-
-            if ($voucher->min_order_value !== null && $voucher->min_order_amount === null) {
-                $voucher->min_order_amount = $voucher->min_order_value;
-            } elseif ($voucher->min_order_amount !== null && $voucher->min_order_value === null) {
-                $voucher->min_order_value = $voucher->min_order_amount;
-            }
-
-            if ($voucher->usage_count !== null && $voucher->used_count === null) {
+            if ($voucher->usage_count !== null && empty($voucher->used_count)) {
                 $voucher->used_count = $voucher->usage_count;
-            } elseif ($voucher->used_count !== null && $voucher->usage_count === null) {
+            } elseif ($voucher->used_count !== null && empty($voucher->usage_count)) {
                 $voucher->usage_count = $voucher->used_count;
-            }
-
-            if ($voucher->valid_until && !$voucher->expires_at) {
-                $voucher->expires_at = $voucher->valid_until;
-            } elseif ($voucher->expires_at && !$voucher->valid_until) {
-                $voucher->valid_until = date('Y-m-d', strtotime($voucher->expires_at));
             }
         });
     }
