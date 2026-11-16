@@ -159,8 +159,8 @@
           <!-- 3. Ô: NGÀY KHỞI HÀNH -->
           <div
             @click="openDatePicker"
-            class="flex items-center justify-between gap-2 px-3.5 py-2 hover:bg-white rounded-xl transition-all relative cursor-pointer group"
-            :class="tripType === 'round_trip' ? 'bg-white border border-slate-200/80 shadow-2xs' : 'w-full hover:bg-white/80'"
+            class="flex items-center justify-between gap-2 px-3.5 py-2.5 md:py-2 bg-white md:bg-transparent rounded-xl border border-slate-200/60 md:border-none transition-all relative cursor-pointer group mt-1 md:mt-0"
+            :class="tripType === 'round_trip' ? 'bg-white border border-slate-200/80 shadow-2xs' : 'w-full hover:bg-white/90'"
           >
             <input
               ref="datePickerInput"

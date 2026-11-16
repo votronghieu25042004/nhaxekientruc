@@ -4,7 +4,7 @@
     <Navbar />
 
     <!-- 2. MAIN AUTH CONTAINER (SPLIT-CARD 12 CỘT SÁNG ĐẸP HIỆN ĐẠI) -->
-    <main class="flex-1 py-4 sm:py-10 px-2.5 sm:px-6 flex items-center justify-center bg-gradient-to-br from-slate-50 via-rose-50/25 to-slate-100 relative overflow-hidden">
+    <main class="flex-1 py-4 sm:py-10 px-2.5 sm:px-6 pb-24 sm:pb-10 flex items-center justify-center bg-gradient-to-br from-slate-50 via-rose-50/25 to-slate-100 relative overflow-hidden">
       
       <!-- Ambient Background Glows -->
       <div class="absolute top-10 left-1/4 w-96 h-96 bg-red-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -16,94 +16,82 @@
         <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/80 border border-slate-200/90 overflow-hidden flex flex-col">
           
           <!-- ========================================================================= -->
-          <!-- MOBILE BRAND BANNER & SA BÀN TOGGLE (Chỉ hiển thị trên Mobile < lg)       -->
+          <!-- MOBILE BRAND BANNER (SANG TRỌNG, GỌN GÀNG, CHUẨN APP NATIVE)             -->
           <!-- ========================================================================= -->
-          <div class="lg:hidden p-4 sm:p-6 bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white relative overflow-hidden">
+          <div class="lg:hidden p-4 sm:p-5 bg-gradient-to-r from-[#420609] via-[#630b0f] to-[#7a0f13] text-white relative overflow-hidden">
             <!-- Glow background -->
-            <div class="absolute -top-12 -right-12 w-48 h-48 bg-amber-400/25 rounded-full blur-3xl pointer-events-none"></div>
-            <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-red-900/40 rounded-full blur-2xl pointer-events-none"></div>
+            <div class="absolute -top-12 -right-12 w-48 h-48 bg-amber-400/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-black/40 rounded-full blur-2xl pointer-events-none"></div>
 
             <div class="relative z-10 space-y-3">
-              <!-- Top Row: Brand Info + Sa Bàn Button -->
-              <div class="flex items-center justify-between gap-3">
-                <div class="flex items-center gap-3">
-                  <div class="w-12 h-12 rounded-2xl bg-white/95 border border-white/50 flex items-center justify-center p-1.5 shadow-md shrink-0">
-                    <img src="/images/logo.png" alt="Logo Trường ĐH Kiến Trúc Đà Nẵng" class="w-full h-full object-contain" />
+              <!-- Top Row: Brand Info + Greeting -->
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-white p-1.5 shadow-md shrink-0 border border-white/40 flex items-center justify-center">
+                  <img src="/images/logo.png" alt="Logo Trường ĐH Kiến Trúc Đà Nẵng" class="w-full h-full object-contain" />
+                </div>
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <h1 class="text-lg font-black text-white tracking-tight leading-none">nhaxekientruc</h1>
+                    <span class="text-[9px] px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black uppercase font-mono tracking-wide">Đà Nẵng</span>
                   </div>
-                  <div>
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                      <h1 class="text-xl font-black text-white tracking-tight leading-none">nhaxekientruc</h1>
-                      <span class="text-[9.5px] px-2 py-0.5 rounded-full bg-white/20 text-amber-200 font-extrabold uppercase font-mono tracking-wide">Đà Nẵng</span>
-                    </div>
-                    <p class="text-xs text-rose-100 font-medium mt-1">Hệ Thống Đặt Vé Xe Thông Minh 24/7</p>
-                  </div>
-                </div>
-
-                <!-- Nút Bật/Tắt Sa Bàn Mini Trên Mobile -->
-                <button
-                  type="button"
-                  @click="showMobileSaBan = !showMobileSaBan"
-                  class="px-3 py-1.5 rounded-xl bg-black/30 hover:bg-black/40 backdrop-blur-md border border-white/25 text-xs font-bold text-amber-300 flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm shrink-0"
-                  :title="showMobileSaBan ? 'Thu gọn sa bàn' : 'Mở xem sa bàn xa lộ'"
-                >
-                  <span>{{ showMobileSaBan ? '▲ Ẩn sa bàn' : '🚌 Sa bàn' }}</span>
-                </button>
-              </div>
-
-              <!-- Lưới 3 Điểm Nổi Bật Dạng Card Nhỏ (Khớp 100% mọi màn hình điện thoại) -->
-              <div class="grid grid-cols-3 gap-1.5 pt-0.5">
-                <div class="py-1.5 px-1 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 text-center flex flex-col items-center justify-center shadow-2xs">
-                  <span class="text-xs">🎓</span>
-                  <span class="text-[10px] font-black text-amber-200 truncate w-full mt-0.5">SV Vé 0đ & -30%</span>
-                </div>
-                <div class="py-1.5 px-1 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 text-center flex flex-col items-center justify-center shadow-2xs">
-                  <span class="text-xs">💺</span>
-                  <span class="text-[10px] font-black text-white truncate w-full mt-0.5">Giữ 100% Chỗ</span>
-                </div>
-                <div class="py-1.5 px-1 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 text-center flex flex-col items-center justify-center shadow-2xs">
-                  <span class="text-xs">📱</span>
-                  <span class="text-[10px] font-black text-white truncate w-full mt-0.5">Vé QR Lên Xe</span>
+                  <p class="text-xs text-rose-100 font-bold mt-1">Đăng nhập tài khoản để đặt vé & giữ chỗ 100%</p>
                 </div>
               </div>
 
-              <!-- SA BÀN COLLAPSIBLE CHO MOBILE NẾU NGƯỜI DÙNG BẤM XEM -->
-              <div v-if="showMobileSaBan" class="p-3 rounded-2xl bg-slate-950/80 border border-white/20 backdrop-blur-md animate-in fade-in duration-200 space-y-2">
-                <div class="flex items-center justify-between text-xs font-bold text-slate-200">
-                  <span class="flex items-center gap-1.5 text-amber-300 text-[11px]">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                    Xa lộ Đà Nẵng ⇄ Liên Tỉnh
+              <!-- LỐI TẮT ĐĂNG NHẬP NHANH 1-CHẠM (DÀNH CHO TẤT CẢ 4 VAI TRÒ: ADMIN, BÁC TÀI, LƠ XE, KHÁCH HÀNG) -->
+              <div class="pt-2 border-t border-white/15">
+                <div class="flex items-center justify-between pb-1.5">
+                  <span class="text-[10px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
+                    <span>⚡</span>
+                    <span>Chọn Nhanh Tài Khoản Thử Nghiệm:</span>
                   </span>
-                  <div class="flex items-center gap-2">
-                    <button
-                      type="button"
-                      @click="triggerHeadlightsAndHorn"
-                      class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10.5px] active:scale-95 transition shadow-xs cursor-pointer"
-                    >
-                      📢 Còi xe
-                    </button>
-                    <button
-                      type="button"
-                      @click="toggleSkyMode"
-                      class="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold text-[10.5px] active:scale-95 transition cursor-pointer"
-                    >
-                      {{ skyMode === 'night' ? '🌙 Đêm' : '🌅 Chiều' }}
-                    </button>
-                  </div>
+                  <span class="text-[9.5px] text-white/70">Mật khẩu: 123456</span>
                 </div>
 
-                <!-- Làn xe thu nhỏ trên mobile -->
-                <div class="relative h-18 w-full rounded-xl bg-slate-900 border border-slate-700/80 overflow-hidden flex flex-col justify-around px-2 select-none">
-                  <div class="relative h-7 w-full flex items-center overflow-hidden">
-                    <div class="mobile-bus-1 absolute flex items-center gap-1 text-[9.5px] font-bold text-white bg-red-700 px-2 py-0.5 rounded border border-amber-400 shadow-sm whitespace-nowrap">
-                      🚌 NHAXEKIENTRUC 43B-067.89
-                    </div>
-                  </div>
-                  <div class="border-t border-dashed border-amber-400/40"></div>
-                  <div class="relative h-7 w-full flex items-center overflow-hidden">
-                    <div class="mobile-bus-2 absolute flex items-center gap-1 text-[9px] font-bold text-slate-950 bg-amber-300 px-2 py-0.5 rounded border border-white shadow-sm whitespace-nowrap">
-                      🚐 TRUNG CHUYỂN 0Đ (Đón tận nơi)
-                    </div>
-                  </div>
+                <div class="grid grid-cols-4 gap-1.5 text-center">
+                  <!-- 1. Admin -->
+                  <button
+                    type="button"
+                    @click="fillQuickAccount('admin@bushub.vn')"
+                    class="p-2 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 transition border border-white/25 flex flex-col items-center justify-center cursor-pointer shadow-2xs"
+                    :class="loginForm.email === 'admin@bushub.vn' ? 'ring-2 ring-amber-300 bg-white/30' : ''"
+                  >
+                    <span class="text-base">👑</span>
+                    <span class="text-[10px] font-black text-white mt-0.5">Admin</span>
+                  </button>
+
+                  <!-- 2. Bác Tài -->
+                  <button
+                    type="button"
+                    @click="fillQuickAccount('taixe1@bushub.vn')"
+                    class="p-2 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 transition border border-white/25 flex flex-col items-center justify-center cursor-pointer shadow-2xs"
+                    :class="loginForm.email === 'taixe1@bushub.vn' ? 'ring-2 ring-amber-300 bg-white/30' : ''"
+                  >
+                    <span class="text-base">👨‍✈️</span>
+                    <span class="text-[10px] font-black text-white mt-0.5">Bác Tài</span>
+                  </button>
+
+                  <!-- 3. Lơ Xe -->
+                  <button
+                    type="button"
+                    @click="fillQuickAccount('loxe1@bushub.vn')"
+                    class="p-2 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 transition border border-white/25 flex flex-col items-center justify-center cursor-pointer shadow-2xs"
+                    :class="loginForm.email === 'loxe1@bushub.vn' ? 'ring-2 ring-amber-300 bg-white/30' : ''"
+                  >
+                    <span class="text-base">🎫</span>
+                    <span class="text-[10px] font-black text-white mt-0.5">Lơ Xe</span>
+                  </button>
+
+                  <!-- 4. Khách Hàng -->
+                  <button
+                    type="button"
+                    @click="fillQuickAccount('0905123456')"
+                    class="p-2 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 transition border border-white/25 flex flex-col items-center justify-center cursor-pointer shadow-2xs"
+                    :class="loginForm.email === '0905123456' ? 'ring-2 ring-amber-300 bg-white/30' : ''"
+                  >
+                    <span class="text-base">👤</span>
+                    <span class="text-[10px] font-black text-white mt-0.5">Khách</span>
+                  </button>
                 </div>
               </div>
 
@@ -1411,6 +1399,12 @@ const loginForm = useForm({
   password: '',
   remember: true,
 });
+
+const fillQuickAccount = (email, pass = '123456') => {
+  loginForm.email = email;
+  loginForm.password = pass;
+  switchTab('login');
+};
 
 const isStudentEmailLogin = computed(() => {
   const val = (loginForm.email || '').toLowerCase().trim();
