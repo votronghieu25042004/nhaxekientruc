@@ -23,78 +23,18 @@
             <div class="absolute -top-12 -right-12 w-48 h-48 bg-amber-400/20 rounded-full blur-3xl pointer-events-none"></div>
             <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-black/40 rounded-full blur-2xl pointer-events-none"></div>
 
-            <div class="relative z-10 space-y-3">
-              <!-- Top Row: Brand Info + Greeting -->
-              <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-2xl bg-white p-1.5 shadow-md shrink-0 border border-white/40 flex items-center justify-center">
-                  <img src="/images/logo.png" alt="Logo Trường ĐH Kiến Trúc Đà Nẵng" class="w-full h-full object-contain" />
-                </div>
-                <div>
-                  <div class="flex items-center gap-1.5">
-                    <h1 class="text-lg font-black text-white tracking-tight leading-none">nhaxekientruc</h1>
-                    <span class="text-[9px] px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black uppercase font-mono tracking-wide">Đà Nẵng</span>
-                  </div>
-                  <p class="text-xs text-rose-100 font-bold mt-1">Đăng nhập tài khoản để đặt vé & giữ chỗ 100%</p>
-                </div>
+            <div class="relative z-10 flex items-center gap-3">
+              <!-- Logo Trường -->
+              <div class="w-12 h-12 rounded-2xl bg-white p-1.5 shadow-md shrink-0 border border-white/40 flex items-center justify-center">
+                <img src="/images/logo.png" alt="Logo Trường ĐH Kiến Trúc Đà Nẵng" class="w-full h-full object-contain" />
               </div>
-
-              <!-- LỐI TẮT ĐĂNG NHẬP NHANH 1-CHẠM (DÀNH CHO TẤT CẢ 4 VAI TRÒ: ADMIN, BÁC TÀI, LƠ XE, KHÁCH HÀNG) -->
-              <div class="pt-2 border-t border-white/15">
-                <div class="flex items-center justify-between pb-1.5">
-                  <span class="text-[10px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
-                    <span>⚡</span>
-                    <span>Chọn Nhanh Tài Khoản Thử Nghiệm:</span>
-                  </span>
-                  <span class="text-[9.5px] text-white/70">Mật khẩu: 123456</span>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <h1 class="text-lg font-black text-white tracking-tight leading-none">nhaxekientruc</h1>
+                  <span class="text-[9px] px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black uppercase font-mono tracking-wide">Đà Nẵng</span>
                 </div>
-
-                <div class="grid grid-cols-4 gap-1.5 text-center">
-                  <!-- 1. Admin -->
-                  <button
-                    type="button"
-                    @click="fillQuickAccount('admin@bushub.vn')"
-                    class="p-2 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 transition border border-white/25 flex flex-col items-center justify-center cursor-pointer shadow-2xs"
-                    :class="loginForm.email === 'admin@bushub.vn' ? 'ring-2 ring-amber-300 bg-white/30' : ''"
-                  >
-                    <span class="text-base">👑</span>
-                    <span class="text-[10px] font-black text-white mt-0.5">Admin</span>
-                  </button>
-
-                  <!-- 2. Bác Tài -->
-                  <button
-                    type="button"
-                    @click="fillQuickAccount('taixe1@bushub.vn')"
-                    class="p-2 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 transition border border-white/25 flex flex-col items-center justify-center cursor-pointer shadow-2xs"
-                    :class="loginForm.email === 'taixe1@bushub.vn' ? 'ring-2 ring-amber-300 bg-white/30' : ''"
-                  >
-                    <span class="text-base">👨‍✈️</span>
-                    <span class="text-[10px] font-black text-white mt-0.5">Bác Tài</span>
-                  </button>
-
-                  <!-- 3. Lơ Xe -->
-                  <button
-                    type="button"
-                    @click="fillQuickAccount('loxe1@bushub.vn')"
-                    class="p-2 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 transition border border-white/25 flex flex-col items-center justify-center cursor-pointer shadow-2xs"
-                    :class="loginForm.email === 'loxe1@bushub.vn' ? 'ring-2 ring-amber-300 bg-white/30' : ''"
-                  >
-                    <span class="text-base">🎫</span>
-                    <span class="text-[10px] font-black text-white mt-0.5">Lơ Xe</span>
-                  </button>
-
-                  <!-- 4. Khách Hàng -->
-                  <button
-                    type="button"
-                    @click="fillQuickAccount('0905123456')"
-                    class="p-2 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 transition border border-white/25 flex flex-col items-center justify-center cursor-pointer shadow-2xs"
-                    :class="loginForm.email === '0905123456' ? 'ring-2 ring-amber-300 bg-white/30' : ''"
-                  >
-                    <span class="text-base">👤</span>
-                    <span class="text-[10px] font-black text-white mt-0.5">Khách</span>
-                  </button>
-                </div>
+                <p class="text-xs text-rose-100 font-bold mt-1">Đăng nhập tài khoản để đặt vé & quản lý hành trình</p>
               </div>
-
             </div>
           </div>
 
@@ -1399,12 +1339,6 @@ const loginForm = useForm({
   password: '',
   remember: true,
 });
-
-const fillQuickAccount = (email, pass = '123456') => {
-  loginForm.email = email;
-  loginForm.password = pass;
-  switchTab('login');
-};
 
 const isStudentEmailLogin = computed(() => {
   const val = (loginForm.email || '').toLowerCase().trim();
