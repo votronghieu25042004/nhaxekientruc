@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col bg-white text-slate-800 font-sans">
+  <div class="min-h-screen flex flex-col bg-white text-slate-800 font-sans pb-20 md:pb-0">
     <Navbar />
 
     <!-- ==================== BANNER ĐỎ SANG TRỌNG CÓ CẦU RỒNG & THÁP CỔ & XE KHÁCH 3D ==================== -->

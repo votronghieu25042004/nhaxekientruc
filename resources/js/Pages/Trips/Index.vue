@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-slate-50 flex flex-col font-sans">
+  <div class="min-h-screen bg-slate-50 flex flex-col font-sans pb-20 md:pb-0">
     <Navbar />
 
     <!-- 1. THANH TÌM KIẾM THEO CHUẨN VEXERE (Ảnh 1) CÓ AUTOCOMPLETE KHI GÕ ĐÀ NẴNG, HUẾ... -->
@@ -29,7 +29,7 @@
                 @blur="hideOriginSuggestLater"
                 @keydown.enter="executeSearch"
                 placeholder="Chọn điểm đi (Hà Nội, Đà Nẵng...)"
-                class="w-full bg-transparent text-slate-900 font-bold text-sm outline-none placeholder-slate-400 p-0 border-none focus:ring-0 truncate"
+                class="w-full bg-transparent text-slate-900 font-bold text-base sm:text-sm outline-none placeholder-slate-400 p-0 border-none focus:ring-0 truncate"
               />
             </div>
             <button
@@ -101,7 +101,7 @@
                 @blur="hideDestSuggestLater"
                 @keydown.enter="executeSearch"
                 placeholder="Chọn điểm đến (Quảng Trị, Nam Định...)"
-                class="w-full bg-transparent text-slate-900 font-bold text-sm outline-none placeholder-slate-400 p-0 border-none focus:ring-0 truncate"
+                class="w-full bg-transparent text-slate-900 font-bold text-base sm:text-sm outline-none placeholder-slate-400 p-0 border-none focus:ring-0 truncate"
               />
             </div>
             <button
@@ -185,18 +185,19 @@
             </div>
           </div>
 
-          <!-- Nút Tìm Kiếm Tròn Đỏ (Icon Kính lúp SVG Trắng) -->
-          <div class="p-1 flex items-center justify-end">
+          <!-- Nút Tìm Kiếm Tròn Đỏ (Icon Kính lúp SVG Trắng - To rõ trên mobile) -->
+          <div class="p-1 flex items-center justify-end w-full md:w-auto">
             <button
               type="button"
               @click="executeSearch"
-              class="w-12 h-12 md:w-11 md:h-11 rounded-xl md:rounded-full bg-[#dc2626] hover:bg-[#b91c1c] active:scale-95 text-white flex items-center justify-center shadow-md shadow-red-500/25 transition-all cursor-pointer flex-shrink-0"
+              class="w-full md:w-11 md:h-11 min-h-[46px] md:min-h-0 rounded-2xl md:rounded-full bg-[#dc2626] hover:bg-[#b91c1c] active:scale-95 text-white flex items-center justify-center gap-2 shadow-md shadow-red-500/25 transition-all cursor-pointer flex-shrink-0 font-bold text-xs md:text-base px-4 md:px-0"
               title="Tìm chuyến xe"
             >
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" x2="16.65" y1="21" y2="16.65"></line>
               </svg>
+              <span class="md:hidden">Tìm Chuyến Xe</span>
             </button>
           </div>
         </div>
@@ -207,10 +208,31 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
+        <!-- Nút Bật/Tắt Bộ Lọc Trên Mobile (< lg) -->
+        <div class="lg:hidden col-span-1 flex items-center justify-between p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs mb-1">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🌪️</span>
+            <span class="font-black text-xs text-slate-900">Bộ Lọc Chuyến Xe</span>
+            <span v-if="activeFilterCount > 0" class="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-black">
+              {{ activeFilterCount }} đang lọc
+            </span>
+          </div>
+          <button
+            type="button"
+            @click="showMobileFilters = !showMobileFilters"
+            class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition cursor-pointer"
+          >
+            {{ showMobileFilters ? '▲ Thu gọn' : '▼ Mở bộ lọc' }}
+          </button>
+        </div>
+
         <!-- ============================================== -->
         <!-- CỘT TRÁI: SIDEBAR BỘ LỌC CHUẨN ẢNH 2 (3.5 cols) -->
         <!-- ============================================== -->
-        <aside class="lg:col-span-4 xl:col-span-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sticky top-[152px] max-h-[calc(100vh-170px)] overflow-y-auto custom-scrollbar">
+        <aside 
+          :class="showMobileFilters ? 'block' : 'hidden lg:block'"
+          class="lg:col-span-4 xl:col-span-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sticky top-[152px] max-h-[calc(100vh-170px)] overflow-y-auto custom-scrollbar"
+        >
           
           <!-- Header Bộ Lọc + Nút Bỏ Lọc -->
           <div class="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -868,6 +890,7 @@ const originInput = ref(props.filters?.origin || '');
 const destinationInput = ref(props.filters?.destination || '');
 const dateInput = ref(props.filters?.date || todayStr);
 const sortBy = ref('scheduled_first');
+const showMobileFilters = ref(false);
 
 const isTodaySelected = computed(() => dateInput.value === todayStr);
 const isTomorrowSelected = computed(() => dateInput.value === tomorrowStr);

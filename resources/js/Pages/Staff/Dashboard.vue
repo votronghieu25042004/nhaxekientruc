@@ -1169,8 +1169,8 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- Conductor Actions Group (Pill Buttons như hình chụp) -->
-        <div class="flex items-center gap-2 flex-wrap">
+        <!-- Conductor Actions Group (Pill Buttons - Cuộn ngang mượt mà trên điện thoại) -->
+        <div class="flex items-center gap-2 overflow-x-auto scrollbar-none w-full sm:w-auto py-1 sm:py-0 shrink-0">
           <!-- Bán vé dọc đường -->
           <button
             @click="openRoadsideModalWithSeat(null)"
@@ -4509,6 +4509,67 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
+
+    <!-- THANH ĐIỀU HÀNH DI ĐỘNG CỦA LƠ XE (CỐ ĐỊNH Ở ĐÁY MÀN HÌNH ĐIỆN THOẠI) -->
+    <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_25px_rgba(0,0,0,0.12)] py-1 px-3 flex items-center justify-between select-none">
+      <!-- 1. Quét QR -->
+      <button
+        type="button"
+        @click="switchMainTab('checkin'); startCamera()"
+        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
+        :class="activeMainTab === 'checkin' ? 'text-red-600 font-black' : 'text-slate-600 font-bold'"
+      >
+        <span class="text-xl">📷</span>
+        <span class="text-[10px] mt-0.5">Quét QR</span>
+      </button>
+
+      <!-- 2. Đón/Trả -->
+      <button
+        type="button"
+        @click="switchMainTab('pickups')"
+        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
+        :class="activeMainTab === 'pickups' ? 'text-red-600 font-black' : 'text-slate-600 font-bold'"
+      >
+        <span class="text-xl">👥</span>
+        <span class="text-[10px] mt-0.5">Đón / Trả</span>
+      </button>
+
+      <!-- 3. NÚT NỔI Ở GIỮA: BÁN VÉ DỌC ĐƯỜNG -->
+      <button
+        type="button"
+        @click="openRoadsideModalWithSeat(null)"
+        :disabled="isTripCompleted"
+        class="flex flex-col items-center justify-center -mt-6 transition active:scale-95 cursor-pointer disabled:opacity-50"
+      >
+        <div class="w-13 h-13 rounded-full bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-600 text-slate-950 flex items-center justify-center text-2xl shadow-xl shadow-orange-500/40 border-2 border-white font-black">
+          🎟️
+        </div>
+        <span class="text-[9.5px] font-black text-amber-700 tracking-tight mt-0.5">Bán Vé</span>
+      </button>
+
+      <!-- 4. Sơ Đồ Ghế -->
+      <button
+        type="button"
+        @click="switchMainTab('seatmap')"
+        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
+        :class="activeMainTab === 'seatmap' ? 'text-red-600 font-black' : 'text-slate-600 font-bold'"
+      >
+        <span class="text-xl">💺</span>
+        <span class="text-[10px] mt-0.5">Sơ Đồ Ghế</span>
+      </button>
+
+      <!-- 5. Chốt Ca -->
+      <button
+        type="button"
+        @click="openClosingModal"
+        :disabled="isTripCompleted"
+        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer disabled:opacity-50"
+        :class="isTripCompleted ? 'text-slate-400 font-bold' : 'text-red-600 font-bold'"
+      >
+        <span class="text-xl">💵</span>
+        <span class="text-[10px] mt-0.5">Chốt Ca</span>
+      </button>
+    </nav>
   </div>
 </template>
 

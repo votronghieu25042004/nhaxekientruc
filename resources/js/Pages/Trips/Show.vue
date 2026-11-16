@@ -570,7 +570,7 @@
                     required
                     type="tel"
                     placeholder="VD: 0904 233 370"
-                    class="w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold text-slate-900 focus:outline-none transition shadow-2xs"
+                    class="w-full px-3.5 py-2.5 rounded-xl border text-base sm:text-xs font-bold text-slate-900 focus:outline-none transition shadow-2xs"
                     :class="!isPhoneValid ? 'border-amber-400 bg-amber-50/50 ring-2 ring-amber-400/20' : 'border-slate-300 focus:border-red-500'"
                   />
 
@@ -608,7 +608,7 @@
                         type="text"
                         inputmode="numeric"
                         placeholder="6 số OTP"
-                        class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 font-mono font-bold text-center text-sm focus:border-red-500 bg-white"
+                        class="flex-1 px-3 py-2 rounded-xl border border-slate-300 font-mono font-black text-center text-base sm:text-sm focus:border-red-500 bg-white"
                       />
 
                       <button
@@ -842,7 +842,7 @@
                   v-model="voucherCodeInput"
                   type="text"
                   placeholder="Nhập mã voucher (vd: SINHVIEN, CHAOBAOMOI...)"
-                  class="w-full pl-9 pr-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold uppercase placeholder:normal-case placeholder:font-normal focus:border-red-500 focus:outline-none"
+                  class="w-full pl-9 pr-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-base sm:text-xs font-mono font-bold uppercase placeholder:normal-case placeholder:font-normal focus:border-red-500 focus:outline-none"
                   @keydown.enter.prevent="handleApplyVoucher"
                 />
               </div>

@@ -363,33 +363,57 @@
               <!-- Khu vực Nghiệp vụ -->
               <div class="pt-2.5 border-t border-slate-100">
                 <div class="text-[10px] font-black uppercase text-slate-400 px-3 py-1 tracking-wider">
-                  Cổng Nghiệp Vụ
+                  Cổng Nghiệp Vụ & Điều Hành
                 </div>
-                <Link 
-                  href="/driver" 
-                  @click="isMobileMenuOpen = false" 
-                  class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-amber-50"
-                >
-                  <span class="text-base">👨‍✈️</span>
-                  <span>Cổng Bác Tài (Lái Xe)</span>
-                </Link>
-                <Link 
-                  href="/conductor" 
-                  @click="isMobileMenuOpen = false" 
-                  class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-blue-50"
-                >
-                  <span class="text-base">🎫</span>
-                  <span>Cổng Lơ Xe (Tiếp Viên)</span>
-                </Link>
-                <Link 
-                  v-if="$page.props.auth?.user?.role === 'admin'"
-                  href="/admin" 
-                  @click="isMobileMenuOpen = false" 
-                  class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-purple-700 hover:bg-purple-50"
-                >
-                  <span class="text-base">👑</span>
-                  <span>Trang Quản Trị (Admin)</span>
-                </Link>
+                <div class="grid grid-cols-2 gap-2 px-1 pt-1">
+                  <Link 
+                    href="/driver" 
+                    @click="isMobileMenuOpen = false" 
+                    class="flex items-center gap-2 p-2.5 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-200 transition"
+                  >
+                    <span class="text-xl">👨‍✈️</span>
+                    <div class="min-w-0">
+                      <p class="font-black text-xs leading-tight">Bác Tài</p>
+                      <p class="text-[9px] text-amber-700 truncate">Lái xe • Map</p>
+                    </div>
+                  </Link>
+
+                  <Link 
+                    href="/conductor" 
+                    @click="isMobileMenuOpen = false" 
+                    class="flex items-center gap-2 p-2.5 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-950 border border-blue-200 transition"
+                  >
+                    <span class="text-xl">🎫</span>
+                    <div class="min-w-0">
+                      <p class="font-black text-xs leading-tight">Lơ Xe</p>
+                      <p class="text-[9px] text-blue-700 truncate">Soát vé • Sơ đồ</p>
+                    </div>
+                  </Link>
+
+                  <Link 
+                    href="/scanner" 
+                    @click="isMobileMenuOpen = false" 
+                    class="flex items-center gap-2 p-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-200 transition"
+                  >
+                    <span class="text-xl">📷</span>
+                    <div class="min-w-0">
+                      <p class="font-black text-xs leading-tight">Quét QR</p>
+                      <p class="text-[9px] text-emerald-700 truncate">Camera vé</p>
+                    </div>
+                  </Link>
+
+                  <Link 
+                    href="/admin" 
+                    @click="isMobileMenuOpen = false" 
+                    class="flex items-center gap-2 p-2.5 rounded-2xl bg-purple-50 hover:bg-purple-100 text-purple-950 border border-purple-200 transition"
+                  >
+                    <span class="text-xl">👑</span>
+                    <div class="min-w-0">
+                      <p class="font-black text-xs leading-tight">Admin</p>
+                      <p class="text-[9px] text-purple-700 truncate">Quản trị xe</p>
+                    </div>
+                  </Link>
+                </div>
               </div>
 
               <!-- Auth Buttons on Mobile -->
@@ -398,9 +422,9 @@
                   <Link
                     href="/login"
                     @click="isMobileMenuOpen = false"
-                    class="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-sm transition"
+                    class="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition active:scale-98"
                   >
-                    <span>🔐 Đăng Nhập</span>
+                    <span>🔐 Đăng Nhập Hệ Thống</span>
                   </Link>
                   <Link
                     href="/register"
@@ -414,25 +438,25 @@
                   <button
                     type="button"
                     @click="isMobileMenuOpen = false; openProfile('info')"
-                    class="w-full text-left flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    class="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                   >
-                    <span>👤</span>
+                    <span class="text-base">👤</span>
                     <span>Hồ Sơ Cá Nhân</span>
                   </button>
                   <button
                     type="button"
                     @click="isMobileMenuOpen = false; openProfile('password')"
-                    class="w-full text-left flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    class="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                   >
-                    <span>🔒</span>
+                    <span class="text-base">🔒</span>
                     <span>Đổi Mật Khẩu</span>
                   </button>
                   <button
                     type="button"
                     @click="isMobileMenuOpen = false; handleLogout()"
-                    class="w-full text-left flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50"
+                    class="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 transition"
                   >
-                    <span>🚪</span>
+                    <span class="text-base">🚪</span>
                     <span>Đăng Xuất</span>
                   </button>
                 </div>
@@ -452,6 +476,61 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- THANH BOTTOM NAVIGATION BAR CHUẨN NATIVE MOBILE APP (KHÁCH HÀNG) -->
+    <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-1 px-2 flex items-center justify-around select-none">
+      <!-- 1. Trang Chủ -->
+      <Link 
+        href="/" 
+        class="flex flex-col items-center justify-center flex-1 py-1 transition-all"
+        :class="$page.url === '/' ? 'text-red-600 font-black scale-105' : 'text-slate-500 hover:text-slate-800 font-bold'"
+      >
+        <span class="text-lg leading-none">🏠</span>
+        <span class="text-[10px] tracking-tight mt-1">Trang Chủ</span>
+      </Link>
+
+      <!-- 2. Tìm Chuyến -->
+      <Link 
+        href="/trips" 
+        class="flex flex-col items-center justify-center flex-1 py-1 transition-all"
+        :class="$page.url.startsWith('/trips') ? 'text-red-600 font-black scale-105' : 'text-slate-500 hover:text-slate-800 font-bold'"
+      >
+        <span class="text-lg leading-none">🔍</span>
+        <span class="text-[10px] tracking-tight mt-1">Tìm Chuyến</span>
+      </Link>
+
+      <!-- 3. Nút Đặt Vé Nổi Bật Trung Tâm (CTA Style Grab/Shopee) -->
+      <Link
+        href="/trips"
+        class="flex flex-col items-center justify-center -mt-5 transition-transform active:scale-95"
+      >
+        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-600 via-rose-600 to-red-500 text-white flex items-center justify-center text-xl shadow-lg shadow-red-500/40 border-2 border-white">
+          🚌
+        </div>
+        <span class="text-[9.5px] font-black text-red-600 tracking-tight mt-0.5">Đặt Vé</span>
+      </Link>
+
+      <!-- 4. Vé Của Tôi -->
+      <Link 
+        href="/my-bookings" 
+        class="flex flex-col items-center justify-center flex-1 py-1 transition-all"
+        :class="$page.url.startsWith('/my-bookings') ? 'text-red-600 font-black scale-105' : 'text-slate-500 hover:text-slate-800 font-bold'"
+      >
+        <span class="text-lg leading-none">🎫</span>
+        <span class="text-[10px] tracking-tight mt-1">Vé Của Tôi</span>
+      </Link>
+
+      <!-- 5. Menu / Tài Khoản -->
+      <button 
+        type="button"
+        @click="isMobileMenuOpen = true" 
+        class="flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer"
+        :class="isMobileMenuOpen ? 'text-red-600 font-black' : 'text-slate-500 hover:text-slate-800 font-bold'"
+      >
+        <span class="text-lg leading-none">{{ $page.props.auth?.user ? '👤' : '☰' }}</span>
+        <span class="text-[10px] tracking-tight mt-1">{{ $page.props.auth?.user ? 'Tài Khoản' : 'Menu' }}</span>
+      </button>
+    </nav>
 
     <!-- Modals -->
     <LanguageModal v-model="showLanguageModal" @change="onLanguageChange" />

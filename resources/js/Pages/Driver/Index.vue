@@ -1602,27 +1602,27 @@ onUnmounted(() => {
         </div>
 
         <!-- Nút thao tác góc phải (Đúng hình 1: Ban Đêm & Khẩn Cấp SOS) -->
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <!-- Chuyển Giao diện Ngày/Đêm -->
           <button
             type="button"
             @click="toggleDarkMode"
-            class="px-4 py-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+            class="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-[11px] sm:text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
             :title="isDarkMode ? 'Chuyển sang Ban Ngày' : 'Chuyển sang Ban Đêm'"
           >
             <i :class="isDarkMode ? 'fa-solid fa-sun text-amber-300' : 'fa-solid fa-moon text-blue-200'"></i>
-            <span>{{ isDarkMode ? 'Ban Ngày' : 'Ban Đêm' }}</span>
+            <span>{{ isDarkMode ? 'Ngày' : 'Đêm' }}</span>
           </button>
 
           <!-- Nút SOS Báo Động Khẩn Cấp -->
           <button
             type="button"
             @click="showSosModal = true"
-            class="px-4 py-2 rounded-2xl font-black text-xs flex items-center gap-1.5 transition bg-[#f59e0b] hover:bg-amber-400 text-slate-950 shadow-md cursor-pointer"
+            class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl font-black text-[11px] sm:text-xs flex items-center gap-1.5 transition bg-[#f59e0b] hover:bg-amber-400 text-slate-950 shadow-md cursor-pointer active:scale-95"
             title="Nhấn phát tín hiệu SOS khẩn cấp đến Trung tâm Điều hành"
           >
             <i class="fa-solid fa-triangle-exclamation text-red-600"></i>
-            <span>Khẩn Cấp SOS</span>
+            <span>SOS</span>
           </button>
         </div>
 
@@ -4889,6 +4889,67 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- THANH COCKPIT DI ĐỘNG CỦA BÁC TÀI (CỐ ĐỊNH Ở ĐÁY MÀN HÌNH ĐIỆN THOẠI) -->
+    <nav 
+      class="md:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-md border-t py-1 px-2 flex items-center justify-around select-none shadow-[0_-4px_25px_rgba(0,0,0,0.15)] transition-colors"
+      :class="isDarkMode ? 'bg-zinc-900/95 border-zinc-800 text-zinc-300' : 'bg-white/95 border-slate-200 text-slate-700'"
+    >
+      <!-- 1. Lịch Chạy -->
+      <button
+        type="button"
+        @click="activeTab = 'today'"
+        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
+        :class="activeTab === 'today' ? 'text-red-600 font-black' : 'font-bold'"
+      >
+        <span class="text-xl">📕</span>
+        <span class="text-[10px] mt-0.5">Lịch Chạy</span>
+      </button>
+
+      <!-- 2. NÚT CHÍNH Ở GIỮA: CHẾ ĐỘ LÁI & MAP GPS -->
+      <button
+        type="button"
+        @click="switchTabToDrive()"
+        class="flex flex-col items-center justify-center -mt-6 transition active:scale-95 cursor-pointer"
+      >
+        <div class="w-13 h-13 rounded-full bg-gradient-to-tr from-red-600 via-rose-600 to-red-700 text-white flex items-center justify-center text-2xl shadow-xl shadow-red-600/40 border-2 border-white font-black animate-pulse">
+          🧭
+        </div>
+        <span class="text-[9.5px] font-black text-red-600 tracking-tight mt-0.5">Bản Đồ Lái</span>
+      </button>
+
+      <!-- 3. Sơ Đồ Ghế -->
+      <button
+        type="button"
+        @click="activeTab = 'seatmap'"
+        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
+        :class="activeTab === 'seatmap' ? 'text-red-600 font-black' : 'font-bold'"
+      >
+        <span class="text-xl">💺</span>
+        <span class="text-[10px] mt-0.5">Sơ Đồ Ghế</span>
+      </button>
+
+      <!-- 4. Lịch Trình -->
+      <button
+        type="button"
+        @click="activeTab = 'schedule'"
+        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
+        :class="activeTab === 'schedule' ? 'text-red-600 font-black' : 'font-bold'"
+      >
+        <span class="text-xl">🗓️</span>
+        <span class="text-[10px] mt-0.5">Lịch Tuần</span>
+      </button>
+
+      <!-- 5. Báo SOS -->
+      <button
+        type="button"
+        @click="showSosModal = true"
+        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer text-amber-500 font-bold"
+      >
+        <span class="text-xl">🚨</span>
+        <span class="text-[10px] mt-0.5 font-black text-amber-600">SOS</span>
+      </button>
+    </nav>
 
   </div>
 </template>
