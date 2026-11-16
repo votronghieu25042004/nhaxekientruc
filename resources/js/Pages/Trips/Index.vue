@@ -651,8 +651,8 @@
           <div
             v-for="trip in filteredTrips"
             :key="trip.id"
-            class="bg-white rounded-2xl border border-slate-200/90 hover:border-red-300 hover:shadow-md transition-all p-5 shadow-2xs relative overflow-hidden group"
-            :class="{ 'opacity-75 bg-slate-50/50': trip.status === 'RUNNING' || trip.status === 'COMPLETED' }"
+            class="bg-white rounded-3xl border border-slate-200/90 hover:border-red-400 hover:shadow-lg transition-all p-4.5 sm:p-5 shadow-xs relative overflow-hidden group"
+            :class="{ 'opacity-80 bg-slate-50/50': trip.status === 'RUNNING' || trip.status === 'COMPLETED' }"
           >
             <!-- Đường viền chỉ trạng thái màu cam khi xe đang chạy -->
             <div
@@ -784,9 +784,9 @@
                   v-else
                   type="button"
                   @click="handleBookTrip(trip.id)"
-                  class="inline-block w-full sm:w-auto px-6 py-3 bg-[#dc2626] hover:bg-[#b91c1c] active:scale-98 text-white font-black text-sm uppercase tracking-wider rounded-xl shadow-md shadow-red-500/25 text-center transition-all cursor-pointer"
+                  class="inline-block w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-700 hover:to-rose-700 active:scale-95 text-white font-black text-sm uppercase tracking-wider rounded-2xl shadow-lg shadow-red-500/30 text-center transition-all cursor-pointer"
                 >
-                  Chọn Ghế & Đặt Vé
+                  Chọn Ghế & Đặt Vé ➔
                 </button>
               </div>
             </div>

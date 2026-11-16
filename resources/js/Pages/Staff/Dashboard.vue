@@ -1023,7 +1023,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans pb-16" style="font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;">
+  <div class="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans pb-24 md:pb-16" style="font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;">
     <Head title="Cổng Lơ Xe & Soát Vé Di Động - nhaxekientruc" />
 
     <!-- TOAST NOTIFICATION -->

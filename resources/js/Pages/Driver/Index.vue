@@ -1436,7 +1436,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div :class="{ 'dark bg-[#121212] text-zinc-100': isDarkMode, 'bg-[#F8FAFC] text-slate-900': !isDarkMode }" class="min-h-screen font-sans transition-colors duration-500 ease-in-out">
+  <div :class="{ 'dark bg-[#121212] text-zinc-100': isDarkMode, 'bg-[#F8FAFC] text-slate-900': !isDarkMode }" class="min-h-screen font-sans transition-colors duration-500 ease-in-out pb-24 md:pb-0">
     <Head title="Bác Tài - Bảng Điều Khiển Lái Xe Thông Minh" />
 
     <!-- DÀNH RIÊNG CHO QUẢN TRỊ VIÊN: DẢI ĐIỀU KHIỂN & CHUYỂN ACC BÁC TÀI (ĐỒNG BỘ MÀU ĐỎ SANG TRỌNG NHAXEKIENTRUC) -->
