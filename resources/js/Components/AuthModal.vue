@@ -55,7 +55,7 @@
                 required
                 autofocus
                 placeholder="Nhập email hoặc 10 số điện thoại của bạn"
-                class="w-full pl-10 pr-3.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition"
+                class="w-full pl-10 pr-3.5 py-3 min-h-[46px] bg-slate-50 border border-slate-200 rounded-2xl text-base sm:text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition"
               />
             </div>
           </div>
@@ -81,7 +81,7 @@
                 v-model="loginForm.password"
                 required
                 placeholder="Nhập mật khẩu tài khoản"
-                class="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition"
+                class="w-full pl-10 pr-10 py-3 min-h-[46px] bg-slate-50 border border-slate-200 rounded-2xl text-base sm:text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 focus:bg-white outline-none transition"
               />
               <button
                 type="button"
