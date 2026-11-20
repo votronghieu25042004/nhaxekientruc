@@ -135,7 +135,7 @@
             class="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:border-red-500 hover:bg-red-50/50 text-slate-700 hover:text-red-700 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
           >
             <span>📝</span>
-            <span>Đăng ký tài khoản mới (Xác thực OTP qua Gmail / Zalo)</span>
+            <span>Đăng ký tài khoản mới (Xác thực OTP qua SMS / Gmail)</span>
           </button>
         </div>
 

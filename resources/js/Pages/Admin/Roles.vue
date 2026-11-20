@@ -705,9 +705,10 @@ const executeDeleteUser = () => {
       showDeleteUserModal.value = false
       userToDelete.value = null
     },
-    onError: () => {
+    onError: (err) => {
       showDeleteUserModal.value = false
       userToDelete.value = null
+      alert(err?.status || err?.message || 'Có lỗi xảy ra khi xóa tài khoản. Vui lòng thử lại!')
     }
   })
 }

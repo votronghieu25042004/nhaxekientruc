@@ -820,7 +820,11 @@ const executeDeleteAccount = () => {
     onSuccess: () => {
       showDeleteModal.value = false;
       customerToDelete.value = null;
-      router.reload();
+    },
+    onError: (err) => {
+      showDeleteModal.value = false;
+      customerToDelete.value = null;
+      alert(err?.status || err?.message || 'Có lỗi xảy ra khi xóa tài khoản. Vui lòng thử lại!');
     }
   });
 };

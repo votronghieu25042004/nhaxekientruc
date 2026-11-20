@@ -998,6 +998,7 @@ class TripController extends Controller
 
                             AuditLog::log('SEPAY_AUTO_PAID', "Tự động nhận diện giao dịch SePay MBBank 09025042004 cho vé {$booking->booking_code} (" . ($isDeposit ? "Cọc 30%: " . number_format($targetPayAmount) . "đ" : "100%: " . number_format($booking->total_amount) . "đ") . ")", 'Booking', $booking->id);
 
+                            // GỬI EMAIL VÉ ĐIỆN TỬ VỀ GMAIL NGAY KHI THANH TOÁN THÀNH CÔNG
                             if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
                                 try {
                                     \App\Services\EmailService::sendBookingConfirmation($booking);

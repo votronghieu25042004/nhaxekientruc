@@ -644,8 +644,7 @@ const manualConfirm = async () => {
   }
 };
 
-// Polling tự động lắng nghe giao dịch từ máy chủ cứ mỗi 1.5 giây
-// CHỈ tự động chuyển trang khi máy chủ nhận được tiền thật từ Webhook hoặc API SePay
+// Polling tự động lắng nghe giao dịch từ máy chủ (chỉ chuyển khi có tiền thật từ SePay hoặc Xác nhận)
 const checkStatus = async () => {
   if (isPaid.value || isExpired.value) return;
   try {

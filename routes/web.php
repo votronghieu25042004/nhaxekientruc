@@ -40,6 +40,7 @@ Route::post('user/profile', [AuthController::class, 'updateProfile'])->name('use
 Route::post('user/change-password', [AuthController::class, 'changePassword'])->name('user.password.change');
 Route::post('user/send-otp', [AuthController::class, 'sendProfileOtp'])->name('user.profile.sendOtp');
 Route::post('user/verify-otp', [AuthController::class, 'verifyProfileOtp'])->name('user.profile.verifyOtp');
+Route::post('user/delete-account', [AuthController::class, 'deleteAccount'])->name('user.deleteAccount');
 
 // 2. Schedules Route
 Route::get('schedules', [TripController::class, 'schedules'])->name('schedules.index');

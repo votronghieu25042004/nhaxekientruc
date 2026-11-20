@@ -3439,8 +3439,9 @@ class AdminController extends Controller
             return back()->with('success', $msg);
         }
 
-        if ($user->id === Auth::id()) {
-            $errMsg = 'Bạn không thể xóa tài khoản của chính mình!';
+        // Chỉ ngăn xóa tài khoản Quản Trị Viên Tối Cao
+        if ($user->id === 1 && $user->role === 'admin') {
+            $errMsg = 'Không thể xóa tài khoản Quản Trị Viên Tối Cao của hệ thống!';
             if ($request->header('X-Inertia')) {
                 return back()->withErrors(['status' => $errMsg]);
             }
@@ -3450,6 +3451,7 @@ class AdminController extends Controller
             return back()->withErrors(['status' => $errMsg]);
         }
 
+        $isSelf = ($user->id === Auth::id());
         $userName = $user->name;
         $userEmail = strtolower(trim((string)$user->email));
         $userPhone = preg_replace('/[^0-9]/', '', (string)$user->phone);
@@ -3461,14 +3463,33 @@ class AdminController extends Controller
                 'role' => Auth::user()?->role ?? 'admin',
                 'action' => 'DELETE_USER',
                 'category' => 'USER_MANAGEMENT',
-                'description' => "Admin đã xóa vĩnh viễn tài khoản [{$userName} - {$userPhone} - {$userEmail}] và toàn bộ vé xe, dữ liệu liên quan",
+                'description' => "Đã xóa vĩnh viễn tài khoản [{$userName} - {$userPhone} - {$userEmail}] và toàn bộ vé xe, dữ liệu liên quan",
                 'severity' => 'HIGH',
                 'ip_address' => $request->ip(),
             ]);
         } catch (\Throwable $e) {}
 
-        // 1. Tìm và xóa sạch tất cả đơn đặt vé (bookings), ghế ngồi (booking_seats), đánh giá (reviews) thuộc về user này
         try {
+            // 1. Gỡ ràng buộc liên kết lơ xe trên các chuyến xe (trips)
+            \Illuminate\Support\Facades\DB::table('trips')->where('conductor_id', $userId)->update(['conductor_id' => null]);
+            if (\Illuminate\Support\Facades\Schema::hasColumn('trips', 'second_conductor_id')) {
+                \Illuminate\Support\Facades\DB::table('trips')->where('second_conductor_id', $userId)->update(['second_conductor_id' => null]);
+            }
+
+            // 2. Gỡ ràng buộc tài xế (nếu tài khoản là tài xế)
+            $driverIds = \Illuminate\Support\Facades\DB::table('drivers')->where('user_id', $userId)->pluck('id')->toArray();
+            if (!empty($driverIds)) {
+                \Illuminate\Support\Facades\DB::table('trips')->whereIn('driver_id', $driverIds)->update(['driver_id' => null]);
+                if (\Illuminate\Support\Facades\Schema::hasColumn('trips', 'second_driver_id')) {
+                    \Illuminate\Support\Facades\DB::table('trips')->whereIn('second_driver_id', $driverIds)->update(['second_driver_id' => null]);
+                }
+                \Illuminate\Support\Facades\DB::table('drivers')->whereIn('id', $driverIds)->delete();
+            }
+
+            // 3. Gỡ ràng buộc trong nhật ký vận hành (audit_logs)
+            \Illuminate\Support\Facades\DB::table('audit_logs')->where('user_id', $userId)->update(['user_id' => null]);
+
+            // 4. Tìm và xóa sạch tất cả đơn đặt vé (bookings), ghế ngồi (booking_seats), đánh giá (reviews) thuộc về user này
             $userBookings = Booking::where('user_id', $userId)
                 ->when($userEmail, function($q) use ($userEmail) {
                     $q->orWhereRaw('LOWER(TRIM(customer_email)) = ?', [$userEmail]);
@@ -3494,22 +3515,31 @@ class AdminController extends Controller
                 $b->delete();
             }
 
-            // 2. Xóa các đánh giá trực tiếp do user viết
+            // 5. Xóa các đánh giá trực tiếp do user viết
             \Illuminate\Support\Facades\DB::table('reviews')->where('user_id', $userId)->delete();
 
-            // 3. Xóa hồ sơ tài xế nếu tài khoản này liên kết tài xế
-            \Illuminate\Support\Facades\DB::table('drivers')->where('user_id', $userId)->delete();
+            // 6. Xóa các phiên đăng nhập (sessions)
+            try {
+                \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $userId)->delete();
+            } catch (\Throwable $e) {}
 
-            // 4. Xóa các phiên đăng nhập (sessions)
-            \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $userId)->delete();
+            // 7. Xóa vĩnh viễn User khỏi database
+            $user->delete();
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("[DELETE_USER_DATA_ERR] " . $e->getMessage());
+            // Đảm bảo vẫn xóa user nếu có thể
+            try { $user->delete(); } catch (\Throwable $ex) {}
         }
 
-        // 5. Xóa vĩnh viễn User khỏi database (để nếu tạo lại sẽ hoàn toàn như mới 100%)
-        $user->forceDelete();
-
         $message = "Đã XÓA VĨNH VIỄN tài khoản [{$userName}] cùng toàn bộ vé xe và dữ liệu liên quan thành công!";
+
+        // Nếu người tự xóa chính là tài khoản đang đăng nhập -> Đăng xuất và điều hướng về trang chủ
+        if ($isSelf) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect('/')->with('success', 'Tài khoản của bạn đã được xóa vĩnh viễn khỏi hệ thống!');
+        }
 
         if ($request->header('X-Inertia')) {
             return back()->with('success', $message);
