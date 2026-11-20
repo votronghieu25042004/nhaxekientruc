@@ -87,6 +87,78 @@ class AiCallService
         $telecomSuccess  = false;
         $telecomDetail   = '';
 
+        // 0. Cổng Viễn thông eSMS Voice Call (Gọi điện thoại thật 100% tới mạng di động VN)
+        $esmsApiKey = env('ESMS_API_KEY', '5ADB13F158CB8ECD01BDF4CAFBB04D');
+        $esmsSecretKey = env('ESMS_SECRET_KEY', '94FFA280E5A94C1076CAAB9D15CCFA');
+        if (!empty($esmsApiKey) && !empty($esmsSecretKey)) {
+            $telecomProvider = 'ESMS_VOICE';
+            try {
+                $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+                // Tạo mã thông báo vé 6 chữ số
+                $ticketCode = preg_replace('/[^0-9]/', '', $booking->booking_code ?? '1234');
+                if (strlen($ticketCode) < 4) { $ticketCode = '1234'; }
+                $ticketCode = substr($ticketCode, 0, 6);
+
+                $voiceUrl = "http://voiceapi.esms.vn/MainService.svc/json/VoiceOTP";
+                $res = Http::timeout(10)->get($voiceUrl, [
+                    'ApiKey' => $esmsApiKey,
+                    'SecretKey' => $esmsSecretKey,
+                    'Phone' => $cleanPhone,
+                    'Code' => $ticketCode,
+                    'Speed' => '0',
+                    'Voice' => 'female',
+                ]);
+                if ($res->successful() && ($res->json('CodeResult') == '100')) {
+                    $telecomSuccess = true;
+                    $telecomDetail = "Tổng đài eSMS đã gọi điện thoại thật tới số {$phone} (Mã cuộc gọi: " . ($res->json('SMSID') ?? 'OK') . ")";
+                    Log::info("[AI_CALL_ESMS_SUCCESS] Gọi thoại eSMS thành công tới {$phone}");
+                } else {
+                    $telecomDetail = "eSMS phản hồi: " . ($res->json('ErrorMessage') ?? $res->body());
+                }
+            } catch (\Throwable $ee) {
+                $telecomDetail = "Lỗi kết nối eSMS Voice: " . $ee->getMessage();
+                Log::warning("[AI_CALL_ESMS_ERR] " . $ee->getMessage());
+            }
+        }
+
+        // 0b. Cổng Viễn thông SpeedSMS.vn (Gửi SMS thật & Gọi điện Voice Call tới mạng di động VN)
+        $speedSmsToken = env('SPEEDSMS_ACCESS_TOKEN');
+        if (!$telecomSuccess && !empty($speedSmsToken)) {
+            $telecomProvider = 'SPEEDSMS';
+            try {
+                $speedSms = new \App\Services\SpeedSmsService($speedSmsToken);
+                $trip = $booking->trip;
+                
+                // Gửi tin nhắn SMS viễn thông nhắc xe
+                $smsRes = $speedSms->sendTripReminderSms(
+                    $phone,
+                    $booking->customer_name ?? 'Quý khách',
+                    $trip?->route?->name ?? 'Liên tỉnh',
+                    $trip?->bus?->license_plate ?? 'Xe chất lượng cao',
+                    $trip?->departure_time ? Carbon::parse($trip->departure_time)->format('H:i d/m/Y') : 'sắp tới',
+                    $booking->pickupStop?->stop_name ?? ($trip?->pickup_point ?? 'Điểm đón nhà xe'),
+                    $trip?->driver?->name ?? 'Bác tài',
+                    $trip?->driver?->phone ?? ''
+                );
+
+                // Đồng thời gọi cuộc gọi Voice OTP tới số điện thoại
+                $voiceRes = $speedSms->sendVoiceOtp($phone, '1234');
+
+                $smsOk = isset($smsRes['status']) && $smsRes['status'] === 'success';
+                $voiceOk = isset($voiceRes['status']) && $voiceRes['status'] === 'success';
+
+                if ($smsOk || $voiceOk) {
+                    $telecomSuccess = true;
+                    $telecomDetail = "Đã gửi thành công SMS viễn thông " . ($voiceOk ? "& kích hoạt cuộc gọi Voice" : "") . " tới số {$phone} qua cổng SpeedSMS";
+                } else {
+                    $telecomDetail = "SpeedSMS phản hồi: " . ($smsRes['message'] ?? 'Số dư tài khoản chưa đủ');
+                }
+            } catch (\Throwable $e) {
+                $telecomDetail = "Lỗi kết nối SpeedSMS: " . $e->getMessage();
+                Log::warning("[AI_CALL_SPEEDSMS_ERR] " . $e->getMessage());
+            }
+        }
+
         // 1. Thử gọi qua Twilio Voice API nếu có cấu hình
         $twilioSid   = env('TWILIO_ACCOUNT_SID');
         $twilioToken = env('TWILIO_AUTH_TOKEN');

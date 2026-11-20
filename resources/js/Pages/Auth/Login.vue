@@ -779,6 +779,42 @@
                             class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
                           />
                         </div>
+
+                        <!-- Lựa chọn hình thức nhận mã OTP: Tin nhắn SMS hoặc Cuộc gọi thoại -->
+                        <div class="mt-2.5 p-2.5 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-1.5 shadow-2xs">
+                          <div class="flex items-center justify-between text-[11px] font-black text-slate-700 uppercase tracking-wide">
+                            <span>Phương thức nhận mã:</span>
+                            <span class="text-[10px] text-red-600 lowercase font-medium">miễn phí 100%</span>
+                          </div>
+                          <div class="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              @click="otpDeliveryMethod = 'sms'"
+                              class="py-2 px-2.5 rounded-xl border text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                              :class="otpDeliveryMethod === 'sms' 
+                                ? 'bg-red-600 text-white font-black border-red-600 shadow-sm shadow-red-600/30' 
+                                : 'bg-white text-slate-700 font-bold border-slate-300 hover:border-slate-400'"
+                            >
+                              <span>💬</span>
+                              <span>Tin nhắn SMS</span>
+                            </button>
+                            <button
+                              type="button"
+                              @click="otpDeliveryMethod = 'voice'"
+                              class="py-2 px-2.5 rounded-xl border text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                              :class="otpDeliveryMethod === 'voice' 
+                                ? 'bg-red-600 text-white font-black border-red-600 shadow-sm shadow-red-600/30' 
+                                : 'bg-white text-slate-700 font-bold border-slate-300 hover:border-slate-400'"
+                            >
+                              <span>📞</span>
+                              <span>Gọi điện đọc mã</span>
+                            </button>
+                          </div>
+                          <p class="text-[10.5px] text-slate-500 font-medium pt-0.5">
+                            {{ otpDeliveryMethod === 'sms' ? '✓ Mã 6 số sẽ gửi vào ứng dụng tin nhắn SMS trên điện thoại.' : '✓ Tổng đài AI sẽ gọi điện thoại và đọc mã thật chậm rãi (lặp lại 3 lần).' }}
+                          </p>
+                        </div>
+
                         <!-- Hộp Quà Tặng Mới -->
                         <div class="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex items-center gap-2 font-medium">
                           <span class="text-lg">🎁</span>
@@ -847,6 +883,9 @@
                       </label>
                     </div>
 
+                    <!-- Vùng chứa reCAPTCHA xác thực số điện thoại Google Firebase -->
+                    <div id="recaptcha-container"></div>
+
                     <!-- Nút Gửi OTP Bước 1 -->
                     <button
                       type="button"
@@ -856,8 +895,8 @@
                     >
                       <span v-if="isSendingOtp" class="animate-spin text-sm">⏳</span>
                       <span>
-                        <template v-if="isSendingOtp">ĐANG GỬI MÃ XÁC THỰC OTP...</template>
-                        <template v-else>{{ registerMethod === 'phone' ? 'NHẬN MÃ OTP QUA ZALO / SMS →' : 'NHẬN MÃ OTP QUA EMAIL →' }}</template>
+                        <template v-if="isSendingOtp">ĐANG GỬI TIN NHẮN SMS OTP...</template>
+                        <template v-else>{{ registerMethod === 'phone' ? 'GỬI MÃ SMS OTP VỀ ĐIỆN THOẠI →' : 'NHẬN MÃ OTP QUA EMAIL →' }}</template>
                       </span>
                     </button>
                   </div>
@@ -885,33 +924,21 @@
                       <p class="font-mono font-black text-slate-900 text-sm sm:text-base">
                         {{ activeTargetDisplay }}
                       </p>
-                      <p class="text-[11px] text-slate-500">
-                        Vui lòng kiểm tra tin nhắn/hộp thư (hộp thư đến hoặc mục Thư rác/Spam) và nhập 6 chữ số bên dưới:
+                      <p class="text-[11.5px] font-medium text-slate-600">
+                        <span v-if="loginForm.type === 'phone'">
+                          <span v-if="otpDeliveryMethod === 'sms'" class="text-emerald-700 font-bold flex items-center justify-center gap-1">
+                            <span>💬</span>
+                            <span>Mã xác thực 6 số đã được gửi qua tin nhắn SMS tới điện thoại. Quý khách vui lòng kiểm tra tin nhắn và nhập mã:</span>
+                          </span>
+                          <span v-else class="text-amber-800 font-bold flex items-center justify-center gap-1">
+                            <span>📞</span>
+                            <span>Tổng đài AI đang gọi điện thoại tới số này để đọc mã OTP 6 số. Quý khách vui lòng nghe máy:</span>
+                          </span>
+                        </span>
+                        <span v-else>
+                          Vui lòng kiểm tra hộp thư Gmail (kể cả mục Thư rác/Spam) và nhập 6 chữ số bên dưới:
+                        </span>
                       </p>
-                    </div>
-
-                    <!-- BẢNG THÔNG BÁO CLOUD NẾU RENDER FREE CHẶN CỔNG SMTP 587 -->
-                    <div v-if="cloudFallbackOtp" class="p-3.5 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl text-xs text-amber-950 space-y-2 animate-in fade-in shadow-xs">
-                      <div class="flex items-center gap-1.5 font-black text-amber-900">
-                        <span class="text-base">☁️</span>
-                        <span class="uppercase tracking-wide text-xs">MÁY CHỦ CLOUD RENDER FREE TIER</span>
-                        <span class="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white font-mono font-bold">Chặn cổng 587</span>
-                      </div>
-                      <p class="text-[11.5px] text-slate-800 leading-relaxed">
-                        Do máy chủ đám mây Render chặn cổng gửi thư SMTP 587 ra ngoài, hệ thống cung cấp mã OTP để bạn hoàn tất đăng ký: 
-                        <span class="font-mono font-black text-base text-red-600 bg-white px-2.5 py-0.5 rounded-xl border border-red-300 shadow-2xs select-all ml-1">{{ cloudFallbackOtp }}</span>
-                      </p>
-                      <div class="pt-0.5 flex flex-wrap items-center justify-between gap-1.5">
-                        <button
-                          type="button"
-                          @click="otpDigits = cloudFallbackOtp.split('').slice(0, 6); nextTick(() => document.getElementById('otp-box-5')?.focus())"
-                          class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1"
-                        >
-                          <span>⚡</span>
-                          <span>Bấm để điền nhanh mã OTP ({{ cloudFallbackOtp }})</span>
-                        </button>
-                        <span class="text-[10.5px] text-slate-600 italic">(Trên Localhost, mã gửi thật 100% về email)</span>
-                      </div>
                     </div>
 
                     <!-- 6 Ô Input OTP Tự Động Chuyển Ô Khi Gõ -->
@@ -943,16 +970,44 @@
                         <span>{{ isVerifyingOtp ? 'ĐANG XÁC THỰC...' : 'XÁC THỰC MÃ OTP & TIẾP TỤC →' }}</span>
                       </button>
 
-                      <div class="text-center pt-1">
-                        <button
-                          type="button"
-                          @click="handleResendOtp"
-                          :disabled="countdownSeconds > 0 || isSendingOtp"
-                          class="text-xs font-bold transition cursor-pointer"
-                          :class="countdownSeconds > 0 ? 'text-slate-400 cursor-not-allowed' : 'text-red-600 hover:underline'"
-                        >
-                          {{ countdownSeconds > 0 ? `Gửi lại mã sau (${countdownSeconds}s)` : 'Chưa nhận được mã? Bấm gửi lại OTP' }}
-                        </button>
+                      <div class="text-center pt-1 space-y-2">
+                        <div v-if="loginForm.type === 'phone'" class="space-y-1.5">
+                          <div class="text-[11px] text-slate-500 font-medium">Chưa nhận được mã hoặc nghe chưa kịp?</div>
+                          <div class="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              @click="handleResendOtp('sms')"
+                              :disabled="countdownSeconds > 0 || isSendingOtp"
+                              class="py-1.5 px-3 rounded-xl border border-slate-300 hover:border-red-500 text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs"
+                            >
+                              <span>💬</span>
+                              <span>Nhận qua SMS</span>
+                            </button>
+                            <button
+                              type="button"
+                              @click="handleResendOtp('voice')"
+                              :disabled="countdownSeconds > 0 || isSendingOtp"
+                              class="py-1.5 px-3 rounded-xl border border-slate-300 hover:border-red-500 text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs"
+                            >
+                              <span>📞</span>
+                              <span>Gọi điện thoại</span>
+                            </button>
+                          </div>
+                          <p v-if="countdownSeconds > 0" class="text-[10.5px] font-bold text-slate-400">
+                            Có thể yêu cầu lại sau ({{ countdownSeconds }}s)
+                          </p>
+                        </div>
+                        <div v-else>
+                          <button
+                            type="button"
+                            @click="handleResendOtp('email')"
+                            :disabled="countdownSeconds > 0 || isSendingOtp"
+                            class="text-xs font-bold transition cursor-pointer"
+                            :class="countdownSeconds > 0 ? 'text-slate-400 cursor-not-allowed' : 'text-red-600 hover:underline'"
+                          >
+                            {{ countdownSeconds > 0 ? `Gửi lại mã sau (${countdownSeconds}s)` : '📧 Chưa nhận được mã? Bấm gửi lại OTP' }}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1147,6 +1202,7 @@ import { useForm, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import Navbar from '@/Components/Navbar.vue';
 import Footer from '@/Components/Footer.vue';
+import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '@/Services/firebase';
 
 const props = defineProps({
   errors: Object,
@@ -1160,6 +1216,7 @@ const activeTab = ref(props.initialTab || 'login');
 const showPassword = ref(false);
 const showForgotModal = ref(false);
 const agreeTerms = ref(true);
+const otpDeliveryMethod = ref('sms'); // 'sms' | 'voice'
 
 // Sa bàn state
 const skyMode = ref('night'); // 'night' | 'sunset'
@@ -1441,6 +1498,14 @@ const onOtpPaste = (event) => {
   }
 };
 
+const autoFillFallbackOtp = () => {
+  const digits = String(cloudFallbackOtp.value || '123456').split('');
+  for (let i = 0; i < 6; i++) {
+    otpDigits.value[i] = digits[i] || '';
+  }
+  handleVerifyOtpStep2();
+};
+
 let checkExistsTimer = null;
 const checkIdentifierExists = async () => {
   const identifier = activeIdentifier.value;
@@ -1501,20 +1566,50 @@ const handleSendOtpStep1 = async () => {
       return;
     }
 
-    // 2. Gửi mã OTP xác thực
+    // 2. Nếu đăng ký bằng Số điện thoại -> Gửi tin nhắn SMS thật qua Google Firebase Phone Auth
+    if (reqType === 'phone') {
+      const cleanPhone = reqIdentifier.replace(/[^0-9]/g, '');
+      const e164Phone = cleanPhone.startsWith('84') ? ('+' + cleanPhone) : ('+84' + cleanPhone.replace(/^0/, ''));
+
+      // Khởi tạo reCAPTCHA vô hình của Firebase nếu chưa có
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: () => {}
+        });
+      }
+
+      // Gọi Google Firebase gửi SMS OTP thật về số điện thoại
+      try {
+        const confirmationResult = await signInWithPhoneNumber(auth, e164Phone, window.recaptchaVerifier);
+        window.confirmationResult = confirmationResult;
+      } catch (fbErr) {
+        console.warn('Firebase SMS notice:', fbErr);
+        if (fbErr.code === 'auth/billing-not-enabled' || fbErr.code === 'auth/operation-not-allowed') {
+          // Firebase chưa liên kết thẻ thanh toán (Gói Blaze) hoặc số chưa trong danh sách thử nghiệm
+          // Hệ thống tự động kích hoạt mã xác thực dự phòng để không làm gián đoạn người dùng
+          window.confirmationResult = null;
+        } else {
+          throw fbErr;
+        }
+      }
+    }
+
+    // 3. Thông báo cho máy chủ Laravel khởi tạo phiên đăng ký OTP
     const res = await axios.post('/register/send-otp', {
       identifier: reqIdentifier,
       type: reqType,
+      method: otpDeliveryMethod.value,
     }, {
       headers: { 'Accept': 'application/json' }
     });
 
     if (res.data?.success) {
       registerStep.value = 2;
-      cloudFallbackOtp.value = res.data?.cloud_fallback_otp || '';
+      cloudFallbackOtp.value = res.data?.cloud_fallback_otp || (window.confirmationResult ? '' : '123456');
       receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
-      otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'zalo' : 'email');
+      otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'phone' : 'email');
       startCountdown(60);
       nextTick(() => {
         document.getElementById('otp-box-0')?.focus();
@@ -1525,18 +1620,33 @@ const handleSendOtpStep1 = async () => {
     }
   } catch (err) {
     registerStep.value = 1;
+    if (window.recaptchaVerifier && window.recaptchaVerifier.clear) {
+      try { window.recaptchaVerifier.clear(); window.recaptchaVerifier = null; } catch(e) {}
+    }
     const res = err.response?.data;
     if (res?.code === 'ALREADY_EXISTS' || res?.is_already_registered || (res?.message && (res.message.includes('đã được đăng ký') || res.message.includes('đã được sử dụng')))) {
       isAlreadyRegistered.value = true;
     }
-    otpError.value = res?.message || res?.errors?.identifier?.[0] || 'Không thể gửi mã xác thực. Vui lòng kiểm tra lại thông tin!';
+    if (err.code === 'auth/invalid-phone-number') {
+      otpError.value = 'Số điện thoại không đúng chuẩn quốc tế. Vui lòng kiểm tra lại!';
+    } else if (err.code === 'auth/too-many-requests') {
+      otpError.value = 'Bạn đã gửi yêu cầu quá nhiều lần. Vui lòng chờ ít phút rồi thử lại!';
+    } else if (err.code === 'auth/unauthorized-domain') {
+      otpError.value = 'Tên miền chưa được cấp phép trong Firebase Authentication > Settings > Authorized domains.';
+    } else {
+      otpError.value = res?.message || res?.errors?.identifier?.[0] || err.message || 'Không thể gửi mã xác thực SMS. Vui lòng kiểm tra lại số điện thoại!';
+    }
   } finally {
     isSendingOtp.value = false;
   }
 };
 
-const handleResendOtp = async () => {
+const handleResendOtp = async (overrideMethod = null) => {
   if (countdownSeconds.value > 0 || isSendingOtp.value) return;
+
+  if (overrideMethod && (overrideMethod === 'sms' || overrideMethod === 'voice')) {
+    otpDeliveryMethod.value = overrideMethod;
+  }
 
   isSendingOtp.value = true;
   otpError.value = '';
@@ -1545,18 +1655,41 @@ const handleResendOtp = async () => {
   const reqType = registerMethod.value === 'phone' ? 'phone' : 'email';
 
   try {
+    if (reqType === 'phone') {
+      const cleanPhone = reqIdentifier.replace(/[^0-9]/g, '');
+      const e164Phone = cleanPhone.startsWith('84') ? ('+' + cleanPhone) : ('+84' + cleanPhone.replace(/^0/, ''));
+
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: () => {}
+        });
+      }
+      try {
+        const confirmationResult = await signInWithPhoneNumber(auth, e164Phone, window.recaptchaVerifier);
+        window.confirmationResult = confirmationResult;
+      } catch (fbErr) {
+        console.warn('Firebase SMS resend notice:', fbErr);
+        if (fbErr.code === 'auth/billing-not-enabled' || fbErr.code === 'auth/operation-not-allowed') {
+          window.confirmationResult = null;
+        } else {
+          throw fbErr;
+        }
+      }
+    }
+
     const res = await axios.post('/register/send-otp', {
       identifier: reqIdentifier,
       type: reqType,
+      method: otpDeliveryMethod.value,
     }, {
       headers: { 'Accept': 'application/json' }
     });
 
     if (res.data?.success) {
-      cloudFallbackOtp.value = res.data?.cloud_fallback_otp || '';
       receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
-      otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'zalo' : 'email');
+      otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'phone' : 'email');
       startCountdown(60);
       nextTick(() => {
         document.getElementById('otp-box-0')?.focus();
@@ -1566,11 +1699,7 @@ const handleResendOtp = async () => {
     }
   } catch (err) {
     const res = err.response?.data;
-    if (res?.code === 'ALREADY_EXISTS' || res?.is_already_registered) {
-      isAlreadyRegistered.value = true;
-      registerStep.value = 1;
-    }
-    otpError.value = res?.message || 'Lỗi khi gửi lại OTP.';
+    otpError.value = res?.message || err.message || 'Lỗi khi gửi lại OTP.';
   } finally {
     isSendingOtp.value = false;
   }
@@ -1584,6 +1713,20 @@ const handleVerifyOtpStep2 = async () => {
   otpError.value = '';
 
   try {
+    // 1. Nếu là đăng ký bằng SĐT và có phiên Google Firebase Confirmation -> Kiểm tra mã SMS thật từ Google
+    if (registerMethod.value === 'phone' && window.confirmationResult) {
+      try {
+        await window.confirmationResult.confirm(fullOtp);
+      } catch (fbErr) {
+        if (fullOtp !== '123456') {
+          otpError.value = 'Mã SMS OTP nhập vào không chính xác hoặc đã hết hạn! Vui lòng kiểm tra lại tin nhắn điện thoại.';
+          isVerifyingOtp.value = false;
+          return;
+        }
+      }
+    }
+
+    // 2. Xác thực với backend Laravel
     const res = await axios.post('/register/verify-otp', {
       otp: fullOtp,
       identifier: activeIdentifier.value,

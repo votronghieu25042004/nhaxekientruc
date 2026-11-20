@@ -622,9 +622,26 @@ class TripController extends Controller
             'voucher_code' => 'nullable|string',
             'points_to_redeem' => 'nullable|integer|min:0',
         ], [
-            'customer_phone.required' => 'Quý khách đăng nhập bằng Gmail bắt buộc phải nhập Số điện thoại để Lơ xe liên hệ đón!',
+            'customer_phone.required' => 'Quý khách bắt buộc phải nhập và xác minh Số điện thoại để Lơ xe liên hệ đón!',
             'customer_phone.min' => 'Số điện thoại di động không hợp lệ (tối thiểu 10 chữ số tại Việt Nam)!',
+            'customer_email.required' => 'Quý khách bắt buộc phải nhập và xác minh Gmail để nhận vé điện tử!',
         ]);
+
+        $currentUser = Auth::user();
+        if ($currentUser) {
+            $userNeedSave = false;
+            if (empty($currentUser->phone) && !empty($request->customer_phone)) {
+                $currentUser->phone = trim($request->customer_phone);
+                $userNeedSave = true;
+            }
+            if ((empty($currentUser->email) || str_ends_with(strtolower($currentUser->email), '@nhaxekientruc.vn')) && !empty($request->customer_email)) {
+                $currentUser->email = strtolower(trim($request->customer_email));
+                $userNeedSave = true;
+            }
+            if ($userNeedSave) {
+                $currentUser->save();
+            }
+        }
 
         $trip = Trip::with(['route.stops', 'bus'])->findOrFail($id);
 
