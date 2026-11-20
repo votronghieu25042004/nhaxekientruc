@@ -13,27 +13,29 @@
       <div class="max-w-6xl w-full relative z-10">
         
         <!-- MAIN CARD CONTAINER -->
-        <div class="bg-white rounded-2xl sm:rounded-3xl shadow-xl shadow-slate-200/80 border border-slate-200 overflow-hidden flex flex-col">
+        <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/80 border border-slate-200/90 overflow-hidden flex flex-col">
           
           <!-- ========================================================================= -->
-          <!-- MOBILE BRAND BANNER & MINI SA BÀN TOGGLE (Chỉ hiển thị trên Mobile < lg)  -->
+          <!-- MOBILE BRAND BANNER & SA BÀN TOGGLE (Chỉ hiển thị trên Mobile < lg)       -->
           <!-- ========================================================================= -->
-          <div class="lg:hidden p-4 sm:p-6 bg-gradient-to-br from-red-600 via-rose-600 to-amber-600 text-white relative overflow-hidden">
+          <div class="lg:hidden p-4 sm:p-6 bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white relative overflow-hidden">
             <!-- Glow background -->
-            <div class="absolute -top-10 -right-10 w-40 h-40 bg-amber-400/20 rounded-full blur-2xl pointer-events-none"></div>
+            <div class="absolute -top-12 -right-12 w-48 h-48 bg-amber-400/25 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-red-900/40 rounded-full blur-2xl pointer-events-none"></div>
 
-            <div class="relative z-10">
+            <div class="relative z-10 space-y-3">
+              <!-- Top Row: Brand Info + Sa Bàn Button -->
               <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
-                  <div class="w-11 h-11 rounded-2xl bg-white border border-white/40 flex items-center justify-center p-1 shadow-sm shrink-0">
+                  <div class="w-12 h-12 rounded-2xl bg-white/95 border border-white/50 flex items-center justify-center p-1.5 shadow-md shrink-0">
                     <img src="/images/logo.png" alt="Logo Trường ĐH Kiến Trúc Đà Nẵng" class="w-full h-full object-contain" />
                   </div>
                   <div>
                     <div class="flex items-center gap-1.5 flex-wrap">
-                      <h1 class="text-xl font-black text-white tracking-tight">nhaxekientruc</h1>
-                      <span class="text-[9px] px-2 py-0.5 rounded-full bg-white/20 text-amber-200 font-extrabold uppercase font-mono">Đà Nẵng</span>
+                      <h1 class="text-xl font-black text-white tracking-tight leading-none">nhaxekientruc</h1>
+                      <span class="text-[9.5px] px-2 py-0.5 rounded-full bg-white/20 text-amber-200 font-extrabold uppercase font-mono tracking-wide">Đà Nẵng</span>
                     </div>
-                    <p class="text-xs text-rose-100 font-medium">Hệ Thống Đặt Vé Xe Công Nghệ Cao</p>
+                    <p class="text-xs text-rose-100 font-medium mt-1">Hệ Thống Đặt Vé Xe Thông Minh 24/7</p>
                   </div>
                 </div>
 
@@ -41,48 +43,48 @@
                 <button
                   type="button"
                   @click="showMobileSaBan = !showMobileSaBan"
-                  class="px-2.5 py-1.5 rounded-xl bg-black/25 hover:bg-black/35 backdrop-blur-md border border-white/20 text-[11px] font-bold text-amber-300 flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-xs shrink-0"
+                  class="px-3 py-1.5 rounded-xl bg-black/30 hover:bg-black/40 backdrop-blur-md border border-white/25 text-xs font-bold text-amber-300 flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm shrink-0"
                   :title="showMobileSaBan ? 'Thu gọn sa bàn' : 'Mở xem sa bàn xa lộ'"
                 >
                   <span>{{ showMobileSaBan ? '▲ Ẩn sa bàn' : '🚌 Sa bàn' }}</span>
                 </button>
               </div>
 
-              <!-- Dải 3 Điểm Nổi Bật Dạng Pill Cuộn Ngang -->
-              <div class="flex items-center gap-2 mt-3 overflow-x-auto no-scrollbar py-0.5 text-[11px]">
-                <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 whitespace-nowrap">
-                  <span>🎓</span>
-                  <span class="font-bold text-amber-200">SV Vé 0đ & -30%</span>
+              <!-- Lưới 3 Điểm Nổi Bật Dạng Card Nhỏ (Khớp 100% mọi màn hình điện thoại) -->
+              <div class="grid grid-cols-3 gap-1.5 pt-0.5">
+                <div class="py-1.5 px-1 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 text-center flex flex-col items-center justify-center shadow-2xs">
+                  <span class="text-xs">🎓</span>
+                  <span class="text-[10px] font-black text-amber-200 truncate w-full mt-0.5">SV Vé 0đ & -30%</span>
                 </div>
-                <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 whitespace-nowrap">
-                  <span>💺</span>
-                  <span class="font-bold text-white">Giữ 100% Chỗ Thật</span>
+                <div class="py-1.5 px-1 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 text-center flex flex-col items-center justify-center shadow-2xs">
+                  <span class="text-xs">💺</span>
+                  <span class="text-[10px] font-black text-white truncate w-full mt-0.5">Giữ 100% Chỗ</span>
                 </div>
-                <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 whitespace-nowrap">
-                  <span>📱</span>
-                  <span class="font-bold text-white">Vé QR Quét Lên Xe</span>
+                <div class="py-1.5 px-1 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 text-center flex flex-col items-center justify-center shadow-2xs">
+                  <span class="text-xs">📱</span>
+                  <span class="text-[10px] font-black text-white truncate w-full mt-0.5">Vé QR Lên Xe</span>
                 </div>
               </div>
 
               <!-- SA BÀN COLLAPSIBLE CHO MOBILE NẾU NGƯỜI DÙNG BẤM XEM -->
-              <div v-if="showMobileSaBan" class="mt-3 p-3 rounded-2xl bg-black/50 border border-white/20 backdrop-blur-md animate-in fade-in duration-200">
-                <div class="flex items-center justify-between text-[11px] font-bold text-slate-200 mb-2">
-                  <span class="flex items-center gap-1.5 text-amber-300">
+              <div v-if="showMobileSaBan" class="p-3 rounded-2xl bg-slate-950/80 border border-white/20 backdrop-blur-md animate-in fade-in duration-200 space-y-2">
+                <div class="flex items-center justify-between text-xs font-bold text-slate-200">
+                  <span class="flex items-center gap-1.5 text-amber-300 text-[11px]">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                     Xa lộ Đà Nẵng ⇄ Liên Tỉnh
                   </span>
-                  <div class="flex items-center gap-1.5">
+                  <div class="flex items-center gap-2">
                     <button
                       type="button"
                       @click="triggerHeadlightsAndHorn"
-                      class="px-2 py-0.5 rounded-lg bg-amber-500 text-slate-950 font-black text-[10px] active:scale-95"
+                      class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10.5px] active:scale-95 transition shadow-xs cursor-pointer"
                     >
                       📢 Còi xe
                     </button>
                     <button
                       type="button"
                       @click="toggleSkyMode"
-                      class="px-2 py-0.5 rounded-lg bg-white/20 text-white font-bold text-[10px] active:scale-95"
+                      class="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold text-[10.5px] active:scale-95 transition cursor-pointer"
                     >
                       {{ skyMode === 'night' ? '🌙 Đêm' : '🌅 Chiều' }}
                     </button>
@@ -90,16 +92,16 @@
                 </div>
 
                 <!-- Làn xe thu nhỏ trên mobile -->
-                <div class="relative h-16 w-full rounded-xl bg-slate-900 border border-slate-700 overflow-hidden flex flex-col justify-around px-2">
-                  <div class="relative h-6 w-full flex items-center">
-                    <div class="bus-lane-1 absolute flex items-center gap-1 text-[9px] font-bold text-white bg-red-700 px-2 py-0.5 rounded border border-amber-400 shadow-sm">
+                <div class="relative h-18 w-full rounded-xl bg-slate-900 border border-slate-700/80 overflow-hidden flex flex-col justify-around px-2 select-none">
+                  <div class="relative h-7 w-full flex items-center overflow-hidden">
+                    <div class="mobile-bus-1 absolute flex items-center gap-1 text-[9.5px] font-bold text-white bg-red-700 px-2 py-0.5 rounded border border-amber-400 shadow-sm whitespace-nowrap">
                       🚌 NHAXEKIENTRUC 43B-067.89
                     </div>
                   </div>
-                  <div class="border-t border-dashed border-amber-400/50"></div>
-                  <div class="relative h-6 w-full flex items-center">
-                    <div class="bus-lane-2 absolute flex items-center gap-1 text-[8.5px] font-bold text-slate-950 bg-amber-300 px-2 py-0.5 rounded border border-white shadow-sm">
-                      🚐 TRUNG CHUYỂN 0Đ
+                  <div class="border-t border-dashed border-amber-400/40"></div>
+                  <div class="relative h-7 w-full flex items-center overflow-hidden">
+                    <div class="mobile-bus-2 absolute flex items-center gap-1 text-[9px] font-bold text-slate-950 bg-amber-300 px-2 py-0.5 rounded border border-white shadow-sm whitespace-nowrap">
+                      🚐 TRUNG CHUYỂN 0Đ (Đón tận nơi)
                     </div>
                   </div>
                 </div>
@@ -471,15 +473,15 @@
             <div class="lg:col-span-7 p-4 sm:p-8 flex flex-col justify-between bg-white text-slate-900">
               <div>
                 
-                <!-- THANH CHUYỂN ĐỔI 2 TAB (SEGMENTED PILL CONTROL CAO CẤP) -->
-                <div class="p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 mb-5 flex items-center gap-1">
+                <!-- THANH CHUYỂN ĐỔI 2 TAB (SEGMENTED PILL CONTROL CHUẨN MOBILE & DESKTOP) -->
+                <div class="p-1 bg-slate-100 rounded-2xl border border-slate-200/80 mb-5 flex items-center gap-1">
                   <button
                     type="button"
                     @click="switchTab('login')"
-                    class="flex-1 py-2.5 sm:py-3 px-3 rounded-xl text-center text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    class="flex-1 py-3 px-3 rounded-xl text-center text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     :class="activeTab === 'login' 
                       ? 'bg-white text-red-600 shadow-sm shadow-slate-200 ring-1 ring-slate-200/50' 
-                      : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'"
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-white/50 font-bold'"
                   >
                     <span>🔐</span>
                     <span>ĐĂNG NHẬP</span>
@@ -488,13 +490,13 @@
                   <button
                     type="button"
                     @click="switchTab('register')"
-                    class="flex-1 py-2.5 sm:py-3 px-3 rounded-xl text-center text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    class="flex-1 py-3 px-3 rounded-xl text-center text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     :class="activeTab === 'register' 
                       ? 'bg-white text-red-600 shadow-sm shadow-slate-200 ring-1 ring-slate-200/50' 
-                      : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'"
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-white/50 font-bold'"
                   >
                     <span>📝</span>
-                    <span>ĐĂNG KÝ TÀI KHOẢN</span>
+                    <span>ĐĂNG KÝ MỚI</span>
                   </button>
                 </div>
 
@@ -544,14 +546,12 @@
                     
                     <!-- Ô Nhập Số Điện Thoại hoặc Email -->
                     <div>
-                      <div class="flex items-center justify-between mb-1.5">
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                          Số điện thoại hoặc Email / Gmail <span class="text-red-500">*</span>
-                        </label>
-                      </div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Số điện thoại hoặc Email / Gmail <span class="text-red-500">*</span>
+                      </label>
 
                       <div class="relative flex items-center">
-                        <span class="absolute left-3.5 text-slate-400 text-sm pointer-events-none">👤</span>
+                        <span class="absolute left-3.5 text-slate-400 text-base pointer-events-none">👤</span>
                         <input
                           v-model="loginForm.email"
                           type="text"
@@ -560,29 +560,20 @@
                           @focus="triggerTurboSpeed"
                           @blur="stopTurboSpeed"
                           @input="triggerTurboSpeed"
-                          placeholder="Nhập SĐT (10 số) hoặc Email (VD: sinhvien@dau.edu.vn)"
-                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal outline-none transition focus:ring-2 focus:ring-red-500/20"
+                          placeholder="Nhập SĐT hoặc Email của bạn"
+                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 sm:py-3.5 min-h-[50px] text-base sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal outline-none transition focus:ring-4 focus:ring-red-500/10"
                         />
                       </div>
                     </div>
 
                     <!-- Ô Nhập Mật Khẩu -->
                     <div>
-                      <div class="flex items-center justify-between mb-1.5">
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                          Mật khẩu <span class="text-red-500">*</span>
-                        </label>
-                        <button
-                          type="button"
-                          @click="showForgotModal = true"
-                          class="text-[11px] font-bold text-red-600 hover:underline cursor-pointer"
-                        >
-                          Quên mật khẩu?
-                        </button>
-                      </div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Mật khẩu tài khoản <span class="text-red-500">*</span>
+                      </label>
 
                       <div class="relative flex items-center">
-                        <span class="absolute left-3.5 text-slate-400 text-sm pointer-events-none">🔒</span>
+                        <span class="absolute left-3.5 text-slate-400 text-base pointer-events-none">🔒</span>
                         <input
                           ref="passwordInputRef"
                           v-model="loginForm.password"
@@ -591,12 +582,12 @@
                           @focus="triggerTurboSpeed"
                           @blur="stopTurboSpeed"
                           placeholder="Nhập mật khẩu tài khoản"
-                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-10 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal outline-none transition focus:ring-2 focus:ring-red-500/20"
+                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-11 py-3 sm:py-3.5 min-h-[50px] text-base sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal outline-none transition focus:ring-4 focus:ring-red-500/10"
                         />
                         <button
                           type="button"
                           @click="showPassword = !showPassword"
-                          class="absolute right-3.5 text-slate-400 hover:text-slate-600 text-sm cursor-pointer p-1"
+                          class="absolute right-2.5 w-9 h-9 flex items-center justify-center text-slate-400 hover:text-slate-600 text-base cursor-pointer rounded-xl hover:bg-slate-100 transition"
                           title="Ẩn / Hiện mật khẩu"
                         >
                           {{ showPassword ? '🙈' : '👁️' }}
@@ -604,7 +595,7 @@
                       </div>
                     </div>
 
-                    <!-- Ghi Nhớ Đăng Nhập -->
+                    <!-- Ghi Nhớ Đăng Nhập & Quên Mật Khẩu Trên Cùng 1 Hàng Tiện Dụng -->
                     <div class="flex items-center justify-between text-xs text-slate-600 pt-0.5">
                       <label class="flex items-center gap-2 cursor-pointer select-none">
                         <input
@@ -614,13 +605,20 @@
                         />
                         <span class="font-medium text-slate-700">Ghi nhớ đăng nhập</span>
                       </label>
+                      <button
+                        type="button"
+                        @click="showForgotModal = true"
+                        class="font-bold text-red-600 hover:text-red-700 hover:underline cursor-pointer"
+                      >
+                        Quên mật khẩu?
+                      </button>
                     </div>
 
                     <!-- NÚT ĐĂNG NHẬP CHÍNH (CỠ LỚN CÓ HIỆU ỨNG ÁNH SÁNG LƯỚT QUA) -->
                     <button
                       type="submit"
                       :disabled="loginForm.processing"
-                      class="relative overflow-hidden w-full py-3.5 sm:py-4 px-4 min-h-[48px] rounded-2xl bg-gradient-to-r from-red-600 via-red-500 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-sm sm:text-base shadow-lg shadow-red-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] disabled:bg-slate-300 btn-shimmer"
+                      class="relative overflow-hidden w-full py-4 px-4 min-h-[50px] rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-sm sm:text-base shadow-lg shadow-red-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:bg-slate-300 btn-shimmer"
                     >
                       <span>{{ loginForm.processing ? 'ĐANG ĐĂNG NHẬP...' : 'ĐĂNG NHẬP VÀO HỆ THỐNG' }}</span>
                       <span class="text-base">➔</span>
@@ -635,51 +633,41 @@
                       @click="switchTab('register')"
                       class="font-bold text-red-600 hover:underline cursor-pointer"
                     >
-                      Đăng ký tài khoản mới ➔
+                      Đăng ký thành viên nhận vé 0đ ➔
                     </button>
                   </div>
 
                 </div>
 
-                <!-- ==================== TAB 2: FORM ĐĂNG KÝ (3 BƯỚC ĐẦY ĐỦ) ==================== -->
-                <div v-if="activeTab === 'register'" class="space-y-4">
+                <!-- ==================== TAB 2: FORM ĐĂNG KÝ NHIỀU BƯỚC ==================== -->
+                <div v-else class="space-y-4">
 
-                  <!-- GỢI Ý ĐĂNG NHẬP NHANH CHO KHÁCH HÀNG ĐÃ CÓ TÀI KHOẢN -->
-                  <div class="p-3 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200/80 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-2xs">
-                    <div class="flex items-center gap-2 text-slate-800 font-semibold">
-                      <span class="text-base">💡</span>
-                      <span>Khách hàng đã có tài khoản rồi?</span>
-                    </div>
-                    <button
-                      type="button"
-                      @click="switchTab('login')"
-                      class="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1 shrink-0"
-                    >
-                      <span>Đăng nhập ngay</span>
-                      <span>➔</span>
-                    </button>
-                  </div>
-                  
                   <!-- 1. BỘ CHUYỂN ĐỔI PHƯƠNG THỨC: SĐT vs EMAIL -->
-                  <div class="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 text-xs">
+                  <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200/80 text-xs">
                     <button
                       type="button"
                       @click="setRegisterMethod('phone')"
-                      class="py-2.5 px-3 rounded-xl font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
-                      :class="registerMethod === 'phone' ? 'bg-white text-red-600 shadow-sm font-black' : 'text-slate-600 hover:text-slate-900'"
+                      class="py-2.5 px-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
+                      :class="registerMethod === 'phone' ? 'bg-white text-red-600 shadow-sm font-black ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 font-bold'"
                     >
-                      <span>📱</span>
-                      <span>Số Điện Thoại (SMS / Cuộc gọi)</span>
+                      <div class="flex items-center gap-1">
+                        <span class="text-sm">📱</span>
+                        <span>Số Điện Thoại</span>
+                      </div>
+                      <span class="text-[9.5px] px-1.5 py-0.2 rounded-full font-bold" :class="registerMethod === 'phone' ? 'bg-red-50 text-red-600' : 'text-slate-400'">SMS / Voice</span>
                     </button>
 
                     <button
                       type="button"
                       @click="setRegisterMethod('gmail')"
-                      class="py-2.5 px-3 rounded-xl font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
-                      :class="registerMethod === 'gmail' ? 'bg-white text-red-600 shadow-sm font-black' : 'text-slate-600 hover:text-slate-900'"
+                      class="py-2.5 px-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
+                      :class="registerMethod === 'gmail' ? 'bg-white text-red-600 shadow-sm font-black ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 font-bold'"
                     >
-                      <span>✉️</span>
-                      <span>Email / Gmail (.edu.vn)</span>
+                      <div class="flex items-center gap-1">
+                        <span class="text-sm">✉️</span>
+                        <span>Email Sinh Viên</span>
+                      </div>
+                      <span class="text-[9.5px] px-1.5 py-0.2 rounded-full font-bold" :class="registerMethod === 'gmail' ? 'bg-amber-100 text-amber-800' : 'text-amber-600'">Vé 0đ</span>
                     </button>
                   </div>
 
@@ -693,7 +681,7 @@
                         {{ registerStep > 1 ? '✓' : '1' }}
                       </div>
                       <span class="text-xs font-bold" :class="registerStep === 1 ? 'text-red-600' : 'text-slate-500'">
-                        {{ showPhoneMethodPicker && registerMethod === 'phone' ? 'Chọn cách nhận' : (registerMethod === 'phone' ? 'Nhập SĐT' : 'Nhập Email') }}
+                        {{ registerMethod === 'phone' ? 'Nhập SĐT' : 'Nhập Email' }}
                       </span>
                     </div>
 
@@ -768,7 +756,7 @@
                           Số điện thoại đăng ký (SMS) <span class="text-red-500">*</span>
                         </label>
                         <div class="relative flex items-center">
-                          <span class="absolute left-3.5 text-slate-400 text-sm">📱</span>
+                          <span class="absolute left-3.5 text-slate-400 text-base">📱</span>
                           <input
                             v-model="regPhone"
                             type="tel"
@@ -776,7 +764,7 @@
                             @focus="triggerTurboSpeed"
                             @blur="onIdentifierBlur"
                             placeholder="Nhập 10 chữ số (VD: 0905123456)"
-                            class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
+                            class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 sm:py-3.5 min-h-[50px] text-base sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-4 focus:ring-red-500/10"
                           />
                         </div>
 
@@ -791,15 +779,15 @@
                       </div>
 
                       <!-- Điều khoản dịch vụ -->
-                      <div class="flex items-start gap-2 pt-1">
+                      <div class="flex items-start gap-2.5 pt-1">
                         <input
                           type="checkbox"
                           id="agree-reg-phone"
                           v-model="agreeTerms"
-                          class="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500 mt-0.5 cursor-pointer"
+                          class="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500 mt-0.5 cursor-pointer shrink-0"
                         />
-                        <label for="agree-reg-phone" class="text-xs text-slate-600 select-none cursor-pointer">
-                          Tôi đồng ý với <a href="#" class="text-red-600 underline font-bold">Điều khoản & Quy định vận chuyển</a> của nhaxekientruc (Bao gồm miễn phí 20kg hành lý 0đ).
+                        <label for="agree-reg-phone" class="text-xs text-slate-600 select-none cursor-pointer leading-relaxed">
+                          Tôi đồng ý với <button type="button" @click.prevent="showTermsModal = true" class="text-red-600 underline font-bold hover:text-red-700 cursor-pointer inline text-left">Điều khoản & Quy định vận chuyển</button> của nhaxekientruc (Bao gồm miễn phí 20kg hành lý 0đ).
                         </label>
                       </div>
 
@@ -810,7 +798,7 @@
                           type="button"
                           @click="chooseMethodAndSend('sms')"
                           :disabled="!isStep1Valid || !agreeTerms || isSendingOtp"
-                          class="relative overflow-hidden w-full py-3.5 sm:py-4 px-4 min-h-[48px] rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30"
+                          class="relative overflow-hidden w-full py-3.5 sm:py-4 px-4 min-h-[50px] rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30"
                         >
                           <span v-if="isSendingOtp && otpDeliveryMethod === 'sms'" class="animate-spin text-sm">⏳</span>
                           <span v-else class="text-sm">💬</span>
@@ -822,7 +810,7 @@
                           type="button"
                           @click="chooseMethodAndSend('voice')"
                           :disabled="!isStep1Valid || !agreeTerms || isSendingOtp"
-                          class="relative overflow-hidden w-full py-3 px-4 min-h-[44px] rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer border-2 border-emerald-500 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+                          class="relative overflow-hidden w-full py-3 px-4 min-h-[46px] rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer border-2 border-emerald-500 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
                         >
                           <span v-if="isSendingOtp && otpDeliveryMethod === 'voice'" class="animate-spin text-sm">⏳</span>
                           <span v-else class="text-sm">📞</span>
@@ -838,7 +826,7 @@
                           Địa chỉ Email / Gmail <span class="text-red-500">*</span>
                         </label>
                         <div class="relative flex items-center">
-                          <span class="absolute left-3.5 text-slate-400 text-sm">✉️</span>
+                          <span class="absolute left-3.5 text-slate-400 text-base">✉️</span>
                           <input
                             v-model="regGmail"
                             type="email"
@@ -846,7 +834,7 @@
                             @focus="triggerTurboSpeed"
                             @blur="onIdentifierBlur"
                             placeholder="Nhập email (VD: sinhvien@dau.edu.vn hoặc yourname@gmail.com)"
-                            class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
+                            class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl pl-10 pr-4 py-3 sm:py-3.5 min-h-[50px] text-base sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-4 focus:ring-red-500/10"
                           />
                         </div>
                         
@@ -875,15 +863,15 @@
                       </div>
 
                       <!-- Điều khoản dịch vụ cho Email -->
-                      <div class="flex items-start gap-2 pt-1">
+                      <div class="flex items-start gap-2.5 pt-1">
                         <input
                           type="checkbox"
                           id="agree-reg-email"
                           v-model="agreeTerms"
-                          class="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500 mt-0.5 cursor-pointer"
+                          class="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500 mt-0.5 cursor-pointer shrink-0"
                         />
-                        <label for="agree-reg-email" class="text-xs text-slate-600 select-none cursor-pointer">
-                          Tôi đồng ý với <a href="#" class="text-red-600 underline font-bold">Điều khoản & Quy định vận chuyển</a> của nhaxekientruc (Bao gồm miễn phí 20kg hành lý 0đ).
+                        <label for="agree-reg-email" class="text-xs text-slate-600 select-none cursor-pointer leading-relaxed">
+                          Tôi đồng ý với <button type="button" @click.prevent="showTermsModal = true" class="text-red-600 underline font-bold hover:text-red-700 cursor-pointer inline text-left">Điều khoản & Quy định vận chuyển</button> của nhaxekientruc (Bao gồm miễn phí 20kg hành lý 0đ).
                         </label>
                       </div>
 
@@ -892,7 +880,7 @@
                         type="button"
                         @click="handleSendOtpStep1"
                         :disabled="!isStep1Valid || !agreeTerms || isSendingOtp"
-                        class="relative overflow-hidden w-full py-3.5 sm:py-4 px-4 min-h-[48px] rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30"
+                        class="relative overflow-hidden w-full py-3.5 sm:py-4 px-4 min-h-[50px] rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30"
                       >
                         <span v-if="isSendingOtp" class="animate-spin text-sm">⏳</span>
                         <span>
@@ -912,9 +900,9 @@
                         class="text-xs font-bold text-slate-500 hover:text-red-600 flex items-center gap-1 cursor-pointer transition"
                       >
                         <span>← Quay lại</span>
-                        <span class="text-[11px]">({{ activeTargetDisplay }})</span>
+                        <span class="text-[11px] truncate max-w-[120px]">({{ activeTargetDisplay }})</span>
                       </button>
-                      <span class="text-xs font-mono font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
+                      <span class="text-xs font-mono font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200 shadow-2xs">
                         ⏱️ Còn lại: {{ formattedCountdown }}
                       </span>
                     </div>
@@ -955,8 +943,8 @@
                       </div>
                     </div>
 
-                    <!-- 6 Ô Input OTP Tự Động Chuyển Ô Khi Gõ -->
-                    <div class="flex items-center justify-center gap-1.5 sm:gap-2.5 py-1">
+                    <!-- 6 Ô Input OTP Tự Động Chuyển Ô Khi Gõ (Tối ưu bàn phím số & tự điền trên Mobile) -->
+                    <div class="flex items-center justify-center gap-1.5 sm:gap-2.5 py-2">
                       <input
                         v-for="(digit, idx) in otpDigits"
                         :key="'otp-' + idx"
@@ -964,12 +952,14 @@
                         type="text"
                         maxlength="1"
                         inputmode="numeric"
+                        pattern="[0-9]*"
+                        autocomplete="one-time-code"
                         :value="digit"
                         @input="onOtpInput($event, idx)"
                         @keydown="onOtpKeydown($event, idx)"
                         @paste="onOtpPaste"
-                        class="w-10 h-12 sm:w-12 sm:h-14 text-center font-mono font-black text-lg sm:text-xl rounded-xl sm:rounded-2xl outline-none transition focus:ring-2 shadow-xs"
-                        :class="otpError ? 'border-2 border-red-500 bg-red-50 text-red-700 focus:border-red-600 focus:ring-red-500/20' : 'border-2 border-slate-300 bg-slate-50 text-slate-900 focus:border-red-600 focus:bg-white focus:ring-red-500/20'"
+                        class="w-11 h-13 sm:w-12 sm:h-14 max-w-[46px] text-center font-mono font-black text-xl sm:text-2xl rounded-2xl outline-none transition focus:ring-4 shadow-xs"
+                        :class="otpError ? 'border-2 border-red-500 bg-red-50 text-red-700 focus:border-red-600 focus:ring-red-500/20' : 'border-2 border-slate-300 bg-slate-50 text-slate-900 focus:border-red-600 focus:bg-white focus:ring-red-500/10'"
                       />
                     </div>
 
@@ -979,7 +969,7 @@
                         type="button"
                         @click="handleVerifyOtpStep2"
                         :disabled="!isOtpFilled || isVerifyingOtp"
-                        class="w-full py-3.5 sm:py-4 px-4 min-h-[48px] rounded-2xl bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white font-black text-xs sm:text-sm shadow-md shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed btn-shimmer"
+                        class="w-full py-4 px-4 min-h-[50px] rounded-2xl bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white font-black text-xs sm:text-sm shadow-md shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed btn-shimmer active:scale-[0.98]"
                       >
                         <span v-if="isVerifyingOtp" class="animate-spin text-sm">⏳</span>
                         <span>{{ isVerifyingOtp ? 'ĐANG XÁC THỰC...' : 'XÁC THỰC MÃ OTP & TIẾP TỤC →' }}</span>
@@ -988,12 +978,12 @@
                       <div class="text-center pt-1 space-y-2">
                         <div v-if="registerMethod === 'phone'" class="space-y-1.5">
                           <div class="text-[11px] text-slate-500 font-medium">Chưa nhận được mã OTP?</div>
-                          <div class="flex items-center justify-center gap-2 flex-wrap">
+                          <div class="grid grid-cols-2 gap-2">
                             <button
                               type="button"
                               @click="handleResendOtp('sms')"
                               :disabled="countdownSeconds > 0 || isSendingOtp"
-                              class="py-1.5 px-3 rounded-xl border border-slate-300 hover:border-red-500 text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-2xs"
+                              class="py-2 px-2.5 rounded-xl border border-slate-300 hover:border-red-500 text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shadow-2xs"
                             >
                               <span>💬</span>
                               <span>Gửi lại SMS</span>
@@ -1002,10 +992,10 @@
                               type="button"
                               @click="handleResendOtp('voice')"
                               :disabled="countdownSeconds > 0 || isSendingOtp"
-                              class="py-1.5 px-3 rounded-xl border border-emerald-300 bg-emerald-50/50 hover:border-emerald-500 text-xs font-bold text-emerald-800 hover:text-emerald-900 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-2xs"
+                              class="py-2 px-2.5 rounded-xl border border-emerald-300 bg-emerald-50/50 hover:border-emerald-500 text-xs font-bold text-emerald-800 hover:text-emerald-900 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shadow-2xs"
                             >
                               <span>📞</span>
-                              <span>Tổng đài gọi đọc mã</span>
+                              <span>Gọi đọc mã</span>
                             </button>
                           </div>
                           <p v-if="countdownSeconds > 0" class="text-[10.5px] font-bold text-slate-400">
@@ -1047,7 +1037,7 @@
                           @focus="triggerTurboSpeed"
                           @blur="stopTurboSpeed"
                           placeholder="Ví dụ: Nguyễn Văn An"
-                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
+                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 sm:py-3.5 min-h-[50px] text-base sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-4 focus:ring-red-500/10"
                         />
                       </div>
 
@@ -1064,7 +1054,7 @@
                           @focus="triggerTurboSpeed"
                           @blur="stopTurboSpeed"
                           placeholder="Tối thiểu 6 ký tự"
-                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
+                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 sm:py-3.5 min-h-[50px] text-base sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-4 focus:ring-red-500/10"
                         />
                       </div>
 
@@ -1081,7 +1071,7 @@
                           @focus="triggerTurboSpeed"
                           @blur="stopTurboSpeed"
                           placeholder="Nhập lại mật khẩu vừa đặt"
-                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 sm:py-3.5 min-h-[48px] text-[15px] sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-2 focus:ring-red-500/20"
+                          class="w-full bg-slate-50 border border-slate-300 focus:border-red-500 focus:bg-white rounded-2xl px-4 py-3 sm:py-3.5 min-h-[50px] text-base sm:text-sm font-semibold text-slate-900 outline-none transition focus:ring-4 focus:ring-red-500/10"
                         />
                       </div>
 
@@ -1089,7 +1079,7 @@
                       <button
                         type="submit"
                         :disabled="registerForm.processing"
-                        class="relative overflow-hidden w-full py-3.5 sm:py-4 px-4 min-h-[48px] rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs sm:text-sm shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:bg-slate-300 btn-shimmer"
+                        class="relative overflow-hidden w-full py-4 px-4 min-h-[50px] rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs sm:text-sm shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:bg-slate-300 btn-shimmer active:scale-[0.98]"
                       >
                         <span>{{ registerForm.processing ? 'ĐANG TẠO TÀI KHOẢN...' : 'HOÀN TẤT ĐĂNG KÝ TÀI KHOẢN 🎉' }}</span>
                       </button>
@@ -1113,12 +1103,12 @@
               </div>
 
               <!-- Footer hotline & an toàn thông tin -->
-              <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                <span class="flex items-center gap-1">
+              <div class="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 text-center sm:text-left">
+                <span class="flex items-center gap-1.5 justify-center sm:justify-start">
                   <span>🛡️</span>
-                  <span>Bảo mật dữ liệu 100% chuẩn SSL</span>
+                  <span>Bảo mật dữ liệu 100% chuẩn SSL / PCI-DSS</span>
                 </span>
-                <span>Tổng đài CSKH: <a href="tel:19006067" class="font-bold text-red-600 hover:underline">1900 6067</a></span>
+                <span>Tổng đài CSKH 24/7: <a href="tel:19006067" class="font-bold text-red-600 hover:underline">1900 6067</a></span>
               </div>
 
             </div>
@@ -1208,6 +1198,103 @@
         </button>
       </div>
     </div>
+
+    <!-- MODAL ĐIỀU KHOẢN & QUY ĐỊNH VẬN CHUYỂN -->
+    <div
+      v-if="showTermsModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in"
+      @click.self="showTermsModal = false"
+    >
+      <div class="bg-white rounded-3xl max-w-xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200 text-slate-800 animate-in zoom-in-95 duration-150">
+        <!-- Header -->
+        <div class="px-5 py-4 bg-gradient-to-r from-red-600 to-rose-600 text-white flex items-center justify-between flex-shrink-0">
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">📜</span>
+            <div>
+              <h3 class="font-black text-sm sm:text-base leading-tight">Điều Khoản & Quy Định Vận Chuyển</h3>
+              <p class="text-[11px] text-white/80">Quy định áp dụng cho tất cả hành khách của nhaxekientruc</p>
+            </div>
+          </div>
+          <button 
+            @click="showTermsModal = false" 
+            class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center font-bold text-sm cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed text-slate-700">
+          <div class="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-950">
+            <span class="text-2xl">🧳</span>
+            <div>
+              <p class="font-bold text-xs uppercase tracking-wide">Miễn Phí 20kg Hành Lý Ký Gửi 0Đ</p>
+              <p class="text-[11px] text-red-800">Mỗi hành khách được miễn cước 20kg hành lý gửi gầm xe kèm 1 kiện xách tay dưới 7kg.</p>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <h4 class="font-black text-slate-900 uppercase text-xs flex items-center gap-1.5">
+              <span>⏰</span>
+              <span>1. Thời Gian Có Mặt & Thủ Tục Lên Xe:</span>
+            </h4>
+            <p class="text-slate-600">
+              Hành khách có mặt tại bến xe hoặc điểm đón trước <strong>15 - 30 phút</strong> so với giờ xuất bến để nhân viên soát vé QR Code điện tử và hỗ trợ sắp xếp hành lý.
+            </p>
+          </div>
+
+          <div class="space-y-1.5">
+            <h4 class="font-black text-slate-900 uppercase text-xs flex items-center gap-1.5">
+              <span>🎓</span>
+              <span>2. Đặc Quyền Dành Riêng Cho Sinh Viên:</span>
+            </h4>
+            <p class="text-slate-600">
+              Sinh viên đăng ký bằng email nhà trường (đuôi .edu.vn) được nhận ngay mã <strong>SINHVIEN0DONG</strong> (Vé 0đ chuyến đầu) và mã <strong>SINHVIEN30</strong> (Giảm 30% suốt 1 năm học).
+            </p>
+          </div>
+
+          <div class="space-y-1.5">
+            <h4 class="font-black text-slate-900 uppercase text-xs flex items-center gap-1.5">
+              <span>🔄</span>
+              <span>3. Quy Định Hủy Vé & Hoàn Tiền Cọc:</span>
+            </h4>
+            <ul class="list-disc pl-5 space-y-1 text-slate-600">
+              <li>Hủy trước 24 giờ: <strong>Hoàn 100%</strong> tiền cọc giữ chỗ.</li>
+              <li>Hủy từ 12 giờ đến 24 giờ: <strong>Hoàn 50%</strong> tiền cọc.</li>
+              <li>Dưới 12 giờ trước giờ chạy: Không hỗ trợ hoàn cọc.</li>
+            </ul>
+          </div>
+
+          <div class="space-y-1.5">
+            <h4 class="font-black text-slate-900 uppercase text-xs flex items-center gap-1.5">
+              <span>🛡️</span>
+              <span>4. An Toàn & Bảo Mật:</span>
+            </h4>
+            <p class="text-slate-600">
+              Toàn bộ thông tin cá nhân và số điện thoại được mã hóa chuẩn an ninh mạng, cam kết không cung cấp cho bên thứ ba.
+            </p>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3 flex-shrink-0">
+          <button
+            type="button"
+            @click="showTermsModal = false"
+            class="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold text-xs transition cursor-pointer"
+          >
+            Đóng
+          </button>
+          <button
+            type="button"
+            @click="agreeTerms = true; showTermsModal = false"
+            class="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition cursor-pointer shadow-xs"
+          >
+            Tôi Đã Hiểu & Đồng Ý
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1229,6 +1316,7 @@ const page = usePage();
 const activeTab = ref(props.initialTab || 'login');
 const showPassword = ref(false);
 const showForgotModal = ref(false);
+const showTermsModal = ref(false);
 const agreeTerms = ref(true);
 const otpDeliveryMethod = ref('sms'); // 'sms' | 'voice'
 
@@ -1955,5 +2043,22 @@ const handleCompleteRegisterStep3 = () => {
 @keyframes drivePanoramicLeft {
   0% { left: 110%; }
   100% { left: -100px; }
+}
+
+/* Xe chạy trên mini sa bàn điện thoại */
+.mobile-bus-1 {
+  animation: driveMobileBus1 6s linear infinite;
+}
+@keyframes driveMobileBus1 {
+  0% { transform: translateX(-200px); }
+  100% { transform: translateX(380px); }
+}
+
+.mobile-bus-2 {
+  animation: driveMobileBus2 7.5s linear infinite;
+}
+@keyframes driveMobileBus2 {
+  0% { transform: translateX(380px); }
+  100% { transform: translateX(-240px); }
 }
 </style>

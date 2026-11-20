@@ -44,10 +44,23 @@ class SendDepartureReminders extends Command
             $routeName = $trip->route?->name ?? 'Tuyến đường';
 
             foreach ($validBookings as $b) {
+                // Tránh gửi lặp lại nếu đã nhắc rồi
+                if (!empty($b->reminder_sent_at)) {
+                    continue;
+                }
+
                 $sent = \App\Services\EmailService::sendDepartureReminder($b);
                 if ($sent) {
                     Log::info("🔔 [AUTO-REMINDER 45P] Đã gửi email nhắc nhở cho khách {$b->customer_name} - Vé {$b->booking_code}");
                     $totalSent++;
+                }
+
+                // AI tự động kích hoạt cuộc gọi thoại viễn thông & tin nhắn nhắc nhở chuyến đi
+                try {
+                    \App\Services\AiCallService::makeReminderCallAuto($b);
+                    Log::info("📞 [AUTO-CALL 45P] Đã kích hoạt cuộc gọi AI nhắc nhở tới khách {$b->customer_name} ({$b->customer_phone})");
+                } catch (\Throwable $ce) {
+                    Log::warning("⚠️ [AUTO-CALL-ERR] Lỗi kích hoạt cuộc gọi tự động vé #{$b->booking_code}: " . $ce->getMessage());
                 }
             }
         }

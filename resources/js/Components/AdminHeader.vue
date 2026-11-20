@@ -30,6 +30,18 @@
           <span>+ Bán Vé Nhanh</span>
         </Link>
 
+        <!-- Nút Menu Mobile Cho Admin (< lg) -->
+        <button
+          type="button"
+          @click="isMobileAdminOpen = true"
+          class="lg:hidden w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0 border border-slate-200"
+          aria-label="Mở menu quản trị"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
         <!-- Right: Admin Profile Avatar & Role with Clickable Dropdown Menu -->
         <div class="relative" ref="dropdownRef">
           <button 
@@ -151,7 +163,8 @@
     <!-- Bottom Nav Tabs Bar: Nhóm danh mục thông minh, KHÔNG CUỘN NGANG, hiển thị gọn gàng cao cấp -->
     <div class="border-t border-slate-200 bg-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-        <nav class="w-full flex items-center justify-between gap-2 text-xs font-bold">
+        <!-- DESKTOP NAV (>= lg) -->
+        <nav class="hidden lg:flex w-full items-center justify-between gap-2 text-xs font-bold">
           <div class="flex items-center gap-1 sm:gap-2 flex-wrap">
             <!-- 1. Tổng quan -->
             <Link 
@@ -394,8 +407,172 @@
             </div>
           </div>
         </nav>
+
+        <!-- MOBILE HORIZONTAL FAST NAV (< lg) -->
+        <nav class="lg:hidden flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 text-xs font-bold select-none">
+          <Link
+            href="/admin"
+            class="px-3 py-1.5 rounded-xl whitespace-nowrap transition flex items-center gap-1 shrink-0"
+            :class="$page.url === '/admin' ? 'bg-slate-900 text-white font-black shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+          >
+            <span>📊</span>
+            <span>Tổng quan</span>
+          </Link>
+          <Link
+            href="/admin/pos"
+            class="px-3 py-1.5 rounded-xl whitespace-nowrap transition flex items-center gap-1 shrink-0"
+            :class="$page.url.startsWith('/admin/pos') ? 'bg-red-600 text-white font-black shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+          >
+            <span>⚡</span>
+            <span>POS Bán Vé</span>
+          </Link>
+          <Link
+            href="/admin/trips"
+            class="px-3 py-1.5 rounded-xl whitespace-nowrap transition flex items-center gap-1 shrink-0"
+            :class="$page.url.startsWith('/admin/trips') ? 'bg-slate-900 text-white font-black shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+          >
+            <span>🗓️</span>
+            <span>Chuyến Xe</span>
+          </Link>
+          <Link
+            href="/admin/tracking"
+            class="px-3 py-1.5 rounded-xl whitespace-nowrap transition flex items-center gap-1 shrink-0"
+            :class="$page.url.startsWith('/admin/tracking') ? 'bg-blue-600 text-white font-black shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+          >
+            <span>📍</span>
+            <span>GPS</span>
+          </Link>
+          <Link
+            href="/admin/buses"
+            class="px-3 py-1.5 rounded-xl whitespace-nowrap transition flex items-center gap-1 shrink-0"
+            :class="$page.url.startsWith('/admin/buses') ? 'bg-slate-900 text-white font-black shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+          >
+            <span>🚌</span>
+            <span>Đội Xe</span>
+          </Link>
+          <Link
+            href="/admin/finance"
+            class="px-3 py-1.5 rounded-xl whitespace-nowrap transition flex items-center gap-1 shrink-0"
+            :class="$page.url.startsWith('/admin/finance') ? 'bg-emerald-600 text-white font-black shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+          >
+            <span>💰</span>
+            <span>Doanh Thu</span>
+          </Link>
+          <button
+            type="button"
+            @click="isMobileAdminOpen = true"
+            class="px-3 py-1.5 rounded-xl whitespace-nowrap bg-red-50 text-red-700 border border-red-200 font-black transition flex items-center gap-1 shrink-0 cursor-pointer active:scale-95"
+          >
+            <span>☰</span>
+            <span>Tất Cả (15)</span>
+          </button>
+        </nav>
       </div>
     </div>
+
+    <!-- MOBILE ADMIN DRAWER (Slide-over cho điện thoại) -->
+    <Teleport to="body">
+      <div v-if="isMobileAdminOpen" class="fixed inset-0 z-[9999] overflow-hidden">
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200" @click="isMobileAdminOpen = false"></div>
+        <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+          <div class="w-screen max-w-xs sm:max-w-sm bg-white shadow-2xl flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-250">
+            <!-- Header Drawer -->
+            <div class="p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-red-900 text-white flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-red-600 flex items-center justify-center text-lg shadow-sm">🛡️</div>
+                <div>
+                  <h3 class="font-black text-sm uppercase leading-none">ADMIN CONTROL</h3>
+                  <p class="text-[10px] text-slate-300 mt-0.5">nhaxekientruc Đà Nẵng</p>
+                </div>
+              </div>
+              <button @click="isMobileAdminOpen = false" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-base cursor-pointer">✕</button>
+            </div>
+
+            <!-- Body Links -->
+            <div class="p-3.5 space-y-3.5 flex-1 text-xs">
+              <!-- 1. Vận Hành -->
+              <div>
+                <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider px-2 mb-1.5">⚡ Vận Hành & Lịch Trình</p>
+                <div class="space-y-1">
+                  <Link href="/admin" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url === '/admin' ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">📊</span><span>Tổng Quan Dashboard</span>
+                  </Link>
+                  <Link href="/admin/pos" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/pos') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">⚡</span><span>POS Bán Vé Quầy</span>
+                  </Link>
+                  <Link href="/admin/tracking" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/tracking') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">📍</span><span>Live GPS Tracking</span>
+                  </Link>
+                  <Link href="/admin/trips" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/trips') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">🗓️</span><span>Lịch Trình Chuyến Xe</span>
+                  </Link>
+                  <Link href="/admin/routes" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/routes') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">🛣️</span><span>Tuyến Đường Cố Định</span>
+                  </Link>
+                </div>
+              </div>
+
+              <!-- 2. Phương tiện & Nhân sự -->
+              <div class="pt-2 border-t border-slate-100">
+                <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider px-2 mb-1.5">🚌 Phương Tiện & Nhân Sự</p>
+                <div class="space-y-1">
+                  <Link href="/admin/buses" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/buses') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">🚌</span><span>Quản Lý Đội Xe</span>
+                  </Link>
+                  <Link href="/admin/fleet-inventory" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/fleet-inventory') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">🔧</span><span>Vật Tư & Chi Phí Xe</span>
+                  </Link>
+                  <Link href="/admin/drivers" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/drivers') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">👥</span><span>Tài Xế & Lơ Xe</span>
+                  </Link>
+                </div>
+              </div>
+
+              <!-- 3. Khách hàng & Giá vé -->
+              <div class="pt-2 border-t border-slate-100">
+                <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider px-2 mb-1.5">👤 Khách Hàng & Doanh Thu</p>
+                <div class="space-y-1">
+                  <Link href="/admin/customers" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/customers') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">👤</span><span>Hành Khách CRM</span>
+                  </Link>
+                  <Link href="/admin/vouchers" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/vouchers') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">🎟️</span><span>Quản Lý Voucher (SV / Ưu Đãi)</span>
+                  </Link>
+                  <Link href="/admin/pricing" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/pricing') && !$page.url.startsWith('/admin/vouchers') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">🏷️</span><span>Quy Tắc Giá Vé</span>
+                  </Link>
+                  <Link href="/admin/refunds" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/refunds') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">💸</span><span>Hoàn Tiền & Hủy Vé</span>
+                  </Link>
+                  <Link href="/admin/finance" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/finance') ? 'bg-emerald-50 text-emerald-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">💰</span><span>Quản Lý Doanh Thu & Tiền Xe</span>
+                  </Link>
+                  <Link href="/admin/roles" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/roles') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                    <span class="text-base">🔐</span><span>Phân Quyền RBAC</span>
+                  </Link>
+                </div>
+              </div>
+
+              <!-- 4. Chuyển Cổng Vai Trò Nhanh -->
+              <div class="pt-2 border-t border-slate-100">
+                <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider px-2 mb-1.5">🌐 Cổng Trải Nghiệm Khác</p>
+                <div class="grid grid-cols-2 gap-2 px-1">
+                  <Link href="/" @click="isMobileAdminOpen = false" class="p-2 rounded-xl bg-slate-100 text-slate-800 font-bold text-center hover:bg-slate-200">Trang Khách</Link>
+                  <Link href="/driver" @click="isMobileAdminOpen = false" class="p-2 rounded-xl bg-amber-50 text-amber-900 font-bold text-center hover:bg-amber-100">Cổng Bác Tài</Link>
+                  <Link href="/conductor" @click="isMobileAdminOpen = false" class="p-2 rounded-xl bg-blue-50 text-blue-900 font-bold text-center hover:bg-blue-100">Cổng Lơ Xe</Link>
+                  <Link href="/scanner" @click="isMobileAdminOpen = false" class="p-2 rounded-xl bg-emerald-50 text-emerald-900 font-bold text-center hover:bg-emerald-100">Soát Vé QR</Link>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer Drawer -->
+            <div class="p-3 bg-slate-50 border-t border-slate-200 text-center text-[10px] text-slate-400">
+              Admin Mobile Dashboard • nhaxekientruc Đà Nẵng
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Floating Persistent AI Assistant -->
     <AiChatModal />
@@ -419,6 +596,7 @@ defineProps({
 });
 
 const isDropdownOpen = ref(false);
+const isMobileAdminOpen = ref(false);
 const dropdownRef = ref(null);
 
 const handleClickOutside = (event) => {

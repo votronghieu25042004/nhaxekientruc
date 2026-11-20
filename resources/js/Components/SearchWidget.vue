@@ -70,7 +70,7 @@
                 @focus="showOriginSuggest = true"
                 @blur="hideOriginSuggestLater"
                 placeholder="Hà Nội (hoặc Điểm đi)"
-                class="w-full bg-transparent text-slate-900 font-bold text-xs sm:text-[13px] outline-none placeholder-slate-400 p-0 border-none focus:ring-0 truncate mt-0.5"
+                class="w-full bg-transparent text-slate-900 font-bold text-base sm:text-[13px] outline-none placeholder-slate-400 p-0 border-none focus:ring-0 truncate mt-0.5"
               />
             </div>
             <button v-if="origin" @click="origin = ''" type="button" class="text-slate-400 hover:text-slate-600 text-xs p-1">✕</button>
@@ -124,7 +124,7 @@
                 @focus="showDestSuggest = true"
                 @blur="hideDestSuggestLater"
                 placeholder="Nam Định (hoặc Điểm đến)"
-                class="w-full bg-transparent text-slate-900 font-bold text-xs sm:text-[13px] outline-none placeholder-slate-400 p-0 border-none focus:ring-0 truncate mt-0.5"
+                class="w-full bg-transparent text-slate-900 font-bold text-base sm:text-[13px] outline-none placeholder-slate-400 p-0 border-none focus:ring-0 truncate mt-0.5"
               />
             </div>
             <button v-if="destination" @click="destination = ''" type="button" class="text-slate-400 hover:text-slate-600 text-xs p-1">✕</button>
@@ -279,11 +279,11 @@
           </button>
         </div>
 
-        <!-- Nút Tìm Kiếm Xe Bo Tròn Màu Đỏ Cam Rực Rỡ -->
+        <!-- Nút Tìm Kiếm Xe Bo Tròn Màu Đỏ Cam Rực Rỡ (To rõ trên điện thoại) -->
         <button
           type="button"
           @click="handleSearch"
-          class="bg-gradient-to-r from-[#ff3c43] via-[#ee1d24] to-[#db1118] hover:from-[#ee1d24] hover:to-[#b80b11] active:scale-95 text-white font-bold text-sm py-2 px-6 rounded-full shadow-lg shadow-red-500/35 transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap ml-auto"
+          class="w-full sm:w-auto min-h-[46px] bg-gradient-to-r from-[#ff3c43] via-[#ee1d24] to-[#db1118] hover:from-[#ee1d24] hover:to-[#b80b11] active:scale-95 text-white font-bold text-sm sm:text-sm py-3 sm:py-2.5 px-6 rounded-2xl sm:rounded-full shadow-lg shadow-red-500/35 transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap ml-0 sm:ml-auto"
         >
           <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <circle cx="11" cy="11" r="8"></circle>
