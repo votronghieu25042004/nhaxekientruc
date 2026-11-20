@@ -47,28 +47,40 @@ class AdminController extends Controller
         $activeRole = $request->query('role', 'admin'); // 'admin', 'dispatcher', 'agent'
 
         // ==================== 1. TOP 4 METRICS ====================
-        $totalBookingsToday = Booking::where(function($q) use ($today) {
-            $q->whereDate('created_at', $today)
-              ->orWhereHas('trip', function($tq) use ($today) {
-                  $tq->whereDate('departure_time', $today);
-              });
-        })->where('payment_status', '!=', 'REFUNDED')->count();
+        // Tối ưu hóa truy vấn Dashboard bằng Cache ngắn hạn (30 giây)
+        $metrics = \Illuminate\Support\Facades\Cache::remember('admin_dashboard_metrics_' . $today->toDateString(), 30, function() use ($today) {
+            $totalBookingsToday = Booking::where(function($q) use ($today) {
+                $q->whereDate('created_at', $today)
+                  ->orWhereHas('trip', function($tq) use ($today) {
+                      $tq->whereDate('departure_time', $today);
+                  });
+            })->where('payment_status', '!=', 'REFUNDED')->count();
 
-        $totalAdvanceBookings = Booking::whereHas('trip', function($q) use ($today) {
-            $q->whereDate('departure_time', '>', $today);
-        })->where('payment_status', '!=', 'REFUNDED')->count();
-        $totalAllBookings = Booking::where('payment_status', '!=', 'REFUNDED')->count();
+            $totalAdvanceBookings = Booking::whereHas('trip', function($q) use ($today) {
+                $q->whereDate('departure_time', '>', $today);
+            })->where('payment_status', '!=', 'REFUNDED')->count();
+            $totalAllBookings = Booking::where('payment_status', '!=', 'REFUNDED')->count();
 
-        // Doanh thu hệ thống (bỏ chữ hôm nay, tính tổng doanh thu vé)
-        $totalRevenue = Booking::where('payment_status', '!=', 'REFUNDED')->sum('paid_amount');
-        if ($totalRevenue == 0) {
-            $totalRevenue = Booking::where('payment_status', '!=', 'REFUNDED')->sum('total_amount');
-        }
+            $totalRevenue = Booking::where('payment_status', '!=', 'REFUNDED')->sum('paid_amount');
+            if ($totalRevenue == 0) {
+                $totalRevenue = Booking::where('payment_status', '!=', 'REFUNDED')->sum('total_amount');
+            }
+            
+            $totalBuses = Bus::count();
+            $activeBuses = Bus::where('status', 'ACTIVE')->count();
+            $busesInTransit = Trip::where('status', 'IN_TRANSIT')->count();
+
+            return compact('totalBookingsToday', 'totalAdvanceBookings', 'totalAllBookings', 'totalRevenue', 'totalBuses', 'activeBuses', 'busesInTransit');
+        });
+
+        $totalBookingsToday = $metrics['totalBookingsToday'];
+        $totalAdvanceBookings = $metrics['totalAdvanceBookings'];
+        $totalAllBookings = $metrics['totalAllBookings'];
+        $totalRevenue = $metrics['totalRevenue'];
         $revenueToday = $totalRevenue;
-        
-        $totalBuses = Bus::count();
-        $activeBuses = Bus::where('status', 'ACTIVE')->count();
-        $busesInTransit = Trip::where('status', 'IN_TRANSIT')->count();
+        $totalBuses = $metrics['totalBuses'];
+        $activeBuses = $metrics['activeBuses'];
+        $busesInTransit = $metrics['busesInTransit'];
 
         // Quỹ tiền mặt đang kẹt ở Lơ xe (tiền thu hộ cọc + vé dọc đường chưa chốt nộp)
         $unsettledTrips = Trip::with(['bookings', 'conductor'])
@@ -1721,7 +1733,7 @@ class AdminController extends Controller
         if (!empty($callRes['telecom_detail'])) {
             $msg .= " (" . $callRes['telecom_detail'] . ")";
         } elseif (!($callRes['telecom_success'] ?? false)) {
-            $msg .= " [Lưu ý viễn thông]: Để điện thoại thật {$booking->customer_phone} đổ chuông ngoài đời thực, máy chủ cần kết nối API Tổng đài viễn thông (Twilio / Stringee / eSMS) trong file .env.";
+            $msg .= " [Lưu ý viễn thông]: Để điện thoại thật {$booking->customer_phone} đổ chuông ngoài đời thực, máy chủ cần kích hoạt cổng viễn thông eSMS trong file .env.";
         }
 
         return response()->json([
