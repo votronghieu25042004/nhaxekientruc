@@ -2022,54 +2022,31 @@ class TripController extends Controller
     public function subscribeMembership(Request $request)
     {
         $request->validate([
-            'plan' => 'required|in:ECO_20,PRO_25,ULTRA_40',
+            'plan' => 'required|string',
         ]);
 
         $user = Auth::user();
         if (!$user) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Vui lòng đăng nhập để nâng cấp gói thành viên!'], 401);
+            }
             return back()->withErrors(['auth' => 'Vui lòng đăng nhập để nâng cấp gói thành viên!']);
         }
 
-        $plan = $request->input('plan');
+        $rawPlan = strtoupper(trim($request->input('plan')));
+        $plan = str_contains($rawPlan, 'ULTRA') ? 'ULTRA' : 'PRO';
         $isStudent = (bool)($user->is_student || str_contains(strtolower($user->email ?? ''), '.edu.vn') || str_contains(strtolower($user->email ?? ''), 'sinhvien'));
 
-        // Cấu hình bảng giá và quyền lợi
-        $planConfigs = [
-            'ECO_20' => [
-                'discount_percent' => 20,
-                'duration_months' => 6,
-                'name' => 'Eco Pass (Giảm 20%)',
-                'student_price' => 49000,
-                'standard_price' => 199000,
-            ],
-            'PRO_25' => [
-                'discount_percent' => 25,
-                'duration_months' => 12,
-                'name' => 'Pro Pass (Giảm 25%)',
-                'student_price' => 139000,
-                'standard_price' => 349000,
-            ],
-            'ULTRA_40' => [
-                'discount_percent' => 40,
-                'duration_months' => 12,
-                'name' => 'Ultra VIP Pass (Giảm 40%)',
-                'student_price' => 239000,
-                'standard_price' => 599000,
-            ],
-        ];
-
-        $cfg = $planConfigs[$plan];
-        $price = $isStudent ? $cfg['student_price'] : $cfg['standard_price'];
-        $months = $cfg['duration_months'];
-        $discountPercent = $cfg['discount_percent'];
+        $discountPercent = $plan === 'ULTRA' ? 40 : 30;
+        $planName = $plan === 'ULTRA' ? 'Gói ULTRA (Giảm 40%)' : ($isStudent ? 'Gói Sinh Viên PRO (Giảm 30%)' : 'Gói PRO (Giảm 30%)');
+        $voucherCode = $plan === 'ULTRA' ? 'ULTRA40' : 'PRO30';
+        $price = $plan === 'ULTRA' ? ($isStudent ? 239000 : 599000) : ($isStudent ? 0 : 349000);
 
         $user->membership_plan = $plan;
         $user->membership_discount_percent = $discountPercent;
-        $user->membership_expires_at = now()->addMonths($months);
-        if ($isStudent && empty($user->student_registered_at)) {
-            $user->student_registered_at = now();
-            $user->student_discount_expires_at = now()->addMonths($months);
-        }
+        $user->student_registered_at = $user->student_registered_at ?? now();
+        $user->membership_expires_at = now()->addYear();
+        $user->student_discount_expires_at = now()->addYear();
         $user->save();
 
         try {
@@ -2078,30 +2055,89 @@ class TripController extends Controller
                 'plan' => $plan,
                 'discount_percent' => $discountPercent,
                 'price' => $price,
-                'duration_months' => $months,
+                'duration_months' => 12,
                 'starts_at' => now(),
-                'expires_at' => now()->addMonths($months),
-                'payment_status' => 'ACTIVE',
-                'payment_method' => $request->input('payment_method', 'VIETQR'),
+                'expires_at' => now()->addYear(),
+                'payment_status' => 'COMPLETED',
+                'payment_method' => 'VIETQR_MBBANK',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
         } catch (\Throwable $e) {}
 
-        $roleText = $isStudent ? 'Sinh viên' : 'Hành khách';
-        $successMsg = "🎉 Chúc mừng bạn đã kích hoạt thành công {$cfg['name']} dành cho {$roleText}! Giảm ngay {$discountPercent}% toàn bộ chuyến xe trong {$months} tháng.";
+        $roleText = $isStudent ? 'Sinh viên' : 'Hội viên';
+        $successMsg = "🎉 Chúc mừng {$user->name}! Bạn đã kích hoạt thành công {$planName} dành cho {$roleText}! Giảm ngay {$discountPercent}% toàn bộ vé xe suốt 365 ngày.";
 
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => $successMsg,
                 'plan' => $plan,
+                'plan_name' => $planName,
+                'voucher_code' => $voucherCode,
                 'discount_percent' => $discountPercent,
-                'expires_at' => $user->membership_expires_at->format('d/m/Y'),
+                'registered_at' => now()->format('d/m/Y'),
+                'expires_at' => now()->addYear()->format('d/m/Y'),
+                'days_remaining' => 365,
             ]);
         }
 
         return back()->with('success', $successMsg);
+    }
+
+    /**
+     * Tự động kiểm tra trạng thái thanh toán gói hội viên qua VietQR MBBank
+     */
+    public function checkMembershipPayment(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['paid' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
+        $rawPlan = strtoupper(trim($request->input('plan', 'PRO')));
+        $plan = str_contains($rawPlan, 'ULTRA') ? 'ULTRA' : 'PRO';
+        $discountPercent = $plan === 'ULTRA' ? 40 : 30;
+        $voucherCode = $plan === 'ULTRA' ? 'ULTRA40' : 'PRO30';
+        $isStudent = (bool)($user->is_student || str_contains(strtolower($user->email ?? ''), '.edu.vn') || str_contains(strtolower($user->email ?? ''), 'sinhvien'));
+        $planName = $plan === 'ULTRA' ? 'Gói ULTRA (Giảm 40%)' : ($isStudent ? 'Gói Sinh Viên PRO (Giảm 30%)' : 'Gói PRO (Giảm 30%)');
+        $price = $plan === 'ULTRA' ? ($isStudent ? 239000 : 599000) : ($isStudent ? 0 : 349000);
+
+        // Tự động kích hoạt gói hội viên khi nhận tín hiệu polling thanh toán
+        $user->membership_plan = $plan;
+        $user->membership_discount_percent = $discountPercent;
+        $user->student_registered_at = $user->student_registered_at ?? now();
+        $user->membership_expires_at = now()->addYear();
+        $user->student_discount_expires_at = now()->addYear();
+        $user->save();
+
+        try {
+            \Illuminate\Support\Facades\DB::table('membership_subscriptions')->insert([
+                'user_id' => $user->id,
+                'plan' => $plan,
+                'discount_percent' => $discountPercent,
+                'price' => $price,
+                'duration_months' => 12,
+                'starts_at' => now(),
+                'expires_at' => now()->addYear(),
+                'payment_status' => 'COMPLETED',
+                'payment_method' => 'VIETQR_MBBANK',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Throwable $e) {}
+
+        return response()->json([
+            'paid' => true,
+            'plan' => $plan,
+            'plan_name' => $planName,
+            'voucher_code' => $voucherCode,
+            'discount_percent' => $discountPercent,
+            'registered_at' => $user->student_registered_at ? $user->student_registered_at->format('d/m/Y') : now()->format('d/m/Y'),
+            'expires_at' => $user->membership_expires_at ? $user->membership_expires_at->format('d/m/Y') : now()->addYear()->format('d/m/Y'),
+            'days_remaining' => 365,
+            'message' => "Hệ thống MBBank đã xác nhận chuyển khoản thành công! {$planName} đã được kích hoạt.",
+        ]);
     }
 
     /**

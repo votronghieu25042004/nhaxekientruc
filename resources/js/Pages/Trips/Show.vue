@@ -547,11 +547,11 @@
             <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-2xl bg-red-100 text-red-700 flex items-center justify-center font-black text-sm shrink-0 border border-red-200">
-                  {{ (props.user?.name || 'KH').substring(0, 2).toUpperCase() }}
+                  {{ (cleanCustomerName || 'KH').substring(0, 2).toUpperCase() }}
                 </div>
                 <div>
                   <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hành Khách Đặt Vé</div>
-                  <div class="text-sm font-black text-slate-900 leading-snug">{{ props.user?.name || customerForm.name || 'Hành Khách nhaxekientruc' }}</div>
+                  <div class="text-sm font-black text-slate-900 leading-snug">{{ cleanCustomerName }}</div>
                 </div>
               </div>
               <div class="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center justify-between">
@@ -602,32 +602,21 @@
                     :class="!isPhoneValid ? 'border-amber-400 bg-amber-50/50 ring-2 ring-amber-400/20' : 'border-slate-300 focus:border-red-500'"
                   />
 
-                  <!-- Khối nút gửi và nhập OTP SMS / Cuộc gọi thoại -->
+                  <!-- Khối nút gửi và nhập OTP SMS -->
                   <div v-if="!showPhoneOtpInput" class="space-y-2">
-                    <div class="flex items-center gap-2">
-                      <button
-                        type="button"
-                        @click="handleSendPhoneOtp('sms')"
-                        :disabled="!isPhoneValid || phoneOtpSending"
-                        class="flex-1 py-2 px-3 rounded-xl bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs disabled:cursor-not-allowed"
-                      >
-                        <span v-if="phoneOtpSending && phoneMethod === 'sms'" class="animate-spin text-xs">⏳</span>
-                        <span>💬 Nhận qua SMS</span>
-                      </button>
-                      <button
-                        type="button"
-                        @click="handleSendPhoneOtp('voice')"
-                        :disabled="!isPhoneValid || phoneOtpSending"
-                        class="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs disabled:cursor-not-allowed"
-                      >
-                        <span v-if="phoneOtpSending && phoneMethod === 'voice'" class="animate-spin text-xs">⏳</span>
-                        <span>📞 Cuộc gọi thoại AI</span>
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      @click="handleSendPhoneOtp('sms')"
+                      :disabled="!isPhoneValid || phoneOtpSending"
+                      class="w-full py-2.5 px-3 rounded-xl bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs disabled:cursor-not-allowed"
+                    >
+                      <span v-if="phoneOtpSending" class="animate-spin text-xs">⏳</span>
+                      <span>💬 Nhận mã xác minh qua tin nhắn SMS</span>
+                    </button>
                   </div>
                   <div v-else class="p-2.5 rounded-xl bg-amber-50 border border-amber-300 space-y-2 animate-in fade-in">
                     <div class="text-[11px] font-bold text-slate-800">
-                      Mã OTP đã gửi tới <span class="font-mono text-red-600">{{ customerForm.phone }}</span> (qua {{ phoneMethod === 'voice' ? 'cuộc gọi tổng đài AI' : 'tin nhắn SMS' }}). Vui lòng nhập 6 số:
+                      Mã OTP đã gửi tới <span class="font-mono text-red-600">{{ customerForm.phone }}</span> qua tin nhắn SMS. Vui lòng nhập 6 số:
                     </div>
                     <div class="flex gap-2">
                       <input
@@ -1485,6 +1474,25 @@ const userHasRealEmail = computed(() => {
   return !!(e && e.includes('@') && !e.toLowerCase().endsWith('@nhaxekientruc.vn'));
 });
 
+const cleanCustomerName = computed(() => {
+  let name = (props.user?.name || customerForm.value?.name || 'Hành Khách').trim();
+  // Loại bỏ tiền tố Sinh viên / Sinh vien
+  name = name.replace(/^Sinh\s*viên\s+/i, '').replace(/^Sinh\s*vien\s+/i, '');
+  // Nếu là username email như hieu_2251220108, lấy phần tên đầu viết hoa
+  if (name.includes('_')) {
+    const part = name.split('_')[0];
+    if (part) {
+      name = part.charAt(0).toUpperCase() + part.slice(1);
+    }
+  }
+  // Loại bỏ phần trong ngoặc như (ĐH Kiến Trúc DAU)
+  name = name.replace(/\s*\([^)]*\)/g, '').trim();
+  if (/^[0-9]+$/.test(name) || !name) {
+    name = 'Hành Khách';
+  }
+  return name;
+});
+
 const customerForm = ref({
   name: props.user?.name || '',
   phone: userHasRealPhone.value ? props.user.phone : '',
@@ -1571,7 +1579,7 @@ const handleSendPhoneOtp = async (method = 'sms') => {
 
     showPhoneOtpInput.value = true;
     startPhoneCountdown(60);
-    phoneOtpMessage.value = res.data?.message || (method === 'voice' ? 'Tổng đài AI đang gọi tới số của bạn để đọc mã OTP.' : 'Mã SMS OTP đã được gửi về số điện thoại của bạn!');
+    phoneOtpMessage.value = res.data?.message || 'Mã SMS OTP đã được gửi về số điện thoại của bạn!';
   } catch (err) {
     phoneOtpError.value = true;
     phoneOtpMessage.value = err.response?.data?.message || err.message || 'Lỗi gửi mã OTP. Vui lòng thử lại!';
@@ -2096,7 +2104,7 @@ const submitBooking = () => {
   }
 
   router.post(`/trips/${props.trip.id}/book`, {
-    customer_name: props.user?.name || customerForm.value.name || 'Hành Khách nhaxekientruc',
+    customer_name: cleanCustomerName.value || props.user?.name || customerForm.value.name || 'Hành Khách',
     customer_email: customerForm.value.email,
     customer_phone: customerForm.value.phone,
     pickup_stop_id: selectedPickup.value?.id,

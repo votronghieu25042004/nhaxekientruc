@@ -105,6 +105,24 @@
             </button>
 
             <button
+              @click="setTierFilter('ULTRA')"
+              :class="activeTier === 'ULTRA' ? 'bg-gradient-to-r from-amber-600 to-red-600 text-white font-black shadow-md ring-2 ring-amber-400' : 'bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 font-bold'"
+              class="px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <span>👑 Gói ULTRA (-40%)</span>
+              <span class="px-2 py-0.5 rounded-md bg-white/40 text-xs font-mono font-bold">{{ ultraCount }}</span>
+            </button>
+
+            <button
+              @click="setTierFilter('PRO')"
+              :class="activeTier === 'PRO' ? 'bg-emerald-600 text-white font-black shadow-md ring-2 ring-emerald-400' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold'"
+              class="px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <span>⭐ Gói PRO (-30%)</span>
+              <span class="px-2 py-0.5 rounded-md bg-white/40 text-xs font-mono font-bold">{{ proCount }}</span>
+            </button>
+
+            <button
               @click="setTierFilter('LOCKED')"
               :class="activeTier === 'LOCKED' ? 'bg-rose-600 text-white font-black shadow-sm' : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold'"
               class="px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer"
@@ -251,6 +269,23 @@
               <span>{{ getPrivilegeText(cust.tier_code) }}</span>
             </div>
 
+            <!-- Gói Hội Viên (Gói THƯỜNG / Gói PRO / Gói ULTRA) -->
+            <div 
+              class="px-3.5 py-2 rounded-xl text-xs font-bold border flex items-center justify-between shadow-2xs"
+              :class="cust.membership_plan === 'ULTRA' ? 'bg-amber-50 border-amber-300 text-amber-950 ring-1 ring-amber-300/40' : (cust.membership_plan === 'PRO' ? 'bg-emerald-50 border-emerald-300 text-emerald-950 ring-1 ring-emerald-300/40' : 'bg-slate-50 border-slate-200 text-slate-700')"
+            >
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm">{{ cust.membership_plan === 'ULTRA' ? '👑' : (cust.membership_plan === 'PRO' ? '⭐' : '🥉') }}</span>
+                <span class="font-black">{{ cust.membership_plan_name || 'Gói THƯỜNG' }}</span>
+              </div>
+              <div class="text-right">
+                <span v-if="cust.membership_plan === 'ULTRA' || cust.membership_plan === 'PRO'" class="px-2 py-0.5 rounded-full bg-white text-[10px] font-mono font-black border border-slate-200 shadow-2xs inline-block">
+                  Còn {{ cust.student_days_remaining ?? 365 }} ngày
+                </span>
+                <span v-else class="text-[10px] text-slate-400 font-medium">Tiêu chuẩn</span>
+              </div>
+            </div>
+
             <!-- Card Body: Thông tin liên hệ & Điểm Tích Lũy Thật -->
             <div class="space-y-2.5 text-xs pt-2 border-t border-slate-100">
               <div class="flex items-center justify-between py-0.5">
@@ -344,6 +379,7 @@
                 <th class="px-4 py-3.5 text-right">Tổng Chi Tiêu</th>
                 <th class="px-4 py-3.5 text-center">Điểm Tích Lũy</th>
                 <th class="px-4 py-3.5 text-center">Hạng Khách Hàng</th>
+                <th class="px-4 py-3.5 text-center">Gói Hội Viên</th>
                 <th class="px-4 py-3.5 text-center">Trạng Thái</th>
                 <th class="px-4 py-3.5 text-center">Thao Tác Quản Trị</th>
               </tr>
@@ -394,6 +430,18 @@
                 </td>
                 <td class="px-4 py-3.5 text-center whitespace-nowrap">
                   <span 
+                    class="px-2.5 py-1 rounded-full text-[11px] font-black whitespace-nowrap inline-flex items-center justify-center gap-1 border shadow-2xs"
+                    :class="cust.membership_plan === 'ULTRA' ? 'bg-amber-100 text-amber-950 border-amber-300' : (cust.membership_plan === 'PRO' ? 'bg-emerald-100 text-emerald-950 border-emerald-300' : 'bg-slate-100 text-slate-700 border-slate-200')"
+                  >
+                    <span>{{ cust.membership_plan === 'ULTRA' ? '👑' : (cust.membership_plan === 'PRO' ? '⭐' : '🥉') }}</span>
+                    <span>{{ cust.membership_plan === 'ULTRA' ? 'Gói ULTRA (-40%)' : (cust.membership_plan === 'PRO' ? (cust.is_student ? 'Sinh Viên (-30%)' : 'Gói PRO (-30%)') : 'Gói THƯỜNG') }}</span>
+                  </span>
+                  <div v-if="cust.membership_plan === 'ULTRA' || cust.membership_plan === 'PRO'" class="text-[9.5px] text-slate-500 font-mono font-bold mt-0.5">
+                    Còn {{ cust.student_days_remaining ?? 365 }} ngày
+                  </div>
+                </td>
+                <td class="px-4 py-3.5 text-center whitespace-nowrap">
+                  <span 
                     class="px-2.5 py-0.5 rounded-full text-[10px] font-black inline-flex items-center gap-1 border shadow-2xs"
                     :class="cust.status === 'LOCKED' ? 'bg-rose-100 text-rose-800 border-rose-300 animate-pulse' : cust.status === 'DELETED' ? 'bg-slate-200 text-slate-700 border-slate-300' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
                   >
@@ -433,7 +481,7 @@
                 </td>
               </tr>
               <tr v-if="filteredCustomers.length === 0">
-                <td colspan="8" class="text-center py-8 text-slate-400 font-bold">
+                <td colspan="9" class="text-center py-8 text-slate-400 font-bold">
                   Không tìm thấy khách hàng nào phù hợp với từ khóa hoặc bộ lọc đã chọn
                 </td>
               </tr>
@@ -687,6 +735,14 @@ const newCount = computed(() => {
   return (props.customers || []).filter(c => c.total_trips === 0).length;
 });
 
+const ultraCount = computed(() => {
+  return (props.customers || []).filter(c => c.membership_plan === 'ULTRA').length;
+});
+
+const proCount = computed(() => {
+  return (props.customers || []).filter(c => c.membership_plan === 'PRO' || c.is_student).length;
+});
+
 const totalSystemSpent = computed(() => {
   return (props.customers || []).reduce((sum, c) => sum + (c.total_spent || 0), 0);
 });
@@ -701,6 +757,10 @@ const filteredCustomers = computed(() => {
     list = list.filter(c => c.status === 'LOCKED');
   } else if (activeTier.value === 'DELETED') {
     list = list.filter(c => c.status === 'DELETED');
+  } else if (activeTier.value === 'ULTRA') {
+    list = list.filter(c => c.membership_plan === 'ULTRA');
+  } else if (activeTier.value === 'PRO') {
+    list = list.filter(c => c.membership_plan === 'PRO' || c.is_student);
   } else if (activeTier.value === 'DIAMOND') {
     list = list.filter(c => c.tier_code === 'DIAMOND');
   } else if (activeTier.value === 'GOLD') {

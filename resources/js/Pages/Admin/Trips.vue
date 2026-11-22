@@ -1271,44 +1271,27 @@ const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currenc
                                             <span class="text-[10px] font-mono text-red-600 bg-red-50 px-1 rounded">#{{ b.seats_label }}</span>
                                         </div>
                                         <div class="text-[11px] text-slate-400 font-mono">{{ b.customer_phone }}</div>
-                                        <!-- Trạng thái nhắc nhở 45 phút & Cuộc gọi AI -->
+                                        <!-- Trạng thái nhắc nhở 45 phút -->
                                         <div v-if="b.reminder_sent_at || b.ai_call_at" class="mt-1 flex items-center gap-1.5 flex-wrap">
-                                            <!-- AI tự động gọi & gửi -->
-                                            <span v-if="b.reminder_sent_by === 'auto' || b.ai_call_by === 'auto'" class="inline-flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-                                                <span>🤖 AI ĐÃ GỌI & GỬI GMAIL</span>
-                                                <span class="font-mono">({{ b.reminder_sent_at || b.ai_call_at }})</span>
-                                            </span>
-                                            <!-- Admin bấm tay -->
-                                            <span v-else class="inline-flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-                                                <span>✍️ ADMIN ĐÃ GỌI & GỬI GMAIL</span>
+                                            <span class="inline-flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                                                <span>✉️ ĐÃ GỬI NHẮC GMAIL</span>
                                                 <span class="font-mono">({{ b.reminder_sent_at || b.ai_call_at }})</span>
                                             </span>
 
-                                            <!-- Nút nghe lại giọng AI gọi thoại -->
-                                            <button 
-                                                v-if="b.ai_call_audio_url || b.ai_call_script"
-                                                @click.stop="playAiCallAudio(b)"
-                                                type="button"
-                                                class="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer"
-                                                title="Nghe lại cuộc gọi AI đã thông báo cho khách"
-                                            >
-                                                <span>🎧 Nghe AI</span>
-                                            </button>
-
-                                            <!-- Nút gửi lại / gọi lại AI -->
+                                            <!-- Nút gửi lại Gmail -->
                                             <button
                                                 @click.stop="notifyAndCallSingleBooking(b)"
                                                 :disabled="notifyingBookingId === b.id"
                                                 type="button"
                                                 class="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[9.5px] transition flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50"
-                                                title="Gửi lại Gmail nhắc nhở 45P và kích hoạt gọi điện thoại AI lần nữa"
+                                                title="Gửi lại Gmail nhắc nhở 45P"
                                             >
                                                 <span v-if="notifyingBookingId === b.id" class="w-2.5 h-2.5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></span>
-                                                <span v-else>🔄 Gửi & Gọi Lại</span>
+                                                <span v-else>🔄 Gửi Lại Gmail</span>
                                             </button>
                                         </div>
 
-                                        <!-- CHƯA GỬI / CHƯA GỌI: NÚT BẤM TAY (BẤM XONG LÀ MẤT ĐI) -->
+                                        <!-- CHƯA GỬI: NÚT BẤM TAY -->
                                         <div v-else class="mt-1 flex items-center gap-2">
                                             <span class="inline-flex items-center gap-0.5 text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
                                                 ⏳ Chưa gửi nhắc
@@ -1320,10 +1303,10 @@ const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currenc
                                                 :disabled="notifyingBookingId === b.id"
                                                 type="button"
                                                 class="px-2 py-0.5 rounded-lg bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-[10px] tracking-tight transition flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
-                                                title="Gửi Gmail & Kích hoạt AI gọi điện thoại nhắc nhở 45P cho khách này ngay"
+                                                title="Gửi Gmail nhắc nhở 45P cho khách này ngay"
                                             >
                                                 <span v-if="notifyingBookingId === b.id" class="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                                                <span v-else>📞 Gửi & Gọi AI</span>
+                                                <span v-else>✉️ Nhắc Gmail 45P</span>
                                             </button>
                                         </div>
                                     </div>

@@ -22,11 +22,11 @@ Route::post('login', [AuthController::class, 'login']);
 Route::get('register', [AuthController::class, 'showRegister'])->name('register');
 Route::post('register', [AuthController::class, 'register']);
 Route::post('register/check-exists', [AuthController::class, 'checkRegisterExists'])->name('register.checkExists');
-Route::redirect('register/check-exists', '/register');
+Route::get('register/check-exists', fn() => redirect('/register'));
 Route::post('register/send-otp', [AuthController::class, 'sendRegisterOtp'])->name('register.sendOtp');
-Route::redirect('register/send-otp', '/register');
+Route::get('register/send-otp', fn() => redirect('/register'));
 Route::post('register/verify-otp', [AuthController::class, 'verifyRegisterOtp'])->name('register.verifyOtp');
-Route::redirect('register/verify-otp', '/register');
+Route::get('register/verify-otp', fn() => redirect('/register'));
 Route::post('auth/google-login', [AuthController::class, 'googleLogin'])->name('auth.googleLogin');
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -77,6 +77,7 @@ Route::get('api/vouchers', [TripController::class, 'activeVouchersApi'])->name('
 Route::post('api/vouchers/apply', [TripController::class, 'applyVoucher'])->name('api.vouchers.apply');
 Route::post('membership/subscribe', [TripController::class, 'subscribeMembership'])->name('membership.subscribe');
 Route::post('api/membership/subscribe', [TripController::class, 'subscribeMembership']);
+Route::get('api/membership/check-payment', [TripController::class, 'checkMembershipPayment'])->name('api.membership.checkPayment');
 
 // Customer Reviews
 Route::get('booking/{code}/review', [ReviewController::class, 'show'])->name('reviews.show');

@@ -50,28 +50,16 @@
 
         <!-- Cổng Đăng Nhập & Ngôn Ngữ Theo Mẫu: VN | [👤] Đăng nhập -->
         <div class="flex items-center gap-2 sm:gap-3">
-
-          <!-- Nút Countdown Gói Sinh Viên / Hội Viên Pro & Ultra (Yêu cầu 2) -->
-          <button
-            type="button"
-            @click="showMembershipModal = true"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition shadow-2xs border cursor-pointer active:scale-95"
-            :class="isStudentUser ? 'bg-amber-50 hover:bg-amber-100 text-amber-950 border-amber-300' : 'bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-700 border-slate-200'"
-            title="Bấm để xem thời gian sử dụng & nâng cấp gói hội viên"
-          >
-            <span class="text-sm">🎓</span>
-            <span class="max-w-[130px] sm:max-w-none truncate">{{ studentCountdownText }}</span>
-            <span class="text-[9.5px] bg-[#dc2626] text-white px-1.5 py-0.2 rounded-full font-black uppercase tracking-tight">Nâng cấp</span>
-          </button>
           
-          <!-- Nút Ngôn Ngữ: VN / EN (Desktop/Tablet) -->
+          <!-- Nút Ngôn Ngữ: Đa Ngôn Ngữ (Desktop/Tablet) -->
           <button
             type="button"
             @click="showLanguageModal = true"
-            class="hidden sm:inline-block text-xs font-bold text-slate-600 hover:text-red-600 transition cursor-pointer px-1.5 py-1 tracking-wide"
-            title="Ngôn ngữ"
+            class="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer px-2.5 py-1.5 rounded-xl hover:bg-slate-100 border border-slate-200/80 tracking-wide"
+            title="Đổi ngôn ngữ hiển thị"
           >
-            {{ currentLang === 'en' ? 'EN' : 'VN' }}
+            <span class="text-sm leading-none">{{ currentLangFlag }}</span>
+            <span class="font-mono text-xs">{{ currentLangCode }}</span>
           </button>
 
           <!-- Dấu gạch phân cách -->
@@ -79,20 +67,51 @@
 
           <!-- Dropdown Phân Quyền & Đăng Nhập OTP (Desktop/Tablet) -->
           <div class="hidden sm:block relative" @mouseenter="openRoleDropdown" @mouseleave="closeRoleDropdown">
+            <!-- Nút tài khoản với KHUNG ĐỔI THEO TỪNG GÓI (ULTRA / PRO / THƯỜNG) -->
             <button
               @click="isRoleOpen = !isRoleOpen"
-              class="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 hover:text-red-600 transition cursor-pointer py-1.5 px-2 rounded-lg hover:bg-slate-50"
+              class="flex items-center gap-2 text-xs sm:text-sm font-semibold transition cursor-pointer py-1.5 px-2.5 rounded-2xl active:scale-98 shadow-xs"
+              :class="userMembershipPlan === 'ULTRA' 
+                ? 'bg-gradient-to-r from-amber-50 via-orange-50/80 to-amber-100/70 border-2 border-amber-400 text-amber-950 ring-2 ring-amber-300/30 hover:ring-amber-400/50 hover:border-amber-500' 
+                : (userMembershipPlan === 'PRO' 
+                  ? 'bg-gradient-to-r from-emerald-50 via-teal-50/80 to-emerald-100/70 border-2 border-emerald-400 text-emerald-950 ring-2 ring-emerald-300/30 hover:ring-emerald-400/50 hover:border-emerald-500' 
+                  : 'bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:border-slate-300')"
             >
-              <div class="w-7 h-7 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-600 text-xs">
-                👤
+              <!-- Avatar icon đổi theo gói -->
+              <div 
+                class="w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0 shadow-2xs font-bold"
+                :class="userMembershipPlan === 'ULTRA'
+                  ? 'bg-gradient-to-tr from-amber-500 to-yellow-400 text-white border border-amber-200 shadow-amber-500/20'
+                  : (userMembershipPlan === 'PRO'
+                    ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white border border-emerald-200 shadow-emerald-500/20'
+                    : 'bg-slate-100 text-slate-600 border border-slate-300')"
+              >
+                {{ userMembershipPlan === 'ULTRA' ? '👑' : (userMembershipPlan === 'PRO' ? ($page.props.auth?.user?.is_student ? '🎓' : '⭐') : '👤') }}
               </div>
+
+              <!-- Tên người dùng ngắn gọn & Badge gói -->
               <span v-if="$page.props.auth?.user" class="flex items-center gap-1.5">
-                <span class="font-bold text-slate-900 truncate max-w-[110px]">{{ $page.props.auth.user.name }}</span>
-                <span class="hidden sm:inline-block px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-mono font-bold">
-                  {{ ($page.props.auth.user.reward_points || 0).toLocaleString('vi-VN') }}đ
+                <span 
+                  class="font-black truncate max-w-[110px]"
+                  :class="userMembershipPlan === 'ULTRA' ? 'text-amber-950' : (userMembershipPlan === 'PRO' ? 'text-emerald-950' : 'text-slate-900')"
+                >
+                  {{ cleanUserDisplayName }}
+                </span>
+                
+                <!-- Badge Gói Hội Viên Gọn Gàng Trên Thanh Header -->
+                <span 
+                  class="px-1.5 py-0.5 rounded-md text-[9.5px] font-black uppercase tracking-tight shadow-2xs"
+                  :class="userMembershipPlan === 'ULTRA'
+                    ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white'
+                    : (userMembershipPlan === 'PRO'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-200 text-slate-700')"
+                >
+                  {{ userMembershipPlan === 'ULTRA' ? 'ULTRA' : (userMembershipPlan === 'PRO' ? ($page.props.auth.user.is_student ? 'SV PRO' : 'PRO') : 'THƯỜNG') }}
                 </span>
               </span>
               <span v-else class="font-medium text-slate-700">Đăng nhập</span>
+
               <svg class="w-3.5 h-3.5 text-slate-400 transition-transform" :class="isRoleOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
@@ -101,55 +120,101 @@
             <!-- Menu thả xuống -->
             <div
               v-if="isRoleOpen"
-              class="absolute right-0 top-full mt-1.5 w-72 bg-white rounded-3xl shadow-2xl border border-slate-200/80 py-2.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150 before:content-[''] before:absolute before:-top-3 before:inset-x-0 before:h-3"
+              class="absolute right-0 top-full mt-1.5 w-80 bg-white rounded-3xl shadow-2xl border border-slate-200/80 py-2.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150 before:content-[''] before:absolute before:-top-3 before:inset-x-0 before:h-3"
             >
               <!-- 1. KHI ĐÃ ĐĂNG NHẬP -->
               <div v-if="$page.props.auth?.user">
-                <!-- Thông tin người dùng đã đăng nhập -->
-                <div class="p-3 mx-2.5 mb-2 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-slate-50 rounded-2xl border border-amber-200/70 space-y-1.5 shadow-xs">
+                <!-- KHUNG HỘI VIÊN CHUẨN: ULTRA / PRO / THƯỜNG -->
+                <div 
+                  class="p-3 mx-2.5 mb-2 rounded-2xl border-2 space-y-1.5 shadow-sm transition"
+                  :class="userMembershipPlan === 'ULTRA' ? 'bg-gradient-to-br from-amber-100/90 via-orange-50/60 to-amber-50/80 border-amber-400 ring-2 ring-amber-300/40' : (userMembershipPlan === 'PRO' ? 'bg-gradient-to-br from-emerald-100/90 via-teal-50/60 to-emerald-50/80 border-emerald-400 ring-2 ring-emerald-300/40' : 'bg-gradient-to-br from-slate-100 via-slate-50 to-white border-slate-200')"
+                >
                   <div class="flex items-center justify-between">
-                    <span class="text-xs font-black text-slate-900 truncate max-w-[150px]">{{ $page.props.auth.user.name }}</span>
+                    <span class="text-xs font-black text-slate-900 truncate max-w-[140px]">{{ cleanUserDisplayName }}</span>
                     <span 
                       class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase text-white shadow-2xs"
-                      :class="$page.props.auth.user.loyalty_tier === 'DIAMOND' ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : ($page.props.auth.user.loyalty_tier === 'GOLD' ? 'bg-amber-500' : ($page.props.auth.user.loyalty_tier === 'SILVER' ? 'bg-slate-700' : 'bg-emerald-600'))"
+                      :class="userMembershipPlan === 'ULTRA' ? 'bg-gradient-to-r from-red-600 to-amber-600' : (userMembershipPlan === 'PRO' ? 'bg-emerald-600' : 'bg-slate-600')"
                     >
-                      {{ $page.props.auth.user.loyalty_tier === 'DIAMOND' ? '💎 Kim Cương' : ($page.props.auth.user.loyalty_tier === 'GOLD' ? '👑 VIP Vàng' : ($page.props.auth.user.loyalty_tier === 'SILVER' ? '🥈 Bạc' : '⭐ Thành Viên')) }}
+                      {{ userMembershipPlan === 'ULTRA' ? '👑 HỘI VIÊN ULTRA' : (userMembershipPlan === 'PRO' ? ($page.props.auth.user.is_student ? '🎓 SINH VIÊN PRO' : '⭐ HỘI VIÊN PRO') : '🥉 KHÁCH THƯỜNG') }}
                     </span>
                   </div>
-                  <div class="flex items-center justify-between text-xs pt-1 border-t border-amber-200/50">
+
+                  <!-- Khung trạng thái gói hội viên & Số ngày còn lại -->
+                  <div class="p-2 rounded-xl bg-white/90 border border-slate-200/80 space-y-1 text-xs">
+                    <div class="flex items-center justify-between font-bold">
+                      <span class="text-[11px] text-slate-600">
+                        {{ userMembershipPlan === 'ULTRA' ? 'Gói ULTRA (-40%)' : (userMembershipPlan === 'PRO' ? 'Gói PRO (-30%)' : 'Chưa kích hoạt gói ưu đãi') }}
+                      </span>
+                      <span v-if="userMembershipPlan !== 'THUONG'" class="text-[10.5px] font-mono font-black text-red-600">
+                        Còn {{ $page.props.auth.user.student_days_remaining ?? 365 }} ngày
+                      </span>
+                      <span v-else class="text-[10px] text-slate-400 font-normal">Tiêu chuẩn</span>
+                    </div>
+
+                    <div v-if="userMembershipPlan !== 'THUONG'" class="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100">
+                      <span>Bắt đầu: <b>{{ $page.props.auth.user.membership_registered_at || $page.props.auth.user.student_registered_at || 'Hôm nay' }}</b></span>
+                      <span>Hết hạn: <b>{{ $page.props.auth.user.membership_expires_at || '365 ngày' }}</b></span>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center justify-between text-xs pt-0.5">
                     <span class="text-slate-500 text-[11px]">Điểm tích lũy:</span>
                     <strong class="text-amber-700 font-mono font-black text-sm">
                       🪙 {{ ($page.props.auth.user.reward_points || 0).toLocaleString('vi-VN') }} Điểm
                     </strong>
                   </div>
-                  <Link
-                    href="/my-bookings"
-                    @click="isRoleOpen = false"
-                    class="mt-1 block text-center py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition shadow-xs"
-                  >
-                    🎫 Xem Vé Của Tôi & Điểm Thưởng
-                  </Link>
+
+                  <!-- Các nút xem gói & nâng cấp -->
+                  <div class="grid grid-cols-2 gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      @click="showMembershipModal = true; isRoleOpen = false"
+                      class="text-center py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition shadow-xs cursor-pointer"
+                    >
+                      {{ userMembershipPlan === 'THUONG' ? '⚡ Mua Gói' : '⚡ Nâng Cấp Gói' }}
+                    </button>
+                    <button
+                      type="button"
+                      @click="openProfile('membership')"
+                      class="text-center py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition shadow-xs cursor-pointer"
+                    >
+                      👑 Gói Của Tôi
+                    </button>
+                  </div>
                 </div>
 
                 <!-- TÙY CHỌN TÀI KHOẢN KHÁCH HÀNG -->
                 <div class="px-4 py-1 text-[10px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                  Hồ Sơ & Bảo Mật
+                  Hội Viên & Quản Lý Gói
                 </div>
 
                 <div class="py-1">
-                  <!-- Mở Modal Gói Thành Viên & Sinh Viên -->
+                  <!-- Mua / Nâng Cấp Gói Hội Viên (Pro, Ultra) -->
                   <button
                     type="button"
                     @click.prevent.stop="showMembershipModal = true; isRoleOpen = false"
-                    class="w-full text-left flex items-center gap-3 px-4 py-2 text-xs font-bold text-amber-900 bg-amber-50/70 hover:bg-amber-100/80 transition-colors cursor-pointer"
+                    class="w-full text-left flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-amber-950 bg-amber-50/70 hover:bg-amber-100/80 transition-colors cursor-pointer border-b border-amber-200/50"
                   >
                     <span class="text-base">👑</span>
                     <div class="flex-1 min-w-0">
                       <p class="leading-none flex items-center justify-between">
-                        <span class="font-black text-slate-900">Gói Hội Viên Pro & Ultra</span>
-                        <span class="text-[9px] bg-red-600 text-white px-1.5 py-0.2 rounded font-black">ƯU ĐÃI</span>
+                        <span class="font-black text-slate-900">Mua / Nâng Cấp Gói Hội Viên</span>
+                        <span class="text-[9px] bg-red-600 text-white px-1.5 py-0.2 rounded font-black">ƯU ĐÃI 40%</span>
                       </p>
-                      <p class="text-[10px] text-amber-800 font-semibold mt-0.5 truncate">{{ studentCountdownText }}</p>
+                      <p class="text-[10px] text-amber-800 font-medium mt-0.5">Khám phá các gói Eco, Pro, Ultra & mua ngay</p>
+                    </div>
+                  </button>
+
+                  <!-- Xem Chi Tiết Gói Đang Dùng -->
+                  <button
+                    type="button"
+                    @click.prevent.stop="openProfile('membership')"
+                    class="w-full text-left flex items-center gap-3 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-red-600 transition-colors cursor-pointer"
+                  >
+                    <span class="text-base">📊</span>
+                    <div class="flex-1 min-w-0">
+                      <p class="leading-none">Chi Tiết Gói & Thời Gian Dùng</p>
+                      <p class="text-[10px] text-slate-400 font-normal mt-0.5 truncate">{{ navbarMembershipBadgeText }}</p>
                     </div>
                   </button>
 
@@ -391,20 +456,36 @@
               </Link>
 
               <!-- Mở Modal Gói Hội Viên trên Mobile -->
-              <button
-                type="button"
-                @click="showMembershipModal = true; isMobileMenuOpen = false"
-                class="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 transition my-1 cursor-pointer"
-              >
-                <span class="text-lg">🎓</span>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center justify-between">
-                    <p class="font-black text-xs leading-tight">Gói Hội Viên (Eco, Pro, Ultra)</p>
-                    <span class="text-[9.5px] bg-[#dc2626] text-white px-1.5 py-0.2 rounded-full font-black">NÂNG CẤP</span>
+              <div v-if="$page.props.auth?.user" class="my-1.5 space-y-1.5">
+                <button
+                  type="button"
+                  @click="openProfile('membership'); isMobileMenuOpen = false"
+                  class="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition cursor-pointer border shadow-xs"
+                  :class="userMembershipPlan === 'ULTRA' ? 'bg-amber-100/90 text-amber-950 border-amber-400' : (userMembershipPlan === 'PRO' ? 'bg-emerald-50 text-emerald-950 border-emerald-400' : 'bg-slate-50 text-slate-800 border-slate-200')"
+                >
+                  <span class="text-xl">{{ userMembershipPlan === 'ULTRA' ? '👑' : (userMembershipPlan === 'PRO' ? '⭐' : '🥉') }}</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <p class="font-black text-xs leading-tight">
+                        {{ userMembershipPlan === 'ULTRA' ? 'Khung Hội Viên ULTRA (-40%)' : (userMembershipPlan === 'PRO' ? 'Khung Hội Viên PRO (-30%)' : 'Khung Khách Thường') }}
+                      </p>
+                      <span class="text-[9.5px] bg-slate-800 text-white px-2 py-0.5 rounded-full font-black uppercase">
+                        CHI TIẾT
+                      </span>
+                    </div>
+                    <p class="text-[10px] text-slate-600 mt-0.5 font-semibold truncate">{{ navbarMembershipBadgeText }}</p>
                   </div>
-                  <p class="text-[10px] text-amber-800 mt-0.5 font-medium">{{ studentCountdownText }}</p>
-                </div>
-              </button>
+                </button>
+
+                <button
+                  type="button"
+                  @click="showMembershipModal = true; isMobileMenuOpen = false"
+                  class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>⚡</span>
+                  <span>{{ userMembershipPlan === 'THUONG' ? 'Mua Gói Ưu Đãi Hội Viên (Giảm 20% - 40%)' : 'Nâng Cấp Gói Hội Viên' }}</span>
+                </button>
+              </div>
 
               <!-- Khu vực Nghiệp vụ -->
               <div class="pt-2.5 border-t border-slate-100">
@@ -497,6 +578,23 @@
                     <span class="text-base">🔒</span>
                     <span>Đổi Mật Khẩu</span>
                   </button>
+
+                  <!-- Đổi ngôn ngữ trong Mobile Drawer -->
+                  <button
+                    type="button"
+                    @click="showLanguageModal = true"
+                    class="w-full text-left flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition border border-slate-200"
+                  >
+                    <span class="flex items-center gap-2.5">
+                      <span class="text-base">🌐</span>
+                      <span>Ngôn Ngữ / Language</span>
+                    </span>
+                    <span class="inline-flex items-center gap-1 font-mono text-red-600 font-black">
+                      <span>{{ currentLangFlag }}</span>
+                      <span>{{ currentLangCode }}</span>
+                    </span>
+                  </button>
+
                   <button
                     type="button"
                     @click="isMobileMenuOpen = false; handleLogout()"
@@ -583,7 +681,7 @@
     <!-- Modals -->
     <LanguageModal v-model="showLanguageModal" @change="onLanguageChange" />
     <AuthModal v-model="showAuthModal" />
-    <ProfileModal v-model="showProfileModal" :user="$page.props.auth?.user" :initial-tab="profileActiveTab" />
+    <ProfileModal v-model="showProfileModal" :user="$page.props.auth?.user" :initial-tab="profileActiveTab" @open-membership="showMembershipModal = true" />
     <MembershipModal :is-open="showMembershipModal" @close="showMembershipModal = false" />
 </template>
 
@@ -594,6 +692,7 @@ import LanguageModal from '@/Components/LanguageModal.vue';
 import AuthModal from '@/Components/AuthModal.vue';
 import ProfileModal from '@/Components/ProfileModal.vue';
 import MembershipModal from '@/Components/MembershipModal.vue';
+import { getCurrentLanguage, getLanguageInfo } from '@/utils/translator';
 
 const page = usePage();
 
@@ -622,40 +721,45 @@ const showAuthModal = ref(false);
 const showProfileModal = ref(false);
 const showMembershipModal = ref(false);
 const profileActiveTab = ref('info');
-const currentLang = ref('vi');
+const currentLang = ref(getCurrentLanguage());
+const currentLangInfo = computed(() => getLanguageInfo(currentLang.value));
+const currentLangFlag = computed(() => currentLangInfo.value?.flag || '🇻🇳');
+const currentLangCode = computed(() => currentLangInfo.value?.short || 'VN');
 
-const isStudentUser = computed(() => {
+const userMembershipPlan = computed(() => {
   const u = page.props.auth?.user;
-  if (!u) return false;
-  return Boolean(
-    u.is_student ||
-    String(u.email || '').includes('.edu.vn') ||
-    String(u.email || '').includes('sinhvien')
-  );
+  if (!u) return 'THUONG';
+  const plan = String(u.membership_plan || '').toUpperCase();
+  if (plan.includes('ULTRA')) return 'ULTRA';
+  if (plan.includes('PRO') || u.is_student) return 'PRO';
+  return 'THUONG';
+});
+
+const cleanUserDisplayName = computed(() => {
+  const raw = page.props.auth?.user?.name || 'Khách hàng';
+  const cleaned = raw.replace(/^Sinh\s*vi[êe]n\s+/i, '').trim();
+  return cleaned || raw;
+});
+
+const navbarMembershipBadgeText = computed(() => {
+  const u = page.props.auth?.user;
+  if (!u) return 'Gói Hội Viên';
+  const days = u.student_days_remaining ?? 365;
+  if (userMembershipPlan.value === 'ULTRA') {
+    return `ULTRA (-40%): Còn ${days} ngày`;
+  }
+  if (userMembershipPlan.value === 'PRO') {
+    return `${u.is_student ? 'SV PRO' : 'PRO'} (-30%): Còn ${days} ngày`;
+  }
+  return 'Gói THƯỜNG';
 });
 
 const studentCountdownText = computed(() => {
-  const u = page.props.auth?.user;
-  if (!u) return 'Gói SV 30%';
-  if (u.membership_plan === 'ULTRA_40') {
-    return `Ultra 40%: Còn ${u.student_days_remaining ?? 365} ngày`;
-  }
-  if (u.membership_plan === 'PRO_25') {
-    return `Pro 25%: Còn ${u.student_days_remaining ?? 365} ngày`;
-  }
-  if (u.membership_plan === 'ECO_20') {
-    return `Eco 20%: Còn ${u.student_days_remaining ?? 180} ngày`;
-  }
-  if (u.is_student || String(u.email || '').includes('.edu.vn') || String(u.email || '').includes('sinhvien')) {
-    const days = u.student_days_remaining ?? 365;
-    return `SV 30%: Còn ${days} ngày`;
-  }
-  return 'Gói Hội Viên';
+  return navbarMembershipBadgeText.value;
 });
 
 onMounted(() => {
-  const s = localStorage.getItem('bushub_locale');
-  if (s) currentLang.value = s;
+  currentLang.value = getCurrentLanguage();
 });
 
 const onLanguageChange = (l) => {

@@ -399,13 +399,13 @@
                   <p class="text-[10px] text-slate-300 leading-tight">Tầng 1 (18 chỗ) • Tầng 2 (12 chỗ) cập nhật tức thì.</p>
                 </div>
 
-                <!-- 3. GÓI SINH VIÊN LẦN ĐẦU (-100%) -->
+                <!-- 3. GÓI SINH VIÊN (-30%) -->
                 <div class="p-2.5 rounded-2xl bg-slate-900/60 backdrop-blur-md border border-white/10 hover:border-amber-400/50 transition-all shadow-md group">
                   <div class="flex items-center gap-1.5 mb-1">
                     <span class="text-base group-hover:scale-110 transition-transform">🎓</span>
                     <span class="font-black text-amber-300 text-[11px] truncate">Đặc Quyền Sinh Viên</span>
                   </div>
-                  <p class="text-[10px] text-slate-300 leading-tight">Email .edu.vn áp mã SINHVIEN: Vé đầu 0đ & Giảm 30%.</p>
+                  <p class="text-[10px] text-slate-300 leading-tight">Email .edu.vn: Giảm 30% giá vé suốt 1 năm.</p>
                 </div>
 
                 <!-- 4. VÉ QR CODE TỨC THÌ -->
@@ -605,7 +605,7 @@
                       @click="switchTab('register')"
                       class="font-bold text-red-600 hover:underline cursor-pointer"
                     >
-                      Đăng ký thành viên nhận vé 0đ ➔
+                      Đăng ký thành viên mới ➔
                     </button>
                   </div>
 
@@ -619,27 +619,21 @@
                     <button
                       type="button"
                       @click="setRegisterMethod('phone')"
-                      class="py-2.5 px-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
+                      class="py-2.5 px-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer text-center"
                       :class="registerMethod === 'phone' ? 'bg-white text-red-600 shadow-sm font-black ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 font-bold'"
                     >
-                      <div class="flex items-center gap-1">
-                        <span class="text-sm">📱</span>
-                        <span>Số Điện Thoại</span>
-                      </div>
-                      <span class="text-[9.5px] px-1.5 py-0.2 rounded-full font-bold" :class="registerMethod === 'phone' ? 'bg-red-50 text-red-600' : 'text-slate-400'">SMS / Voice</span>
+                      <span class="text-sm">📱</span>
+                      <span>Số Điện Thoại</span>
                     </button>
 
                     <button
                       type="button"
                       @click="setRegisterMethod('gmail')"
-                      class="py-2.5 px-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
+                      class="py-2.5 px-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer text-center"
                       :class="registerMethod === 'gmail' ? 'bg-white text-red-600 shadow-sm font-black ring-1 ring-slate-200/50' : 'text-slate-600 hover:text-slate-900 font-bold'"
                     >
-                      <div class="flex items-center gap-1">
-                        <span class="text-sm">✉️</span>
-                        <span>Email Sinh Viên</span>
-                      </div>
-                      <span class="text-[9.5px] px-1.5 py-0.2 rounded-full font-bold" :class="registerMethod === 'gmail' ? 'bg-amber-100 text-amber-800' : 'text-amber-600'">Vé 0đ</span>
+                      <span class="text-sm">✉️</span>
+                      <span>Email</span>
                     </button>
                   </div>
 
@@ -725,7 +719,7 @@
                     <div v-if="registerMethod === 'phone'" class="space-y-3">
                       <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                          Số điện thoại đăng ký (SMS) <span class="text-red-500">*</span>
+                          Số điện thoại đăng ký <span class="text-red-500">*</span>
                         </label>
                         <div class="relative flex items-center">
                           <span class="absolute left-3.5 text-slate-400 text-base">📱</span>
@@ -740,33 +734,8 @@
                           />
                         </div>
 
-                        <!-- Hộp Quà Tặng / Ưu Đãi Sinh Viên 1 Năm (Yêu cầu 2) -->
-                        <div 
-                          @click="isStudentRegistration = !isStudentRegistration"
-                          class="mt-2.5 p-3 rounded-2xl border transition-all cursor-pointer select-none"
-                          :class="isStudentRegistration ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-400/30' : 'bg-slate-50 border-slate-200 hover:border-slate-300'"
-                        >
-                          <div class="flex items-start gap-2.5">
-                            <input
-                              type="checkbox"
-                              v-model="isStudentRegistration"
-                              @click.stop
-                              class="w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500 mt-0.5 cursor-pointer shrink-0"
-                            />
-                            <div class="text-xs">
-                              <div class="font-black text-slate-900 flex items-center gap-1.5 flex-wrap">
-                                <span>🎓 Tôi là Học sinh / Sinh viên</span>
-                                <span class="text-[9.5px] bg-[#dc2626] text-white px-1.5 py-0.2 rounded-full font-black">ƯU ĐÃI ĐỘC QUYỀN</span>
-                              </div>
-                              <p class="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-                                Nhận ngay <strong>Gói 1 năm giảm 30%</strong> (đếm ngược 365 ngày) và chuyến xe đầu tiên <strong>giảm 100% trong 350.000đ</strong>!
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
                         <!-- Hộp Quà Tặng Mới -->
-                        <div v-if="!isStudentRegistration" class="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex items-center gap-2 font-medium">
+                        <div class="mt-2.5 p-2.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex items-center gap-2 font-medium">
                           <span class="text-lg">🎁</span>
                           <div>
                             <span class="font-bold text-amber-800">Quà Tặng Thành Viên Mới:</span>
@@ -788,30 +757,17 @@
                         </label>
                       </div>
 
-                      <!-- Các hình thức nhận mã OTP Viễn thông eSMS -->
-                      <div class="space-y-2 pt-1">
-                        <!-- Nút 1: Nhận mã qua Tin nhắn SMS Brandname Baotrixemay -->
+                      <!-- Nút Nhận mã OTP qua SMS -->
+                      <div class="pt-1">
                         <button
                           type="button"
                           @click="chooseMethodAndSend('sms')"
                           :disabled="!isStep1Valid || !agreeTerms || isSendingOtp"
                           class="relative overflow-hidden w-full py-3.5 sm:py-4 px-4 min-h-[50px] rounded-2xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer btn-shimmer bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white disabled:cursor-not-allowed shadow-md shadow-red-600/30"
                         >
-                          <span v-if="isSendingOtp && otpDeliveryMethod === 'sms'" class="animate-spin text-sm">⏳</span>
+                          <span v-if="isSendingOtp" class="animate-spin text-sm">⏳</span>
                           <span v-else class="text-sm">💬</span>
-                          <span>{{ isSendingOtp && otpDeliveryMethod === 'sms' ? 'ĐANG GỬI TIN NHẮN SMS (BAOTRIXEMAY)...' : 'NHẬN MÃ OTP QUA TIN NHẮN SMS →' }}</span>
-                        </button>
-
-                        <!-- Nút 2: Nhận mã qua Cuộc gọi AI Voice OTP -->
-                        <button
-                          type="button"
-                          @click="chooseMethodAndSend('voice')"
-                          :disabled="!isStep1Valid || !agreeTerms || isSendingOtp"
-                          class="relative overflow-hidden w-full py-3 px-4 min-h-[46px] rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer border-2 border-emerald-500 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
-                        >
-                          <span v-if="isSendingOtp && otpDeliveryMethod === 'voice'" class="animate-spin text-sm">⏳</span>
-                          <span v-else class="text-sm">📞</span>
-                          <span>{{ isSendingOtp && otpDeliveryMethod === 'voice' ? 'ĐANG KẾT NỐI CUỘC GỌI THOẠI...' : 'HOẶC NHẬN MÃ QUA CUỘC GỌI THOẠI AI' }}</span>
+                          <span>{{ isSendingOtp ? 'ĐANG GỬI MÃ OTP...' : 'NHẬN MÃ OTP →' }}</span>
                         </button>
                       </div>
                     </div>
@@ -836,18 +792,14 @@
                         </div>
                         
                         <!-- Tự động phát hiện email sinh viên khi đăng ký -->
-                        <div v-if="isStudentRegEmail" class="mt-2.5 p-3.5 bg-gradient-to-r from-red-50 to-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-950 space-y-1.5 animate-in fade-in shadow-2xs">
-                          <div class="flex items-center gap-1.5 font-black text-red-700">
-                            <span class="text-base">🏮</span>
-                            <span class="text-xs sm:text-sm uppercase tracking-wide">SINH VIÊN ĐẠI HỌC</span>
-                            <span class="ml-auto text-[9.5px] px-2.5 py-0.5 rounded-full bg-red-600 text-white font-mono font-bold">Xác thực: Hợp lệ</span>
+                        <div v-if="isStudentRegEmail" class="mt-2.5 p-3 bg-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-950 flex items-center gap-2.5 animate-in fade-in shadow-2xs">
+                          <span class="text-xl shrink-0">🎓</span>
+                          <div class="space-y-0.5">
+                            <span class="font-black text-red-700 block uppercase text-xs">Sinh Viên Đại Học</span>
+                            <p class="text-[11.5px] text-slate-800">
+                              Tài khoản (.edu.vn) được tự động hưởng ưu đãi giảm 30% giá vé suốt 1 năm!
+                            </p>
                           </div>
-                          <p class="text-[11.5px] text-slate-800 leading-relaxed">
-                            🎉 Bạn được hưởng đặc quyền <strong>VÉ 0Đ cho lần đầu đặt vé (Mã: SINHVIEN0DONG)</strong>, và được hưởng <strong>1 năm đặt vé được giảm 30% (Mã: SINHVIEN30)</strong>!
-                          </p>
-                          <p class="text-[10.5px] text-amber-900/85 font-medium">
-                            ⚠️ <em>Lưu ý: Mỗi sinh viên áp dụng duy nhất 1 lần mã 0 đồng và mỗi lần chỉ được 1 ghế.</em>
-                          </p>
                         </div>
                         <div v-else-if="regGmail" class="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-950 flex items-center gap-2 font-medium animate-in fade-in">
                           <span class="text-lg">🎁</span>
@@ -913,18 +865,15 @@
                       </p>
                       <div class="text-[11.5px] font-medium text-slate-600">
                         <div v-if="registerMethod === 'phone'">
-                          <div class="text-emerald-700 font-bold space-y-0.5">
+                          <div class="text-slate-700 font-bold space-y-0.5">
                             <div class="flex items-center justify-center gap-1">
-                              <span>{{ otpDeliveryMethod === 'voice' ? '📞' : '💬' }}</span>
-                              <span>{{ otpDeliveryMethod === 'voice' ? 'Tổng đài AI đang gọi điện đọc mã OTP 6 số tới máy của bạn (Kèm tin nhắn SMS Baotrixemay).' : 'Mã xác thực 6 số đã được gửi qua tin nhắn SMS viễn thông (Brandname Baotrixemay).' }}</span>
-                            </div>
-                            <div class="text-[10.5px] text-slate-500 font-normal">
-                              (Cổng viễn thông eSMS tốc độ cao - Nhận mã sau 2 giây)
+                              <span>📱</span>
+                              <span>Vui lòng mở tin nhắn SMS trên điện thoại của bạn và nhập 6 chữ số bên dưới:</span>
                             </div>
                           </div>
                         </div>
                         <div v-else>
-                          Vui lòng kiểm tra hộp thư Gmail (kể cả mục Thư rác/Spam) và nhập 6 chữ số bên dưới:
+                          Vui lòng kiểm tra hộp thư email (kể cả mục Thư rác/Spam) và nhập 6 chữ số bên dưới:
                         </div>
                       </div>
                     </div>
@@ -974,27 +923,15 @@
 
                       <div class="text-center pt-1 space-y-2">
                         <div v-if="registerMethod === 'phone'" class="space-y-1.5">
-                          <div class="text-[11px] text-slate-500 font-medium">Chưa nhận được mã OTP?</div>
-                          <div class="grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              @click="handleResendOtp('sms')"
-                              :disabled="countdownSeconds > 0 || isSendingOtp"
-                              class="py-2 px-2.5 rounded-xl border border-slate-300 hover:border-red-500 text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shadow-2xs"
-                            >
-                              <span>💬</span>
-                              <span>Gửi lại SMS</span>
-                            </button>
-                            <button
-                              type="button"
-                              @click="handleResendOtp('voice')"
-                              :disabled="countdownSeconds > 0 || isSendingOtp"
-                              class="py-2 px-2.5 rounded-xl border border-emerald-300 bg-emerald-50/50 hover:border-emerald-500 text-xs font-bold text-emerald-800 hover:text-emerald-900 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shadow-2xs"
-                            >
-                              <span>📞</span>
-                              <span>Gọi đọc mã</span>
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            @click="handleResendOtp('sms')"
+                            :disabled="countdownSeconds > 0 || isSendingOtp"
+                            class="py-2.5 px-4 rounded-xl border border-slate-300 hover:border-red-500 text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 shadow-2xs mx-auto"
+                          >
+                            <span>💬</span>
+                            <span>{{ countdownSeconds > 0 ? `Gửi lại mã sau (${countdownSeconds}s)` : 'Gửi lại mã OTP qua SMS' }}</span>
+                          </button>
                           <p v-if="countdownSeconds > 0" class="text-[10.5px] font-bold text-slate-400">
                             Có thể yêu cầu lại sau ({{ countdownSeconds }}s)
                           </p>
@@ -1487,7 +1424,6 @@ const regPasswordConfirm = ref('');
 const otpDigits = ref(['', '', '', '', '', '']);
 const receivedOtp = ref('');
 const otpChannel = ref('');
-const cloudFallbackOtp = ref('');
 const isAlreadyRegistered = ref(false);
 const isSendingOtp = ref(false);
 const isVerifyingOtp = ref(false);
@@ -1504,7 +1440,6 @@ const setRegisterMethod = (method) => {
   otpDigits.value = ['', '', '', '', '', ''];
   receivedOtp.value = '';
   otpChannel.value = '';
-  cloudFallbackOtp.value = '';
   isAlreadyRegistered.value = false;
   otpError.value = '';
   if (page.props.errors) {
@@ -1624,15 +1559,6 @@ const onOtpPaste = (event) => {
   }
 };
 
-const autoFillFallbackOtp = () => {
-  if (!cloudFallbackOtp.value) return;
-  const digits = String(cloudFallbackOtp.value).split('');
-  for (let i = 0; i < 6; i++) {
-    otpDigits.value[i] = digits[i] || '';
-  }
-  handleVerifyOtpStep2();
-};
-
 let checkExistsTimer = null;
 const checkIdentifierExists = async () => {
   const identifier = activeIdentifier.value;
@@ -1743,7 +1669,6 @@ const handleSendOtpStep1 = async () => {
 
     if (res.data?.success) {
       registerStep.value = 2;
-      cloudFallbackOtp.value = res.data?.cloud_fallback_otp || '';
       receivedOtp.value = '';
       otpDigits.value = ['', '', '', '', '', ''];
       otpChannel.value = res.data?.channel || (registerMethod.value === 'phone' ? 'phone' : 'email');
@@ -1836,7 +1761,7 @@ const handleVerifyOtpStep2 = async () => {
     }
   } catch (err) {
     const res = err.response?.data;
-    otpError.value = res?.errors?.otp?.[0] || res?.message || 'Mã OTP không đúng hoặc đã hết hạn. Vui lòng kiểm tra lại tin nhắn SMS / nghe cuộc gọi thoại!';
+    otpError.value = res?.errors?.otp?.[0] || res?.message || 'Mã OTP không đúng hoặc đã hết hạn. Vui lòng kiểm tra lại tin nhắn SMS!';
     otpDigits.value = ['', '', '', '', '', ''];
     nextTick(() => {
       document.getElementById('otp-box-0')?.focus();

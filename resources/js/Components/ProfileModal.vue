@@ -75,6 +75,15 @@
         >
           Đổi Mật Khẩu
         </button>
+        <button
+          type="button"
+          @click="activeTab = 'membership'"
+          class="pb-2.5 px-3 border-b-2 transition cursor-pointer flex items-center gap-1"
+          :class="activeTab === 'membership' ? 'border-amber-500 text-amber-700 font-black' : 'border-transparent hover:text-slate-900'"
+        >
+          <span>👑</span>
+          <span>Gói Hội Viên</span>
+        </button>
       </div>
 
       <!-- Alert Banners -->
@@ -320,6 +329,89 @@
           </form>
         </div>
 
+        <!-- TAB 4: GÓI HỘI VIÊN & ĐẶC QUYỀN (XEM SỐ NGÀY, NGÀY BẮT ĐẦU, NGÀY HẾT HẠN, MÃ ƯU ĐÃI) -->
+        <div v-if="activeTab === 'membership'" class="space-y-4">
+          <!-- Khung Hội Viên Nổi Bật -->
+          <div 
+            class="p-4 rounded-3xl border-2 transition shadow-md relative overflow-hidden"
+            :class="isUltraPlan ? 'bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-white border-amber-400 ring-2 ring-amber-300/40' : (isProPlan ? 'bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-white border-emerald-400 ring-2 ring-emerald-300/40' : 'bg-slate-50 border-slate-300')"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-2.5">
+                <span class="text-3xl">{{ isUltraPlan ? '👑' : (isProPlan ? '⭐' : '🥉') }}</span>
+                <div>
+                  <span class="text-[10px] uppercase font-black tracking-wider px-2 py-0.5 rounded-full inline-block text-white"
+                        :class="isUltraPlan ? 'bg-gradient-to-r from-amber-500 to-red-600' : (isProPlan ? 'bg-emerald-600' : 'bg-slate-500')">
+                    {{ isUltraPlan ? 'HỘI VIÊN ULTRA (-40%)' : (isProPlan ? (user?.is_student ? 'SINH VIÊN PRO (-30%)' : 'HỘI VIÊN PRO (-30%)') : 'HÀNH KHÁCH TIÊU CHUẨN') }}
+                  </span>
+                  <h4 class="text-base font-black text-slate-900 mt-1">
+                    {{ isUltraPlan ? 'Gói Hội Viên ULTRA' : (isProPlan ? (user?.is_student ? 'Gói Ưu Đãi Sinh Viên PRO' : 'Gói Hội Viên PRO') : 'Gói Thành Viên Thường') }}
+                  </h4>
+                </div>
+              </div>
+
+              <div class="text-right">
+                <span v-if="isUltraPlan || isProPlan" class="px-3 py-1 rounded-full text-xs font-mono font-black border shadow-2xs inline-block"
+                      :class="isUltraPlan ? 'bg-amber-100 text-amber-950 border-amber-300' : 'bg-emerald-100 text-emerald-950 border-emerald-300'">
+                  ⏱️ Còn {{ user?.student_days_remaining ?? 365 }} ngày
+                </span>
+                <span v-else class="text-xs text-slate-400 font-bold">Chưa kích hoạt</span>
+              </div>
+            </div>
+
+            <!-- Chi tiết ngày tháng -->
+            <div class="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-200/80 text-xs">
+              <div class="p-2.5 bg-white/80 rounded-2xl border border-slate-200">
+                <span class="text-[10px] text-slate-400 font-bold uppercase block">Ngày Bắt Đầu</span>
+                <span class="text-xs font-black text-slate-800 font-mono mt-0.5 block">
+                  {{ user?.membership_registered_at || user?.student_registered_at || 'Từ ngày đăng ký' }}
+                </span>
+              </div>
+              <div class="p-2.5 bg-white/80 rounded-2xl border border-slate-200">
+                <span class="text-[10px] text-slate-400 font-bold uppercase block">Ngày Hết Hạn</span>
+                <span class="text-xs font-black text-slate-800 font-mono mt-0.5 block">
+                  {{ user?.membership_expires_at || user?.student_discount_expires_at || (isUltraPlan || isProPlan ? '365 ngày' : 'Vô thời hạn') }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Hộp Mã Giảm Giá Độc Quyền Dành Cho Gói -->
+            <div v-if="isUltraPlan || isProPlan" class="mt-3 p-3 bg-white rounded-2xl border-2 border-dashed flex items-center justify-between gap-2"
+                 :class="isUltraPlan ? 'border-amber-400 bg-amber-50/50' : 'border-emerald-400 bg-emerald-50/50'">
+              <div>
+                <span class="text-[10.5px] font-bold text-slate-500 block">Mã Giảm Giá Độc Quyền Của Bạn:</span>
+                <span class="text-base font-black font-mono tracking-wider"
+                      :class="isUltraPlan ? 'text-amber-700' : 'text-emerald-700'">
+                  {{ isUltraPlan ? 'ULTRA40' : 'PRO30' }}
+                </span>
+                <span class="text-[10px] text-slate-500 block mt-0.5">
+                  (Giảm {{ isUltraPlan ? '40%' : '30%' }} toàn bộ vé khi thanh toán trực tuyến)
+                </span>
+              </div>
+              <button
+                type="button"
+                @click="copyVoucherCode(isUltraPlan ? 'ULTRA40' : 'PRO30')"
+                class="px-3 py-1.5 rounded-xl font-black text-xs text-white shadow-xs transition cursor-pointer active:scale-95"
+                :class="isUltraPlan ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700'"
+              >
+                {{ copiedCode ? 'Đã sao chép! ✓' : 'Sao chép mã' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Nút Nâng Cấp Gói Hoặc Gia Hạn -->
+          <div class="pt-2">
+            <button
+              type="button"
+              @click="closeModal(); emit('open-membership')"
+              class="w-full py-3 bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 hover:opacity-95 text-white font-black text-xs rounded-2xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>⚡</span>
+              <span>{{ isUltraPlan ? 'Gia Hạn Gói ULTRA (-40%)' : (user?.is_student ? 'Nâng Cấp Lên Gói ULTRA (-40%)' : 'Nâng Cấp Gói PRO (-30%) / ULTRA (-40%)') }}</span>
+            </button>
+          </div>
+        </div>
+
       </div>
 
       <!-- Modal Footer -->
@@ -387,7 +479,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 import axios from 'axios'
 
@@ -397,7 +489,24 @@ const props = defineProps({
   initialTab: { type: String, default: 'info' }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'open-membership'])
+
+const copiedCode = ref(false)
+const copyVoucherCode = (code) => {
+  navigator.clipboard.writeText(code)
+  copiedCode.value = true
+  setTimeout(() => { copiedCode.value = false }, 2000)
+}
+
+const isUltraPlan = computed(() => {
+  const plan = String(props.user?.membership_plan || '').toUpperCase()
+  return plan.includes('ULTRA')
+})
+
+const isProPlan = computed(() => {
+  const plan = String(props.user?.membership_plan || '').toUpperCase()
+  return plan.includes('PRO') || Boolean(props.user?.is_student)
+})
 
 const activeTab = ref(props.initialTab || 'info')
 

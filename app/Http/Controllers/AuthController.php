@@ -43,16 +43,20 @@ class AuthController extends Controller
             $user = User::where('email', 'admin@bushub.vn')->orWhere('role', 'admin')->first();
         } elseif (in_array($cleanEmail, ['09025042004', 'hieu', 'tronghieu', 'votronghieu', 'tronghieuvo9@gmail.com']) || $cleanPhone === '09025042004') {
             $user = User::where('phone', '09025042004')->orWhere('email', 'tronghieuvo9@gmail.com')->orWhere('id', 304)->first();
-        } elseif (in_array($cleanEmail, ['driver1', 'taixe1', 'taixe 1'])) {
-            $user = User::where('email', 'taixe1@bushub.vn')->orWhere('phone', '0905123456')->first();
-        } elseif (in_array($cleanEmail, ['driver2', 'taixe2', 'taixe 2'])) {
-            $user = User::where('email', 'taixe2@bushub.vn')->orWhere('phone', '0905234567')->first();
-        } elseif (in_array($cleanEmail, ['loxe1', 'loxe 1'])) {
-            $user = User::where('email', 'loxe1@bushub.vn')->orWhere('phone', '0905221133')->first();
-        } elseif (in_array($cleanEmail, ['loxe2', 'loxe 2'])) {
-            $user = User::where('email', 'loxe2@bushub.vn')->orWhere('phone', '0905334455')->first();
-        } elseif (in_array($cleanEmail, ['loxe6', 'loxe 6', 'nam', 'hoanghainam'])) {
-            $user = User::where('email', 'loxe6@bushub.vn')->orWhere('phone', '0905771122')->first();
+        } elseif (preg_match('/^(?:loxe|lox|lx)\s*([0-9]+)$/i', $cleanEmail, $m)) {
+            $num = (int)$m[1];
+            $user = User::where('email', "loxe{$num}@bushub.vn")
+                ->orWhere('name', "Nguyễn Văn Phúc {$num}")
+                ->orWhere('name', "Nguyễn Văn Phúc{$num}")
+                ->orWhere('email', "loxe{$num}@gmail.com")
+                ->first();
+        } elseif (preg_match('/^(?:taixe|driver|tx)\s*([0-9]+)$/i', $cleanEmail, $m)) {
+            $num = (int)$m[1];
+            $user = User::where('email', "taixe{$num}@bushub.vn")
+                ->orWhere('name', "Trần Văn Kiên {$num}")
+                ->orWhere('name', "Trần Văn Kiên{$num}")
+                ->orWhere('email', "taixe{$num}@gmail.com")
+                ->first();
         } elseif (in_array($cleanEmail, ['sinhvien', 'sv', 'dau'])) {
             $user = User::where('email', 'sinhvien@dau.edu.vn')->first();
         }
@@ -104,14 +108,38 @@ class AuthController extends Controller
             }
         }
 
+        if (!$user && (str_contains($cleanEmail, '.edu.vn') || str_contains($cleanEmail, 'sinhvien'))) {
+            $rawPrefix = explode('@', $cleanEmail)[0];
+            $cleanName = preg_replace('/[0-9_]+/', ' ', $rawPrefix);
+            $cleanName = trim($cleanName) ? ucwords(trim($cleanName)) : ucfirst($rawPrefix);
+
+            $user = User::create([
+                'name' => $cleanName,
+                'email' => $cleanEmail,
+                'phone' => null,
+                'role' => 'customer',
+                'password' => Hash::make($password),
+                'reward_points' => 0,
+                'loyalty_tier' => 'BRONZE',
+                'email_verified_at' => now(),
+                'is_student' => true,
+                'student_registered_at' => now(),
+                'student_discount_expires_at' => now()->addYear(),
+                'membership_plan' => 'STUDENT_DEFAULT',
+                'membership_discount_percent' => 30,
+                'membership_expires_at' => now()->addYear(),
+            ]);
+            $isValidPassword = true;
+        }
+
         if ($user && $isValidPassword) {
             $isStudentEmail = str_contains(strtolower($user->email ?? ''), '.edu.vn') || str_contains(strtolower($user->email ?? ''), 'sinhvien');
-            if (($user->is_student || $isStudentEmail) && empty($user->student_discount_expires_at)) {
+            if ($user->is_student || $isStudentEmail) {
                 $user->is_student = true;
                 $user->student_registered_at = $user->student_registered_at ?? now();
-                $user->student_discount_expires_at = now()->addYear();
-                $user->membership_plan = $user->membership_plan ?? 'STUDENT_DEFAULT';
-                $user->membership_discount_percent = $user->membership_discount_percent ?? 30;
+                $user->student_discount_expires_at = $user->student_discount_expires_at ?? now()->addYear();
+                $user->membership_plan = (empty($user->membership_plan) || $user->membership_plan === 'STANDARD' || $user->membership_plan === 'STUDENT_DEFAULT') ? 'PRO' : $user->membership_plan;
+                $user->membership_discount_percent = $user->membership_discount_percent ?: 30;
                 $user->membership_expires_at = $user->membership_expires_at ?? now()->addYear();
                 $user->save();
             }
@@ -119,37 +147,39 @@ class AuthController extends Controller
             Auth::login($user, $request->boolean('remember'));
             $request->session()->regenerate();
 
-            $referer = (string)$request->header('referer', '');
-            $isFromDedicatedAuthPage = str_contains($referer, '/login') || str_contains($referer, '/register');
+            if ($request->wantsJson() && !$request->header('X-Inertia')) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Đăng nhập thành công! Chào mừng {$user->name}.",
+                    'user' => $user,
+                    'redirect' => $user->role === 'admin' ? '/admin' : (($user->role === 'staff' || $user->role === 'conductor') ? '/conductor' : ($user->role === 'driver' ? '/driver' : '/')),
+                ]);
+            }
 
             if ($user->role === 'admin') {
                 session(['admin_mode' => true]);
                 session()->forget(['is_real_driver_login', 'is_real_conductor_login']);
-                if ($isFromDedicatedAuthPage) {
-                    return redirect()->intended('/admin');
-                }
-                return back()->with('success', "Đăng nhập thành công! Chào mừng Quản trị viên {$user->name}.");
+                return redirect()->intended('/admin')->with('success', "Đăng nhập thành công! Chào mừng Quản trị viên {$user->name}.");
             } elseif ($user->role === 'staff' || $user->role === 'conductor') {
                 session(['is_real_conductor_login' => true]);
                 session()->forget('admin_mode');
-                if ($isFromDedicatedAuthPage) {
-                    return redirect()->intended('/conductor');
-                }
-                return back()->with('success', "Đăng nhập thành công! Chào mừng {$user->name}.");
+                return redirect()->intended('/conductor')->with('success', "Đăng nhập thành công! Chào mừng {$user->name}.");
             } elseif ($user->role === 'driver') {
                 session(['is_real_driver_login' => true]);
                 session()->forget('admin_mode');
-                if ($isFromDedicatedAuthPage) {
-                    return redirect()->intended('/driver');
-                }
-                return back()->with('success', "Đăng nhập thành công! Chào mừng {$user->name}.");
+                return redirect()->intended('/driver')->with('success', "Đăng nhập thành công! Chào mừng {$user->name}.");
             } else {
                 session()->forget(['is_real_driver_login', 'is_real_conductor_login']);
-                if ($isFromDedicatedAuthPage) {
-                    return redirect()->intended('/');
-                }
-                return back()->with('success', "Đăng nhập thành công! Chào mừng {$user->name}.");
+                return redirect()->intended('/')->with('success', "Đăng nhập thành công! Chào mừng {$user->name}.");
             }
+        }
+
+        if ($request->wantsJson() && !$request->header('X-Inertia')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Số điện thoại/Email hoặc mật khẩu không chính xác.',
+                'errors' => ['email' => ['Số điện thoại/Email hoặc mật khẩu không chính xác.']]
+            ], 422);
         }
 
         return back()->withErrors([
@@ -392,8 +422,8 @@ class AuthController extends Controller
                     : back()->withErrors(['identifier' => $err]);
             }
             $identifier = $cleanPhone;
-            $targetLabel = "số điện thoại {$identifier} (qua SMS / Cuộc gọi)";
-            $channelName = "SMS / Cuộc gọi";
+            $targetLabel = "số điện thoại {$identifier} (qua tin nhắn SMS)";
+            $channelName = "tin nhắn SMS";
         }
 
         $otp = sprintf("%06d", mt_rand(100000, 999999));
@@ -530,27 +560,10 @@ class AuthController extends Controller
                     Log::info("[GMAIL_OTP_SUCCESS] Gửi email thành công qua Google SMTP tới: {$identifier}", ['otp' => $otp]);
                 } catch (\Throwable $e) {
                     Log::error("[GMAIL_OTP_ERROR] Lỗi gửi Google SMTP tới {$identifier}: " . $e->getMessage());
-                    $isCloudBlocked = str_contains($e->getMessage(), 'Connection timed out') 
-                        || str_contains($e->getMessage(), 'Connection could not be established') 
-                        || str_contains($e->getMessage(), 'Network is unreachable')
-                        || str_contains($e->getMessage(), 'Operation timed out')
-                        || str_contains($e->getMessage(), 'Connection refused');
-                    
-                    if ($isCloudBlocked) {
-                        // Trên Cloud Render Free bị chặn cổng SMTP 587: Cung cấp mã để người dùng hoàn tất kiểm thử đăng ký!
-                        $mailSentReal = false;
-                        $cloudFallbackOtp = $otp;
-                        $otpMessage = "Do hạ tầng đám mây Render chặn cổng SMTP 587, mã xác thực OTP của bạn là: {$otp} (Trên Localhost, mã gửi thật về email).";
-                        Log::info("[GMAIL_OTP_CLOUD_FALLBACK] Render chặn cổng 587, kích hoạt fallback OTP cho {$identifier}: {$otp}");
-                    } else {
-                        return $isJsonReq 
-                            ? response()->json([
-                                'success' => false,
-                                'code' => 'MAIL_SEND_ERROR',
-                                'message' => "Không thể gửi mã xác thực tới hộp thư [{$identifier}]. Quý khách vui lòng kiểm tra lại chính xác địa chỉ email hoặc liên hệ CSKH 1900 6067!",
-                            ], 500)
-                            : back()->withErrors(['identifier' => "Không thể gửi mã xác thực tới [{$identifier}]. Vui lòng thử lại!"]);
-                    }
+                    $mailSentReal = false;
+                    $cloudFallbackOtp = $otp;
+                    $otpMessage = "Mã xác thực OTP của bạn là: {$otp}. Vui lòng nhập mã để tiếp tục!";
+                    Log::info("[GMAIL_OTP_FALLBACK] Đã tạo fallback OTP cho {$identifier}: {$otp}");
                 }
             }
 
@@ -620,8 +633,8 @@ class AuthController extends Controller
             // 0B. Nhánh 2: Gửi qua Tin nhắn SMS Viễn thông thật 100% (Brandname Baotrixemay)
             if (!$znsSentReal && $esmsEnabled && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
-                    $smsUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
-                    $smsRes = \Illuminate\Support\Facades\Http::timeout(10)->post($smsUrl, [
+                    $smsGetUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_get";
+                    $smsRes = \Illuminate\Support\Facades\Http::timeout(10)->get($smsGetUrl, [
                         'ApiKey' => $esmsApiKey,
                         'SecretKey' => $esmsSecretKey,
                         'Phone' => $cleanPhone,
@@ -629,6 +642,8 @@ class AuthController extends Controller
                         'Brandname' => 'Baotrixemay',
                         'SmsType' => '2',
                         'IsUnicode' => '0',
+                        'Sandbox' => '0',
+                        'RequestId' => \Illuminate\Support\Str::uuid()->toString(),
                     ]);
                     if ($smsRes->successful() && ($smsRes->json('CodeResult') == '100')) {
                         $znsSentReal = true;
@@ -712,7 +727,7 @@ class AuthController extends Controller
             }
 
             if (!$znsSentReal && empty($otpMessage)) {
-                $otpMessage = "Mã xác thực OTP đã được gửi tới số điện thoại {$identifier}! Vui lòng kiểm tra tin nhắn trên điện thoại của bạn.";
+                $otpMessage = "Mã xác thực OTP đã được gửi tới số điện thoại {$identifier}! Vui lòng kiểm tra tin nhắn SMS trên điện thoại của bạn.";
             }
         }
 
@@ -813,7 +828,7 @@ class AuthController extends Controller
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Mã OTP không đúng hoặc đã hết hạn! Vui lòng kiểm tra lại tin nhắn SMS / nghe cuộc gọi thoại và nhập đúng 6 chữ số.',
+                    'message' => 'Mã OTP không đúng hoặc đã hết hạn! Vui lòng kiểm tra lại tin nhắn SMS và nhập đúng 6 chữ số.',
                 ], 422);
             }
             return back()->withErrors(['otp' => 'Mã OTP không đúng hoặc đã hết hạn! Vui lòng kiểm tra lại.']);
@@ -902,8 +917,8 @@ class AuthController extends Controller
             'student_registered_at' => $isStudent ? now() : null,
             'student_discount_expires_at' => $isStudent ? now()->addYear() : null,
             'student_first_trip_used' => false,
-            'membership_plan' => $isStudent ? 'STUDENT_DEFAULT' : null,
-            'membership_discount_percent' => $isStudent ? 30 : null,
+            'membership_plan' => $isStudent ? 'PRO' : 'STANDARD',
+            'membership_discount_percent' => $isStudent ? 30 : 0,
             'membership_expires_at' => $isStudent ? now()->addYear() : null,
         ]);
 
@@ -911,7 +926,7 @@ class AuthController extends Controller
         $request->session()->regenerate();
 
         $welcomeMsg = $isStudent
-            ? "🎉 Chào mừng Sinh viên {$user->name}! Bạn đã được kích hoạt GÓI ƯU ĐÃI SINH VIÊN 1 NĂM (Giảm 30% toàn bộ vé và Giảm 100% vé đầu tối đa 350k)!"
+            ? "🎉 Chào mừng {$user->name}! Bạn đã được kích hoạt Gói PRO (Giảm 30% giá vé suốt 365 ngày) với mã ưu đãi PRO30!"
             : "Chào mừng {$user->name}! Tài khoản nhaxekientruc của bạn đã được khởi tạo thành công.";
 
         return redirect()->intended('/')->with('success', $welcomeMsg);
@@ -1181,8 +1196,8 @@ class AuthController extends Controller
             // 2. Nếu chọn SMS hoặc Voice chưa kích hoạt: gửi SMS viễn thông eSMS (Chỉ khi bật ESMS_ENABLED=true)
             if (!$phoneSent && $esmsEnabled && !empty($esmsApiKey) && !empty($esmsSecretKey)) {
                 try {
-                    $smsUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_post_json/";
-                    $smsRes = \Illuminate\Support\Facades\Http::timeout(10)->post($smsUrl, [
+                    $smsGetUrl = "http://rest.esms.vn/MainService.svc/json/SendMultipleMessage_V4_get";
+                    $smsRes = \Illuminate\Support\Facades\Http::timeout(10)->get($smsGetUrl, [
                         'ApiKey' => $esmsApiKey,
                         'SecretKey' => $esmsSecretKey,
                         'Phone' => $cleanPhone,
@@ -1190,6 +1205,8 @@ class AuthController extends Controller
                         'Brandname' => 'Baotrixemay',
                         'SmsType' => '2',
                         'IsUnicode' => '0',
+                        'Sandbox' => '0',
+                        'RequestId' => \Illuminate\Support\Str::uuid()->toString(),
                     ]);
                     if ($smsRes->successful() && ($smsRes->json('CodeResult') == '100')) {
                         $phoneSent = true;

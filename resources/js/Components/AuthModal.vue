@@ -135,7 +135,7 @@
             class="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:border-red-500 hover:bg-red-50/50 text-slate-700 hover:text-red-700 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
           >
             <span>📝</span>
-            <span>Đăng ký tài khoản mới (Xác thực OTP qua SMS / Gmail)</span>
+            <span>Đăng ký tài khoản mới (Xác thực OTP) ➔</span>
           </button>
         </div>
 
@@ -147,6 +147,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
+import axios from 'axios';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -180,7 +181,7 @@ const goToRegister = () => {
   router.visit('/register');
 };
 
-const handlePasswordLogin = () => {
+const handlePasswordLogin = async () => {
   if (!loginForm.value.email.trim() || !loginForm.value.password) {
     errorMessage.value = 'Vui lòng nhập email/số điện thoại và mật khẩu!';
     return;
@@ -189,22 +190,35 @@ const handlePasswordLogin = () => {
   isSubmitting.value = true;
   errorMessage.value = '';
 
-  router.post('/login', {
-    email: loginForm.value.email.trim(),
-    password: loginForm.value.password,
-    remember: loginForm.value.remember,
-  }, {
-    preserveState: false,
-    preserveScroll: true,
-    onSuccess: () => {
+  try {
+    const res = await axios.post('/login', {
+      email: loginForm.value.email.trim(),
+      password: loginForm.value.password,
+      remember: loginForm.value.remember,
+    }, {
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    });
+
+    if (res.data?.success) {
       isSubmitting.value = false;
       closeModal();
-      window.location.reload();
-    },
-    onError: (errors) => {
+      const redirectUrl = res.data.redirect || '/';
+      if (redirectUrl && redirectUrl !== '/') {
+        window.location.href = redirectUrl;
+      } else {
+        router.reload();
+      }
+    } else {
       isSubmitting.value = false;
-      errorMessage.value = errors.email || errors.password || errors.status || 'Email/Số điện thoại hoặc mật khẩu không chính xác!';
+      errorMessage.value = res.data?.message || 'Email/Số điện thoại hoặc mật khẩu không chính xác!';
     }
-  });
+  } catch (err) {
+    isSubmitting.value = false;
+    const resData = err.response?.data;
+    errorMessage.value = resData?.message || resData?.errors?.email?.[0] || 'Email/Số điện thoại hoặc mật khẩu không chính xác!';
+  }
 };
 </script>

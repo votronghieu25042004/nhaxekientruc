@@ -197,7 +197,7 @@ class TripScheduleService
         $notePool = [
             'elderly' => 'Hành khách cao tuổi giường tầng 1 cần hỗ trợ lên xuống khi tới trạm.',
             'seasick' => 'Hành khách say xe nặng, xin ưu tiên giường tầng 1 đón gió.',
-            'student' => 'Sinh viên Đại học Kiến Trúc (DAU) về quê đón Tết có 2 kiện hành lý đồ án gửi hầm.',
+            'student' => 'Sinh viên',
             'baby'    => 'Có em bé 1 tuổi đi cùng mẹ, ưu tiên giường tầng 1 an toàn.',
             'luggage' => 'Hành khách mang theo 2 thùng hải sản đông lạnh gửi hầm xe.',
             'pickup'  => 'Đón khách tại Trạm Cửa Ngõ (gần Bến xe trung tâm Đà Nẵng).',
@@ -373,8 +373,14 @@ class TripScheduleService
         if ($buses->isEmpty()) {
             $buses = Bus::orderBy('id', 'asc')->get();
         }
-        $drivers = Driver::all();
-        $conductors = User::whereIn('role', ['conductor', 'staff'])->orderBy('id', 'asc')->get();
+        $drivers = Driver::orderBy('id', 'asc')->get();
+        $conductors = User::where('role', 'conductor')
+            ->where('email', 'like', 'loxe%@bushub.vn')
+            ->orderBy('id', 'asc')
+            ->get();
+        if ($conductors->count() < 10) {
+            $conductors = User::whereIn('role', ['conductor', 'staff'])->orderBy('id', 'asc')->get();
+        }
 
         $routes = Route::with('stops')->get();
         if ($routes->isEmpty() || $buses->isEmpty() || $drivers->isEmpty()) {

@@ -1415,6 +1415,15 @@ class AdminController extends Controller
                 ];
             })->values()->toArray();
 
+            $rawPlan = strtoupper((string)($u->membership_plan ?? ''));
+            $isUltra = str_contains($rawPlan, 'ULTRA');
+            $isPro = str_contains($rawPlan, 'PRO') || $u->is_student;
+            $membershipPlan = $isUltra ? 'ULTRA' : ($isPro ? 'PRO' : 'THUONG');
+            $planDisplayName = $isUltra ? 'Gói ULTRA (-40%)' : ($isPro ? ($u->is_student ? 'Sinh Viên Pro (-30%)' : 'Gói PRO (-30%)') : 'Gói THƯỜNG');
+            $discountPct = $isUltra ? 40 : ($isPro ? 30 : 0);
+            $regDate = $u->student_registered_at ? Carbon::parse($u->student_registered_at)->format('d/m/Y') : ($u->created_at ? Carbon::parse($u->created_at)->format('d/m/Y') : '-');
+            $expDate = ($u->membership_expires_at ?? $u->student_discount_expires_at) ? Carbon::parse($u->membership_expires_at ?? $u->student_discount_expires_at)->format('d/m/Y') : '-';
+
             return [
                 'id' => $u->id,
                 'name' => $u->name,
@@ -1427,6 +1436,13 @@ class AdminController extends Controller
                 'tier_code' => $tierCode,
                 'rank' => $rank,
                 'status' => $u->status ?? 'ACTIVE',
+                'membership_plan' => $membershipPlan,
+                'membership_plan_name' => $planDisplayName,
+                'membership_discount_percent' => $discountPct,
+                'membership_registered_at' => $regDate,
+                'membership_expires_at' => $expDate,
+                'student_days_remaining' => (int)$u->student_days_remaining,
+                'is_student' => (bool)$u->is_student,
                 'history' => $history,
                 'joined_at' => Carbon::parse($u->created_at)->format('d/m/Y'),
                 'latest_booking_at' => $validBookings->max('created_at') ?: $u->created_at,

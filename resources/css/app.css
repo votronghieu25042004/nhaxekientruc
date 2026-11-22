@@ -35,3 +35,27 @@ html, body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(234, 88, 12, 0.8);
 }
+
+/* ========================================================================= */
+/* GOOGLE TRANSLATE STYLES CLEANUP                                           */
+/* ========================================================================= */
+.goog-te-banner-frame.skiptranslate,
+.goog-te-banner-frame {
+    display: none !important;
+}
+body {
+    top: 0px !important;
+    position: static !important;
+}
+#goog-gt-tt,
+.goog-te-balloon-frame {
+    display: none !important;
+}
+.goog-text-highlight {
+    background: none !important;
+    box-shadow: none !important;
+}
+.skiptranslate iframe {
+    display: none !important;
+}
+

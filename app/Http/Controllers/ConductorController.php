@@ -61,21 +61,29 @@ class ConductorController extends Controller
 
         // Lấy danh sách tài khoản Lơ xe và gắn kèm biển số xe được phân công thực tế từ trips (Loại bỏ trùng lặp tên)
         $conductorAccounts = \App\Models\User::where('role', 'conductor')
-            ->where(function ($q) {
-                $q->where('email', 'like', '%loxe%')
-                    ->orWhere('email', 'like', '%staff%');
-            })
+            ->where('email', 'like', 'loxe%@bushub.vn')
             ->orderBy('id', 'asc')
-            ->get(['id', 'name', 'email', 'phone'])
-            ->unique('name')
-            ->values()
-            ->map(function ($acc) use ($allTrips, $buses) {
-                $assignedTrip = $allTrips->first(function ($t) use ($acc) {
-                    return $t->conductor_id == $acc->id || ($t->second_conductor_id ?? null) == $acc->id;
-                });
-                $acc->vehicle_plate = $assignedTrip?->bus?->license_plate ?? '43B-012.34';
-                return $acc;
+            ->get(['id', 'name', 'email', 'phone']);
+
+        if ($conductorAccounts->count() < 10) {
+            $conductorAccounts = \App\Models\User::where('role', 'conductor')
+                ->where(function ($q) {
+                    $q->where('email', 'like', '%loxe%')
+                        ->orWhere('email', 'like', '%staff%');
+                })
+                ->orderBy('id', 'asc')
+                ->get(['id', 'name', 'email', 'phone'])
+                ->unique('name')
+                ->values();
+        }
+
+        $conductorAccounts = $conductorAccounts->map(function ($acc) use ($allTrips, $buses) {
+            $assignedTrip = $allTrips->first(function ($t) use ($acc) {
+                return $t->conductor_id == $acc->id || ($t->second_conductor_id ?? null) == $acc->id;
             });
+            $acc->vehicle_plate = $assignedTrip?->bus?->license_plate ?? '43B-012.34';
+            return $acc;
+        });
 
         $activeConductor = null;
         if ($isAdminViewing) {

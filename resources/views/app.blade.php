@@ -13,5 +13,18 @@
 </head>
 <body class="font-sans antialiased bg-[#F8FAFC] text-[#0F172A] min-h-screen selection:bg-blue-600 selection:text-white">
     @inertia
+
+    <!-- Google Translate Container (Hidden UI) -->
+    <div id="google_translate_element" style="display:none;"></div>
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'vi',
+                includedLanguages: 'vi,en,zh-CN,ko,ja,fr',
+                autoDisplay: false
+            }, 'google_translate_element');
+        }
+    </script>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>

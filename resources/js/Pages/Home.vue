@@ -67,12 +67,12 @@
               </div>
             </div>
 
-            <!-- Card 2: Sinh viên 30% -->
-            <div class="flex-shrink-0 rounded-2xl overflow-hidden shadow-xl border-2 border-amber-300/60 transform hover:scale-105 transition-all duration-300">
+            <!-- Card 2: Sinh viên 30% (Chỉ hiện khi là sinh viên) -->
+            <div v-if="isStudentUser" class="flex-shrink-0 rounded-2xl overflow-hidden shadow-xl border-2 border-amber-300/60 transform hover:scale-105 transition-all duration-300">
               <div class="bg-gradient-to-r from-red-600 to-rose-600 px-4 py-1.5 text-center flex items-center justify-between gap-2">
                 <span class="text-white font-black text-xs sm:text-sm tracking-wide whitespace-nowrap flex items-center gap-1">
                   <span>🎓</span>
-                  <span>Sinh Viên: 1 Năm Giảm 30% • Vé 0đ</span>
+                  <span>Sinh Viên Giảm 30%</span>
                 </span>
                 <button
                   type="button"
@@ -201,18 +201,19 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
             <!-- Voucher Card 1: Dành riêng sinh viên giảm 30% -->
             <div 
+              v-if="isStudentUser"
               @click="saveVoucherWithToast('SINHVIEN')"
               class="relative bg-gradient-to-br from-red-50 via-rose-50 to-amber-50/40 border border-red-200 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group cursor-pointer"
             >
               <div class="space-y-1.5 z-10">
                 <span class="text-[10px] font-black tracking-widest text-red-700 uppercase flex items-center gap-1">
                   <span>🎓</span>
-                  <span>ĐẶC QUYỀN SINH VIÊN (.EDU.VN)</span>
+                  <span>ĐẶC QUYỀN SINH VIÊN</span>
                 </span>
                 <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-snug">
-                  1 Năm Giảm 30% • Chuyến Đầu 100% (Tối Đa 350k)
+                  Giảm 30% khi sinh viên đặt vé xe lần đầu
                 </h3>
-                <p class="text-[11px] text-slate-500 font-medium">Vé 0đ chuyến đầu & giảm 30% suốt 1 năm với email trường</p>
+                <p class="text-[11px] text-slate-500 font-medium">Áp dụng tài khoản có email trường (.edu.vn)</p>
               </div>
 
               <div class="mt-5 flex items-center justify-between z-10">
@@ -938,7 +939,7 @@
                   <div class="flex items-center justify-between gap-1">
                     <span class="font-mono font-black text-sm tracking-wider text-red-600">SINHVIEN100</span>
                     <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-red-100 text-red-700">
-                      Vé 0-Đồng
+                      Ưu Đãi Đặc Quyền
                     </span>
                   </div>
                   <p class="text-[11px] font-bold text-slate-700 mt-1 leading-snug">
@@ -1201,7 +1202,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { router, usePage, Link } from '@inertiajs/vue3';
 import Navbar from '@/Components/Navbar.vue';
 import Footer from '@/Components/Footer.vue';
@@ -1209,6 +1210,16 @@ import SearchWidget from '@/Components/SearchWidget.vue';
 import AiChatModal from '@/Components/AiChatModal.vue';
 
 const page = usePage();
+
+const isStudentUser = computed(() => {
+  const u = page.props.auth?.user;
+  if (!u) return false;
+  return Boolean(
+    u.is_student ||
+    String(u.email || '').includes('.edu.vn') ||
+    String(u.email || '').includes('sinhvien')
+  );
+});
 
 const props = defineProps({
   routes: Array,

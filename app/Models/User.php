@@ -70,16 +70,13 @@ class User extends Authenticatable {
      */
     public function getMembershipBadgeAttribute(): string
     {
-        $plan = $this->membership_plan ?? 'STANDARD';
-        return match ($plan) {
-            'STUDENT_ULTRA' => 'Sinh Viên Ultra VIP (-40%)',
-            'STUDENT_PRO' => 'Sinh Viên Pro (-25%)',
-            'STUDENT_ECO' => 'Sinh Viên Tiết Kiệm (-20%)',
-            'STUDENT_DEFAULT' => 'Sinh Viên Năm 1 (-30%)',
-            'STANDARD_ULTRA' => 'Hội Viên Ultra VIP (-40%)',
-            'STANDARD_PRO' => 'Hội Viên Pro (-25%)',
-            'STANDARD_ECO' => 'Hội Viên Tiết Kiệm (-20%)',
-            default => 'Hành Khách Thường',
-        };
+        $plan = strtoupper((string)($this->membership_plan ?? ''));
+        if (str_contains($plan, 'ULTRA')) {
+            return 'Hội Viên Ultra VIP (-40%)';
+        }
+        if (str_contains($plan, 'PRO') || $this->is_student) {
+            return $this->is_student ? 'Sinh Viên Pro (-30%)' : 'Hội Viên Pro (-30%)';
+        }
+        return 'Hành Khách Thường';
     }
 }

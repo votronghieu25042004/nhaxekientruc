@@ -364,29 +364,19 @@
                       v-else
                       class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-200 inline-flex items-center gap-1"
                     >
-                      <span>✍️ ADMIN ĐÃ GỌI & GỬI</span>
+                      <span>✉️ ĐÃ GỬI NHẮC GMAIL</span>
                       <span class="font-mono">({{ b.reminder_sent_at || b.ai_call_at }})</span>
                     </span>
                     <div class="flex items-center justify-center gap-1 flex-wrap">
-                      <button 
-                        v-if="b.ai_call_audio_url || b.ai_call_script"
-                        @click.stop="playAiCallAudio(b)"
-                        type="button"
-                        class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer shadow-2xs"
-                        title="Nghe lại cuộc gọi AI đã thông báo cho khách"
-                      >
-                        <span>🎧 Nghe AI</span>
-                      </button>
-
                       <button
                         @click.stop="notifyAndCallSingleBooking(b)"
                         :disabled="notifyingBookingId === b.id"
                         type="button"
                         class="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[9.5px] transition flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50"
-                        title="Gửi lại Gmail nhắc 45P và kích hoạt gọi điện thoại AI lần nữa"
+                        title="Gửi lại Gmail nhắc 45P"
                       >
                         <span v-if="notifyingBookingId === b.id" class="w-2.5 h-2.5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></span>
-                        <span v-else>🔄 Gửi & Gọi Lại</span>
+                        <span v-else>🔄 Gửi Lại Gmail</span>
                       </button>
                     </div>
                   </div>
@@ -396,10 +386,10 @@
                       :disabled="notifyingBookingId === b.id"
                       type="button"
                       class="px-2.5 py-1 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-[10px] tracking-tight transition inline-flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
-                      title="Gửi Gmail trước 45P & Kích hoạt AI tự động gọi điện tới SĐT của khách hàng này"
+                      title="Gửi Gmail nhắc nhở trước 45P tới khách hàng này"
                     >
                       <span v-if="notifyingBookingId === b.id" class="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                      <span v-else>📞 Gửi & Gọi AI</span>
+                      <span v-else>✉️ Nhắc Gmail 45P</span>
                     </button>
                   </div>
                 </td>
