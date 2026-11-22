@@ -3,7 +3,7 @@
     <Navbar />
 
     <!-- 1. THANH TÌM KIẾM THEO CHUẨN VEXERE (Ảnh 1) CÓ AUTOCOMPLETE KHI GÕ ĐÀ NẴNG, HUẾ... -->
-    <div class="bg-white border-b border-slate-200 py-4 shadow-xs sticky top-[68px] z-30">
+    <div class="bg-white border-b border-slate-200 py-3 sm:py-4 shadow-xs md:sticky md:top-[68px] z-30">
       <div class="max-w-7xl mx-auto px-4 sm:px-6">
         <!-- Khung tìm kiếm ngang Pill / Bo tròn -->
         <div class="bg-white border border-slate-300 hover:border-slate-400 rounded-2xl md:rounded-full shadow-sm p-1.5 md:p-2 flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-0 transition-all">
@@ -164,8 +164,8 @@
               </div>
             </div>
 
-            <!-- 2 Pill Buttons: Hôm nay / Ngày mai -->
-            <div class="flex items-center gap-1.5 flex-shrink-0">
+            <!-- 2 Pill Buttons: Hôm nay / Ngày mai (Chỉ hiện desktop vì mobile đã có thanh chọn ngày) -->
+            <div class="hidden sm:flex items-center gap-1.5 flex-shrink-0">
               <button
                 type="button"
                 @click="setDateQuick('today')"
@@ -209,7 +209,7 @@
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         <!-- Nút Bật Bộ Lọc Trên Mobile (< lg) Dạng Sticky Sang Trọng -->
-        <div class="lg:hidden col-span-1 flex items-center justify-between p-2.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs mb-2 sticky top-[138px] z-20">
+        <div class="lg:hidden col-span-1 flex items-center justify-between p-2.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs mb-2 sticky top-[64px] z-20">
           <button
             type="button"
             @click="showMobileFilters = true"
@@ -227,9 +227,10 @@
             v-model="sortBy"
             class="bg-slate-100 text-slate-800 text-xs font-bold px-2.5 py-1.5 rounded-xl border-none outline-none cursor-pointer"
           >
-            <option value="scheduled_first">Theo giờ chạy</option>
-            <option value="price_asc">Giá thấp nhất</option>
-            <option value="price_desc">Giá cao nhất</option>
+            <option value="scheduled_first">Xe chưa đi lên đầu</option>
+            <option value="time_asc">Giờ đi sớm nhất</option>
+            <option value="price_asc">Giá vé tăng dần</option>
+            <option value="price_desc">Giá vé giảm dần</option>
           </select>
         </div>
 
@@ -561,13 +562,13 @@
         <section class="lg:col-span-8 xl:col-span-8.5 space-y-4">
           
           <!-- Date Tabs Switcher: Hôm nay, Ngày mai, Ngày kia, Chọn ngày khác -->
-          <div class="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2 overflow-x-auto pb-0.5">
+          <div class="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-2.5">
+            <div class="flex items-center gap-2 overflow-x-auto touch-pan-x scrollbar-none pb-0.5 w-full sm:w-auto">
               <button
                 type="button"
                 @click="setDateQuick('today')"
                 :class="isTodaySelected ? 'bg-red-600 text-white font-black shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold'"
-                class="px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                class="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0 whitespace-nowrap"
               >
                 <span>☀️ Hôm nay ({{ formatDayMonth(todayStr) }})</span>
               </button>
@@ -576,7 +577,7 @@
                 type="button"
                 @click="setDateQuick('tomorrow')"
                 :class="isTomorrowSelected ? 'bg-red-600 text-white font-black shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold'"
-                class="px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                class="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0 whitespace-nowrap"
               >
                 <span>📅 Ngày mai ({{ formatDayMonth(tomorrowStr) }})</span>
               </button>
@@ -585,14 +586,14 @@
                 type="button"
                 @click="setDateQuick('day_after')"
                 :class="isDayAfterSelected ? 'bg-red-600 text-white font-black shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold'"
-                class="px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                class="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0 whitespace-nowrap"
               >
                 <span>🗓️ Ngày kia ({{ formatDayMonth(dayAfterStr) }})</span>
               </button>
             </div>
 
-            <div class="flex items-center gap-2">
-              <label class="text-xs font-bold text-slate-600 flex items-center gap-2 cursor-pointer bg-slate-50 hover:bg-slate-100 px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs">
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+              <label class="text-xs font-bold text-slate-600 flex items-center justify-between sm:justify-start gap-2 cursor-pointer bg-slate-50 hover:bg-slate-100 px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs w-full sm:w-auto">
                 <span>📆 Chọn ngày:</span>
                 <input
                   type="date"
@@ -618,8 +619,8 @@
               </p>
             </div>
 
-            <!-- Sắp xếp -->
-            <div class="flex items-center gap-2">
+            <!-- Sắp xếp (Chỉ hiện trên desktop vì mobile đã tích hợp ở thanh lọc trên) -->
+            <div class="hidden lg:flex items-center gap-2">
               <span class="text-xs font-semibold text-slate-500 whitespace-nowrap">Sắp xếp:</span>
               <select
                 v-model="sortBy"

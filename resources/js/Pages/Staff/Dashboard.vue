@@ -1024,7 +1024,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans pb-24 md:pb-16" style="font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;">
+  <div class="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans pb-28 md:pb-16" style="font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;">
     <Head title="Cổng Lơ Xe & Soát Vé Di Động - nhaxekientruc" />
 
     <!-- TOAST NOTIFICATION -->
@@ -1662,88 +1662,85 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- 4 Financial & Passenger Metric Cards (Chuẩn Image 2) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-2 border-t border-slate-100">
+        <!-- 4 Financial & Passenger Metric Cards (Chuẩn 2x2 Mobile) -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3.5 pt-2 border-t border-slate-100">
           <!-- Card 1: Khách lên xe -->
-          <div class="p-4 bg-slate-50/70 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-2">
+          <div class="p-2.5 sm:p-4 bg-slate-50/70 rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1 sm:space-y-2">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">1. ĐÃ LÊN XE (CHECK-IN)</span>
-              <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold">👥</span>
+              <span class="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider truncate">1. CHECK-IN</span>
+              <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">👥</span>
             </div>
-            <div class="text-2xl font-black text-emerald-600 flex items-baseline gap-1.5 font-mono flex-wrap">
+            <div class="text-lg sm:text-2xl font-black text-emerald-600 flex items-baseline gap-1 font-mono flex-wrap">
               <span>{{ financeSummary?.boarded_seats_count ?? financeSummary?.boarded_count ?? 0 }}</span>
-              <span class="text-slate-400 font-normal text-lg">/</span>
+              <span class="text-slate-400 font-normal text-sm sm:text-lg">/</span>
               <span>{{ financeSummary?.booked_seats_count ?? financeSummary?.total_passengers ?? 0 }}</span>
-              <span class="text-xs font-medium text-slate-500 ml-1">ghế</span>
-              <span class="text-xs text-slate-400 font-normal">({{ financeSummary?.customer_count ?? currentTrip?.customer_count ?? 0 }} khách)</span>
+              <span class="text-[10px] sm:text-xs font-medium text-slate-500">ghế</span>
             </div>
-            <div class="text-[11px] text-slate-500 font-medium pt-1 border-t border-slate-200/80 flex items-center gap-2">
-              <span>Chờ đón: <b>{{ financeSummary?.waiting_count || 0 }}</b></span>
-              <span>•</span>
-              <span>Bỏ: <b>{{ financeSummary?.no_show_count || 0 }}</b></span>
+            <div class="text-[10px] sm:text-[11px] text-slate-500 font-medium pt-1 border-t border-slate-200/80 flex items-center gap-1.5 truncate">
+              <span>Chờ: <b>{{ financeSummary?.waiting_count || 0 }}</b></span>
               <span>•</span>
               <span>Trống: <b>{{ Math.max(0, (currentTrip.bus?.total_seats || 34) - (financeSummary?.booked_seats_count ?? financeSummary?.total_passengers ?? 0)) }}</b></span>
             </div>
           </div>
 
           <!-- Card 2: Đã thu Online / Cọc -->
-          <div class="p-4 bg-blue-50/50 rounded-2xl border border-blue-200/80 shadow-2xs flex flex-col justify-between space-y-2">
+          <div class="p-2.5 sm:p-4 bg-blue-50/50 rounded-xl sm:rounded-2xl border border-blue-200/80 shadow-2xs flex flex-col justify-between space-y-1 sm:space-y-2">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-blue-700 uppercase tracking-wider">2. ĐÃ THU ONLINE / CỌC</span>
-              <span class="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold">💳</span>
+              <span class="text-[10px] sm:text-xs font-bold text-blue-700 uppercase tracking-wider truncate">2. ĐÃ THU CỌC</span>
+              <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">💳</span>
             </div>
-            <div class="text-2xl font-black text-blue-700 font-mono">
+            <div class="text-lg sm:text-2xl font-black text-blue-700 font-mono break-all">
               {{ formatMoney(financeSummary?.online_paid_amount || 0) }}
             </div>
-            <div class="text-[11px] text-slate-500 font-medium pt-1 border-t border-blue-100 flex items-center justify-between">
-              <span>VNPAY • MoMo • VietQR</span>
-              <span class="text-blue-600 font-bold">Đã đối soát</span>
+            <div class="text-[10px] sm:text-[11px] text-slate-500 font-medium pt-1 border-t border-blue-100 flex items-center justify-between">
+              <span class="truncate">Online/Cọc</span>
+              <span class="text-blue-600 font-bold shrink-0">✓ Đã đối soát</span>
             </div>
           </div>
 
           <!-- Card 3: Tiền mặt ĐÃ THU -->
-          <div class="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-200/80 shadow-2xs flex flex-col justify-between space-y-2">
+          <div class="p-2.5 sm:p-4 bg-emerald-50/50 rounded-xl sm:rounded-2xl border border-emerald-200/80 shadow-2xs flex flex-col justify-between space-y-1 sm:space-y-2">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider">3. TIỀN MẶT ĐÃ THU</span>
-              <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold">💵</span>
+              <span class="text-[10px] sm:text-xs font-bold text-emerald-700 uppercase tracking-wider truncate">3. TIỀN MẶT THU</span>
+              <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">💵</span>
             </div>
-            <div class="text-2xl font-black text-emerald-600 font-mono">
+            <div class="text-lg sm:text-2xl font-black text-emerald-600 font-mono break-all">
               {{ formatMoney(financeSummary?.cash_collected_amount || 0) }}
             </div>
-            <div class="text-[11px] text-slate-500 font-medium pt-1 border-t border-emerald-100 flex items-center justify-between">
-              <span>Tiền mặt lơ xe đang giữ</span>
-              <button @click="showSettlementModal = true" class="text-emerald-700 font-bold hover:underline cursor-pointer">
-                Xem sổ quỹ ➔
+            <div class="text-[10px] sm:text-[11px] text-slate-500 font-medium pt-1 border-t border-emerald-100 flex items-center justify-between">
+              <span class="truncate">Lơ xe đang giữ</span>
+              <button @click="showSettlementModal = true" class="text-emerald-700 font-bold hover:underline cursor-pointer shrink-0">
+                Sổ quỹ ➔
               </button>
             </div>
           </div>
 
           <!-- Card 4: Còn thiếu (Cần thu) -->
-          <div class="p-4 rounded-2xl border shadow-2xs flex flex-col justify-between space-y-2"
+          <div class="p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border shadow-2xs flex flex-col justify-between space-y-1 sm:space-y-2"
             :class="{
               'bg-red-50/70 border-red-200 text-red-700': (financeSummary?.uncollected_amount || 0) > 0,
               'bg-slate-50/70 border-slate-200 text-slate-800': (financeSummary?.uncollected_amount || 0) === 0
             }"
           >
             <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider" :class="(financeSummary?.uncollected_amount || 0) > 0 ? 'text-red-600' : 'text-slate-600'">
-                4. CÒN THIẾU (CẦN THU)
+              <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate" :class="(financeSummary?.uncollected_amount || 0) > 0 ? 'text-red-600' : 'text-slate-600'">
+                4. CÒN THIẾU
               </span>
-              <span class="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold" :class="(financeSummary?.uncollected_amount || 0) > 0 ? 'bg-red-100 text-red-600' : 'bg-slate-200 text-slate-500'">
+              <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-xs sm:text-sm font-bold shrink-0" :class="(financeSummary?.uncollected_amount || 0) > 0 ? 'bg-red-100 text-red-600' : 'bg-slate-200 text-slate-500'">
                 ⚠️
               </span>
             </div>
-            <div class="text-2xl font-black font-mono" :class="(financeSummary?.uncollected_amount || 0) > 0 ? 'text-red-600' : 'text-slate-900'">
+            <div class="text-lg sm:text-2xl font-black font-mono break-all" :class="(financeSummary?.uncollected_amount || 0) > 0 ? 'text-red-600' : 'text-slate-900'">
               {{ formatMoney(financeSummary?.uncollected_amount || 0) }}
             </div>
-            <div class="text-[11px] font-bold pt-1 border-t border-slate-200/80">
+            <div class="text-[10px] sm:text-[11px] font-bold pt-1 border-t border-slate-200/80 truncate">
               <span v-if="(financeSummary?.uncollected_amount || 0) > 0" class="text-red-600 flex items-center gap-1 animate-pulse">
                 <span>⚠️</span>
                 <span>Thu khi lên xe</span>
               </span>
               <span v-else class="text-emerald-600 flex items-center gap-1">
                 <span>🟢</span>
-                <span>Đã thu đủ 100% tiền vé trên xe</span>
+                <span>Đã thu đủ 100%</span>
               </span>
             </div>
           </div>
@@ -1832,9 +1829,30 @@ onBeforeUnmount(() => {
 
       <!-- ================= TAB 1: SƠ ĐỒ GHẾ & BÁN VÉ DỌC ĐƯỜNG ================= -->
       <section v-if="activeMainTab === 'seatmap'" class="space-y-4">
-        <!-- Chú thích 4 màu ghế rõ ràng -->
-        <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-xs">
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <!-- Chú thích 4 màu ghế: Gọn gàng trên Mobile, chi tiết trên Desktop -->
+        <div class="bg-white rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 border border-slate-200 shadow-xs">
+          <!-- Mobile view (< sm): Thanh pills ngang siêu gọn -->
+          <div class="sm:hidden grid grid-cols-2 gap-1.5 text-[11px] font-bold">
+            <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-700">
+              <span class="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+              <span class="truncate">Trống (Bán vé)</span>
+            </div>
+            <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-200">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0"></span>
+              <span class="truncate">Chưa lên xe</span>
+            </div>
+            <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <span class="truncate">Đã lên xe</span>
+            </div>
+            <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 text-rose-800 border border-rose-200">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+              <span class="truncate">Bỏ chuyến</span>
+            </div>
+          </div>
+
+          <!-- Desktop view (>= sm) -->
+          <div class="hidden sm:grid sm:grid-cols-4 gap-3 text-xs">
             <!-- Xám: Ghế trống -->
             <div class="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 flex items-center gap-2">
               <span class="w-4 h-4 rounded-md bg-slate-200 border border-slate-400 shrink-0"></span>
@@ -2311,7 +2329,7 @@ onBeforeUnmount(() => {
       <section v-if="activeMainTab === 'pickups'" class="space-y-4">
         <!-- Sub-tabs bar -->
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
-          <div class="flex items-center gap-2 overflow-x-auto">
+          <div class="flex items-center gap-2 overflow-x-auto touch-pan-x pb-1 scrollbar-none w-full sm:w-auto">
             <!-- 1. Danh Sách Khách & Gọi Nhanh (MATCH GIAO DIỆN MẪU) -->
             <button
               @click="activePickupSubTab = 'all_list'"
@@ -2319,10 +2337,10 @@ onBeforeUnmount(() => {
                 'bg-red-600 text-white font-black shadow-md': activePickupSubTab === 'all_list',
                 'bg-white text-slate-700 hover:bg-slate-100 font-bold border border-slate-200': activePickupSubTab !== 'all_list'
               }"
-              class="px-4 py-2 rounded-2xl text-xs flex items-center gap-2 cursor-pointer transition"
+              class="px-3.5 py-2 rounded-2xl text-xs flex items-center gap-2 cursor-pointer transition shrink-0 whitespace-nowrap"
             >
               <i class="fa-solid fa-list-check"></i>
-              <span>📋 Danh Sách Khách & Gọi Nhanh (1-Click Call)</span>
+              <span>📋 Danh Sách Khách & Gọi Nhanh</span>
               <span class="px-2 py-0.5 rounded-full text-[10px] bg-white/20 font-mono">{{ allPassengers.length }}</span>
             </button>
 
@@ -2333,10 +2351,10 @@ onBeforeUnmount(() => {
                 'bg-slate-900 text-white font-black': activePickupSubTab === 'fixed',
                 'bg-white text-slate-700 hover:bg-slate-100 font-bold border border-slate-200': activePickupSubTab !== 'fixed'
               }"
-              class="px-4 py-2 rounded-2xl text-xs flex items-center gap-2 cursor-pointer transition"
+              class="px-3.5 py-2 rounded-2xl text-xs flex items-center gap-2 cursor-pointer transition shrink-0 whitespace-nowrap"
             >
               <i class="fa-solid fa-building-flag"></i>
-              <span>🏢 Theo Bến & Điểm Đón Cố Định</span>
+              <span>🏢 Theo Bến & Điểm Cố Định</span>
               <span class="px-2 py-0.5 rounded-full text-[10px] bg-white/20 font-mono">{{ stationPickups.length }} bến</span>
             </button>
 
@@ -2346,7 +2364,7 @@ onBeforeUnmount(() => {
                 'bg-amber-500 text-slate-950 font-black': activePickupSubTab === 'roadside',
                 'bg-white text-slate-700 hover:bg-slate-100 font-bold border border-slate-200': activePickupSubTab !== 'roadside'
               }"
-              class="px-4 py-2 rounded-2xl text-xs flex items-center gap-2 cursor-pointer transition"
+              class="px-3.5 py-2 rounded-2xl text-xs flex items-center gap-2 cursor-pointer transition shrink-0 whitespace-nowrap"
             >
               <i class="fa-solid fa-road"></i>
               <span>Đón Dọc Đường (Web)</span>
@@ -2359,10 +2377,10 @@ onBeforeUnmount(() => {
                 'bg-blue-600 text-white font-black': activePickupSubTab === 'dropoff',
                 'bg-white text-slate-700 hover:bg-slate-100 font-bold border border-slate-200': activePickupSubTab !== 'dropoff'
               }"
-              class="px-4 py-2 rounded-2xl text-xs flex items-center gap-2 cursor-pointer transition"
+              class="px-3.5 py-2 rounded-2xl text-xs flex items-center gap-2 cursor-pointer transition shrink-0 whitespace-nowrap"
             >
               <i class="fa-solid fa-person-walking-arrow-right"></i>
-              <span>Điểm Trả Khách (Xuống Xe)</span>
+              <span>Điểm Trả Khách</span>
               <span class="px-2 py-0.5 rounded-full text-[10px] bg-white/20 font-mono">{{ stationDropoffs.length }} trạm</span>
             </button>
           </div>
@@ -4540,27 +4558,27 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- THANH ĐIỀU HÀNH DI ĐỘNG CỦA LƠ XE (CỐ ĐỊNH Ở ĐÁY MÀN HÌNH ĐIỆN THOẠI) -->
-    <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_25px_rgba(0,0,0,0.12)] py-1 px-3 flex items-center justify-between select-none">
+    <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_25px_rgba(0,0,0,0.12)] pt-2 pb-6 px-1 grid grid-cols-5 items-end justify-items-center select-none">
       <!-- 1. Quét QR -->
       <button
         type="button"
         @click="switchMainTab('checkin'); startCamera()"
-        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
+        class="w-full flex flex-col items-center justify-center py-0.5 transition cursor-pointer"
         :class="activeMainTab === 'checkin' ? 'text-red-600 font-black' : 'text-slate-600 font-bold'"
       >
-        <span class="text-xl">📷</span>
-        <span class="text-[10px] mt-0.5">Quét QR</span>
+        <span class="text-lg">📷</span>
+        <span class="text-[10px] mt-0.5 font-bold truncate text-center w-full">Quét QR</span>
       </button>
 
       <!-- 2. Đón/Trả -->
       <button
         type="button"
         @click="switchMainTab('pickups')"
-        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
+        class="w-full flex flex-col items-center justify-center py-0.5 transition cursor-pointer"
         :class="activeMainTab === 'pickups' ? 'text-red-600 font-black' : 'text-slate-600 font-bold'"
       >
-        <span class="text-xl">👥</span>
-        <span class="text-[10px] mt-0.5">Đón / Trả</span>
+        <span class="text-lg">👥</span>
+        <span class="text-[10px] mt-0.5 font-bold truncate text-center w-full">Đón / Trả</span>
       </button>
 
       <!-- 3. NÚT NỔI Ở GIỮA: BÁN VÉ DỌC ĐƯỜNG -->
@@ -4568,23 +4586,23 @@ onBeforeUnmount(() => {
         type="button"
         @click="openRoadsideModalWithSeat(null)"
         :disabled="isTripCompleted"
-        class="flex flex-col items-center justify-center -mt-6 transition active:scale-95 cursor-pointer disabled:opacity-50"
+        class="w-full flex flex-col items-center justify-center -mt-7 transition active:scale-95 cursor-pointer disabled:opacity-50"
       >
-        <div class="w-13 h-13 rounded-full bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-600 text-slate-950 flex items-center justify-center text-2xl shadow-xl shadow-orange-500/40 border-2 border-white font-black">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-600 text-slate-950 flex items-center justify-center text-xl shadow-xl shadow-orange-500/40 border-2 border-white font-black">
           🎟️
         </div>
-        <span class="text-[9.5px] font-black text-amber-700 tracking-tight mt-0.5">Bán Vé</span>
+        <span class="text-[10px] font-black text-amber-700 tracking-tight mt-1 truncate text-center w-full">Bán Vé</span>
       </button>
 
       <!-- 4. Sơ Đồ Ghế -->
       <button
         type="button"
         @click="switchMainTab('seatmap')"
-        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
+        class="w-full flex flex-col items-center justify-center py-0.5 transition cursor-pointer"
         :class="activeMainTab === 'seatmap' ? 'text-red-600 font-black' : 'text-slate-600 font-bold'"
       >
-        <span class="text-xl">💺</span>
-        <span class="text-[10px] mt-0.5">Sơ Đồ Ghế</span>
+        <span class="text-lg">💺</span>
+        <span class="text-[10px] mt-0.5 font-bold truncate text-center w-full">Sơ Đồ Ghế</span>
       </button>
 
       <!-- 5. Chốt Ca -->
@@ -4592,11 +4610,11 @@ onBeforeUnmount(() => {
         type="button"
         @click="openClosingModal"
         :disabled="isTripCompleted"
-        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer disabled:opacity-50"
+        class="w-full flex flex-col items-center justify-center py-0.5 transition cursor-pointer disabled:opacity-50"
         :class="isTripCompleted ? 'text-slate-400 font-bold' : 'text-red-600 font-bold'"
       >
-        <span class="text-xl">💵</span>
-        <span class="text-[10px] mt-0.5">Chốt Ca</span>
+        <span class="text-lg">💵</span>
+        <span class="text-[10px] mt-0.5 font-bold truncate text-center w-full">Chốt Ca</span>
       </button>
     </nav>
   </div>

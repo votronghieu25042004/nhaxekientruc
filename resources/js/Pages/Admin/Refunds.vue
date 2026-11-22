@@ -17,51 +17,51 @@
       </div>
 
       <!-- 1. KPI THỐNG KÊ HOÀN TIỀN & HỦY VÉ -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <!-- Tổng Vé Hủy -->
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+        <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng Vé Đã Hủy</p>
-            <p class="text-2xl font-black text-slate-900 mt-1">{{ kpi.total_cancelled }} <span class="text-xs text-slate-400 font-normal">vé</span></p>
-            <p class="text-[11px] text-slate-500 font-medium mt-0.5">Khách hủy & Nhà xe điều chỉnh</p>
+            <p class="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Tổng Vé Đã Hủy</p>
+            <p class="text-lg sm:text-2xl font-black text-slate-900 mt-0.5 sm:mt-1">{{ kpi.total_cancelled }} <span class="text-xs text-slate-400 font-normal">vé</span></p>
+            <p class="text-[10px] sm:text-[11px] text-slate-500 font-medium mt-0.5 truncate">Khách hủy & điều chỉnh</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center text-xl">
+          <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center text-sm sm:text-xl self-start sm:self-auto shrink-0">
             📋
           </div>
         </div>
 
         <!-- Chờ Xử Lý Hoàn Tiền -->
-        <div class="bg-gradient-to-br from-amber-50 to-white p-5 rounded-2xl border-2 border-amber-200 shadow-xs flex items-center justify-between">
+        <div class="bg-gradient-to-br from-amber-50 to-white p-3.5 sm:p-5 rounded-2xl border sm:border-2 border-amber-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <p class="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Chờ Xử Lý Hoàn Tiền</p>
-            <p class="text-2xl font-black text-amber-600 mt-1">{{ kpi.pending_refund }} <span class="text-xs text-amber-500 font-normal">vé</span></p>
-            <p class="text-[11px] text-amber-600 font-semibold mt-0.5">Cần Admin / Kế toán duyệt</p>
+            <p class="text-[10px] sm:text-[11px] font-bold text-amber-700 uppercase tracking-wider truncate">Chờ Xử Lý</p>
+            <p class="text-lg sm:text-2xl font-black text-amber-600 mt-0.5 sm:mt-1">{{ kpi.pending_refund }} <span class="text-xs text-amber-500 font-normal">vé</span></p>
+            <p class="text-[10px] sm:text-[11px] text-amber-600 font-semibold mt-0.5 truncate">Cần kế toán duyệt</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl shadow-xs">
+          <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-sm sm:text-xl shadow-xs self-start sm:self-auto shrink-0">
             ⏳
           </div>
         </div>
 
         <!-- Đã Hoàn Tiền Thành Công -->
-        <div class="bg-gradient-to-br from-emerald-50 to-white p-5 rounded-2xl border-2 border-emerald-200 shadow-xs flex items-center justify-between">
+        <div class="bg-gradient-to-br from-emerald-50 to-white p-3.5 sm:p-5 rounded-2xl border sm:border-2 border-emerald-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <p class="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Đã Hoàn Tiền</p>
-            <p class="text-2xl font-black text-emerald-600 font-mono mt-1">{{ formatCurrency(kpi.total_refund_amount) }}</p>
-            <p class="text-[11px] text-emerald-700 font-semibold mt-0.5">{{ kpi.total_refunded }} vé đã chuyển trả khách</p>
+            <p class="text-[10px] sm:text-[11px] font-bold text-emerald-700 uppercase tracking-wider truncate">Đã Hoàn Tiền</p>
+            <p class="text-lg sm:text-2xl font-black text-emerald-600 font-mono mt-0.5 sm:mt-1 break-all">{{ formatCurrency(kpi.total_refund_amount) }}</p>
+            <p class="text-[10px] sm:text-[11px] text-emerald-700 font-semibold mt-0.5 truncate">{{ kpi.total_refunded }} vé hoàn tất</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl shadow-xs">
+          <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm sm:text-xl shadow-xs self-start sm:self-auto shrink-0">
             💸
           </div>
         </div>
 
         <!-- Từ Chối / Không Đủ Điều Kiện -->
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+        <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Từ Chối / Phí 100%</p>
-            <p class="text-2xl font-black text-rose-600 mt-1">{{ kpi.rejected_count }} <span class="text-xs text-slate-400 font-normal">vé</span></p>
-            <p class="text-[11px] text-rose-500 font-medium mt-0.5">Hủy &lt;12h hoặc No-show</p>
+            <p class="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Từ Chối / Phí 100%</p>
+            <p class="text-lg sm:text-2xl font-black text-rose-600 mt-0.5 sm:mt-1">{{ kpi.rejected_count }} <span class="text-xs text-slate-400 font-normal">vé</span></p>
+            <p class="text-[10px] sm:text-[11px] text-rose-500 font-medium mt-0.5 truncate">Hủy &lt;12h / No-show</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">
+          <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-sm sm:text-xl self-start sm:self-auto shrink-0">
             ⛔
           </div>
         </div>
@@ -178,8 +178,8 @@
 
       <!-- 4. BẢNG DANH SÁCH VÉ HỦY & XỬ LÝ HOÀN TIỀN -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-slate-700 border-collapse">
+        <div class="overflow-x-auto touch-pan-x">
+          <table class="w-full text-left text-xs text-slate-700 border-collapse min-w-[800px]">
             <thead class="bg-slate-100/80 text-[11px] font-black text-slate-600 uppercase border-b border-slate-200 tracking-wider">
               <tr>
                 <th class="py-3 px-3.5">Mã Vé</th>

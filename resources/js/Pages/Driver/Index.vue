@@ -1436,7 +1436,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div :class="{ 'dark bg-[#121212] text-zinc-100': isDarkMode, 'bg-[#F8FAFC] text-slate-900': !isDarkMode }" class="min-h-screen font-sans transition-colors duration-500 ease-in-out pb-24 md:pb-0">
+  <div :class="{ 'dark bg-[#121212] text-zinc-100': isDarkMode, 'bg-[#F8FAFC] text-slate-900': !isDarkMode }" class="min-h-screen font-sans transition-colors duration-500 ease-in-out pb-28 md:pb-0">
     <Head title="Bác Tài - Bảng Điều Khiển Lái Xe Thông Minh" />
 
     <!-- DÀNH RIÊNG CHO QUẢN TRỊ VIÊN: DẢI ĐIỀU KHIỂN & CHUYỂN ACC BÁC TÀI (ĐỒNG BỘ MÀU ĐỎ SANG TRỌNG NHAXEKIENTRUC) -->
@@ -2666,24 +2666,24 @@ onUnmounted(() => {
               >
                 ● {{ activeActionTrip?.status === 'IN_TRANSIT' ? 'ĐANG CHẠY TRÊN ĐƯỜNG' : (activeActionTrip?.status === 'COMPLETED' ? 'ĐÃ HOÀN THÀNH' : 'CHỜ XUẤT BẾN') }}
               </span>
-              <span class="text-xs font-bold text-slate-500">
-                • Biển số xe: <strong class="text-slate-900 dark:text-white font-mono">{{ activeActionTrip?.bus?.license_plate || '43B-067.89' }}</strong>
+              <span class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                • Biển số xe: <strong class="text-slate-950 dark:text-white font-mono bg-slate-200/80 dark:bg-zinc-800 px-1.5 py-0.5 rounded">{{ activeActionTrip?.bus?.license_plate || '43B-067.89' }}</strong>
               </span>
-              <span class="text-xs font-bold text-slate-500">
-                • Lơ xe: <strong class="text-slate-900 dark:text-white">{{ activeActionTrip?.conductor?.name || 'Nguyễn Văn Phúc' }}</strong>
+              <span class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                • Lơ xe: <strong class="text-slate-950 dark:text-white">{{ activeActionTrip?.conductor?.name || 'Nguyễn Văn Phúc' }}</strong>
               </span>
             </div>
 
-            <h3 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <h3 class="text-lg sm:text-xl font-black text-slate-950 dark:text-white flex items-center gap-2">
               <span>{{ activeActionTrip?.route?.origin || 'Đà Nẵng' }}</span>
-              <span class="text-red-500 font-black text-base select-none">➔</span>
+              <span class="text-red-600 font-black text-base select-none">➔</span>
               <span>{{ activeActionTrip?.route?.destination || 'Quy Nhơn' }}</span>
-              <span class="text-xs font-bold text-slate-500 font-normal">({{ activeActionTrip?.route?.name }})</span>
+              <span class="text-xs font-bold text-slate-600 dark:text-slate-400 font-normal">({{ activeActionTrip?.route?.name }})</span>
             </h3>
 
-            <div class="text-xs font-bold text-slate-500 flex items-center gap-3 flex-wrap">
+            <div class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-3 flex-wrap">
               <span>⏰ Giờ chạy: <strong class="text-red-600 dark:text-red-400 font-mono text-sm">{{ activeActionTrip?.departure_time?.substring(11, 16) }} ➔ {{ activeActionTrip?.arrival_time?.substring(11, 16) }}</strong></span>
-              <span>📅 Ngày khởi hành: <strong class="text-slate-800 dark:text-slate-200">{{ activeActionTrip?.departure_time ? (activeActionTrip.departure_time.substring(8, 10) + '/' + activeActionTrip.departure_time.substring(5, 7) + '/' + activeActionTrip.departure_time.substring(0, 4)) : '29/10/2026' }}</strong></span>
+              <span>📅 Ngày khởi hành: <strong class="text-slate-950 dark:text-slate-100">{{ activeActionTrip?.departure_time ? (activeActionTrip.departure_time.substring(8, 10) + '/' + activeActionTrip.departure_time.substring(5, 7) + '/' + activeActionTrip.departure_time.substring(0, 4)) : '29/10/2026' }}</strong></span>
             </div>
           </div>
 
@@ -2943,7 +2943,7 @@ onUnmounted(() => {
           <div :class="isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'" class="p-4 rounded-3xl border shadow-xs space-y-1">
             <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400 block uppercase tracking-wider">TỔNG CHUYẾN ĐÃ CHẠY</span>
             <div class="flex items-baseline gap-2">
-              <span class="text-2xl font-black text-slate-900 dark:text-white font-mono">{{ weeklyStats.completedTrips }}</span>
+              <span class="text-2xl font-black text-slate-900 dark:text-white font-mono">{{ weeklyStats?.completedTrips ?? 0 }}</span>
               <span class="text-xs text-slate-600 dark:text-slate-400 font-semibold">chuyến</span>
             </div>
             <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold block">✓ 100% hoàn thành an toàn</span>
@@ -2953,7 +2953,7 @@ onUnmounted(() => {
           <div :class="isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'" class="p-4 rounded-3xl border shadow-xs space-y-1">
             <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400 block uppercase tracking-wider">QUÃNG ĐƯỜNG LĂN BÁNH</span>
             <div class="flex items-baseline gap-2">
-              <span class="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono">{{ weeklyStats.totalKm.toLocaleString('vi-VN') }}</span>
+              <span class="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono">{{ (weeklyStats?.totalKm || 0).toLocaleString('vi-VN') }}</span>
               <span class="text-xs text-slate-600 dark:text-slate-400 font-semibold">km</span>
             </div>
             <span class="text-[11px] text-blue-600 dark:text-blue-400 font-bold block">Lũy kế hành trình an toàn</span>
@@ -2963,7 +2963,7 @@ onUnmounted(() => {
           <div :class="isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'" class="p-4 rounded-3xl border shadow-xs space-y-1">
             <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400 block uppercase tracking-wider">HÀNH KHÁCH ĐÓN TRẢ</span>
             <div class="flex items-baseline gap-2">
-              <span class="text-2xl font-black text-purple-600 dark:text-purple-400 font-mono">{{ weeklyStats.totalPax }}</span>
+              <span class="text-2xl font-black text-purple-600 dark:text-purple-400 font-mono">{{ weeklyStats?.totalPax ?? 0 }}</span>
               <span class="text-xs text-slate-600 dark:text-slate-400 font-semibold">lượt khách</span>
             </div>
             <span class="text-[11px] text-purple-600 dark:text-purple-400 font-bold block">Đón/trả đúng trạm 100%</span>
@@ -2973,9 +2973,9 @@ onUnmounted(() => {
           <div :class="isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'" class="p-4 rounded-3xl border shadow-xs space-y-1">
             <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400 block uppercase tracking-wider">ĐÁNH GIÁ & ĐÚNG GIỜ</span>
             <div class="flex items-baseline gap-2">
-              <span class="text-xl font-black text-amber-500 font-mono">{{ weeklyStats.rating }} / 5.0 ⭐</span>
+              <span class="text-xl font-black text-amber-500 font-mono">{{ weeklyStats?.rating || '5.0' }} / 5.0 ⭐</span>
             </div>
-            <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold block">Tỷ lệ đúng giờ: {{ weeklyStats.onTimeRate }}</span>
+            <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold block">Tỷ lệ đúng giờ: {{ weeklyStats?.onTimeRate || '100%' }}</span>
           </div>
         </div>
 
@@ -4892,62 +4892,62 @@ onUnmounted(() => {
 
     <!-- THANH COCKPIT DI ĐỘNG CỦA BÁC TÀI (CỐ ĐỊNH Ở ĐÁY MÀN HÌNH ĐIỆN THOẠI) -->
     <nav 
-      class="md:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-md border-t py-1.5 px-2 flex items-center justify-around select-none shadow-[0_-4px_25px_rgba(0,0,0,0.18)] transition-colors"
+      class="md:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-md border-t pt-2 pb-6 px-1 grid grid-cols-5 items-end justify-items-center select-none shadow-[0_-4px_25px_rgba(0,0,0,0.18)] transition-colors"
       :class="isDarkMode ? 'bg-zinc-950/95 border-zinc-800 text-zinc-300' : 'bg-white/95 border-slate-300 text-slate-800'"
     >
       <!-- 1. Lịch Chạy -->
       <button
         type="button"
         @click="activeTab = 'today'"
-        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
+        class="w-full flex flex-col items-center justify-center py-0.5 transition cursor-pointer"
         :class="activeTab === 'today' ? 'text-red-600 font-black' : 'text-slate-600 dark:text-zinc-400 font-bold hover:text-red-600'"
       >
-        <span class="text-xl">📕</span>
-        <span class="text-[10px] mt-0.5">Lịch Chạy</span>
+        <span class="text-lg">📕</span>
+        <span class="text-[10px] mt-0.5 font-bold truncate text-center w-full">Lịch Chạy</span>
       </button>
 
-      <!-- 2. NÚT CHÍNH Ở GIỮA: CHẾ ĐỘ LÁI & MAP GPS -->
-      <button
-        type="button"
-        @click="switchTabToDrive()"
-        class="flex flex-col items-center justify-center -mt-6 transition active:scale-95 cursor-pointer"
-      >
-        <div class="w-13 h-13 rounded-full bg-gradient-to-tr from-red-600 via-rose-600 to-red-700 text-white flex items-center justify-center text-2xl shadow-xl shadow-red-600/40 border-2 border-white font-black animate-pulse">
-          🧭
-        </div>
-        <span class="text-[9.5px] font-black text-red-600 tracking-tight mt-0.5">Bản Đồ Lái</span>
-      </button>
-
-      <!-- 3. Sơ Đồ Ghế -->
+      <!-- 2. Sơ Đồ Ghế -->
       <button
         type="button"
         @click="activeTab = 'seatmap'"
-        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
+        class="w-full flex flex-col items-center justify-center py-0.5 transition cursor-pointer"
         :class="activeTab === 'seatmap' ? 'text-red-600 font-black' : 'text-slate-600 dark:text-zinc-400 font-bold hover:text-red-600'"
       >
-        <span class="text-xl">💺</span>
-        <span class="text-[10px] mt-0.5">Sơ Đồ Ghế</span>
+        <span class="text-lg">💺</span>
+        <span class="text-[10px] mt-0.5 font-bold truncate text-center w-full">Sơ Đồ Ghế</span>
+      </button>
+
+      <!-- 3. NÚT CHÍNH Ở GIỮA: CHẾ ĐỘ LÁI & MAP GPS -->
+      <button
+        type="button"
+        @click="switchTabToDrive()"
+        class="w-full flex flex-col items-center justify-center -mt-7 transition active:scale-95 cursor-pointer"
+      >
+        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-600 via-rose-600 to-red-700 text-white flex items-center justify-center text-xl shadow-xl shadow-red-600/40 border-2 border-white font-black animate-pulse">
+          🧭
+        </div>
+        <span class="text-[10px] font-black text-red-600 tracking-tight mt-1 truncate text-center w-full">Bản Đồ Lái</span>
       </button>
 
       <!-- 4. Lịch Trình -->
       <button
         type="button"
         @click="activeTab = 'schedule'"
-        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
+        class="w-full flex flex-col items-center justify-center py-0.5 transition cursor-pointer"
         :class="activeTab === 'schedule' ? 'text-red-600 font-black' : 'text-slate-600 dark:text-zinc-400 font-bold hover:text-red-600'"
       >
-        <span class="text-xl">🗓️</span>
-        <span class="text-[10px] mt-0.5">Lịch Tuần</span>
+        <span class="text-lg">🗓️</span>
+        <span class="text-[10px] mt-0.5 font-bold truncate text-center w-full">Lịch Tuần</span>
       </button>
 
       <!-- 5. Báo SOS -->
       <button
         type="button"
         @click="showSosModal = true"
-        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
+        class="w-full flex flex-col items-center justify-center py-0.5 transition cursor-pointer"
       >
-        <span class="text-xl">🚨</span>
-        <span class="text-[10px] mt-0.5 font-black text-amber-500">SOS</span>
+        <span class="text-lg">🚨</span>
+        <span class="text-[10px] mt-0.5 font-black text-amber-500 truncate text-center w-full">SOS</span>
       </button>
     </nav>
 

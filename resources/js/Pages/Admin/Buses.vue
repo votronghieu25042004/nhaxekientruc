@@ -86,87 +86,97 @@
       </div>
 
       <!-- 5 THẺ THỐNG KÊ CHI TIẾT ĐỘI XE (PASTEL FLAT SAAS DESIGN) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
         <!-- Tổng Lượt Chạy -->
-        <div class="bg-white p-4.5 rounded-2xl border border-slate-200 flex items-center justify-between">
-          <div>
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng Lượt Chạy</p>
-            <p class="text-2xl font-black text-slate-900 mt-1">{{ totalTripsCount }} <span class="text-xs text-slate-400 font-normal">lượt</span></p>
-            <p class="text-[11px] text-slate-500 mt-0.5">Chạy 2 chiều khứ hồi</p>
+        <div class="bg-white p-3 sm:p-4.5 rounded-2xl border border-slate-200 flex flex-col justify-between">
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="min-w-0">
+              <p class="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng Lượt Chạy</p>
+              <p class="text-base sm:text-2xl font-black text-slate-900 mt-1 leading-tight">{{ totalTripsCount }} <span class="text-xs text-slate-400 font-normal">lượt</span></p>
+            </div>
+            <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-sm sm:text-lg font-black shrink-0">
+              🚍
+            </div>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-lg font-black">
-            🚍
-          </div>
+          <p class="text-[10px] sm:text-[11px] text-slate-500 mt-1 truncate">Chạy 2 chiều khứ hồi</p>
         </div>
 
         <!-- Thẻ 2: Xe Hoạt Động (CLICKABLE: Lọc xe đang hoạt động - Pastel Theme) -->
         <div 
           @click="statusFilter = statusFilter === 'ACTIVE' ? 'ALL' : 'ACTIVE'"
-          class="p-4.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all duration-200 select-none"
+          class="p-3 sm:p-4.5 rounded-2xl border flex flex-col justify-between cursor-pointer transition-all duration-200 select-none"
           :class="statusFilter === 'ACTIVE' ? 'bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-400/30' : 'bg-white border-slate-200 hover:border-emerald-300'"
         >
-          <div>
-            <div class="flex items-center gap-1.5">
-              <p class="text-[11px] font-bold uppercase tracking-wider" :class="statusFilter === 'ACTIVE' ? 'text-emerald-800' : 'text-slate-500'">
-                Xe Hoạt Động
-              </p>
-              <span v-if="statusFilter === 'ACTIVE'" class="text-[10px] bg-emerald-600 text-white font-bold px-1.5 py-0.2 rounded-md">Đang lọc</span>
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1">
+                <p class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider" :class="statusFilter === 'ACTIVE' ? 'text-emerald-800' : 'text-slate-500'">
+                  Xe Hoạt Động
+                </p>
+                <span v-if="statusFilter === 'ACTIVE'" class="text-[9px] bg-emerald-600 text-white font-bold px-1 py-0.2 rounded">Lọc</span>
+              </div>
+              <p class="text-base sm:text-2xl font-black text-slate-900 mt-1 leading-tight">{{ activeBusesCount }} / {{ rawBuses.length }} <span class="text-xs text-slate-400 font-normal">xe</span></p>
             </div>
-            <p class="text-2xl font-black text-slate-900 mt-1">{{ activeBusesCount }} / {{ rawBuses.length }} <span class="text-xs text-slate-400 font-normal">xe</span></p>
-            <p class="text-[11px] text-emerald-700 font-medium mt-0.5 flex items-center gap-1">
-              <span>✓ Bấm để lọc xe hoạt động</span>
-            </p>
+            <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center justify-center text-sm sm:text-base font-black shrink-0">
+              ✓
+            </div>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center justify-center text-base font-black">
-            ✓
-          </div>
+          <p class="text-[10px] sm:text-[11px] text-emerald-700 font-medium mt-1 truncate">
+            ✓ Bấm để lọc xe
+          </p>
         </div>
 
         <!-- Thẻ 3: Khách Đã Đón -->
-        <div class="bg-white p-4.5 rounded-2xl border border-slate-200 flex items-center justify-between">
-          <div>
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Khách Đã Đón</p>
-            <p class="text-2xl font-black text-slate-900 mt-1">{{ totalPassengersCount }} <span class="text-xs text-slate-400 font-normal">khách</span></p>
-            <p class="text-[11px] text-slate-500 mt-0.5">Lưu trữ từ DB đặt vé</p>
+        <div class="bg-white p-3 sm:p-4.5 rounded-2xl border border-slate-200 flex flex-col justify-between">
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="min-w-0">
+              <p class="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Khách Đã Đón</p>
+              <p class="text-base sm:text-2xl font-black text-slate-900 mt-1 leading-tight">{{ totalPassengersCount }} <span class="text-xs text-slate-400 font-normal">khách</span></p>
+            </div>
+            <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-700 border border-blue-200/60 flex items-center justify-center text-sm sm:text-base font-black shrink-0">
+              👥
+            </div>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 border border-blue-200/60 flex items-center justify-center text-base font-black">
-            👥
-          </div>
+          <p class="text-[10px] sm:text-[11px] text-slate-500 mt-1 truncate">Lưu trữ từ DB đặt vé</p>
         </div>
 
         <!-- Thẻ 4: Xe Bảo Dưỡng (CLICKABLE: Lọc xe đang bảo dưỡng - Pastel Theme) -->
         <div 
           @click="statusFilter = statusFilter === 'MAINTENANCE' ? 'ALL' : 'MAINTENANCE'"
-          class="p-4.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all duration-200 select-none"
+          class="p-3 sm:p-4.5 rounded-2xl border flex flex-col justify-between cursor-pointer transition-all duration-200 select-none"
           :class="statusFilter === 'MAINTENANCE' ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-400/30' : 'bg-white border-slate-200 hover:border-amber-300'"
         >
-          <div>
-            <div class="flex items-center gap-1.5">
-              <p class="text-[11px] font-bold uppercase tracking-wider" :class="statusFilter === 'MAINTENANCE' ? 'text-amber-800' : 'text-slate-500'">
-                Bảo Dưỡng Kỹ Thuật
-              </p>
-              <span v-if="statusFilter === 'MAINTENANCE'" class="text-[10px] bg-amber-600 text-white font-bold px-1.5 py-0.2 rounded-md">Đang lọc</span>
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1">
+                <p class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider" :class="statusFilter === 'MAINTENANCE' ? 'text-amber-800' : 'text-slate-500'">
+                  Bảo Dưỡng
+                </p>
+                <span v-if="statusFilter === 'MAINTENANCE'" class="text-[9px] bg-amber-600 text-white font-bold px-1 py-0.2 rounded">Lọc</span>
+              </div>
+              <p class="text-base sm:text-2xl font-black text-amber-800 mt-1 leading-tight">{{ maintenanceCount }} <span class="text-xs text-amber-700/60 font-normal">xe</span></p>
             </div>
-            <p class="text-2xl font-black text-amber-800 mt-1">{{ maintenanceCount }} <span class="text-xs text-amber-700/60 font-normal">xe</span></p>
-            <p class="text-[11px] text-amber-800 font-medium mt-0.5 flex items-center gap-1">
-              <span>🔧 Bấm để lọc xe bảo dưỡng</span>
-            </p>
+            <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-amber-50 text-amber-800 border border-amber-200/60 flex items-center justify-center text-sm sm:text-base font-black shrink-0">
+              🔧
+            </div>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-800 border border-amber-200/60 flex items-center justify-center text-base font-black">
-            🔧
-          </div>
+          <p class="text-[10px] sm:text-[11px] text-amber-800 font-medium mt-1 truncate">
+            🔧 Bấm để lọc xe
+          </p>
         </div>
 
         <!-- Thẻ 5: Doanh Thu Ngày -->
-        <div class="bg-white p-4.5 rounded-2xl border border-slate-200 flex items-center justify-between">
-          <div>
-            <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Doanh Thu Ngày</p>
-            <p class="text-2xl font-black text-emerald-700 font-mono mt-1">{{ formatCurrency(totalRevenueSum) }}</p>
-            <p class="text-[11px] text-slate-500 mt-0.5">Bao gồm cọc 30% & vé quầy</p>
+        <div class="bg-white p-3 sm:p-4.5 rounded-2xl border border-slate-200 flex flex-col justify-between col-span-2 sm:col-span-1">
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="min-w-0">
+              <p class="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider">Doanh Thu Ngày</p>
+              <p class="text-base sm:text-2xl font-black text-emerald-700 font-mono mt-1 leading-tight break-all">{{ formatCurrency(totalRevenueSum) }}</p>
+            </div>
+            <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center justify-center text-sm sm:text-base font-black shrink-0">
+              💰
+            </div>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center justify-center text-base font-black">
-            💰
-          </div>
+          <p class="text-[10px] sm:text-[11px] text-slate-500 mt-1 truncate">Bao gồm cọc 30% & vé quầy</p>
         </div>
       </div>
 
@@ -404,18 +414,18 @@
 
         <!-- B. HIỂN THỊ DẠNG BẢNG (TABLE) -->
         <div v-else class="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs sm:text-sm">
+          <div class="overflow-x-auto touch-pan-x">
+            <table class="w-full text-left text-xs sm:text-sm min-w-[750px]">
               <thead class="bg-[#0f172a] text-white uppercase text-[11px] font-black tracking-wider">
                 <tr>
-                  <th class="px-5 py-3.5">Biển Số Xe</th>
-                  <th class="px-5 py-3.5">Loại Xe / Sức Chứa</th>
-                  <th class="px-5 py-3.5">Tài Xế Phụ Trách</th>
-                  <th class="px-5 py-3.5 text-center">Lượt Chạy / Ngày</th>
-                  <th class="px-5 py-3.5 text-center">Khách Đã Đón</th>
-                  <th class="px-5 py-3.5 text-right">Doanh Thu Từng Xe</th>
-                  <th class="px-5 py-3.5 text-center">Trạng Thái</th>
-                  <th class="px-5 py-3.5 text-center">Hành Động</th>
+                  <th class="px-5 py-3.5 whitespace-nowrap">Biển Số Xe</th>
+                  <th class="px-5 py-3.5 whitespace-nowrap">Loại Xe / Sức Chứa</th>
+                  <th class="px-5 py-3.5 whitespace-nowrap">Tài Xế Phụ Trách</th>
+                  <th class="px-5 py-3.5 text-center whitespace-nowrap">Lượt Chạy / Ngày</th>
+                  <th class="px-5 py-3.5 text-center whitespace-nowrap">Khách Đã Đón</th>
+                  <th class="px-5 py-3.5 text-right whitespace-nowrap">Doanh Thu Từng Xe</th>
+                  <th class="px-5 py-3.5 text-center whitespace-nowrap">Trạng Thái</th>
+                  <th class="px-5 py-3.5 text-center whitespace-nowrap">Hành Động</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
@@ -425,31 +435,31 @@
                   class="hover:bg-red-50/20 transition-all text-xs"
                   :class="bus.status === 'MAINTENANCE' ? 'bg-amber-50/30' : ''"
                 >
-                  <td class="px-5 py-3.5 font-mono font-bold text-slate-900">
-                    <div class="flex items-center gap-2">
-                      <span class="w-2.5 h-2.5 rounded-full" :class="bus.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-amber-500'"></span>
-                      <span>{{ bus.license_plate }}</span>
+                  <td class="px-5 py-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
+                    <div class="flex items-center gap-2 shrink-0">
+                      <span class="w-2.5 h-2.5 rounded-full shrink-0" :class="bus.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+                      <span class="whitespace-nowrap font-mono">{{ bus.license_plate }}</span>
                     </div>
                   </td>
-                  <td class="px-5 py-3.5">
+                  <td class="px-5 py-3.5 whitespace-nowrap">
                     <span class="font-bold text-slate-800">{{ bus.bus_type }}</span>
                     <span class="text-xs text-slate-400 block">{{ bus.total_seats }} chỗ</span>
                   </td>
-                  <td class="px-5 py-3.5 font-medium text-slate-800">
+                  <td class="px-5 py-3.5 font-medium text-slate-800 whitespace-nowrap">
                     {{ bus.driver_name }}
                   </td>
-                  <td class="px-5 py-3.5 text-center">
+                  <td class="px-5 py-3.5 text-center whitespace-nowrap">
                     <span class="font-bold text-red-700 bg-red-50 px-2.5 py-0.5 rounded-full text-xs border border-red-200">
                       {{ bus.trips_count || 0 }} lượt
                     </span>
                   </td>
-                  <td class="px-5 py-3.5 text-center font-bold text-slate-700">
+                  <td class="px-5 py-3.5 text-center font-bold text-slate-700 whitespace-nowrap">
                     {{ bus.total_passengers || 0 }} khách
                   </td>
-                  <td class="px-5 py-3.5 text-right font-bold text-emerald-700 font-mono">
+                  <td class="px-5 py-3.5 text-right font-bold text-emerald-700 font-mono whitespace-nowrap">
                     {{ formatCurrency(bus.total_revenue) }}
                   </td>
-                  <td class="px-5 py-3.5 text-center">
+                  <td class="px-5 py-3.5 text-center whitespace-nowrap">
                     <button
                       @click="toggleBusStatus(bus)"
                       class="transition-transform active:scale-95 cursor-pointer inline-block"
@@ -480,7 +490,7 @@
                       </span>
                     </button>
                   </td>
-                  <td class="px-5 py-3.5 text-center">
+                  <td class="px-5 py-3.5 text-center whitespace-nowrap">
                     <div class="flex items-center justify-center gap-1.5">
                       <button
                         @click="viewBusDetail(bus.id)"

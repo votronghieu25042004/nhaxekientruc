@@ -4,44 +4,44 @@
 
     <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-6">
       <!-- Thống kê tổng quan CRM Phân hạng & Lịch sử đi xe -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center justify-between">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div class="bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng Khách Hàng</p>
-            <p class="text-2xl font-black text-slate-900 mt-1">{{ allCustomersCount }} <span class="text-sm text-slate-400 font-normal">hành khách</span></p>
-            <p class="text-xs mt-0.5 flex items-center gap-1.5 font-bold">
+            <p class="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng Khách Hàng</p>
+            <p class="text-lg sm:text-2xl font-black text-slate-900 mt-0.5 sm:mt-1">{{ allCustomersCount }} <span class="text-xs sm:text-sm text-slate-400 font-normal">khách</span></p>
+            <p class="text-[10px] sm:text-xs mt-0.5 flex flex-wrap items-center gap-1 font-bold">
               <span class="text-emerald-600">🟢 {{ activeCustomersCount }} hoạt động</span>
-              <span v-if="lockedCustomersCount > 0" class="text-rose-600">• 🔒 {{ lockedCustomersCount }} đã khóa</span>
+              <span v-if="lockedCustomersCount > 0" class="text-rose-600">• 🔒 {{ lockedCustomersCount }}</span>
             </p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shadow-2xs">👥</div>
+          <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm sm:text-xl shadow-2xs self-start sm:self-auto shrink-0">👥</div>
         </div>
 
-        <div class="bg-gradient-to-br from-indigo-50 via-purple-50 to-white p-5 rounded-3xl border-2 border-indigo-200 shadow-xs flex items-center justify-between">
+        <div class="bg-gradient-to-br from-indigo-50 via-purple-50 to-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border sm:border-2 border-indigo-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <p class="text-xs font-bold text-indigo-600 uppercase tracking-wider">💎 VIP Kim Cương & Vàng 👑</p>
-            <p class="text-2xl font-black text-indigo-950 mt-1">{{ diamondCount + goldCount }} <span class="text-sm text-indigo-400 font-normal">thành viên</span></p>
-            <p class="text-xs text-purple-700 font-semibold mt-0.5">{{ diamondCount }} Kim Cương • {{ goldCount }} VIP Vàng</p>
+            <p class="text-[11px] sm:text-xs font-bold text-indigo-600 uppercase tracking-wider truncate">💎 Kim Cương & Vàng 👑</p>
+            <p class="text-lg sm:text-2xl font-black text-indigo-950 mt-0.5 sm:mt-1">{{ diamondCount + goldCount }} <span class="text-xs sm:text-sm text-indigo-400 font-normal">thành viên</span></p>
+            <p class="text-[10px] sm:text-xs text-purple-700 font-semibold mt-0.5">{{ diamondCount }} KC • {{ goldCount }} Vàng</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center text-xl shadow-md">💎</div>
+          <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center text-sm sm:text-xl shadow-md self-start sm:self-auto shrink-0">💎</div>
         </div>
 
-        <div class="bg-gradient-to-br from-slate-50 via-amber-50/40 to-white p-5 rounded-3xl border-2 border-slate-200 shadow-xs flex items-center justify-between">
+        <div class="bg-gradient-to-br from-slate-50 via-amber-50/40 to-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border sm:border-2 border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <p class="text-xs font-bold text-slate-600 uppercase tracking-wider">🥈 Bạc & Khách Đã Đi 1 Lần</p>
-            <p class="text-2xl font-black text-slate-900 mt-1">{{ silverCount + oneTripCount }} <span class="text-sm text-slate-400 font-normal">khách</span></p>
-            <p class="text-xs text-slate-600 font-medium mt-0.5">{{ silverCount }} Thân Thiết • {{ oneTripCount }} khách đi 1 lần</p>
+            <p class="text-[11px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider truncate">🥈 Bạc & Khách 1 Lần</p>
+            <p class="text-lg sm:text-2xl font-black text-slate-900 mt-0.5 sm:mt-1">{{ silverCount + oneTripCount }} <span class="text-xs sm:text-sm text-slate-400 font-normal">khách</span></p>
+            <p class="text-[10px] sm:text-xs text-slate-600 font-medium mt-0.5">{{ silverCount }} Thân Thiết • {{ oneTripCount }} 1 lần</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-800 flex items-center justify-center text-xl shadow-2xs">🥈</div>
+          <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 text-slate-800 flex items-center justify-center text-sm sm:text-xl shadow-2xs self-start sm:self-auto shrink-0">🥈</div>
         </div>
 
-        <div class="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center justify-between">
+        <div class="bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng Doanh Thu</p>
-            <p class="text-2xl font-black text-emerald-600 font-mono mt-1">{{ formatCurrency(totalSystemSpent) }}</p>
-            <p class="text-xs text-slate-500 font-medium mt-0.5">Doanh số tích lũy toàn hệ thống</p>
+            <p class="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng Doanh Thu</p>
+            <p class="text-lg sm:text-2xl font-black text-emerald-600 font-mono mt-0.5 sm:mt-1 break-all">{{ formatCurrency(totalSystemSpent) }}</p>
+            <p class="text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5">Tích lũy hệ thống</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shadow-2xs">💰</div>
+          <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm sm:text-xl shadow-2xs self-start sm:self-auto shrink-0">💰</div>
         </div>
       </div>
 
@@ -334,8 +334,8 @@
 
       <!-- ==================== 2. HIỂN THỊ DẠNG BẢNG (TABLE VIEW) ==================== -->
       <div v-else class="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse text-xs">
+        <div class="overflow-x-auto touch-pan-x">
+          <table class="w-full text-left border-collapse text-xs min-w-[750px]">
             <thead class="bg-slate-50 text-slate-600 uppercase text-[11px] font-black tracking-wider border-b border-slate-200">
               <tr>
                 <th class="px-4 py-3.5">Họ Tên Khách Hàng</th>

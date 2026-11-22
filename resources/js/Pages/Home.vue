@@ -72,7 +72,7 @@
               <div class="bg-gradient-to-r from-red-600 to-rose-600 px-4 py-1.5 text-center flex items-center justify-between gap-2">
                 <span class="text-white font-black text-xs sm:text-sm tracking-wide whitespace-nowrap flex items-center gap-1">
                   <span>🎓</span>
-                  <span>Sinh Viên Giảm 30%</span>
+                  <span>Sinh Viên: 1 Năm Giảm 30% • Vé 0đ</span>
                 </span>
                 <button
                   type="button"
@@ -207,12 +207,12 @@
               <div class="space-y-1.5 z-10">
                 <span class="text-[10px] font-black tracking-widest text-red-700 uppercase flex items-center gap-1">
                   <span>🎓</span>
-                  <span>ĐẶC QUYỀN SINH VIÊN</span>
+                  <span>ĐẶC QUYỀN SINH VIÊN (.EDU.VN)</span>
                 </span>
                 <h3 class="text-sm sm:text-base font-bold text-slate-900 leading-snug">
-                  Giảm 30% khi sinh viên đặt vé xe lần đầu
+                  1 Năm Giảm 30% • Chuyến Đầu 100% (Tối Đa 350k)
                 </h3>
-                <p class="text-[11px] text-slate-500 font-medium">Áp dụng tài khoản có email trường (.edu.vn)</p>
+                <p class="text-[11px] text-slate-500 font-medium">Vé 0đ chuyến đầu & giảm 30% suốt 1 năm với email trường</p>
               </div>
 
               <div class="mt-5 flex items-center justify-between z-10">

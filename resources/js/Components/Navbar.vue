@@ -296,6 +296,7 @@
         </div>
       </div>
     </div>
+  </header>
 
     <!-- MOBILE NAVIGATION DRAWER (Slide-over) -->
     <Teleport to="body">
@@ -523,66 +524,67 @@
     </Teleport>
 
     <!-- THANH BOTTOM NAVIGATION BAR CHUẨN NATIVE MOBILE APP (KHÁCH HÀNG) -->
-    <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-1 px-2 flex items-center justify-around select-none">
-      <!-- 1. Trang Chủ -->
-      <Link 
-        href="/" 
-        class="flex flex-col items-center justify-center flex-1 py-1 transition-all"
-        :class="$page.url === '/' ? 'text-red-600 font-black scale-105' : 'text-slate-500 hover:text-slate-800 font-bold'"
-      >
-        <span class="text-lg leading-none">🏠</span>
-        <span class="text-[10px] tracking-tight mt-1">Trang Chủ</span>
-      </Link>
+    <Teleport to="body">
+      <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] pt-1.5 pb-3 px-1 grid grid-cols-5 items-end justify-items-center select-none">
+        <!-- 1. Trang Chủ -->
+        <Link 
+          href="/" 
+          class="w-full flex flex-col items-center justify-center py-1 transition-all"
+          :class="$page.url === '/' ? 'text-red-600 font-black' : 'text-slate-500 hover:text-slate-800 font-bold'"
+        >
+          <span class="text-lg leading-none">🏠</span>
+          <span class="text-[10px] tracking-tight mt-1 truncate text-center w-full">Trang Chủ</span>
+        </Link>
 
-      <!-- 2. Tìm Chuyến -->
-      <Link 
-        href="/trips" 
-        class="flex flex-col items-center justify-center flex-1 py-1 transition-all"
-        :class="$page.url.startsWith('/trips') ? 'text-red-600 font-black scale-105' : 'text-slate-500 hover:text-slate-800 font-bold'"
-      >
-        <span class="text-lg leading-none">🔍</span>
-        <span class="text-[10px] tracking-tight mt-1">Tìm Chuyến</span>
-      </Link>
+        <!-- 2. Tìm Chuyến -->
+        <Link 
+          href="/trips" 
+          class="w-full flex flex-col items-center justify-center py-1 transition-all"
+          :class="$page.url.startsWith('/trips') ? 'text-red-600 font-black' : 'text-slate-500 hover:text-slate-800 font-bold'"
+        >
+          <span class="text-lg leading-none">🔍</span>
+          <span class="text-[10px] tracking-tight mt-1 truncate text-center w-full">Tìm Chuyến</span>
+        </Link>
 
-      <!-- 3. Nút Đặt Vé Nổi Bật Trung Tâm (CTA Style Grab/Shopee) -->
-      <Link
-        href="/trips"
-        class="flex flex-col items-center justify-center -mt-5 transition-transform active:scale-95"
-      >
-        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-600 via-rose-600 to-red-500 text-white flex items-center justify-center text-xl shadow-lg shadow-red-500/40 border-2 border-white">
-          🚌
-        </div>
-        <span class="text-[9.5px] font-black text-red-600 tracking-tight mt-0.5">Đặt Vé</span>
-      </Link>
+        <!-- 3. Nút Đặt Vé Nổi Bật Trung Tâm (CTA Style Grab/Shopee) -->
+        <Link
+          href="/trips"
+          class="w-full flex flex-col items-center justify-center -mt-6 transition-transform active:scale-95"
+        >
+          <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-600 via-rose-600 to-red-500 text-white flex items-center justify-center text-xl shadow-lg shadow-red-500/40 border-2 border-white">
+            🚌
+          </div>
+          <span class="text-[9.5px] font-black text-red-600 tracking-tight mt-0.5 truncate text-center w-full">Đặt Vé</span>
+        </Link>
 
-      <!-- 4. Vé Của Tôi -->
-      <Link 
-        href="/my-bookings" 
-        class="flex flex-col items-center justify-center flex-1 py-1 transition-all"
-        :class="$page.url.startsWith('/my-bookings') ? 'text-red-600 font-black scale-105' : 'text-slate-500 hover:text-slate-800 font-bold'"
-      >
-        <span class="text-lg leading-none">🎫</span>
-        <span class="text-[10px] tracking-tight mt-1">Vé Của Tôi</span>
-      </Link>
+        <!-- 4. Vé Của Tôi -->
+        <Link 
+          href="/my-bookings" 
+          class="w-full flex flex-col items-center justify-center py-1 transition-all"
+          :class="$page.url.startsWith('/my-bookings') ? 'text-red-600 font-black' : 'text-slate-500 hover:text-slate-800 font-bold'"
+        >
+          <span class="text-lg leading-none">🎫</span>
+          <span class="text-[10px] tracking-tight mt-1 truncate text-center w-full">Vé Của Tôi</span>
+        </Link>
 
-      <!-- 5. Menu / Tài Khoản -->
-      <button 
-        type="button"
-        @click="isMobileMenuOpen = true" 
-        class="flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer"
-        :class="isMobileMenuOpen ? 'text-red-600 font-black' : 'text-slate-500 hover:text-slate-800 font-bold'"
-      >
-        <span class="text-lg leading-none">{{ $page.props.auth?.user ? '👤' : '☰' }}</span>
-        <span class="text-[10px] tracking-tight mt-1">{{ $page.props.auth?.user ? 'Tài Khoản' : 'Menu' }}</span>
-      </button>
-    </nav>
+        <!-- 5. Menu / Tài Khoản -->
+        <button 
+          type="button"
+          @click="isMobileMenuOpen = true" 
+          class="w-full flex flex-col items-center justify-center py-1 transition-all cursor-pointer"
+          :class="isMobileMenuOpen ? 'text-red-600 font-black' : 'text-slate-500 hover:text-slate-800 font-bold'"
+        >
+          <span class="text-lg leading-none">{{ $page.props.auth?.user ? '👤' : '☰' }}</span>
+          <span class="text-[10px] tracking-tight mt-1 truncate text-center w-full">{{ $page.props.auth?.user ? 'Tài Khoản' : 'Menu' }}</span>
+        </button>
+      </nav>
+    </Teleport>
 
     <!-- Modals -->
     <LanguageModal v-model="showLanguageModal" @change="onLanguageChange" />
     <AuthModal v-model="showAuthModal" />
     <ProfileModal v-model="showProfileModal" :user="$page.props.auth?.user" :initial-tab="profileActiveTab" />
     <MembershipModal :is-open="showMembershipModal" @close="showMembershipModal = false" />
-  </header>
 </template>
 
 <script setup>

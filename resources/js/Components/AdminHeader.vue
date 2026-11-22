@@ -1,43 +1,44 @@
 <template>
   <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
     <!-- Top Bar: Logo, System info & Action buttons + Profile Switcher -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
       <!-- Left: Logo & Brand -->
-      <div class="flex items-center space-x-3.5">
-        <Link href="/admin" class="w-11 h-11 rounded-xl bg-white border border-red-200 flex items-center justify-center p-1.5 shadow-xs hover:border-red-500 transition duration-200">
+      <div class="flex items-center space-x-2 sm:space-x-3.5 min-w-0">
+        <Link href="/admin" class="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-white border border-red-200 flex items-center justify-center p-1 sm:p-1.5 shadow-xs hover:border-red-500 transition duration-200 shrink-0">
           <img src="/images/logo.png" alt="Logo Trường ĐH Kiến Trúc Đà Nẵng" class="w-full h-full object-contain" />
         </Link>
-        <div>
-          <div class="flex items-center space-x-2">
-            <span class="text-xl font-black text-slate-900 tracking-tight">nhaxekientruc</span>
-            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 uppercase tracking-wider">
-              ADMIN PORTAL
+        <div class="min-w-0">
+          <div class="flex items-center space-x-1.5 sm:space-x-2">
+            <span class="text-sm sm:text-xl font-black text-slate-900 tracking-tight truncate">nhaxekientruc</span>
+            <span class="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 uppercase tracking-wider shrink-0">
+              ADMIN
             </span>
           </div>
-          <p class="text-[11px] text-slate-500 font-medium">Hệ thống điều hành và quản lý vận tải liên tỉnh</p>
+          <p class="hidden sm:block text-[11px] text-slate-500 font-medium">Hệ thống điều hành và quản lý vận tải liên tỉnh</p>
         </div>
       </div>
 
       <!-- Right: Nút [+ Bán Vé Nhanh] + Profile & Role Switcher -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
         <!-- NÚT [ + BÁN VÉ NHANH ] NỔI BẬT Ở HEADER THEO YÊU CẦU -->
         <Link 
           href="/admin/pos" 
-          class="px-3.5 py-2 rounded-xl bg-[#dc2626] hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-xs"
+          class="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-[#dc2626] hover:bg-red-700 text-white font-bold text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-xs"
           title="Mở màn hình POS bán vé nhanh tại quầy và tổng đài"
         >
-          <span class="text-sm">⚡</span>
-          <span>+ Bán Vé Nhanh</span>
+          <span class="text-xs sm:text-sm">⚡</span>
+          <span class="hidden xs:inline">+ Bán Vé Nhanh</span>
+          <span class="xs:hidden">+ Bán Vé</span>
         </Link>
 
         <!-- Nút Menu Mobile Cho Admin (< lg) -->
         <button
           type="button"
           @click="isMobileAdminOpen = true"
-          class="lg:hidden w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0 border border-slate-200"
+          class="lg:hidden w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0 border border-slate-200"
           aria-label="Mở menu quản trị"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
@@ -409,7 +410,7 @@
         </nav>
 
         <!-- MOBILE HORIZONTAL FAST NAV (< lg) -->
-        <nav class="lg:hidden flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 text-xs font-bold select-none">
+        <nav class="lg:hidden flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 px-1 -mx-1 text-xs font-bold select-none touch-pan-x">
           <Link
             href="/admin"
             class="px-3 py-1.5 rounded-xl whitespace-nowrap transition flex items-center gap-1 shrink-0"

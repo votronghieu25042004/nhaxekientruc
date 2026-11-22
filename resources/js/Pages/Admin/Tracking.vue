@@ -95,16 +95,16 @@
         <!-- BỘ LỌC CHỌN XE & CHỌN NGÀY & TRẠNG THÁI -->
         <div class="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
           <!-- 1. CHỌN NGÀY (4 Cột) -->
-          <div class="lg:col-span-4 flex items-center gap-2">
+          <div class="lg:col-span-4 flex items-center gap-2 min-w-0">
             <span class="text-xs font-bold text-slate-500 shrink-0 flex items-center gap-1">
               <span>📅</span>
-              <span>Chọn ngày:</span>
+              <span>Ngày:</span>
             </span>
             <input
               type="date"
               v-model="currentDate"
               @change="applyFilters"
-              class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-blue-500 cursor-pointer"
+              class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-blue-500 cursor-pointer"
             />
             <div class="flex items-center gap-1 shrink-0">
               <button
@@ -124,15 +124,15 @@
           </div>
 
           <!-- 2. CHỌN XE (4 Cột) -->
-          <div class="lg:col-span-4 flex items-center gap-2">
+          <div class="lg:col-span-4 flex items-center gap-2 min-w-0">
             <span class="text-xs font-bold text-slate-500 shrink-0 flex items-center gap-1">
               <span>🚍</span>
-              <span>Chọn xe:</span>
+              <span>Xe:</span>
             </span>
             <select
               v-model="currentBusId"
               @change="applyFilters"
-              class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-blue-500 cursor-pointer truncate"
+              class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-blue-500 cursor-pointer truncate"
             >
               <option value="ALL">-- Tất Cả Các Xe Trong Đội --</option>
               <option v-for="b in (allBuses || [])" :key="b.id" :value="b.id">
@@ -142,7 +142,7 @@
           </div>
 
           <!-- 3. CHỌN TRẠNG THÁI CHUYẾN (4 Cột) -->
-          <div class="lg:col-span-4 flex items-center gap-2">
+          <div class="lg:col-span-4 flex items-center gap-2 min-w-0">
             <span class="text-xs font-bold text-slate-500 shrink-0 flex items-center gap-1">
               <span>🚦</span>
               <span>Trạng thái:</span>
@@ -150,7 +150,7 @@
             <select
               v-model="currentStatus"
               @change="applyFilters"
-              class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-blue-500 cursor-pointer"
+              class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-blue-500 cursor-pointer truncate"
             >
               <option value="ALL">Tất cả trạng thái</option>
               <option value="IN_TRANSIT">🚍 Đang lăn bánh trên đường</option>

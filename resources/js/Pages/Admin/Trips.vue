@@ -794,7 +794,7 @@ const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currenc
                     <div class="sm:hidden text-[10px] text-slate-500 font-bold px-3 py-1 flex items-center gap-1 bg-slate-50 border-b border-slate-100">
                         <span>👉</span><span>Vuốt sang ngang để xem đầy đủ cột chuyến xe</span>
                     </div>
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto touch-pan-x">
                         <table class="w-full text-left text-xs text-slate-700 border-collapse min-w-[850px]">
                         <thead class="bg-slate-50/80 text-slate-600 uppercase font-black text-[11px] border-b border-slate-200 select-none">
                             <tr>

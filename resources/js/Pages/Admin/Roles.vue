@@ -13,41 +13,41 @@
       </div>
 
       <!-- Top Stats Bar -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white border border-slate-200 p-5 rounded-2xl space-y-1.5 transition hover:border-slate-300">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div class="bg-white border border-slate-200 p-3.5 sm:p-5 rounded-2xl space-y-1 transition hover:border-slate-300">
           <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">Tổng Nhân Sự</span>
-            <span class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-sm font-bold">👥</span>
+            <span class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider truncate">Tổng Nhân Sự</span>
+            <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">👥</span>
           </div>
-          <p class="text-2xl font-black text-slate-900 font-mono">{{ users.length }} tài khoản</p>
-          <span class="text-[11px] text-emerald-700 block">✓ {{ activeUsersCount }} tài khoản đang hoạt động</span>
+          <p class="text-lg sm:text-2xl font-black text-slate-900 font-mono">{{ users.length }} <span class="text-xs text-slate-400 font-normal">tài khoản</span></p>
+          <span class="text-[10px] sm:text-[11px] text-emerald-700 block truncate">✓ {{ activeUsersCount }} đang hoạt động</span>
         </div>
 
-        <div class="bg-white border border-slate-200 p-5 rounded-2xl space-y-1.5 transition hover:border-slate-300">
+        <div class="bg-white border border-slate-200 p-3.5 sm:p-5 rounded-2xl space-y-1 transition hover:border-slate-300">
           <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">Super Admin & Kế Toán</span>
-            <span class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-bold">💼</span>
+            <span class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider truncate">Super Admin & KT</span>
+            <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">💼</span>
           </div>
-          <p class="text-2xl font-black text-emerald-700 font-mono">{{ adminAndAccountantCount }} người</p>
-          <span class="text-[11px] text-slate-500 block">Quyền xem số liệu doanh thu & tài chính</span>
+          <p class="text-lg sm:text-2xl font-black text-emerald-700 font-mono">{{ adminAndAccountantCount }} <span class="text-xs text-emerald-400 font-normal">người</span></p>
+          <span class="text-[10px] sm:text-[11px] text-slate-500 block truncate">Xem doanh thu & tài chính</span>
         </div>
 
-        <div class="bg-white border border-slate-200 p-5 rounded-2xl space-y-1.5 transition hover:border-slate-300">
+        <div class="bg-white border border-slate-200 p-3.5 sm:p-5 rounded-2xl space-y-1.5 transition hover:border-slate-300">
           <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">Điều Phối & Bán Vé</span>
-            <span class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-bold">🎟️</span>
+            <span class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider truncate">Điều Phối & Vé</span>
+            <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">🎟️</span>
           </div>
-          <p class="text-2xl font-black text-blue-700 font-mono">{{ dispatcherAndCashierCount }} người</p>
-          <span class="text-[11px] text-blue-700 block">Vận hành ca tuyến, ẩn dữ liệu dòng tiền</span>
+          <p class="text-lg sm:text-2xl font-black text-blue-700 font-mono">{{ dispatcherAndCashierCount }} <span class="text-xs text-blue-400 font-normal">người</span></p>
+          <span class="text-[10px] sm:text-[11px] text-blue-700 block truncate">Vận hành ca, ẩn dòng tiền</span>
         </div>
 
-        <div class="bg-white border border-slate-200 p-5 rounded-2xl space-y-1.5 transition hover:border-slate-300">
+        <div class="bg-white border border-slate-200 p-3.5 sm:p-5 rounded-2xl space-y-1.5 transition hover:border-slate-300">
           <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">Tài Xế & Lơ Xe</span>
-            <span class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm font-bold">📱</span>
+            <span class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider truncate">Tài Xế & Lơ Xe</span>
+            <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">📱</span>
           </div>
-          <p class="text-2xl font-black text-amber-800 font-mono">{{ mobileOnlyCount }} thành viên</p>
-          <span class="text-[11px] text-amber-800 block">Cổng Mobile riêng, không vào Web Admin</span>
+          <p class="text-lg sm:text-2xl font-black text-amber-800 font-mono">{{ mobileOnlyCount }} <span class="text-xs text-amber-500 font-normal">thành viên</span></p>
+          <span class="text-[10px] sm:text-[11px] text-amber-800 block truncate">Cổng Mobile riêng</span>
         </div>
       </div>
 
@@ -113,8 +113,8 @@
           </div>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs border-collapse">
+        <div class="overflow-x-auto touch-pan-x">
+          <table class="w-full text-left text-xs border-collapse min-w-[650px]">
             <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
               <tr>
                 <th class="py-3 px-3">Nhân Viên</th>
@@ -299,8 +299,8 @@
             <p class="text-xs text-slate-500 mt-0.5">Xác nhận phân định trách nhiệm không ai nhìn thấy dữ liệu vượt quá thẩm quyền</p>
           </div>
 
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs border-collapse">
+          <div class="overflow-x-auto touch-pan-x">
+            <table class="w-full text-left text-xs border-collapse min-w-[700px]">
               <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
                 <tr>
                   <th class="py-3 px-3">Phân Hệ & Chức Năng Admin</th>

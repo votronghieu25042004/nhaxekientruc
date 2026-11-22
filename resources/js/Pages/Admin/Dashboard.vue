@@ -7,67 +7,80 @@
 
     <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full space-y-5">
       <!-- 1. BẢNG CHỈ SỐ NHANH EXECUTIVE KPIS (GỌN GÀNG, ĐẸP MẮT) -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         <!-- Doanh thu -->
-        <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <div class="flex items-center gap-1.5">
-              <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Doanh Thu</p>
-              <button 
-                @click="scrollToFleetRevenue"
-                class="text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded-md cursor-pointer transition flex items-center gap-1"
-                title="Bấm để xem chi tiết doanh thu từng xe"
-              >
-                <span>📊</span>
-                <span>Từng xe</span>
-              </button>
+        <div class="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1 flex-wrap">
+                <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Doanh Thu</p>
+                <button 
+                  @click="scrollToFleetRevenue"
+                  class="text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-1 py-0.2 rounded cursor-pointer transition"
+                  title="Bấm để xem chi tiết doanh thu từng xe"
+                >
+                  📊 Xe
+                </button>
+              </div>
+              <p class="text-sm sm:text-2xl font-black text-emerald-600 font-mono mt-1 leading-tight break-all">
+                {{ formatCurrency(stats?.revenue_today) }}
+              </p>
             </div>
-            <p class="text-xl sm:text-2xl font-black text-emerald-600 font-mono mt-0.5">{{ formatCurrency(stats?.revenue_today) }}</p>
-            <p class="text-[10px] text-slate-400 mt-0.5">Tổng thu cọc 30% & thanh toán 100%</p>
+            <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm sm:text-xl shrink-0">
+              💰
+            </div>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0">
-            💰
-          </div>
+          <p class="text-[10px] text-slate-400 mt-1 truncate">Thu cọc 30% & thanh toán 100%</p>
         </div>
 
         <!-- Số vé hôm nay & Đặt trước -->
-        <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Vé Hôm Nay & Đặt Trước</p>
-            <p class="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">
-              {{ stats?.bookings_today || 0 }} <span class="text-xs font-bold text-slate-400">hôm nay</span>
-            </p>
-            <p class="text-[10px] text-amber-700 font-bold mt-0.5">
-              ⚡ Đặt trước: <strong class="text-red-600 font-black">{{ stats?.advance_bookings_count || 0 }} vé</strong> (Tổng {{ stats?.total_bookings_count || 0 }})
-            </p>
+        <div class="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="min-w-0">
+              <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Vé Hôm Nay</p>
+              <p class="text-sm sm:text-2xl font-black text-slate-900 mt-1 leading-tight">
+                {{ stats?.bookings_today || 0 }} <span class="text-xs font-bold text-slate-400">vé</span>
+              </p>
+            </div>
+            <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm sm:text-xl shrink-0">
+              🎟️
+            </div>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
-            🎟️
-          </div>
+          <p class="text-[10px] text-amber-700 font-bold mt-1 truncate">
+            Đặt trước: <strong class="text-red-600 font-black">{{ stats?.advance_bookings_count || 0 }} vé</strong>
+          </p>
         </div>
 
         <!-- Chuyến chạy hôm nay -->
-        <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Chuyến Chạy Hôm Nay</p>
-            <p class="text-xl sm:text-2xl font-black text-red-600 mt-0.5">{{ stats?.trips_today_count || 22 }} <span class="text-xs font-bold text-slate-400">chuyến</span></p>
-            <p class="text-[10px] text-slate-400 mt-0.5">Đà Nẵng, Huế, Hà Nội, Sài Gòn</p>
+        <div class="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="min-w-0">
+              <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Chuyến Chạy</p>
+              <p class="text-sm sm:text-2xl font-black text-red-600 mt-1 leading-tight">
+                {{ stats?.trips_today_count || 22 }} <span class="text-xs font-bold text-slate-400">chuyến</span>
+              </p>
+            </div>
+            <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center text-sm sm:text-xl shrink-0">
+              🚍
+            </div>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center text-xl shrink-0">
-            🚍
-          </div>
+          <p class="text-[10px] text-slate-400 mt-1 truncate">Đà Nẵng, Huế, Quy Nhơn...</p>
         </div>
 
         <!-- Đội xe sẵn sàng -->
-        <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between">
-          <div>
-            <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Đội Xe Sẵn Sàng</p>
-            <p class="text-xl sm:text-2xl font-black text-purple-600 mt-0.5">{{ stats?.active_buses || 9 }} / {{ stats?.total_buses || 10 }} <span class="text-xs font-bold text-slate-400">xe</span></p>
-            <p class="text-[10px] text-emerald-600 font-bold mt-0.5">✓ 9 xe hoạt động tốt</p>
+        <div class="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+          <div class="flex items-start justify-between gap-1.5">
+            <div class="min-w-0">
+              <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Đội Xe Sẵn Sàng</p>
+              <p class="text-sm sm:text-2xl font-black text-purple-600 mt-1 leading-tight">
+                {{ stats?.active_buses || 9 }} / {{ stats?.total_buses || 10 }} <span class="text-xs font-bold text-slate-400">xe</span>
+              </p>
+            </div>
+            <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-sm sm:text-xl shrink-0">
+              🚌
+            </div>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl shrink-0">
-            🚌
-          </div>
+          <p class="text-[10px] text-emerald-600 font-bold mt-1 truncate">✓ 9 xe hoạt động tốt</p>
         </div>
       </div>
 
@@ -227,7 +240,7 @@
         <div class="sm:hidden text-[10px] text-slate-500 font-bold px-1 py-1 flex items-center gap-1">
           <span>👉</span><span>Vuốt sang ngang để xem đầy đủ cột vé</span>
         </div>
-        <div class="overflow-x-auto rounded-2xl border border-slate-100">
+        <div class="overflow-x-auto touch-pan-x rounded-2xl border border-slate-100">
           <table class="w-full text-left text-xs table-fixed min-w-[850px]">
             <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-black text-[10px] tracking-wider">
               <tr>
@@ -606,7 +619,7 @@
           <span>👉</span><span>Vuốt sang ngang để xem đủ cột doanh thu xe</span>
         </div>
         <div class="border border-slate-200 rounded-2xl overflow-hidden">
-          <div class="overflow-x-auto">
+          <div class="overflow-x-auto touch-pan-x">
             <table class="w-full text-left text-xs min-w-[850px]">
               <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-black text-[10px] tracking-wider">
                 <tr>

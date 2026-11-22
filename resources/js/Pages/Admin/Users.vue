@@ -3,51 +3,51 @@
     <AdminHeader title="QUẢN LÝ LƠ XE & NHÂN SỰ" subtitle="Danh sách 10 Lơ xe đón khách & Thu tiền tận tay" />
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
-      <div class="flex justify-between items-center">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 class="text-2xl font-black text-slate-900">Danh sách Tài khoản (Lơ xe & Khách hàng)</h1>
+          <h1 class="text-xl sm:text-2xl font-black text-slate-900">Danh sách Tài khoản (Lơ xe & Khách hàng)</h1>
           <p class="text-slate-500 text-xs mt-1">Cấp tài khoản nhân viên soát vé hoặc quản lý khách hàng đã đăng ký</p>
         </div>
         <button
           @click="showStaffModal = true"
-          class="px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/20"
+          class="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 cursor-pointer shadow-sm active:scale-95 shrink-0"
         >
-          + Cấp Tài Khoản Lơ Xe Mới
+          + Cấp Tài Khoản Lơ Xe
         </button>
       </div>
 
-      <div class="bg-white border border-slate-200 shadow-xs rounded-3xl p-6 overflow-hidden">
-        <div class="overflow-x-auto custom-scrollbar">
-          <table class="w-full text-left text-xs">
-            <thead class="text-slate-500 uppercase border-b border-slate-200">
+      <div class="bg-white border border-slate-200 shadow-xs rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 overflow-hidden">
+        <div class="overflow-x-auto touch-pan-x custom-scrollbar">
+          <table class="w-full text-left text-xs min-w-[650px]">
+            <thead class="text-slate-500 uppercase border-b border-slate-200 font-black text-[10px] tracking-wider">
               <tr>
-                <th class="pb-3">Họ và tên</th>
-                <th class="pb-3">Email</th>
-                <th class="pb-3">Số điện thoại</th>
-                <th class="pb-3">Vai trò</th>
-                <th class="pb-3">Số vé đã đặt</th>
-                <th class="pb-3 text-right">Ngày tham gia</th>
+                <th class="pb-3 px-2">Họ và tên</th>
+                <th class="pb-3 px-2">Email</th>
+                <th class="pb-3 px-2">Số điện thoại</th>
+                <th class="pb-3 px-2">Vai trò</th>
+                <th class="pb-3 px-2">Số vé đã đặt</th>
+                <th class="pb-3 px-2 text-right">Ngày tham gia</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-800/60 text-slate-700">
-              <tr v-for="u in users" :key="u.id" class="hover:bg-slate-100/40">
-                <td class="py-3.5 font-bold text-slate-900 text-sm">{{ u.name }}</td>
-                <td class="py-3.5 font-mono text-slate-700">{{ u.email }}</td>
-                <td class="py-3.5 text-slate-700">{{ u.phone || 'Chưa cập nhật' }}</td>
-                <td class="py-3.5">
+            <tbody class="divide-y divide-slate-100 text-slate-700">
+              <tr v-for="u in users" :key="u.id" class="hover:bg-slate-50">
+                <td class="py-3 px-2 font-bold text-slate-900 text-xs sm:text-sm">{{ u.name }}</td>
+                <td class="py-3 px-2 font-mono text-slate-700">{{ u.email }}</td>
+                <td class="py-3 px-2 text-slate-700">{{ u.phone || 'Chưa cập nhật' }}</td>
+                <td class="py-3 px-2">
                   <span
                     :class="{
-                      'bg-[#dc2626]/20 text-amber-400 border-blue-600/30': u.role === 'admin',
-                      'bg-emerald-500/20 text-emerald-400 border-emerald-500/30': u.role === 'staff',
-                      'bg-blue-500/20 text-blue-400 border-blue-500/30': u.role === 'customer',
+                      'bg-red-50 text-red-700 border-red-200': u.role === 'admin',
+                      'bg-emerald-50 text-emerald-700 border-emerald-200': u.role === 'staff',
+                      'bg-blue-50 text-blue-700 border-blue-200': u.role === 'customer',
                     }"
-                    class="px-2.5 py-1 rounded-full text-[11px] font-bold border"
+                    class="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold border whitespace-nowrap"
                   >
                     {{ u.role === 'admin' ? '👑 Quản trị' : (u.role === 'staff' ? '🎫 Lơ xe / Soát vé' : '🧑 Khách hàng') }}
                   </span>
                 </td>
-                <td class="py-3.5 font-bold text-slate-900">{{ u.total_bookings }} vé</td>
-                <td class="py-3.5 text-right text-slate-500">{{ u.created_at }}</td>
+                <td class="py-3 px-2 font-bold text-slate-900">{{ u.total_bookings }} vé</td>
+                <td class="py-3 px-2 text-right text-slate-500">{{ u.created_at }}</td>
               </tr>
             </tbody>
           </table>

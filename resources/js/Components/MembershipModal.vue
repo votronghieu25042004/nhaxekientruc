@@ -1,8 +1,12 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200">
-    <div class="bg-white rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[92vh]">
-      
-      <!-- HEADER -->
+  <Teleport to="body">
+    <div v-if="isOpen" class="fixed inset-0 z-[99999] overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200">
+      <!-- Backdrop click to close -->
+      <div class="fixed inset-0" @click="close"></div>
+
+      <div class="relative z-10 bg-white rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[92vh]" @click.stop>
+        
+        <!-- HEADER -->
       <div class="p-5 sm:p-6 bg-gradient-to-r from-[#991b1b] via-[#dc2626] to-[#ea580c] text-white relative overflow-hidden flex-shrink-0">
         <div class="relative z-10 flex items-center justify-between">
           <div>
@@ -290,14 +294,33 @@
 
     </div>
   </div>
+  </Teleport>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
   isOpen: { type: Boolean, default: false },
+});
+
+const onKeyDown = (e) => {
+  if (e.key === 'Escape' && props.isOpen) {
+    close();
+  }
+};
+
+watch(() => props.isOpen, (open) => {
+  if (open) {
+    document.addEventListener('keydown', onKeyDown);
+  } else {
+    document.removeEventListener('keydown', onKeyDown);
+  }
+});
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeyDown);
 });
 
 const emit = defineEmits(['close']);

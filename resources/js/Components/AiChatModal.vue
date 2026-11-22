@@ -3,7 +3,7 @@
     <!-- Nút Nổi Mở Trợ Lý AI (Góc Dưới Phải) -->
     <div
       v-if="!isOpen"
-      class="fixed bottom-6 right-6 z-50 flex items-center gap-3 cursor-pointer group"
+      class="fixed bottom-20 right-3.5 sm:bottom-6 sm:right-6 z-40 flex items-center gap-2 sm:gap-3 cursor-pointer group"
       @click="openModal"
     >
       <div class="hidden sm:flex flex-col items-end bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-lg border border-red-100 text-xs font-semibold text-red-950 group-hover:scale-105 transition-all">
@@ -14,11 +14,11 @@
         </span>
       </div>
       <button
-        class="w-14 h-14 rounded-full bg-gradient-to-tr from-red-600 via-rose-600 to-red-700 text-white shadow-xl shadow-red-600/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 border-2 border-white relative cursor-pointer"
+        class="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-red-600 via-rose-600 to-red-700 text-white shadow-xl shadow-red-600/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 border-2 border-white relative cursor-pointer"
         title="Trợ Lý Vé Xe nhaxekientruc AI"
       >
-        <span class="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></span>
-        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <span class="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-3 h-3 sm:w-4 sm:h-4 bg-emerald-500 border-2 border-white rounded-full"></span>
+        <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
         </svg>
       </button>
@@ -39,7 +39,7 @@
           :class="[
             isMaximized
               ? 'w-full h-full max-w-full max-h-full rounded-none'
-              : 'w-full max-w-5xl h-[650px] max-h-[92vh] rounded-3xl'
+              : 'w-full max-w-5xl h-[88vh] sm:h-[650px] max-h-[94vh] rounded-2xl sm:rounded-3xl'
           ]"
           class="relative bg-white shadow-2xl flex flex-col sm:flex-row overflow-hidden z-10 border border-red-200/80 transition-all duration-200"
         >
@@ -47,7 +47,10 @@
           <!-- ============================================== -->
           <!-- CỘT TRÁI: LỊCH SỬ TRÒ CHUYỆN (TÔNG MÀU ĐỎ ĐÔ SANG TRỌNG) -->
           <!-- ============================================== -->
-          <aside class="w-full sm:w-64 bg-gradient-to-b from-[#4c0519] via-[#881337] to-[#7f1d1d] text-red-50 flex flex-col border-r border-red-800/80 flex-shrink-0">
+          <aside
+            :class="showMobileHistory ? 'flex w-full h-full' : 'hidden sm:flex sm:w-64'"
+            class="bg-gradient-to-b from-[#4c0519] via-[#881337] to-[#7f1d1d] text-red-50 flex-col border-r border-red-800/80 flex-shrink-0"
+          >
             <!-- Header Sidebar -->
             <div class="p-3.5 border-b border-red-800/60 flex items-center justify-between">
               <div class="flex items-center gap-2">
@@ -189,32 +192,42 @@
           <!-- ============================================== -->
           <!-- CỘT PHẢI: KHUNG TRÒ CHUYỆN CHÍNH HOẶC GỬI EMAIL ADMIN -->
           <!-- ============================================== -->
-          <div class="flex-1 flex flex-col bg-white overflow-hidden">
+          <div :class="showMobileHistory ? 'hidden sm:flex' : 'flex'" class="flex-1 flex-col bg-white overflow-hidden">
             
             <!-- HEADER KHUNG CHAT (CÓ NÚT PHÓNG TO / THU NHỎ / ĐÓNG) -->
-            <div class="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 select-none">
-              <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-red-600 to-rose-600 text-white flex items-center justify-center font-black text-sm shadow-xs">
+            <div class="p-3 sm:p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 select-none">
+              <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-red-600 to-rose-600 text-white flex items-center justify-center font-black text-xs sm:text-sm shadow-xs flex-shrink-0">
                   🤖
                 </div>
-                <div>
-                  <h3 class="text-sm font-black text-slate-900 leading-tight">
-                    {{ activeView === 'admin_email' ? 'Phân Hệ Gửi Thông Báo Gmail Tự Động' : 'Trợ Lý Trực Tuyến AI nhaxekientruc' }}
+                <div class="min-w-0">
+                  <h3 class="text-xs sm:text-sm font-black text-slate-900 leading-tight truncate">
+                    {{ activeView === 'admin_email' ? 'Gửi Thông Báo Gmail' : 'Trợ Lý Trực Tuyến AI' }}
                   </h3>
-                  <p class="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>Tư vấn tuyến đường, cọc 30%, nhắc giờ chạy & vé điện tử</span>
+                  <p class="text-[10px] sm:text-[11px] text-emerald-600 font-bold flex items-center gap-1 truncate">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
+                    <span class="truncate">Tư vấn tuyến đường & đặt vé 24/7</span>
                   </p>
                 </div>
               </div>
 
-              <!-- Cụm Nút Điều Khiển: Phóng To / Thu Nhỏ / Đóng -->
-              <div class="flex items-center gap-1.5">
+              <!-- Cụm Nút Điều Khiển: Phóng To / Thu Nhỏ / Lịch Sử Mobile / Đóng -->
+              <div class="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                <!-- Nút Lịch Sử trên Mobile -->
+                <button
+                  type="button"
+                  @click="showMobileHistory = !showMobileHistory"
+                  class="sm:hidden px-2 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition text-[11px] font-bold cursor-pointer flex items-center gap-1"
+                  title="Xem lịch sử trò chuyện"
+                >
+                  <span>💬 Lịch sử</span>
+                </button>
+
                 <!-- Phóng to / Thu nhỏ -->
                 <button
                   type="button"
                   @click="toggleMaximize"
-                  class="p-1.5 rounded-xl hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition text-xs font-bold cursor-pointer"
+                  class="hidden sm:inline-flex p-1.5 rounded-xl hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition text-xs font-bold cursor-pointer"
                   :title="isMaximized ? 'Thu nhỏ lại' : 'Phóng to toàn màn hình'"
                 >
                   <span v-if="!isMaximized">⛶</span>
@@ -411,6 +424,7 @@ import { usePage } from '@inertiajs/vue3';
 const page = usePage();
 const isOpen = ref(false);
 const isMaximized = ref(false);
+const showMobileHistory = ref(false);
 const activeView = ref('chat');
 const inputQuery = ref('');
 const isAiTyping = ref(false);
@@ -548,11 +562,13 @@ const createNewChat = () => {
     ]
   });
   currentSessionId.value = newId;
+  showMobileHistory.value = false;
   persistSessions();
 };
 
 const switchChatSession = (id) => {
   currentSessionId.value = id;
+  showMobileHistory.value = false;
 };
 
 const startRename = (session) => {

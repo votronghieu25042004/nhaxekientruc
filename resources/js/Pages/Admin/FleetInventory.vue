@@ -105,8 +105,8 @@
             </button>
           </div>
 
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs border-collapse">
+          <div class="overflow-x-auto touch-pan-x">
+            <table class="w-full text-left text-xs border-collapse min-w-[750px]">
               <thead class="bg-slate-50 text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
                 <tr>
                   <th class="px-4 py-3">Biển Số Xe</th>
@@ -204,8 +204,8 @@
             </button>
           </div>
 
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs border-collapse">
+          <div class="overflow-x-auto touch-pan-x">
+            <table class="w-full text-left text-xs border-collapse min-w-[700px]">
               <thead class="bg-slate-50 text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
                 <tr>
                   <th class="px-4 py-3">Biển Số Xe</th>

@@ -137,97 +137,94 @@
       </div>
 
       <!-- 4 THẺ TỔNG QUAN DOANH THU CỦA KỲ ĐÃ CHỌN -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         
         <!-- Card 1: TỔNG DOANH THU TẤT CẢ XE (KÈM SO SÁNH VỚI HÔM QUA) -->
-        <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-2 hover:border-slate-300 transition">
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">Tổng Doanh Thu Tất Cả Xe</span>
-            <span class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-bold">💰</span>
-          </div>
+        <div class="bg-white border border-slate-200 p-3.5 sm:p-5 rounded-2xl shadow-xs space-y-2 hover:border-slate-300 transition flex flex-col justify-between">
           <div>
-            <p class="text-2xl lg:text-3xl font-black text-slate-900 font-mono tracking-tight">
+            <div class="flex items-start justify-between gap-1.5">
+              <span class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider truncate">Tổng Doanh Thu</span>
+              <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">💰</span>
+            </div>
+            <p class="text-base sm:text-2xl lg:text-3xl font-black text-slate-900 font-mono tracking-tight mt-1 leading-tight break-all">
               {{ formatPrice(metrics?.total_revenue) }}
             </p>
           </div>
-          <div class="pt-1 border-t border-slate-100 flex items-center justify-between text-[11px]">
+          <div class="pt-1 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] gap-1">
             <span 
               v-if="(metrics?.diff_amount || 0) >= 0"
-              class="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"
+              class="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 truncate"
             >
               <span>▲</span>
-              <span>+{{ formatPrice(metrics?.diff_amount) }} (+{{ metrics?.diff_percent }}%)</span>
+              <span class="truncate">+{{ formatPrice(metrics?.diff_amount) }}</span>
             </span>
             <span 
               v-else
-              class="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200"
+              class="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 truncate"
             >
               <span>▼</span>
-              <span>-{{ formatPrice(Math.abs(metrics?.diff_amount)) }} ({{ metrics?.diff_percent }}%)</span>
+              <span class="truncate">-{{ formatPrice(Math.abs(metrics?.diff_amount)) }}</span>
             </span>
-            <span class="text-slate-400 font-medium">so với kỳ trước</span>
+            <span class="text-slate-400 font-medium shrink-0">kỳ trước</span>
           </div>
         </div>
 
         <!-- Card 2: DOANH THU VÉ ONLINE / VIETQR -->
-        <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-2 hover:border-slate-300 transition">
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">Thu Online / VietQR MBBank</span>
-            <span class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-bold">🏦</span>
-          </div>
+        <div class="bg-white border border-slate-200 p-3.5 sm:p-5 rounded-2xl shadow-xs space-y-2 hover:border-slate-300 transition flex flex-col justify-between">
           <div>
-            <p class="text-2xl lg:text-3xl font-black text-blue-700 font-mono tracking-tight">
+            <div class="flex items-start justify-between gap-1.5">
+              <span class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider truncate">Thu Online / VietQR</span>
+              <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">🏦</span>
+            </div>
+            <p class="text-base sm:text-2xl lg:text-3xl font-black text-blue-700 font-mono tracking-tight mt-1 leading-tight break-all">
               {{ formatPrice(metrics?.total_paid) }}
             </p>
           </div>
-          <div class="pt-1 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
-            <span class="font-bold text-blue-800">
-              Chiếm {{ onlineSharePercent }}% tổng tiền
+          <div class="pt-1 border-t border-slate-100 text-[10px] sm:text-[11px] text-slate-500 flex items-center justify-between gap-1">
+            <span class="font-bold text-blue-800 truncate">
+              {{ onlineSharePercent }}% tổng tiền
             </span>
-            <span class="text-slate-400 truncate">STK: 09025042004</span>
+            <span class="text-slate-400 truncate text-[9px] sm:text-[10px]">MBBank</span>
           </div>
         </div>
 
         <!-- Card 3: TIỀN MẶT THU TRÊN XE & TẠI BẾN -->
-        <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-2 hover:border-slate-300 transition">
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">Tiền Mặt Thu Trên Xe / Bến</span>
-            <span class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm font-bold">💵</span>
-          </div>
+        <div class="bg-white border border-slate-200 p-3.5 sm:p-5 rounded-2xl shadow-xs space-y-2 hover:border-slate-300 transition flex flex-col justify-between">
           <div>
-            <p class="text-2xl lg:text-3xl font-black text-amber-700 font-mono tracking-tight">
+            <div class="flex items-start justify-between gap-1.5">
+              <span class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider truncate">Tiền Mặt Trên Xe</span>
+              <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">💵</span>
+            </div>
+            <p class="text-base sm:text-2xl lg:text-3xl font-black text-amber-700 font-mono tracking-tight mt-1 leading-tight break-all">
               {{ formatPrice(metrics?.total_cash) }}
             </p>
           </div>
-          <div class="pt-1 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
-            <span class="font-bold text-amber-800">
-              Chiếm {{ cashSharePercent }}% tổng tiền
+          <div class="pt-1 border-t border-slate-100 text-[10px] sm:text-[11px] text-slate-500 flex items-center justify-between gap-1">
+            <span class="font-bold text-amber-800 truncate">
+              {{ cashSharePercent }}% tổng tiền
             </span>
-            <span class="text-slate-400">Lơ xe & Quầy thu</span>
+            <span class="text-slate-400 text-[9px] sm:text-[10px] shrink-0">Lơ xe thu</span>
           </div>
         </div>
 
         <!-- Card 4: TỔNG VÉ BÁN & CÔNG SUẤT LẤP ĐẦY -->
-        <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs space-y-2 hover:border-slate-300 transition">
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">Tổng Số Vé Đã Bán</span>
-            <span class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-sm font-bold">🎫</span>
-          </div>
+        <div class="bg-white border border-slate-200 p-3.5 sm:p-5 rounded-2xl shadow-xs space-y-2 hover:border-slate-300 transition flex flex-col justify-between">
           <div>
-            <p class="text-2xl lg:text-3xl font-black text-purple-700 font-mono tracking-tight">
-              {{ metrics?.total_seats_sold || 0 }} <span class="text-sm font-bold text-slate-500">vé</span>
+            <div class="flex items-start justify-between gap-1.5">
+              <span class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider truncate">Tổng Số Vé Đã Bán</span>
+              <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xs sm:text-sm font-bold shrink-0">🎫</span>
+            </div>
+            <p class="text-base sm:text-2xl lg:text-3xl font-black text-purple-700 font-mono tracking-tight mt-1 leading-tight">
+              {{ metrics?.total_seats_sold || 0 }} <span class="text-xs font-bold text-slate-500">vé</span>
             </p>
           </div>
-          <div class="pt-1 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
-            <span class="font-bold text-purple-800">
-              {{ metrics?.total_trips || 0 }} chuyến chạy
+          <div class="pt-1 border-t border-slate-100 text-[10px] sm:text-[11px] text-slate-500 flex items-center justify-between gap-1">
+            <span class="font-bold text-purple-800 truncate">
+              {{ metrics?.occupancy_rate || 0 }}% công suất
             </span>
-            <span class="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-              {{ metrics?.active_buses_count || 0 }}/{{ buses.length }} xe chạy
-            </span>
+            <span class="text-slate-400 text-[9px] sm:text-[10px] shrink-0">10 xe</span>
           </div>
         </div>
-
       </div>
 
       <!-- TABS CHỨC NĂNG CHÍNH CỦA MODULE TÀI CHÍNH & DOANH THU -->
@@ -317,8 +314,8 @@
         </div>
 
         <!-- BẢNG TỔNG KẾT TỪNG XE -->
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs border-collapse">
+        <div class="overflow-x-auto touch-pan-x">
+          <table class="w-full text-left text-xs border-collapse min-w-[750px]">
             <thead class="bg-slate-50 text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
               <tr>
                 <th class="py-3 px-3 text-center w-12">Hạng</th>
@@ -509,8 +506,8 @@
           <p class="font-bold text-sm">Không có chuyến đi nào trong kỳ này hoặc xe chưa có lịch chạy.</p>
         </div>
 
-        <div v-else class="overflow-x-auto">
-          <table class="w-full text-left text-xs border-collapse">
+        <div v-else class="overflow-x-auto touch-pan-x">
+          <table class="w-full text-left text-xs border-collapse min-w-[800px]">
             <thead class="bg-slate-50 text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
               <tr>
                 <th class="py-3 px-3">Mã Chuyến & Giờ Chạy</th>
@@ -591,8 +588,8 @@
           </p>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs border-collapse">
+        <div class="overflow-x-auto touch-pan-x">
+          <table class="w-full text-left text-xs border-collapse min-w-[650px]">
             <thead class="bg-slate-50 text-slate-600 uppercase text-[11px] font-bold border-b border-slate-200">
               <tr>
                 <th class="py-3 px-4">Ngày</th>
@@ -660,8 +657,8 @@
           <p class="font-bold text-sm">Tất cả các ca chạy đã được thu tiền và đối soát xong!</p>
         </div>
 
-        <div v-else class="overflow-x-auto">
-          <table class="w-full text-left text-xs border-collapse">
+        <div v-else class="overflow-x-auto touch-pan-x">
+          <table class="w-full text-left text-xs border-collapse min-w-[750px]">
             <thead class="bg-slate-50 text-slate-600 uppercase text-[10px] font-bold border-b border-slate-200">
               <tr>
                 <th class="py-3 px-3">Mã Chuyến & Ca</th>
@@ -746,8 +743,8 @@
           </div>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs border-collapse">
+        <div class="overflow-x-auto touch-pan-x">
+          <table class="w-full text-left text-xs border-collapse min-w-[700px]">
             <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
               <tr>
                 <th class="py-3 px-3">Mã Chuyến</th>

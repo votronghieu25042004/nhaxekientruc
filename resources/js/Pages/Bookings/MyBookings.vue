@@ -2,15 +2,15 @@
   <div class="min-h-screen bg-slate-50 flex flex-col text-slate-800 font-sans pb-20 md:pb-0">
     <Navbar />
 
-    <main class="flex-1 max-w-5xl mx-auto px-4 sm:px-6 py-8 w-full space-y-6">
+    <main class="flex-1 max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-8 w-full space-y-4 sm:space-y-6">
       <!-- Top Title Bar -->
-      <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         <div>
           <div class="flex items-center gap-2">
-            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-200">
+            <span class="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase bg-red-50 text-red-700 border border-red-200">
               TRUNG TÂM HÀNH KHÁCH
             </span>
-            <h1 class="text-xl sm:text-2xl font-black text-slate-900">Quản Lý Vé Xe & Điểm Thưởng</h1>
+            <h1 class="text-base sm:text-2xl font-black text-slate-900">Quản Lý Vé Xe & Điểm Thưởng</h1>
           </div>
           <p class="text-xs text-slate-500 mt-1">
             Tra cứu thông tin vé điện tử, kiểm tra vị trí xe trực tuyến theo thời gian thực và quản lý điểm thưởng tích lũy
@@ -19,31 +19,31 @@
 
         <Link
           href="/"
-          class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm transition active:scale-[0.98] self-start md:self-auto cursor-pointer"
+          class="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm transition active:scale-[0.98] self-start md:self-auto cursor-pointer"
         >
           <span>➕ Đặt Thêm Vé Mới</span>
         </Link>
       </div>
 
       <!-- MAIN NAVIGATION TABS: TÁCH RIÊNG VÉ XE VÀ ĐIỂM THƯỞNG RÕ RÀNG THEO YÊU CẦU -->
-      <div class="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-2">
+      <div class="bg-white p-1 sm:p-1.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-1.5 sm:gap-2">
         <button
           type="button"
           @click="activeTab = 'bookings'"
-          class="flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer"
+          class="flex-1 py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer truncate"
           :class="activeTab === 'bookings' ? 'bg-[#dc2626] text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'"
         >
-          <span>🎫 Vé Xe Của Tôi ({{ bookings.length }})</span>
+          <span>🎫 Vé Xe ({{ bookings.length }})</span>
         </button>
 
         <button
           type="button"
           @click="activeTab = 'loyalty'"
-          class="flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer"
+          class="flex-1 py-2 sm:py-3 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer truncate"
           :class="activeTab === 'loyalty' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 hover:bg-slate-100'"
         >
-          <span>⭐ Điểm Thưởng & Hạng Thành Viên</span>
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold" :class="activeTab === 'loyalty' ? 'bg-slate-950 text-amber-400' : 'bg-amber-100 text-amber-800'">
+          <span class="truncate">⭐ Điểm Thưởng</span>
+          <span class="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold shrink-0" :class="activeTab === 'loyalty' ? 'bg-slate-950 text-amber-400' : 'bg-amber-100 text-amber-800'">
             {{ (customer_loyalty?.reward_points || 0).toLocaleString('vi-VN') }} đ
           </span>
         </button>
@@ -52,14 +52,12 @@
       <!-- ==================================================================== -->
       <!-- TAB 1: VÉ XE CỦA TÔI (CHUYẾN ĐANG CHẠY / SẮP ĐI & LỊCH SỬ CHUYẾN CŨ) -->
       <!-- ==================================================================== -->
-      <div v-if="activeTab === 'bookings'" class="space-y-6">
+      <div v-if="activeTab === 'bookings'" class="space-y-4 sm:space-y-6">
         
-
-
         <!-- Empty State Khi Không Tìm Thấy Vé -->
         <div 
           v-if="bookings.length === 0" 
-          class="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3"
+          class="bg-white p-6 sm:p-12 rounded-2xl sm:rounded-3xl border border-slate-200 text-center space-y-3"
         >
           <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-3xl mx-auto">
             🎫
