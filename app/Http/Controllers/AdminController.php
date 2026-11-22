@@ -2871,6 +2871,8 @@ class AdminController extends Controller
             'max_uses_per_user' => 'nullable|integer|min:1',
             'min_order_value' => 'nullable|numeric',
             'max_discount' => 'nullable|numeric',
+            'min_seat_price' => 'nullable|numeric|min:0',
+            'max_seat_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
         ]);
 
@@ -2885,6 +2887,8 @@ class AdminController extends Controller
             'target_audience' => $targetAudience,
             'min_order_value' => $request->input('min_order_value', 0),
             'max_discount' => $request->input('max_discount', 100000),
+            'min_seat_price' => $request->filled('min_seat_price') ? (float)$request->input('min_seat_price') : 0,
+            'max_seat_price' => $request->filled('max_seat_price') ? (float)$request->input('max_seat_price') : null,
             'usage_limit' => $validated['usage_limit'],
             'max_uses_per_user' => (int)$request->input('max_uses_per_user', $defaultMaxPerUser),
             'usage_count' => 0,
@@ -2918,6 +2922,8 @@ class AdminController extends Controller
             'max_uses_per_user' => 'nullable|integer|min:1',
             'min_order_value' => 'nullable|numeric',
             'max_discount' => 'nullable|numeric',
+            'min_seat_price' => 'nullable|numeric|min:0',
+            'max_seat_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
         ]);
 
@@ -2932,6 +2938,8 @@ class AdminController extends Controller
             'target_audience' => $targetAudience,
             'min_order_value' => $request->input('min_order_value', 0),
             'max_discount' => $request->input('max_discount', 100000),
+            'min_seat_price' => $request->filled('min_seat_price') ? (float)$request->input('min_seat_price') : 0,
+            'max_seat_price' => $request->filled('max_seat_price') ? (float)$request->input('max_seat_price') : null,
             'usage_limit' => $validated['usage_limit'],
             'max_uses_per_user' => (int)$request->input('max_uses_per_user', $voucher->max_uses_per_user ?: $defaultMaxPerUser),
             'valid_until' => $validated['valid_until'],

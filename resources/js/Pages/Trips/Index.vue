@@ -208,30 +208,36 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        <!-- Nút Bật/Tắt Bộ Lọc Trên Mobile (< lg) -->
-        <div class="lg:hidden col-span-1 flex items-center justify-between p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs mb-1">
-          <div class="flex items-center gap-2">
-            <span class="text-lg">🌪️</span>
-            <span class="font-black text-xs text-slate-900">Bộ Lọc Chuyến Xe</span>
-            <span v-if="activeFilterCount > 0" class="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-black">
-              {{ activeFilterCount }} đang lọc
-            </span>
-          </div>
+        <!-- Nút Bật Bộ Lọc Trên Mobile (< lg) Dạng Sticky Sang Trọng -->
+        <div class="lg:hidden col-span-1 flex items-center justify-between p-2.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs mb-2 sticky top-[138px] z-20">
           <button
             type="button"
-            @click="showMobileFilters = !showMobileFilters"
-            class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition cursor-pointer"
+            @click="showMobileFilters = true"
+            class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95 transition"
           >
-            {{ showMobileFilters ? '▲ Thu gọn' : '▼ Mở bộ lọc' }}
+            <span>🌪️ Bộ Lọc</span>
+            <span v-if="activeFilterCount > 0" class="px-1.5 py-0.2 rounded-full bg-red-600 text-white text-[10px] font-black">
+              {{ activeFilterCount }}
+            </span>
           </button>
+          <div class="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+            <span class="text-red-600 font-black font-mono">{{ filteredTrips.length }}</span> chuyến
+          </div>
+          <select
+            v-model="sortBy"
+            class="bg-slate-100 text-slate-800 text-xs font-bold px-2.5 py-1.5 rounded-xl border-none outline-none cursor-pointer"
+          >
+            <option value="scheduled_first">Theo giờ chạy</option>
+            <option value="price_asc">Giá thấp nhất</option>
+            <option value="price_desc">Giá cao nhất</option>
+          </select>
         </div>
 
         <!-- ============================================== -->
-        <!-- CỘT TRÁI: SIDEBAR BỘ LỌC CHUẨN ẢNH 2 (3.5 cols) -->
+        <!-- CỘT TRÁI: SIDEBAR BỘ LỌC CHUẨN ẢNH 2 (Chỉ hiện desktop lg) -->
         <!-- ============================================== -->
         <aside 
-          :class="showMobileFilters ? 'block' : 'hidden lg:block'"
-          class="lg:col-span-4 xl:col-span-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sticky top-[152px] max-h-[calc(100vh-170px)] overflow-y-auto custom-scrollbar"
+          class="hidden lg:block lg:col-span-4 xl:col-span-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sticky top-[152px] max-h-[calc(100vh-170px)] overflow-y-auto custom-scrollbar"
         >
           
           <!-- Header Bộ Lọc + Nút Bỏ Lọc -->
@@ -651,8 +657,8 @@
           <div
             v-for="trip in filteredTrips"
             :key="trip.id"
-            class="bg-white rounded-2xl border border-slate-200/90 hover:border-red-300 hover:shadow-md transition-all p-5 shadow-2xs relative overflow-hidden group"
-            :class="{ 'opacity-75 bg-slate-50/50': trip.status === 'RUNNING' || trip.status === 'COMPLETED' }"
+            class="bg-white rounded-3xl border border-slate-200/90 hover:border-red-400 hover:shadow-lg transition-all p-4.5 sm:p-5 shadow-xs relative overflow-hidden group"
+            :class="{ 'opacity-80 bg-slate-50/50': trip.status === 'RUNNING' || trip.status === 'COMPLETED' }"
           >
             <!-- Đường viền chỉ trạng thái màu cam khi xe đang chạy -->
             <div
@@ -784,9 +790,9 @@
                   v-else
                   type="button"
                   @click="handleBookTrip(trip.id)"
-                  class="inline-block w-full sm:w-auto px-6 py-3 bg-[#dc2626] hover:bg-[#b91c1c] active:scale-98 text-white font-black text-sm uppercase tracking-wider rounded-xl shadow-md shadow-red-500/25 text-center transition-all cursor-pointer"
+                  class="inline-block w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-700 hover:to-rose-700 active:scale-95 text-white font-black text-sm uppercase tracking-wider rounded-2xl shadow-lg shadow-red-500/30 text-center transition-all cursor-pointer"
                 >
-                  Chọn Ghế & Đặt Vé
+                  Chọn Ghế & Đặt Vé ➔
                 </button>
               </div>
             </div>
@@ -799,6 +805,150 @@
     <Footer />
     <AiChatModal />
     <AuthModal v-model="showAuthModal" />
+
+    <!-- MOBILE FILTER BOTTOM SHEET DRAWER (Teleport to body) -->
+    <Teleport to="body">
+      <div v-if="showMobileFilters" class="fixed inset-0 z-[9999] overflow-hidden lg:hidden flex flex-col justify-end">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in" @click="showMobileFilters = false"></div>
+
+        <!-- Sheet Modal Content -->
+        <div class="relative bg-white w-full max-h-[85vh] rounded-t-3xl shadow-2xl flex flex-col z-10 animate-in slide-in-from-bottom duration-250">
+          <!-- Header & Handle -->
+          <div class="pt-3 pb-3 px-4 border-b border-slate-100 flex-shrink-0">
+            <div class="w-12 h-1.5 rounded-full bg-slate-300 mx-auto mb-2.5"></div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-base font-black text-slate-900">Bộ Lọc Tìm Kiếm</span>
+                <span v-if="activeFilterCount > 0" class="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-black font-mono">
+                  {{ activeFilterCount }}
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  v-if="activeFilterCount > 0"
+                  type="button"
+                  @click="resetAllFilters"
+                  class="text-xs font-bold text-red-600 hover:text-red-800 underline cursor-pointer"
+                >
+                  Bỏ lọc
+                </button>
+                <button
+                  type="button"
+                  @click="showMobileFilters = false"
+                  class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Body Filter Options -->
+          <div class="p-4 overflow-y-auto space-y-4 flex-1 text-xs">
+            <!-- Fast Filters -->
+            <div>
+              <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">Lọc Nhanh</p>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  @click="toggleFastFilter('door_dropoff')"
+                  class="px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  :class="fastFilters.door_dropoff ? 'bg-red-50 border-red-500 text-red-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-700'"
+                >
+                  <span>🏠 Đón/Trả tận nơi</span>
+                </button>
+                <button
+                  type="button"
+                  @click="toggleFastFilter('afternoon')"
+                  class="px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  :class="fastFilters.afternoon ? 'bg-amber-50 border-amber-500 text-amber-800 font-bold' : 'bg-slate-50 border-slate-200 text-slate-700'"
+                >
+                  <span>☀️ Chiều (12:00 - 18:00)</span>
+                </button>
+                <button
+                  type="button"
+                  @click="toggleFastFilter('night')"
+                  class="px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  :class="fastFilters.night ? 'bg-indigo-50 border-indigo-500 text-indigo-800 font-bold' : 'bg-slate-50 border-slate-200 text-slate-700'"
+                >
+                  <span>🌙 Tối (18:00 - 24:00)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Giờ khởi hành -->
+            <div class="pt-3 border-t border-slate-100">
+              <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">Giờ Khởi Hành</p>
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  v-for="t in depTimeOptions"
+                  :key="'m-dep-' + t.id"
+                  type="button"
+                  @click="toggleDepTime(t.id)"
+                  class="p-2.5 rounded-xl border text-left transition cursor-pointer"
+                  :class="selectedDepTime === t.id ? 'bg-red-50 border-red-500 text-red-700 font-bold shadow-2xs' : 'bg-slate-50 border-slate-200 text-slate-700'"
+                >
+                  <div class="font-bold text-xs">{{ t.label }}</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Loại xe -->
+            <div class="pt-3 border-t border-slate-100">
+              <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">Loại Xe / Giường Nằm</p>
+              <div class="space-y-2">
+                <label v-for="bt in busTypeOptions" :key="'m-bt-' + bt.id" class="flex items-center gap-2.5 text-xs text-slate-700 hover:text-slate-950 cursor-pointer select-none">
+                  <input type="checkbox" v-model="selectedBusTypes" :value="bt.id" class="rounded text-red-600 focus:ring-red-500 w-4 h-4 border-slate-300" />
+                  <span>{{ bt.label }}</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Điểm đón -->
+            <div v-if="pickupStopOptions.length > 0" class="pt-3 border-t border-slate-100">
+              <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">Điểm Đón</p>
+              <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
+                <label v-for="st in pickupStopOptions" :key="'m-pk-' + st.id" class="flex items-center gap-2.5 text-xs text-slate-700 hover:text-slate-950 cursor-pointer select-none">
+                  <input type="checkbox" v-model="selectedPickupStops" :value="st.id" class="rounded text-red-600 focus:ring-red-500 w-4 h-4 border-slate-300" />
+                  <span>{{ st.label }}</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Điểm trả -->
+            <div v-if="dropoffStopOptions.length > 0" class="pt-3 border-t border-slate-100">
+              <p class="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">Điểm Trả</p>
+              <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
+                <label v-for="st in dropoffStopOptions" :key="'m-dp-' + st.id" class="flex items-center gap-2.5 text-xs text-slate-700 hover:text-slate-950 cursor-pointer select-none">
+                  <input type="checkbox" v-model="selectedDropoffStops" :value="st.id" class="rounded text-red-600 focus:ring-red-500 w-4 h-4 border-slate-300" />
+                  <span>{{ st.label }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sticky Sheet Footer -->
+          <div class="p-3.5 border-t border-slate-100 bg-white/95 backdrop-blur-sm flex items-center gap-3">
+            <button
+              type="button"
+              @click="resetAllFilters"
+              class="px-4 py-3 rounded-2xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
+            >
+              Xóa Lọc
+            </button>
+            <button
+              type="button"
+              @click="showMobileFilters = false"
+              class="flex-1 py-3 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-xs shadow-md shadow-red-500/25 active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>Xem {{ filteredTrips.length }} Chuyến Xe</span>
+              <span>➔</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 

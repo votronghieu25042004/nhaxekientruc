@@ -105,6 +105,17 @@ class AuthController extends Controller
         }
 
         if ($user && $isValidPassword) {
+            $isStudentEmail = str_contains(strtolower($user->email ?? ''), '.edu.vn') || str_contains(strtolower($user->email ?? ''), 'sinhvien');
+            if (($user->is_student || $isStudentEmail) && empty($user->student_discount_expires_at)) {
+                $user->is_student = true;
+                $user->student_registered_at = $user->student_registered_at ?? now();
+                $user->student_discount_expires_at = now()->addYear();
+                $user->membership_plan = $user->membership_plan ?? 'STUDENT_DEFAULT';
+                $user->membership_discount_percent = $user->membership_discount_percent ?? 30;
+                $user->membership_expires_at = $user->membership_expires_at ?? now()->addYear();
+                $user->save();
+            }
+
             Auth::login($user, $request->boolean('remember'));
             $request->session()->regenerate();
 
@@ -874,6 +885,10 @@ class AuthController extends Controller
             $email = $cleanPhone . '@nhaxekientruc.vn';
         }
 
+        $isStudentParam = $request->boolean('is_student');
+        $isStudentEmail = str_contains(strtolower($email), '.edu.vn') || str_contains(strtolower($email), 'sinhvien');
+        $isStudent = $isStudentParam || $isStudentEmail;
+
         $user = User::create([
             'name' => $name,
             'email' => $email,
@@ -883,12 +898,23 @@ class AuthController extends Controller
             'reward_points' => 0,
             'loyalty_tier' => 'BRONZE',
             'email_verified_at' => now(),
+            'is_student' => $isStudent,
+            'student_registered_at' => $isStudent ? now() : null,
+            'student_discount_expires_at' => $isStudent ? now()->addYear() : null,
+            'student_first_trip_used' => false,
+            'membership_plan' => $isStudent ? 'STUDENT_DEFAULT' : null,
+            'membership_discount_percent' => $isStudent ? 30 : null,
+            'membership_expires_at' => $isStudent ? now()->addYear() : null,
         ]);
 
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        return redirect()->intended('/')->with('success', "Chào mừng {$user->name}! Tài khoản nhaxekientruc của bạn đã được khởi tạo thành công.");
+        $welcomeMsg = $isStudent
+            ? "🎉 Chào mừng Sinh viên {$user->name}! Bạn đã được kích hoạt GÓI ƯU ĐÃI SINH VIÊN 1 NĂM (Giảm 30% toàn bộ vé và Giảm 100% vé đầu tối đa 350k)!"
+            : "Chào mừng {$user->name}! Tài khoản nhaxekientruc của bạn đã được khởi tạo thành công.";
+
+        return redirect()->intended('/')->with('success', $welcomeMsg);
     }
 
     public function googleLogin(Request $request)
@@ -910,6 +936,8 @@ class AuthController extends Controller
             }
         }
 
+        $isStudentGoogle = str_contains(strtolower($email), '.edu.vn') || str_contains(strtolower($email), 'sinhvien');
+
         if (!$user) {
             $user = User::create([
                 'name' => $name,
@@ -921,7 +949,22 @@ class AuthController extends Controller
                 'reward_points' => 6058,
                 'loyalty_tier' => 'DIAMOND',
                 'email_verified_at' => now(),
+                'is_student' => $isStudentGoogle,
+                'student_registered_at' => $isStudentGoogle ? now() : null,
+                'student_discount_expires_at' => $isStudentGoogle ? now()->addYear() : null,
+                'student_first_trip_used' => false,
+                'membership_plan' => $isStudentGoogle ? 'STUDENT_DEFAULT' : null,
+                'membership_discount_percent' => $isStudentGoogle ? 30 : null,
+                'membership_expires_at' => $isStudentGoogle ? now()->addYear() : null,
             ]);
+        } elseif ($isStudentGoogle && empty($user->student_discount_expires_at)) {
+            $user->is_student = true;
+            $user->student_registered_at = $user->student_registered_at ?? now();
+            $user->student_discount_expires_at = now()->addYear();
+            $user->membership_plan = $user->membership_plan ?? 'STUDENT_DEFAULT';
+            $user->membership_discount_percent = $user->membership_discount_percent ?? 30;
+            $user->membership_expires_at = $user->membership_expires_at ?? now()->addYear();
+            $user->save();
         }
 
         Auth::login($user, true);

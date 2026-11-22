@@ -687,6 +687,20 @@ class TripController extends Controller
         if ($voucherCode) {
             $voucher = Voucher::where('code', $voucherCode)->where('is_active', 1)->first();
             if ($voucher) {
+                // KIỂM TRA KHOẢNG GIÁ GHẾ (min_seat_price & max_seat_price)
+                $minSeat = (float)($voucher->min_seat_price ?? 0);
+                $maxSeat = $voucher->max_seat_price !== null ? (float)$voucher->max_seat_price : null;
+                if ($minSeat > 0 || $maxSeat !== null) {
+                    foreach ($request->seat_numbers as $sNum) {
+                        $isFloor2 = str_starts_with($sNum, 'B');
+                        $seatRawFare = $isFloor2 ? (float)($trip->floor2_price ?? round($seatPrice * 0.95)) : (float)($trip->floor1_price ?? $seatPrice);
+                        if ($seatRawFare < $minSeat || ($maxSeat !== null && $seatRawFare > $maxSeat)) {
+                            $rangeStr = number_format($minSeat) . " VNĐ" . ($maxSeat ? " đến " . number_format($maxSeat) . " VNĐ" : " trở lên");
+                            return back()->withErrors(['voucher' => "Mã [{$voucher->code}] chỉ áp dụng cho ghế có giá từ {$rangeStr}! Ghế {$sNum} có giá " . number_format($seatRawFare) . " VNĐ không nằm trong khoảng giá áp dụng."]);
+                        }
+                    }
+                }
+
                 if ($voucher->discount_type === 'PERCENT') {
                     $discountPerSeat = round($seatPrice * ($voucher->discount_value / 100));
                     $discountAmount = $discountPerSeat * $totalSeatCount;
@@ -735,36 +749,56 @@ class TripController extends Controller
         $totalAmount = max(0, $totalAmount - $pointsDiscount);
 
         // Xử lý gói ưu đãi:
-        // 1. Vé 0-Đồng Tết cho Sinh viên (Mã SINHVIEN0DONG / SV0DONG / TET0DONG)
-        // 2. Sinh viên ưu đãi thường (email .edu.vn hoặc mã SINHVIEN): Giảm 30%
+        // 1. Vé Sinh viên chuyến đầu tiên: Giảm 100% trong 350.000đ (Mã SINHVIEN100 / SINHVIEN0DONG / SV0DONG / TET0DONG)
+        // 2. Gói sinh viên 1 năm giảm 30% (hoặc nâng cấp Eco 20%, Pro 25%, Ultra 40%): Mã SINHVIEN / SINHVIEN30
         // 3. Khách hàng mới (mã CHAOBAOMOI / CHAOBANMOI): Giảm 10%
         $authUser = Auth::user();
         $userEmail = strtolower($authUser?->email ?? $request->input('customer_email', ''));
         $isStudent = str_contains($userEmail, '.edu.vn') || str_contains($userEmail, 'sinhvien') || ($authUser && $authUser->is_student);
 
-        if (in_array(strtoupper($voucherCode), ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])) {
+        if (in_array(strtoupper($voucherCode), ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG']) || ($isStudent && $authUser && !$authUser->student_first_trip_used && in_array(strtoupper($voucherCode), ['SINHVIEN', 'SINHVIEN30']))) {
             if (!$isStudent) {
-                return back()->withErrors(['voucher' => 'Mã giảm giá 100% (SINHVIEN0DONG) chỉ dành riêng cho sinh viên có email trường (.edu.vn)!']);
+                return back()->withErrors(['voucher' => 'Mã giảm giá 100% chuyến đầu chỉ dành riêng cho sinh viên đã xác minh!']);
             }
             if ($totalSeatCount > 1) {
-                return back()->withErrors(['voucher' => 'Mã vé 0-Đồng sinh viên (SINHVIEN0DONG) chỉ áp dụng tối đa cho đúng 1 ghế cho mỗi sinh viên. Quý khách vui lòng chọn đúng 1 ghế!']);
+                return back()->withErrors(['voucher' => 'Ưu đãi chuyến xe đầu tiên chỉ áp dụng cho tối đa 1 ghế. Quý khách vui lòng chọn đúng 1 ghế!']);
             }
             if ($userId) {
-                $hasUsedFirstTrip = Booking::where('user_id', $userId)
+                $hasUsedFirstTrip = $authUser->student_first_trip_used || Booking::where('user_id', $userId)
                     ->where(function ($q) {
                         $q->whereIn('voucher_code', ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])
                           ->orWhereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
                     })
                     ->exists();
-                if ($hasUsedFirstTrip) {
-                    return back()->withErrors(['voucher' => 'Không đủ điều kiện! Mã vé 0-Đồng chỉ áp dụng duy nhất 1 lần cho lần đầu tiên đặt vé của sinh viên.']);
+                if ($hasUsedFirstTrip && !in_array(strtoupper($voucherCode), ['SINHVIEN', 'SINHVIEN30'])) {
+                    return back()->withErrors(['voucher' => 'Tài khoản đã sử dụng chuyến xe đầu tiên. Vui lòng sử dụng mã SINHVIEN (Giảm 30%) cho các chuyến tiếp theo!']);
                 }
             }
-            $studentDiscount = $totalAmount; // Vé 0-Đồng (Giảm 100%)
-            $totalAmount = 0;
+
+            // Giảm 100% nhưng tối đa trong 350.000 VNĐ
+            $studentDiscount = min($totalAmount, 350000);
+            $totalAmount = max(0, $totalAmount - $studentDiscount);
             $discountAmount += $studentDiscount;
-        } elseif (in_array(strtoupper($voucherCode), ['SINHVIEN', 'SINHVIEN30', 'SVVN', 'SV2026']) && $isStudent) {
-            $studentDiscount = round($totalAmount * 0.30);
+
+            if ($authUser) {
+                $authUser->student_first_trip_used = true;
+                $authUser->save();
+            }
+        } elseif (in_array(strtoupper($voucherCode), ['SINHVIEN', 'SINHVIEN30', 'SVVN', 'SV2026']) || ($isStudent && empty($voucherCode) && $authUser?->is_membership_active)) {
+            $isStudentExpired = $authUser?->student_discount_expires_at && Carbon::parse($authUser->student_discount_expires_at)->isPast();
+            $hasActiveMembership = $authUser?->membership_expires_at && Carbon::parse($authUser->membership_expires_at)->isFuture();
+
+            if ($isStudentExpired && !$hasActiveMembership) {
+                return back()->withErrors(['voucher' => 'Gói ưu đãi 1 năm giảm 30% của bạn đã hết hạn! Vui lòng nâng cấp gói Eco 20%, Pro 25% hoặc Ultra 40% để tiếp tục nhận ưu đãi.']);
+            }
+
+            // Tỷ lệ giảm: mặc định 30%, hoặc nâng cấp lên Ultra 40%, Pro 25%, Eco 20%
+            $discountPercent = 30;
+            if ($hasActiveMembership && $authUser->membership_discount_percent) {
+                $discountPercent = (int)$authUser->membership_discount_percent;
+            }
+
+            $studentDiscount = round($totalAmount * ($discountPercent / 100));
             $totalAmount = max(0, $totalAmount - $studentDiscount);
             $discountAmount += $studentDiscount;
         } elseif (in_array(strtoupper($voucherCode), ['CHAOBAOMOI', 'CHAOBANMOI', 'KHACHMOI10'])) {
@@ -1788,6 +1822,38 @@ class TripController extends Controller
         $userEmail = strtolower($authUser?->email ?? $request->input('email', ''));
         $isStudent = str_contains($userEmail, '.edu.vn') || str_contains($userEmail, 'sinhvien') || (bool)($authUser && $authUser->is_student);
 
+        // 0. KIỂM TRA KHOẢNG GIÁ GHẾ (min_seat_price & max_seat_price)
+        $minSeat = (float)($voucher->min_seat_price ?? 0);
+        $maxSeat = $voucher->max_seat_price !== null ? (float)$voucher->max_seat_price : null;
+        if ($minSeat > 0 || $maxSeat !== null) {
+            $seatPrices = (array)$request->input('seat_prices', []);
+            if (empty($seatPrices) && $request->filled('trip_id') && $request->filled('seat_numbers')) {
+                $checkTrip = Trip::find($request->input('trip_id'));
+                if ($checkTrip) {
+                    $seatPrices = [];
+                    foreach ((array)$request->input('seat_numbers') as $sNum) {
+                        $isFloor2 = str_starts_with($sNum, 'B');
+                        $seatPrices[] = $isFloor2 
+                            ? (float)($checkTrip->floor2_price ?? round($checkTrip->base_price * 0.95)) 
+                            : (float)($checkTrip->floor1_price ?? $checkTrip->base_price);
+                    }
+                }
+            }
+
+            if (!empty($seatPrices)) {
+                foreach ($seatPrices as $sPrice) {
+                    $sPrice = (float)$sPrice;
+                    if ($sPrice < $minSeat || ($maxSeat !== null && $sPrice > $maxSeat)) {
+                        $rangeLabel = number_format($minSeat) . " VNĐ" . ($maxSeat ? " đến " . number_format($maxSeat) . " VNĐ" : " trở lên");
+                        return response()->json([
+                            'valid' => false,
+                            'message' => "Mã [{$voucher->code}] chỉ áp dụng cho ghế có giá từ {$rangeLabel}! Ghế bạn chọn có giá " . number_format($sPrice) . " VNĐ không đủ điều kiện.",
+                        ], 422);
+                    }
+                }
+            }
+        }
+
         // 1. KIỂM TRA ĐỐI TƯỢNG ÁP DỤNG (target_audience: STUDENT, INDIVIDUAL, ALL):
         if ($voucher->target_audience === 'STUDENT') {
             if (!$isStudent) {
@@ -1824,18 +1890,18 @@ class TripController extends Controller
             }
         }
 
-        // 4. TRƯỜNG HỢP VÉ 0-ĐỒNG (discount_value == 100 hoặc code SINHVIEN0DONG):
-        if (($voucher->discount_type === 'PERCENT' && (float)$voucher->discount_value >= 100) || $voucher->code === 'SINHVIEN0DONG') {
+        // 4. TRƯỜNG HỢP VÉ LẦN ĐẦU CHO SINH VIÊN (GIẢM 100% TRONG 350.000 VNĐ):
+        if (($voucher->discount_type === 'PERCENT' && (float)$voucher->discount_value >= 100) || in_array($voucher->code, ['SINHVIEN0DONG', 'SINHVIEN100', 'SV0DONG'])) {
             $seatCount = (int)$request->input('seat_count', 1);
             if ($seatCount > 1) {
                 return response()->json([
                     'valid' => false,
-                    'message' => 'Mã vé 0-Đồng chỉ áp dụng tối đa cho đúng 1 ghế cho mỗi sinh viên. Quý khách vui lòng chọn đúng 1 ghế!',
+                    'message' => 'Mã vé chuyến đầu tiên chỉ áp dụng cho tối đa 1 ghế. Quý khách vui lòng chọn đúng 1 ghế!',
                 ], 422);
             }
 
             if ($authUser) {
-                $hasUsedFirstTrip = Booking::where('user_id', $authUser->id)
+                $hasUsedFirstTrip = $authUser->student_first_trip_used || Booking::where('user_id', $authUser->id)
                     ->where(function ($q) {
                         $q->whereIn('voucher_code', ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])
                           ->orWhereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
@@ -1845,44 +1911,79 @@ class TripController extends Controller
                 if ($hasUsedFirstTrip) {
                     return response()->json([
                         'valid' => false,
-                        'message' => 'Không đủ điều kiện! Mã vé 0-Đồng chỉ áp dụng duy nhất 1 lần cho lần đầu tiên đặt vé của sinh viên.',
+                        'message' => 'Bạn đã sử dụng ưu đãi chuyến xe đầu tiên. Vui lòng sử dụng mã SINHVIEN (Giảm 30% trong 1 năm) cho các chuyến tiếp theo!',
                     ], 422);
                 }
             }
+
+            $cappedDiscount = min($amount, 350000);
+            $msg = $amount <= 350000 
+                ? "🎉 Chúc mừng Sinh viên! Chuyến xe đầu tiên được giảm 100% (Tài trợ trọn gói 0 VNĐ bởi nhaxekientruc)!"
+                : "🎉 Chúc mừng Sinh viên! Chuyến xe đầu tiên được giảm 100% tối đa 350.000 VNĐ (Phần chênh lệch cần trả: " . number_format($amount - 350000) . " VNĐ)!";
 
             return response()->json([
                 'valid' => true,
                 'code' => $voucher->code,
                 'target_audience' => $voucher->target_audience,
-                'discount_type' => 'PERCENT',
-                'discount_value' => 100,
-                'discount_amount' => $amount,
+                'discount_type' => 'FIXED',
+                'discount_value' => $cappedDiscount,
+                'discount_amount' => $cappedDiscount,
                 'is_student_first_trip' => true,
-                'description' => $voucher->description,
-                'message' => "🎉 Chúc mừng bạn đã áp dụng thành công VÉ 0-ĐỒNG LẦN ĐẦU! Tài trợ 100% tiền vé bởi nhaxekientruc!",
+                'description' => 'Ưu đãi Sinh Viên: Giảm 100% chuyến đầu tiên (tối đa 350k)',
+                'message' => $msg,
             ]);
         }
 
-        // 5. TRƯỜNG HỢP ĐẶC BIỆT GÓI SINH VIÊN 1 NĂM (SINHVIEN):
-        if ($voucher->code === 'SINHVIEN' && $authUser && $isStudent) {
-            $pastBookingsCount = Booking::where('user_id', $authUser->id)
-                ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
-                ->count();
+        // 5. TRƯỜNG HỢP GÓI SINH VIÊN 1 NĂM (SINHVIEN / SINHVIEN30 / SVVN):
+        if (in_array($voucher->code, ['SINHVIEN', 'SINHVIEN30', 'SVVN']) && $authUser && $isStudent) {
+            $isStudentExpired = $authUser->student_discount_expires_at && Carbon::parse($authUser->student_discount_expires_at)->isPast();
+            $hasActiveMembership = $authUser->membership_expires_at && Carbon::parse($authUser->membership_expires_at)->isFuture();
 
-            if ($pastBookingsCount === 0) {
-                // MIỄN PHÍ 100% CHO LẦN ĐẦU ĐẶT VÉ
+            if ($isStudentExpired && !$hasActiveMembership) {
+                return response()->json([
+                    'valid' => false,
+                    'message' => 'Gói ưu đãi 1 năm giảm 30% của bạn đã hết hạn (kết thúc vào ' . Carbon::parse($authUser->student_discount_expires_at)->format('d/m/Y') . ')! Vui lòng nâng cấp gói Eco 20%, Pro 25% hoặc Ultra 40% để tiếp tục nhận ưu đãi.',
+                ], 422);
+            }
+
+            $hasUsedFirstTrip = $authUser->student_first_trip_used || Booking::where('user_id', $authUser->id)
+                ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
+                ->exists();
+
+            if (!$hasUsedFirstTrip) {
+                $cappedDiscount = min($amount, 350000);
                 return response()->json([
                     'valid' => true,
                     'code' => 'SINHVIEN',
                     'target_audience' => 'STUDENT',
-                    'discount_type' => 'PERCENT',
-                    'discount_value' => 100,
-                    'discount_amount' => $amount,
+                    'discount_type' => 'FIXED',
+                    'discount_value' => $cappedDiscount,
+                    'discount_amount' => $cappedDiscount,
                     'is_student_first_trip' => true,
-                    'description' => 'Gói Sinh Viên: MIỄN PHÍ 100% chuyến xe đầu tiên',
-                    'message' => '🎓 Chúc mừng Sinh viên! Chuyến xe đầu tiên của bạn được MIỄN PHÍ 100% (0 VNĐ)!',
+                    'description' => 'Gói Sinh Viên: Giảm 100% chuyến đầu tiên (tối đa 350k)',
+                    'message' => '🎓 Chúc mừng Sinh viên! Chuyến xe đầu tiên của bạn được giảm 100% tối đa 350.000 VNĐ!',
                 ]);
             }
+
+            // Tỷ lệ giảm: mặc định 30%, hoặc nâng cấp lên Ultra 40%, Pro 25%, Eco 20%
+            $discountPercent = 30;
+            if ($hasActiveMembership && $authUser->membership_discount_percent) {
+                $discountPercent = (int)$authUser->membership_discount_percent;
+            }
+
+            $discount = round($amount * ($discountPercent / 100));
+            $daysLeft = $authUser->student_discount_expires_at ? max(0, now()->diffInDays(Carbon::parse($authUser->student_discount_expires_at), false)) : 365;
+
+            return response()->json([
+                'valid' => true,
+                'code' => $voucher->code,
+                'target_audience' => 'STUDENT',
+                'discount_type' => 'PERCENT',
+                'discount_value' => $discountPercent,
+                'discount_amount' => $discount,
+                'description' => "Gói Ưu Đãi Sinh Viên ({$discountPercent}% / 1 năm) - Còn {$daysLeft} ngày",
+                'message' => "🎓 Áp dụng thành công ưu đãi Sinh viên giảm {$discountPercent}% (-" . number_format($discount) . " VNĐ)! Gói của bạn còn {$daysLeft} ngày.",
+            ]);
         }
 
         // 6. TÍNH TOÁN CHIẾT KHẤU TIÊU CHUẨN TỪ RECORD DATABASE:
@@ -1912,6 +2013,95 @@ class TripController extends Controller
             'description' => $voucher->description,
             'message' => "Áp dụng thành công mã {$voucher->code} (Dành cho {$audienceLabel})! Giảm -" . number_format($discount) . " VNĐ",
         ]);
+    }
+
+    /**
+     * Nâng cấp / Gia hạn gói thành viên (Eco 20%, Pro 25%, Ultra 40%)
+     * Cho cả Sinh viên (trợ giá) và Người thường (chuẩn)
+     */
+    public function subscribeMembership(Request $request)
+    {
+        $request->validate([
+            'plan' => 'required|in:ECO_20,PRO_25,ULTRA_40',
+        ]);
+
+        $user = Auth::user();
+        if (!$user) {
+            return back()->withErrors(['auth' => 'Vui lòng đăng nhập để nâng cấp gói thành viên!']);
+        }
+
+        $plan = $request->input('plan');
+        $isStudent = (bool)($user->is_student || str_contains(strtolower($user->email ?? ''), '.edu.vn') || str_contains(strtolower($user->email ?? ''), 'sinhvien'));
+
+        // Cấu hình bảng giá và quyền lợi
+        $planConfigs = [
+            'ECO_20' => [
+                'discount_percent' => 20,
+                'duration_months' => 6,
+                'name' => 'Eco Pass (Giảm 20%)',
+                'student_price' => 49000,
+                'standard_price' => 199000,
+            ],
+            'PRO_25' => [
+                'discount_percent' => 25,
+                'duration_months' => 12,
+                'name' => 'Pro Pass (Giảm 25%)',
+                'student_price' => 139000,
+                'standard_price' => 349000,
+            ],
+            'ULTRA_40' => [
+                'discount_percent' => 40,
+                'duration_months' => 12,
+                'name' => 'Ultra VIP Pass (Giảm 40%)',
+                'student_price' => 239000,
+                'standard_price' => 599000,
+            ],
+        ];
+
+        $cfg = $planConfigs[$plan];
+        $price = $isStudent ? $cfg['student_price'] : $cfg['standard_price'];
+        $months = $cfg['duration_months'];
+        $discountPercent = $cfg['discount_percent'];
+
+        $user->membership_plan = $plan;
+        $user->membership_discount_percent = $discountPercent;
+        $user->membership_expires_at = now()->addMonths($months);
+        if ($isStudent && empty($user->student_registered_at)) {
+            $user->student_registered_at = now();
+            $user->student_discount_expires_at = now()->addMonths($months);
+        }
+        $user->save();
+
+        try {
+            \Illuminate\Support\Facades\DB::table('membership_subscriptions')->insert([
+                'user_id' => $user->id,
+                'plan' => $plan,
+                'discount_percent' => $discountPercent,
+                'price' => $price,
+                'duration_months' => $months,
+                'starts_at' => now(),
+                'expires_at' => now()->addMonths($months),
+                'payment_status' => 'ACTIVE',
+                'payment_method' => $request->input('payment_method', 'VIETQR'),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Throwable $e) {}
+
+        $roleText = $isStudent ? 'Sinh viên' : 'Hành khách';
+        $successMsg = "🎉 Chúc mừng bạn đã kích hoạt thành công {$cfg['name']} dành cho {$roleText}! Giảm ngay {$discountPercent}% toàn bộ chuyến xe trong {$months} tháng.";
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $successMsg,
+                'plan' => $plan,
+                'discount_percent' => $discountPercent,
+                'expires_at' => $user->membership_expires_at->format('d/m/Y'),
+            ]);
+        }
+
+        return back()->with('success', $successMsg);
     }
 
     /**

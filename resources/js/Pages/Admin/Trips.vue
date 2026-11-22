@@ -790,8 +790,12 @@ const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currenc
             <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
                 
                 <!-- 4A. TABLE VIEW -->
-                <div v-if="viewMode === 'table'" class="overflow-x-auto">
-                    <table class="w-full text-left text-xs text-slate-700 border-collapse">
+                <div v-if="viewMode === 'table'">
+                    <div class="sm:hidden text-[10px] text-slate-500 font-bold px-3 py-1 flex items-center gap-1 bg-slate-50 border-b border-slate-100">
+                        <span>👉</span><span>Vuốt sang ngang để xem đầy đủ cột chuyến xe</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-700 border-collapse min-w-[850px]">
                         <thead class="bg-slate-50/80 text-slate-600 uppercase font-black text-[11px] border-b border-slate-200 select-none">
                             <tr>
                                 <th class="p-4 w-12 text-center">
@@ -964,6 +968,7 @@ const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currenc
                             </tr>
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
                 <!-- 4B. CARDS VIEW -->

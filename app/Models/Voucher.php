@@ -16,6 +16,8 @@ class Voucher extends Model
         'usage_limit' => 'integer',
         'usage_count' => 'integer',
         'max_uses_per_user' => 'integer',
+        'min_seat_price' => 'float',
+        'max_seat_price' => 'float',
     ];
 
     public function getTypeAttribute()

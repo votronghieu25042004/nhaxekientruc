@@ -43,7 +43,7 @@
           </div>
 
           <!-- Cards Voucher Shopee Style: Khách Mới 10% (CHAOBAOMOI) & Sinh Viên 30% (SINHVIEN) -->
-          <div class="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+          <div class="flex sm:flex-wrap items-center justify-start sm:justify-center gap-2.5 sm:gap-3 overflow-x-auto scrollbar-none w-full sm:w-auto px-1 py-1">
             <!-- Card 1: Khách mới 10% -->
             <div class="flex-shrink-0 rounded-2xl overflow-hidden shadow-xl border-2 border-white/40 transform hover:scale-105 transition-all duration-300">
               <div class="bg-[#00767a] px-4 py-1.5 text-center flex items-center justify-between gap-2">
@@ -96,13 +96,13 @@
       </div>
 
       <!-- KHUNG TÌM KIẾM CĂN CHÍNH XÁC: 50% NỬA TRÊN ĐỎ / 50% NỬA DƯỚI TRẮNG -->
-      <div class="max-w-7xl mx-auto relative z-30 mt-6 sm:mt-8 -mb-28 sm:-mb-36">
+      <div class="max-w-7xl mx-auto relative z-30 mt-6 sm:mt-8 -mb-20 sm:-mb-36">
         <SearchWidget :destinations="destinations_today" />
       </div>
     </section>
 
     <!-- Spacer Cho Nửa Dưới Của Search Widget -->
-    <div class="h-24 sm:h-32"></div>
+    <div class="h-32 sm:h-36"></div>
 
     <!-- ==================== KHỐI 1: TUYẾN ĐƯỜNG PHỔ BIẾN & ƯU ĐÃI (NỀN TRẮNG) ==================== -->
     <section class="w-full bg-white py-8">

@@ -1436,7 +1436,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div :class="{ 'dark bg-[#121212] text-zinc-100': isDarkMode, 'bg-[#F8FAFC] text-slate-900': !isDarkMode }" class="min-h-screen font-sans transition-colors duration-500 ease-in-out">
+  <div :class="{ 'dark bg-[#121212] text-zinc-100': isDarkMode, 'bg-[#F8FAFC] text-slate-900': !isDarkMode }" class="min-h-screen font-sans transition-colors duration-500 ease-in-out pb-24 md:pb-0">
     <Head title="Bác Tài - Bảng Điều Khiển Lái Xe Thông Minh" />
 
     <!-- DÀNH RIÊNG CHO QUẢN TRỊ VIÊN: DẢI ĐIỀU KHIỂN & CHUYỂN ACC BÁC TÀI (ĐỒNG BỘ MÀU ĐỎ SANG TRỌNG NHAXEKIENTRUC) -->
@@ -1833,27 +1833,27 @@ onUnmounted(() => {
             class="p-4 sm:p-6 rounded-3xl border transition duration-200"
           >
             <!-- Header thẻ chuyến -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b" :class="isDarkMode ? 'border-slate-800' : 'border-slate-100'">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b" :class="isDarkMode ? 'border-slate-800' : 'border-slate-200'">
               <div>
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase font-mono bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase font-mono bg-red-600 text-white shadow-2xs">
                     #{{ trip.trip_code }}
                   </span>
-                  <span class="text-xs font-bold text-slate-600 dark:text-slate-400">• Xe: <strong class="text-slate-900 dark:text-white font-mono">{{ trip.bus?.license_plate || '43B-067.89' }}</strong></span>
-                  <span class="text-xs font-bold text-slate-600 dark:text-slate-400">• Lơ xe: <strong class="text-slate-900 dark:text-white">{{ trip.conductor?.name || 'Nguyễn Văn Phúc' }}</strong></span>
+                  <span class="text-xs font-bold text-slate-700 dark:text-slate-300">• Xe: <strong class="text-slate-950 dark:text-white font-mono bg-slate-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded">{{ trip.bus?.license_plate || '43B-067.89' }}</strong></span>
+                  <span class="text-xs font-bold text-slate-700 dark:text-slate-300">• Lơ xe: <strong class="text-slate-950 dark:text-white">{{ trip.conductor?.name || 'Nguyễn Văn Phúc' }}</strong></span>
                   
                   <!-- Badge phân công 2 tài xế cho chuyến đường dài -->
-                  <span v-if="trip.second_driver || trip.secondDriver" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                  <span v-if="trip.second_driver || trip.secondDriver" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-700 text-white shadow-2xs">
                     <i class="fa-solid fa-user-group mr-1"></i>2 Tài Xế: {{ trip.driver?.name }} & {{ (trip.second_driver || trip.secondDriver)?.name }}
                   </span>
-                  <span v-else class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  <span v-else class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 dark:bg-slate-700 text-white">
                     <i class="fa-solid fa-user mr-1"></i>Tài Xế: {{ trip.driver?.name }}
                   </span>
                 </div>
 
-                <h3 class="text-base sm:text-lg font-black flex items-center gap-2 mt-1 text-slate-900 dark:text-white">
+                <h3 class="text-base sm:text-lg font-black flex items-center gap-2 mt-1.5 text-slate-950 dark:text-white">
                   <span>{{ trip.route?.origin || 'Đà Nẵng' }}</span>
-                  <span class="text-red-500 font-black text-sm select-none">➔</span>
+                  <span class="text-red-600 font-black text-sm select-none">➔</span>
                   <span>{{ trip.route?.destination || 'Quảng Bình' }}</span>
                 </h3>
               </div>
@@ -1863,17 +1863,17 @@ onUnmounted(() => {
                 <div class="text-base sm:text-lg font-black font-mono text-red-600 dark:text-red-400">
                   {{ trip.departure_time?.substring(11, 16) || '06:00' }} ➔ {{ trip.arrival_time?.substring(11, 16) || '11:30' }}
                 </div>
-                <div>
-                  <span v-if="trip.status === 'IN_TRANSIT'" class="inline-flex items-center gap-1 text-[11px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300 px-2.5 py-0.5 rounded-full">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> ĐANG CHẠY TRÊN ĐƯỜNG
+                <div class="mt-1">
+                  <span v-if="trip.status === 'IN_TRANSIT'" class="inline-flex items-center gap-1.5 text-[11px] font-black text-white bg-emerald-600 px-3 py-1 rounded-full shadow-xs">
+                    <span class="w-2 h-2 rounded-full bg-white animate-ping"></span> ĐANG CHẠY TRÊN ĐƯỜNG
                   </span>
-                  <span v-else-if="trip.status === 'BOARDING'" class="inline-flex items-center gap-1 text-[11px] font-black text-amber-600 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-300 px-2.5 py-0.5 rounded-full">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span> ĐANG ĐÓN KHÁCH TẠI BẾN
+                  <span v-else-if="trip.status === 'BOARDING'" class="inline-flex items-center gap-1.5 text-[11px] font-black text-slate-950 bg-amber-400 px-3 py-1 rounded-full shadow-xs">
+                    <span class="w-2 h-2 rounded-full bg-slate-950 animate-ping"></span> ĐANG ĐÓN KHÁCH TẠI BẾN
                   </span>
-                  <span v-else-if="trip.status === 'COMPLETED'" class="inline-flex items-center gap-1 text-[11px] font-black text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300 px-2.5 py-0.5 rounded-full">
+                  <span v-else-if="trip.status === 'COMPLETED'" class="inline-flex items-center gap-1.5 text-[11px] font-black text-white bg-slate-800 dark:bg-zinc-700 px-3 py-1 rounded-full shadow-xs">
                     ✓ ĐÃ HOÀN THÀNH LỘ TRÌNH
                   </span>
-                  <span v-else class="inline-flex items-center gap-1 text-[11px] font-black text-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-300 px-2.5 py-0.5 rounded-full">
+                  <span v-else class="inline-flex items-center gap-1.5 text-[11px] font-black text-white bg-blue-600 px-3 py-1 rounded-full shadow-xs">
                     CHỜ XUẤT BẾN
                   </span>
                 </div>
@@ -1883,13 +1883,13 @@ onUnmounted(() => {
             <!-- HỘP LƯU Ý ĐẶC BIỆT CỦA HÀNH KHÁCH (CHỈ HIỆN KHI CÓ KHÁCH LƯU Ý THỰC TẾ) -->
             <div 
               v-if="getTripCustomerNotes(trip).length > 0"
-              class="my-3 px-4 py-3 rounded-2xl bg-[#FFFBEB] dark:bg-amber-950/40 border border-[#FDE68A] dark:border-amber-800/80 flex items-start gap-2.5 text-xs text-[#92400E] dark:text-amber-200 transition shadow-2xs"
+              class="my-3 px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border-2 border-amber-400 dark:border-amber-600 flex items-start gap-2.5 text-xs text-amber-950 dark:text-amber-100 transition shadow-2xs"
             >
-              <span class="text-amber-500 font-bold text-sm shrink-0 leading-none mt-0.5">⚠️</span>
+              <span class="text-amber-600 font-bold text-sm shrink-0 leading-none mt-0.5">⚠️</span>
               <div class="leading-relaxed font-medium space-y-1.5 flex-1">
-                <div class="font-bold text-amber-900 dark:text-amber-100 flex items-center gap-1.5">
+                <div class="font-bold text-amber-950 dark:text-amber-100 flex items-center gap-1.5">
                   <span>Lưu ý từ hành khách:</span>
-                  <span class="text-[10px] font-normal text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-2 py-0.2 rounded-full">
+                  <span class="text-[10px] font-bold text-white bg-amber-700 px-2 py-0.5 rounded-full">
                     {{ getTripCustomerNotes(trip).length }} ghi chú
                   </span>
                 </div>
@@ -1897,15 +1897,15 @@ onUnmounted(() => {
                   <div 
                     v-for="(nItem, idx) in getTripCustomerNotes(trip)" 
                     :key="idx"
-                    class="flex flex-wrap items-center gap-1.5 bg-white/70 dark:bg-black/30 px-2.5 py-1 rounded-xl text-[11px]"
+                    class="flex flex-wrap items-center gap-1.5 bg-white/90 dark:bg-black/50 px-2.5 py-1 rounded-xl text-[11px] border border-amber-200 dark:border-amber-900"
                   >
-                    <span class="font-black text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/60 px-1.5 py-0.2 rounded">
+                    <span class="font-black text-white bg-red-600 px-2 py-0.5 rounded shadow-2xs">
                       {{ nItem.seat_label ? 'Ghế ' + nItem.seat_label : (nItem.seats && nItem.seats.length > 0 ? 'Ghế ' + nItem.seats.join(', ') : 'Ghi chú') }}
                     </span>
-                    <span class="font-bold text-slate-900 dark:text-slate-100">
-                      {{ nItem.customer_name }}<span v-if="nItem.customer_phone" class="font-normal text-slate-500">({{ nItem.customer_phone }})</span>:
+                    <span class="font-bold text-slate-950 dark:text-slate-100">
+                      {{ nItem.customer_name }}<span v-if="nItem.customer_phone" class="font-normal text-slate-600 dark:text-slate-400">({{ nItem.customer_phone }})</span>:
                     </span>
-                    <span class="italic text-amber-900 dark:text-amber-200">"{{ nItem.note }}"</span>
+                    <span class="italic text-amber-950 dark:text-amber-200">"{{ nItem.note }}"</span>
                   </div>
                 </div>
               </div>
@@ -1913,30 +1913,30 @@ onUnmounted(() => {
 
             <!-- Tải trọng tóm tắt chuẩn 36 giường (Đồng bộ 100% với Sơ đồ tải trọng thực tế) -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 py-3 text-xs">
-              <div :class="isDarkMode ? 'bg-[#18181B] border border-[#2A2A2A]' : 'bg-slate-50 border border-slate-200'" class="p-2.5 rounded-2xl">
-                <span class="text-[10px] text-slate-600 dark:text-slate-400 block font-bold uppercase tracking-wider">Khách Trên Xe</span>
-                <span class="text-sm font-black text-slate-900 dark:text-white">
+              <div :class="isDarkMode ? 'bg-[#18181B] border border-[#2A2A2A]' : 'bg-slate-100 border border-slate-300'" class="p-3 rounded-2xl shadow-2xs">
+                <span class="text-[10px] text-slate-700 dark:text-slate-400 block font-black uppercase tracking-wider">Khách Trên Xe</span>
+                <span class="text-sm font-black text-slate-950 dark:text-white">
                   {{ trip.occupied_count !== undefined ? trip.occupied_count : 0 }} ghế ({{ trip.customer_count || (trip.bookings ? trip.bookings.length : 0) }} khách) / {{ trip.bus?.total_seats || 34 }} Giường
                 </span>
               </div>
-              <div :class="isDarkMode ? 'bg-[#18181B] border border-[#2A2A2A]' : 'bg-slate-50 border border-slate-200'" class="p-2.5 rounded-2xl">
-                <span class="text-[10px] text-slate-600 dark:text-slate-400 block font-bold uppercase tracking-wider">Tỷ Lệ Tải Trọng</span>
-                <span class="text-sm font-black" :class="(trip.occupied_percent || 0) >= 80 ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'">
+              <div :class="isDarkMode ? 'bg-[#18181B] border border-[#2A2A2A]' : 'bg-slate-100 border border-slate-300'" class="p-3 rounded-2xl shadow-2xs">
+                <span class="text-[10px] text-slate-700 dark:text-slate-400 block font-black uppercase tracking-wider">Tỷ Lệ Tải Trọng</span>
+                <span class="text-sm font-black" :class="(trip.occupied_percent || 0) >= 80 ? 'text-emerald-700 dark:text-emerald-400 font-black' : 'text-blue-700 dark:text-blue-400 font-black'">
                   {{ trip.occupied_percent !== undefined ? trip.occupied_percent : 0 }}% Đủ Tải
                 </span>
               </div>
-              <div :class="isDarkMode ? 'bg-[#18181B] border border-[#2A2A2A]' : 'bg-slate-50 border border-slate-200'" class="p-2.5 rounded-2xl">
-                <span class="text-[10px] text-slate-600 dark:text-slate-400 block font-bold uppercase tracking-wider">Tầng 1 / Tầng 2</span>
-                <span class="text-sm font-black text-slate-900 dark:text-white">
+              <div :class="isDarkMode ? 'bg-[#18181B] border border-[#2A2A2A]' : 'bg-slate-100 border border-slate-300'" class="p-3 rounded-2xl shadow-2xs">
+                <span class="text-[10px] text-slate-700 dark:text-slate-400 block font-black uppercase tracking-wider">Tầng 1 / Tầng 2</span>
+                <span class="text-sm font-black text-slate-950 dark:text-white">
                   {{ trip.floor1_count || 0 }} / {{ trip.floor2_count || 0 }} Giường ({{ trip.is_balanced ? 'Cân Bằng' : 'Lệch Tầng' }})
                 </span>
               </div>
-              <div :class="isDarkMode ? 'bg-[#18181B] border border-[#2A2A2A]' : 'bg-slate-50 border border-slate-200'" class="p-2.5 rounded-2xl">
-                <span class="text-[10px] text-slate-600 dark:text-slate-400 block font-bold uppercase tracking-wider">Lơ Xe Phụ Trách</span>
+              <div :class="isDarkMode ? 'bg-[#18181B] border border-[#2A2A2A]' : 'bg-slate-100 border border-slate-300'" class="p-3 rounded-2xl shadow-2xs">
+                <span class="text-[10px] text-slate-700 dark:text-slate-400 block font-black uppercase tracking-wider">Lơ Xe Phụ Trách</span>
                 <div class="flex items-center justify-between">
-                  <span class="font-bold truncate text-slate-900 dark:text-white">{{ trip.conductor?.name || 'Nguyễn Văn Phúc' }}</span>
-                  <button @click="makeCall(trip.conductor?.phone || '0905123456')" class="text-emerald-600 hover:text-emerald-500 font-black cursor-pointer">
-                    <i class="fa-solid fa-phone"></i>
+                  <span class="font-black truncate text-slate-950 dark:text-white">{{ trip.conductor?.name || 'Nguyễn Văn Phúc' }}</span>
+                  <button @click="makeCall(trip.conductor?.phone || '0905123456')" class="w-7 h-7 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center font-black cursor-pointer shadow-xs">
+                    <i class="fa-solid fa-phone text-xs"></i>
                   </button>
                 </div>
               </div>
@@ -2456,12 +2456,12 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Leaflet Container Với Kích Thước Cố Định Chống Trắng Màn Hình -->
+            <!-- Leaflet Container Với Kích Thước Co Giãn Thông Minh Chống Trắng Màn Hình -->
             <div 
               ref="mapContainer" 
               id="driver-leaflet-map" 
-              class="w-full relative z-0" 
-              style="height: 440px; min-height: 440px; width: 100%; display: block;"
+              class="w-full relative z-0 h-[280px] sm:h-[440px] min-h-[280px]" 
+              style="width: 100%; display: block;"
             ></div>
 
             <!-- Map Floating Bottom Info -->
@@ -2812,16 +2812,16 @@ onUnmounted(() => {
                 v-for="i in 18"
                 :key="'A' + i"
                 @click="openSeatReadOnlyModal('A' + (i < 10 ? '0' + i : i))"
-                class="p-2.5 rounded-2xl border text-center transition cursor-pointer min-h-[58px] flex flex-col items-center justify-center"
+                class="p-2.5 rounded-2xl border-2 text-center transition cursor-pointer min-h-[58px] flex flex-col items-center justify-center"
                 :class="seatMap['A' + (i < 10 ? '0' + i : i)]?.status !== 'AVAILABLE'
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                  : (isDarkMode ? 'bg-slate-800/40 border-slate-800 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-400')"
+                  ? 'bg-emerald-600 border-emerald-700 text-white shadow-xs font-black'
+                  : (isDarkMode ? 'bg-zinc-800/80 border-dashed border-zinc-700 text-zinc-300' : 'bg-white border-dashed border-slate-300 text-slate-700 shadow-2xs')"
               >
-                <span class="font-mono font-black text-xs block">A{{ i < 10 ? '0' + i : i }}</span>
-                <span v-if="seatMap['A' + (i < 10 ? '0' + i : i)]?.status !== 'AVAILABLE'" class="text-[10px] font-bold truncate block">
+                <span class="font-mono font-black text-xs block" :class="seatMap['A' + (i < 10 ? '0' + i : i)]?.status !== 'AVAILABLE' ? 'text-white' : 'text-slate-900 dark:text-white'">A{{ i < 10 ? '0' + i : i }}</span>
+                <span v-if="seatMap['A' + (i < 10 ? '0' + i : i)]?.status !== 'AVAILABLE'" class="text-[10px] font-black text-emerald-100 truncate block">
                   {{ seatMap['A' + (i < 10 ? '0' + i : i)]?.customer_name || 'Có khách' }}
                 </span>
-                <span v-else class="text-[10px] font-medium block">Trống</span>
+                <span v-else class="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Trống</span>
               </div>
             </div>
           </div>
@@ -2847,22 +2847,22 @@ onUnmounted(() => {
                 <!-- Ghế Cửa Sổ Trái: B01, B03, B05, B07, B09, B11 -->
                 <div
                   @click="openSeatReadOnlyModal('B' + ((r - 1) * 2 + 1 < 10 ? '0' + ((r - 1) * 2 + 1) : ((r - 1) * 2 + 1)))"
-                  class="p-2.5 rounded-2xl border text-center transition cursor-pointer min-h-[58px] flex flex-col items-center justify-center"
+                  class="p-2.5 rounded-2xl border-2 text-center transition cursor-pointer min-h-[58px] flex flex-col items-center justify-center"
                   :class="seatMap['B' + ((r - 1) * 2 + 1 < 10 ? '0' + ((r - 1) * 2 + 1) : ((r - 1) * 2 + 1))]?.status !== 'AVAILABLE'
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                    : (isDarkMode ? 'bg-slate-800/40 border-slate-800 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-400')"
+                    ? 'bg-emerald-600 border-emerald-700 text-white shadow-xs font-black'
+                    : (isDarkMode ? 'bg-zinc-800/80 border-dashed border-zinc-700 text-zinc-300' : 'bg-white border-dashed border-slate-300 text-slate-700 shadow-2xs')"
                 >
-                  <span class="font-mono font-black text-xs block">B{{ (r - 1) * 2 + 1 < 10 ? '0' + ((r - 1) * 2 + 1) : ((r - 1) * 2 + 1) }}</span>
-                  <span v-if="seatMap['B' + ((r - 1) * 2 + 1 < 10 ? '0' + ((r - 1) * 2 + 1) : ((r - 1) * 2 + 1))]?.status !== 'AVAILABLE'" class="text-[10px] font-bold truncate block">
+                  <span class="font-mono font-black text-xs block" :class="seatMap['B' + ((r - 1) * 2 + 1 < 10 ? '0' + ((r - 1) * 2 + 1) : ((r - 1) * 2 + 1))]?.status !== 'AVAILABLE' ? 'text-white' : 'text-slate-900 dark:text-white'">B{{ (r - 1) * 2 + 1 < 10 ? '0' + ((r - 1) * 2 + 1) : ((r - 1) * 2 + 1) }}</span>
+                  <span v-if="seatMap['B' + ((r - 1) * 2 + 1 < 10 ? '0' + ((r - 1) * 2 + 1) : ((r - 1) * 2 + 1))]?.status !== 'AVAILABLE'" class="text-[10px] font-black text-emerald-100 truncate block">
                     {{ seatMap['B' + ((r - 1) * 2 + 1 < 10 ? '0' + ((r - 1) * 2 + 1) : ((r - 1) * 2 + 1))]?.customer_name || 'Có khách' }}
                   </span>
-                  <span v-else class="text-[10px] font-medium block">Trống</span>
+                  <span v-else class="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Trống</span>
                 </div>
 
                 <!-- Cột Giữa: Lối Đi Thông Tầng VIP -->
                 <div 
                   class="p-2.5 rounded-2xl border border-dashed text-center flex flex-col items-center justify-center select-none min-h-[58px]"
-                  :class="isDarkMode ? 'border-slate-800 bg-slate-800/30 text-slate-600' : 'border-slate-200 bg-slate-50/70 text-slate-400'"
+                  :class="isDarkMode ? 'border-slate-800 bg-slate-800/30 text-slate-600' : 'border-slate-300 bg-slate-100 text-slate-600'"
                 >
                   <span class="text-xs">🚶</span>
                   <span class="text-[9px] font-bold uppercase tracking-tighter">Lối đi</span>
@@ -2871,16 +2871,16 @@ onUnmounted(() => {
                 <!-- Ghế Cửa Sổ Phải: B02, B04, B06, B08, B10, B12 -->
                 <div
                   @click="openSeatReadOnlyModal('B' + ((r - 1) * 2 + 2 < 10 ? '0' + ((r - 1) * 2 + 2) : ((r - 1) * 2 + 2)))"
-                  class="p-2.5 rounded-2xl border text-center transition cursor-pointer min-h-[58px] flex flex-col items-center justify-center"
+                  class="p-2.5 rounded-2xl border-2 text-center transition cursor-pointer min-h-[58px] flex flex-col items-center justify-center"
                   :class="seatMap['B' + ((r - 1) * 2 + 2 < 10 ? '0' + ((r - 1) * 2 + 2) : ((r - 1) * 2 + 2))]?.status !== 'AVAILABLE'
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                    : (isDarkMode ? 'bg-slate-800/40 border-slate-800 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-400')"
+                    ? 'bg-emerald-600 border-emerald-700 text-white shadow-xs font-black'
+                    : (isDarkMode ? 'bg-zinc-800/80 border-dashed border-zinc-700 text-zinc-300' : 'bg-white border-dashed border-slate-300 text-slate-700 shadow-2xs')"
                 >
-                  <span class="font-mono font-black text-xs block">B{{ (r - 1) * 2 + 2 < 10 ? '0' + ((r - 1) * 2 + 2) : ((r - 1) * 2 + 2) }}</span>
-                  <span v-if="seatMap['B' + ((r - 1) * 2 + 2 < 10 ? '0' + ((r - 1) * 2 + 2) : ((r - 1) * 2 + 2))]?.status !== 'AVAILABLE'" class="text-[10px] font-bold truncate block">
+                  <span class="font-mono font-black text-xs block" :class="seatMap['B' + ((r - 1) * 2 + 2 < 10 ? '0' + ((r - 1) * 2 + 2) : ((r - 1) * 2 + 2))]?.status !== 'AVAILABLE' ? 'text-white' : 'text-slate-900 dark:text-white'">B{{ (r - 1) * 2 + 2 < 10 ? '0' + ((r - 1) * 2 + 2) : ((r - 1) * 2 + 2) }}</span>
+                  <span v-if="seatMap['B' + ((r - 1) * 2 + 2 < 10 ? '0' + ((r - 1) * 2 + 2) : ((r - 1) * 2 + 2))]?.status !== 'AVAILABLE'" class="text-[10px] font-black text-emerald-100 truncate block">
                     {{ seatMap['B' + ((r - 1) * 2 + 2 < 10 ? '0' + ((r - 1) * 2 + 2) : ((r - 1) * 2 + 2))]?.customer_name || 'Có khách' }}
                   </span>
-                  <span v-else class="text-[10px] font-medium block">Trống</span>
+                  <span v-else class="text-[10px] font-bold text-slate-500 dark:text-zinc-400 block">Trống</span>
                 </div>
               </template>
             </div>
@@ -3630,7 +3630,7 @@ onUnmounted(() => {
               </div>
 
               <div class="flex items-center gap-2">
-                <span class="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span class="text-[10px] font-mono font-black px-3 py-1 rounded-full bg-emerald-600 text-white shadow-xs">
                   ● ĐANG HOẠT ĐỘNG
                 </span>
                 <span class="text-xs font-mono font-black text-slate-800 dark:text-zinc-200">
@@ -4892,15 +4892,15 @@ onUnmounted(() => {
 
     <!-- THANH COCKPIT DI ĐỘNG CỦA BÁC TÀI (CỐ ĐỊNH Ở ĐÁY MÀN HÌNH ĐIỆN THOẠI) -->
     <nav 
-      class="md:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-md border-t py-1 px-2 flex items-center justify-around select-none shadow-[0_-4px_25px_rgba(0,0,0,0.15)] transition-colors"
-      :class="isDarkMode ? 'bg-zinc-900/95 border-zinc-800 text-zinc-300' : 'bg-white/95 border-slate-200 text-slate-700'"
+      class="md:hidden fixed bottom-0 inset-x-0 z-40 backdrop-blur-md border-t py-1.5 px-2 flex items-center justify-around select-none shadow-[0_-4px_25px_rgba(0,0,0,0.18)] transition-colors"
+      :class="isDarkMode ? 'bg-zinc-950/95 border-zinc-800 text-zinc-300' : 'bg-white/95 border-slate-300 text-slate-800'"
     >
       <!-- 1. Lịch Chạy -->
       <button
         type="button"
         @click="activeTab = 'today'"
         class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
-        :class="activeTab === 'today' ? 'text-red-600 font-black' : 'font-bold'"
+        :class="activeTab === 'today' ? 'text-red-600 font-black' : 'text-slate-600 dark:text-zinc-400 font-bold hover:text-red-600'"
       >
         <span class="text-xl">📕</span>
         <span class="text-[10px] mt-0.5">Lịch Chạy</span>
@@ -4923,7 +4923,7 @@ onUnmounted(() => {
         type="button"
         @click="activeTab = 'seatmap'"
         class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
-        :class="activeTab === 'seatmap' ? 'text-red-600 font-black' : 'font-bold'"
+        :class="activeTab === 'seatmap' ? 'text-red-600 font-black' : 'text-slate-600 dark:text-zinc-400 font-bold hover:text-red-600'"
       >
         <span class="text-xl">💺</span>
         <span class="text-[10px] mt-0.5">Sơ Đồ Ghế</span>
@@ -4934,7 +4934,7 @@ onUnmounted(() => {
         type="button"
         @click="activeTab = 'schedule'"
         class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
-        :class="activeTab === 'schedule' ? 'text-red-600 font-black' : 'font-bold'"
+        :class="activeTab === 'schedule' ? 'text-red-600 font-black' : 'text-slate-600 dark:text-zinc-400 font-bold hover:text-red-600'"
       >
         <span class="text-xl">🗓️</span>
         <span class="text-[10px] mt-0.5">Lịch Tuần</span>
@@ -4944,10 +4944,10 @@ onUnmounted(() => {
       <button
         type="button"
         @click="showSosModal = true"
-        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer text-amber-500 font-bold"
+        class="flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer"
       >
         <span class="text-xl">🚨</span>
-        <span class="text-[10px] mt-0.5 font-black text-amber-600">SOS</span>
+        <span class="text-[10px] mt-0.5 font-black text-amber-500">SOS</span>
       </button>
     </nav>
 

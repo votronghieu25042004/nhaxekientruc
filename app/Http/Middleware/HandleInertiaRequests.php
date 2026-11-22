@@ -27,11 +27,21 @@ class HandleInertiaRequests extends Middleware
                     'role' => $user->role,
                     'reward_points' => (int)($user->reward_points ?? 0),
                     'loyalty_tier' => $user->loyalty_tier ?? 'MEMBER',
-                    'is_student' => str_contains(strtolower($user->email ?? ''), '.edu.vn') || str_contains(strtolower($user->email ?? ''), 'sinhvien'),
+                    'is_student' => $user->is_student,
                     'is_dau_student' => str_contains(strtolower($user->email ?? ''), 'dau.edu.vn'),
                     'student_badge' => str_contains(strtolower($user->email ?? ''), 'dau.edu.vn')
                         ? '🎓 Sinh Viên Kiến Trúc (DAU)'
-                        : (str_contains(strtolower($user->email ?? ''), '.edu.vn') ? '🎓 Sinh Viên Đại Học' : null),
+                        : ($user->is_student ? '🎓 Sinh Viên Đại Học' : null),
+                    'student_days_remaining' => $user->student_days_remaining,
+                    'student_days_total' => $user->student_days_total,
+                    'student_registered_at' => $user->student_registered_at ? $user->student_registered_at->format('d/m/Y') : ($user->created_at ? $user->created_at->format('d/m/Y') : null),
+                    'student_discount_expires_at' => $user->student_discount_expires_at ? $user->student_discount_expires_at->format('d/m/Y') : null,
+                    'student_first_trip_used' => (bool)$user->student_first_trip_used,
+                    'membership_plan' => $user->membership_plan ?? 'STANDARD',
+                    'membership_discount_percent' => $user->membership_discount_percent ?? ($user->is_student ? 30 : 0),
+                    'membership_expires_at' => $user->membership_expires_at ? $user->membership_expires_at->format('d/m/Y') : null,
+                    'membership_badge' => $user->membership_badge,
+                    'is_membership_active' => $user->is_membership_active,
                 ] : null,
             ],
             'flash' => [

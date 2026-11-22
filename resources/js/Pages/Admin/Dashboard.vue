@@ -223,9 +223,12 @@
           </div>
         </div>
 
-        <!-- BẢNG DỮ LIỆU VÉ ĐẶT GỌN GÀNG, KHÔNG BỊ TRÀN KÉO NGANG -->
+        <!-- BẢNG DỮ LIỆU VÉ ĐẶT GỌN GÀNG, KHÔNG BỊ TRÀN KÉO NGANG (CÓ MIN-WIDTH CHO MOBILE) -->
+        <div class="sm:hidden text-[10px] text-slate-500 font-bold px-1 py-1 flex items-center gap-1">
+          <span>👉</span><span>Vuốt sang ngang để xem đầy đủ cột vé</span>
+        </div>
         <div class="overflow-x-auto rounded-2xl border border-slate-100">
-          <table class="w-full text-left text-xs table-fixed">
+          <table class="w-full text-left text-xs table-fixed min-w-[850px]">
             <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-black text-[10px] tracking-wider">
               <tr>
                 <th class="px-3 py-2.5 w-[14%]">Mã Vé & Ngày Đặt</th>
@@ -599,9 +602,12 @@
         </div>
 
         <!-- BẢNG BÁO CÁO DOANH THU & CHỈ SỐ KHAI THÁC CHI TIẾT TỪNG XE -->
+        <div class="sm:hidden text-[10px] text-slate-500 font-bold px-1 py-1 flex items-center gap-1">
+          <span>👉</span><span>Vuốt sang ngang để xem đủ cột doanh thu xe</span>
+        </div>
         <div class="border border-slate-200 rounded-2xl overflow-hidden">
           <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs">
+            <table class="w-full text-left text-xs min-w-[850px]">
               <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-black text-[10px] tracking-wider">
                 <tr>
                   <th class="py-2.5 px-3.5 text-center">Hạng</th>

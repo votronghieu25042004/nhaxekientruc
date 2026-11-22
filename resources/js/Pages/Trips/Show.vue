@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-800 font-sans">
+  <div class="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-800 font-sans pb-24 md:pb-0">
     <Navbar />
 
     <!-- Top 3-Step Breadcrumb Progress Bar -->
@@ -122,11 +122,36 @@
               <span>🚍</span>
             </div>
 
+            <!-- Mobile Floor Segmented Switcher (md:hidden) -->
+            <div class="md:hidden flex items-center p-1 bg-slate-200/90 rounded-2xl mb-1 text-xs font-black shadow-inner">
+              <button
+                type="button"
+                @click="activeMobileFloor = 'f1'"
+                :class="activeMobileFloor === 'f1' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+                class="flex-1 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>🛏️ Tầng 1 (Dưới)</span>
+                <span class="text-[10px] px-1.5 py-0.2 rounded-full font-bold font-mono" :class="activeMobileFloor === 'f1' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-300 text-slate-700'">18 Chỗ</span>
+              </button>
+              <button
+                type="button"
+                @click="activeMobileFloor = 'f2'"
+                :class="activeMobileFloor === 'f2' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+                class="flex-1 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>🛏️ Tầng 2 (Trên)</span>
+                <span class="text-[10px] px-1.5 py-0.2 rounded-full font-bold font-mono" :class="activeMobileFloor === 'f2' ? 'bg-blue-50 text-blue-700' : 'bg-slate-300 text-slate-700'">12 Chỗ</span>
+              </button>
+            </div>
+
             <!-- Seat Grids: Tầng 1 & Tầng 2 Song Song Sân Khấu Rộng Rãi -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
               
               <!-- TẦNG 1: DÃY A (18 Giường VIP Dưới) -->
-              <div class="bg-white p-4.5 rounded-2xl border border-slate-200 text-center flex flex-col justify-start shadow-xs space-y-3">
+              <div 
+                class="bg-white p-4.5 rounded-2xl border border-slate-200 text-center flex flex-col justify-start shadow-xs space-y-3"
+                :class="{ 'hidden md:flex': activeMobileFloor !== 'f1' }"
+              >
                 <div class="flex items-center justify-between pb-2.5 border-b border-slate-100">
                   <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
@@ -182,7 +207,10 @@
               </div>
 
               <!-- TẦNG 2: DÃY B (12 Giường Tiêu Chuẩn 2 Bên Cửa Sổ) -->
-              <div class="bg-white p-4.5 rounded-2xl border border-slate-200 text-center flex flex-col justify-start shadow-xs space-y-3">
+              <div 
+                class="bg-white p-4.5 rounded-2xl border border-slate-200 text-center flex flex-col justify-start shadow-xs space-y-3"
+                :class="{ 'hidden md:flex': activeMobileFloor !== 'f2' }"
+              >
                 <div class="flex items-center justify-between pb-2.5 border-b border-slate-100">
                   <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
@@ -1316,6 +1344,100 @@
 
     </main>
 
+    <!-- ============================================================== -->
+    <!-- THANH TÁC VỤ ĐẶT VÉ NỔI CỐ ĐỊNH Ở ĐÁY MÀN HÌNH ĐIỆN THOẠI (MOBILE CHECKOUT BAR) -->
+    <!-- ============================================================== -->
+    <div 
+      v-if="!is_expired && !['RUNNING', 'IN_TRANSIT', 'COMPLETED'].includes(trip.status)"
+      class="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 shadow-[0_-4px_25px_rgba(0,0,0,0.15)] flex items-center justify-between gap-3 animate-in slide-in-from-bottom-2 duration-200"
+    >
+      <!-- Khi ở Bước 1: Chọn Chỗ Ngồi -->
+      <template v-if="step === 1">
+        <div class="min-w-0 flex-1">
+          <div class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
+            <span>💺 Đã chọn:</span>
+            <span v-if="selectedSeats.length > 0" class="text-red-600 font-black font-mono">
+              {{ selectedSeats.map(s => s.seat_number).join(', ') }} ({{ selectedSeats.length }})
+            </span>
+            <span v-else class="text-slate-400 italic">Chưa chọn ghế</span>
+          </div>
+          <div class="text-base font-black text-slate-900 font-mono leading-tight mt-0.5">
+            {{ formatPrice(totalSeatPrice) }}đ
+          </div>
+        </div>
+
+        <button
+          type="button"
+          @click="goToStep2"
+          :disabled="selectedSeats.length === 0"
+          class="px-5 py-3 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 disabled:from-slate-200 disabled:to-slate-200 text-white disabled:text-slate-400 font-black text-xs shadow-lg shadow-red-500/25 transition active:scale-95 cursor-pointer disabled:cursor-not-allowed flex items-center gap-1.5 shrink-0"
+        >
+          <span>Tiếp Tục</span>
+          <span class="text-sm">➔</span>
+        </button>
+      </template>
+
+      <!-- Khi ở Bước 2: Chọn Điểm Đón & Trả -->
+      <template v-else-if="step === 2">
+        <button
+          type="button"
+          @click="step = 1"
+          class="px-3.5 py-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 font-bold text-xs active:scale-95 transition cursor-pointer shrink-0"
+        >
+          ← Ghế
+        </button>
+
+        <div class="min-w-0 flex-1 text-center">
+          <div class="text-[10.5px] font-bold text-slate-600 truncate">
+            Đón: {{ selectedPickup?.name || 'Chưa chọn' }}
+          </div>
+          <div class="text-[10.5px] font-bold text-emerald-600 truncate">
+            Trả: {{ selectedDropoff?.name || 'Chưa chọn' }}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          @click="goToStep3"
+          :disabled="!selectedPickup || !selectedDropoff"
+          class="px-5 py-3 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 disabled:from-slate-200 disabled:to-slate-200 text-white disabled:text-slate-400 font-black text-xs shadow-lg shadow-red-500/25 transition active:scale-95 cursor-pointer disabled:cursor-not-allowed flex items-center gap-1.5 shrink-0"
+        >
+          <span>Tiếp Tục</span>
+          <span class="text-sm">➔</span>
+        </button>
+      </template>
+
+      <!-- Khi ở Bước 3: Thông tin & Thanh toán -->
+      <template v-else>
+        <button
+          type="button"
+          @click="step = 2"
+          class="px-3.5 py-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 font-bold text-xs active:scale-95 transition cursor-pointer shrink-0"
+        >
+          ← Trạm
+        </button>
+
+        <div class="min-w-0 flex-1">
+          <div class="text-[10px] font-bold text-slate-500">
+            {{ paymentChoice === 'DEPOSIT' ? 'Thanh toán Cọc 30%' : 'Thanh toán 100%' }}
+          </div>
+          <div class="text-base font-black text-red-600 font-mono leading-tight mt-0.5">
+            {{ formatPrice(paymentChoice === 'DEPOSIT' ? depositAmount : totalSeatPrice) }}đ
+          </div>
+        </div>
+
+        <button
+          type="button"
+          @click="submitBooking"
+          :disabled="bookingSubmitting"
+          class="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-slate-300 disabled:to-slate-300 text-white font-black text-xs shadow-lg shadow-emerald-500/25 transition active:scale-95 cursor-pointer disabled:cursor-not-allowed flex items-center gap-1.5 shrink-0"
+        >
+          <span v-if="bookingSubmitting" class="animate-spin text-xs">⏳</span>
+          <span>{{ bookingSubmitting ? 'Đang Xử Lý...' : 'Đặt Vé Ngay ➔' }}</span>
+        </button>
+      </template>
+    </div>
+
     <Footer />
   </div>
   <AiChatModal />
@@ -1346,6 +1468,7 @@ const props = defineProps({
 
 const showAuthModal = ref(false);
 const step = ref(1);
+const activeMobileFloor = ref('f1');
 const selectedSeats = ref([]);
 const selectedPickup = ref(props.pickupStops?.[0] || null);
 const selectedDropoff = ref(props.dropoffStops?.[props.dropoffStops.length - 1] || null);

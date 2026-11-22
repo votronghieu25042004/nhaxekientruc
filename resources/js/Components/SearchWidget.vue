@@ -51,26 +51,23 @@
         
         <!-- NHÓM 1: ĐIỂM ĐI (TỪ) & ĐIỂM ĐẾN (ĐẾN) -->
         <div 
-          class="flex items-center flex-1 transition-all"
+          class="flex flex-col md:flex-row md:items-center flex-1 relative gap-1 md:gap-0"
           :class="tripType === 'round_trip' ? 'bg-white rounded-xl border border-slate-200/80 p-1 shadow-2xs' : ''"
         >
           <!-- 1. Ô: TỪ -->
-          <div class="flex-1 flex items-center gap-2 px-3 py-1.5 hover:bg-white/80 rounded-xl transition-colors relative">
-            <div class="text-slate-700 flex-shrink-0">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
+          <div class="flex-1 flex items-center gap-2.5 px-3.5 py-2.5 md:py-1.5 bg-white md:bg-transparent rounded-xl hover:bg-white transition-colors relative border border-slate-200/60 md:border-none">
+            <div class="text-red-600 flex-shrink-0 text-base">
+              📍
             </div>
             <div class="flex-1 min-w-0">
-              <div class="text-[10px] font-normal text-slate-500 leading-none">Từ</div>
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Điểm đi (Từ)</div>
               <input
                 type="text"
                 v-model="origin"
                 @focus="showOriginSuggest = true"
                 @blur="hideOriginSuggestLater"
-                placeholder="Hà Nội (hoặc Điểm đi)"
-                class="w-full bg-transparent text-slate-900 font-bold text-base sm:text-[13px] outline-none placeholder-slate-400 p-0 border-none focus:ring-0 truncate mt-0.5"
+                placeholder="Chọn điểm đón (Đà Nẵng, Hà Nội...)"
+                class="w-full bg-transparent text-slate-900 font-black text-base sm:text-[13px] outline-none placeholder-slate-400 p-0 border-none focus:ring-0 truncate mt-0.5"
               />
             </div>
             <button v-if="origin" @click="origin = ''" type="button" class="text-slate-400 hover:text-slate-600 text-xs p-1">✕</button>
@@ -78,7 +75,7 @@
             <!-- Dropdown Gợi Ý Điểm Đi -->
             <div
               v-if="showOriginSuggest"
-              class="absolute top-full left-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 max-h-60 overflow-y-auto"
+              class="absolute top-full left-0 right-0 md:right-auto md:w-80 mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 max-h-60 overflow-y-auto"
             >
               <div class="text-[10px] font-bold text-slate-400 px-3 py-1 uppercase tracking-wider">Điểm đón phổ biến</div>
               <button
@@ -88,18 +85,21 @@
                 @mousedown="selectOrigin(loc.name)"
                 class="w-full text-left px-3 py-2 rounded-xl hover:bg-red-50 text-xs font-semibold text-slate-700 hover:text-red-700 flex items-center justify-between transition cursor-pointer"
               >
-                <span>{{ loc.name }}</span>
+                <div class="flex items-center gap-1.5">
+                  <span>📍</span>
+                  <span class="font-bold">{{ loc.name }}</span>
+                </div>
                 <span class="text-[10px] text-slate-400 font-normal truncate max-w-[120px]">{{ loc.desc }}</span>
               </button>
             </div>
           </div>
 
           <!-- NÚT ĐẢO CHIỀU ⇄ -->
-          <div class="flex items-center justify-center my-0.5 md:my-0 px-1">
+          <div class="flex items-center justify-center my-[-6px] md:my-0 md:px-1 z-20 self-center md:self-auto">
             <button
               type="button"
               @click="swapLocations"
-              class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#1e293b] hover:bg-red-600 text-white flex items-center justify-center shadow-sm transition-all active:scale-90 cursor-pointer"
+              class="w-7 h-7 md:w-7 md:h-7 rounded-full bg-slate-900 hover:bg-red-600 text-white flex items-center justify-center shadow-md border-2 border-white transition-all active:scale-90 cursor-pointer"
               title="Đảo chiều điểm đi - điểm đến"
             >
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -109,22 +109,19 @@
           </div>
 
           <!-- 2. Ô: ĐẾN -->
-          <div class="flex-1 flex items-center gap-2 px-3 py-1.5 hover:bg-white/80 rounded-xl transition-colors relative">
-            <div class="text-slate-700 flex-shrink-0">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
+          <div class="flex-1 flex items-center gap-2.5 px-3.5 py-2.5 md:py-1.5 bg-white md:bg-transparent rounded-xl hover:bg-white transition-colors relative border border-slate-200/60 md:border-none">
+            <div class="text-emerald-600 flex-shrink-0 text-base">
+              🎯
             </div>
             <div class="flex-1 min-w-0">
-              <div class="text-[10px] font-normal text-slate-500 leading-none">Đến</div>
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Điểm đến (Đến)</div>
               <input
                 type="text"
                 v-model="destination"
                 @focus="showDestSuggest = true"
                 @blur="hideDestSuggestLater"
-                placeholder="Nam Định (hoặc Điểm đến)"
-                class="w-full bg-transparent text-slate-900 font-bold text-base sm:text-[13px] outline-none placeholder-slate-400 p-0 border-none focus:ring-0 truncate mt-0.5"
+                placeholder="Chọn điểm trả (Nha Trang, Quy Nhơn...)"
+                class="w-full bg-transparent text-slate-900 font-black text-base sm:text-[13px] outline-none placeholder-slate-400 p-0 border-none focus:ring-0 truncate mt-0.5"
               />
             </div>
             <button v-if="destination" @click="destination = ''" type="button" class="text-slate-400 hover:text-slate-600 text-xs p-1">✕</button>
@@ -132,7 +129,7 @@
             <!-- Dropdown Gợi Ý Điểm Đến -->
             <div
               v-if="showDestSuggest"
-              class="absolute top-full left-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 max-h-60 overflow-y-auto"
+              class="absolute top-full left-0 right-0 md:right-auto md:w-80 mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 max-h-60 overflow-y-auto"
             >
               <div class="text-[10px] font-bold text-slate-400 px-3 py-1 uppercase tracking-wider">Điểm trả phổ biến</div>
               <button
@@ -142,7 +139,10 @@
                 @mousedown="selectDest(loc.name)"
                 class="w-full text-left px-3 py-2 rounded-xl hover:bg-red-50 text-xs font-semibold text-slate-700 hover:text-red-700 flex items-center justify-between transition cursor-pointer"
               >
-                <span>{{ loc.name }}</span>
+                <div class="flex items-center gap-1.5">
+                  <span>🎯</span>
+                  <span class="font-bold">{{ loc.name }}</span>
+                </div>
                 <span class="text-[10px] text-slate-400 font-normal truncate max-w-[120px]">{{ loc.desc }}</span>
               </button>
             </div>
@@ -159,8 +159,8 @@
           <!-- 3. Ô: NGÀY KHỞI HÀNH -->
           <div
             @click="openDatePicker"
-            class="flex items-center justify-between gap-2 px-3.5 py-2 hover:bg-white rounded-xl transition-all relative cursor-pointer group"
-            :class="tripType === 'round_trip' ? 'bg-white border border-slate-200/80 shadow-2xs' : 'w-full hover:bg-white/80'"
+            class="flex items-center justify-between gap-2 px-3.5 py-2.5 md:py-2 bg-white md:bg-transparent rounded-xl border border-slate-200/60 md:border-none transition-all relative cursor-pointer group mt-1 md:mt-0"
+            :class="tripType === 'round_trip' ? 'bg-white border border-slate-200/80 shadow-2xs' : 'w-full hover:bg-white/90'"
           >
             <input
               ref="datePickerInput"

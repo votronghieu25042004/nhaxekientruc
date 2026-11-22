@@ -30,6 +30,7 @@ const props = defineProps({
 
 // Current Trip State
 const currentTrip = ref(props.selectedTrip || (props.trips && props.trips.length > 0 ? props.trips[0] : null))
+const activeStaffFloor = ref('f1')
 
 // Chế độ khóa khi chuyến xe đã kết thúc (COMPLETED hoặc CLOSED)
 const isTripCompleted = computed(() => {
@@ -1023,7 +1024,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans pb-16" style="font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;">
+  <div class="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans pb-24 md:pb-16" style="font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;">
     <Head title="Cổng Lơ Xe & Soát Vé Di Động - nhaxekientruc" />
 
     <!-- TOAST NOTIFICATION -->
@@ -1325,8 +1326,8 @@ onBeforeUnmount(() => {
               </button>
             </div>
 
-            <!-- Cards Grid (Chuẩn Image 2) -->
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Cards Grid (Chuẩn Image 2: Vuốt ngang mượt mà trên Mobile, Grid 2 cột trên Desktop) -->
+            <div v-else class="flex overflow-x-auto pb-3 gap-3.5 snap-x scrollbar-none md:grid md:grid-cols-2 md:gap-4 md:pb-0">
               <div
                 v-for="tr in filteredDateTrips"
                 :key="tr.id"
@@ -1335,7 +1336,7 @@ onBeforeUnmount(() => {
                   'bg-white border-2 border-red-500 shadow-md ring-4 ring-red-500/10': currentTrip && currentTrip.id === tr.id,
                   'bg-white border border-slate-200 hover:border-slate-300 shadow-2xs': !currentTrip || currentTrip.id !== tr.id
                 }"
-                class="rounded-3xl p-5 transition cursor-pointer flex flex-col justify-between space-y-3 relative group"
+                class="min-w-[85%] sm:min-w-0 snap-center rounded-3xl p-4 sm:p-5 transition cursor-pointer flex flex-col justify-between space-y-3 relative group shrink-0 sm:shrink"
               >
                 <!-- Dòng 1: Ca chạy, Mã chuyến & Trạng thái -->
                 <div class="flex items-center justify-between gap-2">
@@ -1750,7 +1751,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- ================= 5 TABS CHÍNH CỦA MÀN HÌNH LƠ XE ================= -->
-      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 p-1.5 bg-white rounded-3xl border border-slate-200 shadow-xs">
+      <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-none p-1.5 bg-white rounded-3xl border border-slate-200 shadow-xs sm:grid sm:grid-cols-5 sm:gap-2">
         <!-- Tab 1: Sơ đồ ghế & Bán vé dọc đường -->
         <button
           @click="switchMainTab('seatmap')"
@@ -1758,7 +1759,7 @@ onBeforeUnmount(() => {
             'bg-red-600 text-white font-black shadow-md': activeMainTab === 'seatmap',
             'text-slate-600 hover:text-slate-900 font-bold': activeMainTab !== 'seatmap'
           }"
-          class="py-3 px-2 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+          class="py-2.5 sm:py-3 px-3.5 sm:px-2 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0 sm:shrink whitespace-nowrap"
         >
           <i class="fa-solid fa-couch"></i>
           <span>1. Sơ Đồ Ghế</span>
@@ -1776,7 +1777,7 @@ onBeforeUnmount(() => {
             'bg-red-600 text-white font-black shadow-md': activeMainTab === 'pickups',
             'text-slate-600 hover:text-slate-900 font-bold': activeMainTab !== 'pickups'
           }"
-          class="py-3 px-2 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+          class="py-2.5 sm:py-3 px-3.5 sm:px-2 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0 sm:shrink whitespace-nowrap"
         >
           <i class="fa-solid fa-users"></i>
           <span>2. Đón/Trả Khách</span>
@@ -1792,7 +1793,7 @@ onBeforeUnmount(() => {
             'bg-red-600 text-white font-black shadow-md': activeMainTab === 'checkin',
             'text-slate-600 hover:text-slate-900 font-bold': activeMainTab !== 'checkin'
           }"
-          class="py-3 px-2 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+          class="py-2.5 sm:py-3 px-3.5 sm:px-2 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0 sm:shrink whitespace-nowrap"
         >
           <i class="fa-solid fa-qrcode"></i>
           <span>3. Quét QR Vé</span>
@@ -1805,7 +1806,7 @@ onBeforeUnmount(() => {
             'bg-red-600 text-white font-black shadow-md': activeMainTab === 'map',
             'text-slate-600 hover:text-slate-900 font-bold': activeMainTab !== 'map'
           }"
-          class="py-3 px-2 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+          class="py-2.5 sm:py-3 px-3.5 sm:px-2 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0 sm:shrink whitespace-nowrap"
         >
           <span>🗺️</span>
           <span>4. Bản Đồ Live</span>
@@ -1819,7 +1820,7 @@ onBeforeUnmount(() => {
             'bg-red-600 text-white font-black shadow-md': activeMainTab === 'history',
             'text-slate-600 hover:text-slate-900 font-bold': activeMainTab !== 'history'
           }"
-          class="py-3 px-2 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer col-span-2 sm:col-span-1"
+          class="py-2.5 sm:py-3 px-3.5 sm:px-2 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0 sm:shrink whitespace-nowrap"
         >
           <span>📜</span>
           <span>5. Lịch Sử Ca Cũ</span>
@@ -1872,10 +1873,35 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
+        <!-- Mobile Floor Switcher (lg:hidden) -->
+        <div class="lg:hidden flex items-center p-1 bg-slate-200/90 rounded-2xl mb-3 text-xs font-black shadow-inner">
+          <button
+            type="button"
+            @click="activeStaffFloor = 'f1'"
+            :class="activeStaffFloor === 'f1' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+            class="flex-1 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>🛏️ Tầng 1 (A01 - A18)</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded-full font-bold font-mono" :class="activeStaffFloor === 'f1' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-300 text-slate-700'">18 Ghế</span>
+          </button>
+          <button
+            type="button"
+            @click="activeStaffFloor = 'f2'"
+            :class="activeStaffFloor === 'f2' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+            class="flex-1 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>🛏️ Tầng 2 (B01 - B12)</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded-full font-bold font-mono" :class="activeStaffFloor === 'f2' ? 'bg-blue-50 text-blue-700' : 'bg-slate-300 text-slate-700'">12 Ghế</span>
+          </button>
+        </div>
+
         <!-- 2-Floor Layout Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- TẦNG 1: GHẾ VIP / DƯỚI (A01 - A17) -->
-          <div class="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-4">
+          <div 
+            :class="{ 'hidden lg:block': activeStaffFloor !== 'f1' }"
+            class="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-4"
+          >
             <div class="flex justify-between items-center pb-3 border-b border-slate-100">
               <h3 class="font-black text-sm text-slate-900 flex items-center gap-2">
                 <i class="fa-solid fa-layer-group text-red-600"></i>
@@ -1961,7 +1987,10 @@ onBeforeUnmount(() => {
           </div>
 
           <!-- TẦNG 2: GIƯỜNG TIÊU CHUẨN / TRÊN (B01 - B12 - 2 BÊN CỬA SỔ, DÃY GIỮA LỐI ĐI) -->
-          <div class="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-4">
+          <div 
+            :class="{ 'hidden lg:block': activeStaffFloor !== 'f2' }"
+            class="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-4"
+          >
             <div class="flex justify-between items-center pb-3 border-b border-slate-100">
               <h3 class="font-black text-sm text-slate-900 flex items-center gap-2">
                 <i class="fa-solid fa-layer-group text-blue-600"></i>

@@ -50,6 +50,19 @@
 
         <!-- Cổng Đăng Nhập & Ngôn Ngữ Theo Mẫu: VN | [👤] Đăng nhập -->
         <div class="flex items-center gap-2 sm:gap-3">
+
+          <!-- Nút Countdown Gói Sinh Viên / Hội Viên Pro & Ultra (Yêu cầu 2) -->
+          <button
+            type="button"
+            @click="showMembershipModal = true"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition shadow-2xs border cursor-pointer active:scale-95"
+            :class="isStudentUser ? 'bg-amber-50 hover:bg-amber-100 text-amber-950 border-amber-300' : 'bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-700 border-slate-200'"
+            title="Bấm để xem thời gian sử dụng & nâng cấp gói hội viên"
+          >
+            <span class="text-sm">🎓</span>
+            <span class="max-w-[130px] sm:max-w-none truncate">{{ studentCountdownText }}</span>
+            <span class="text-[9.5px] bg-[#dc2626] text-white px-1.5 py-0.2 rounded-full font-black uppercase tracking-tight">Nâng cấp</span>
+          </button>
           
           <!-- Nút Ngôn Ngữ: VN / EN (Desktop/Tablet) -->
           <button
@@ -124,6 +137,22 @@
                 </div>
 
                 <div class="py-1">
+                  <!-- Mở Modal Gói Thành Viên & Sinh Viên -->
+                  <button
+                    type="button"
+                    @click.prevent.stop="showMembershipModal = true; isRoleOpen = false"
+                    class="w-full text-left flex items-center gap-3 px-4 py-2 text-xs font-bold text-amber-900 bg-amber-50/70 hover:bg-amber-100/80 transition-colors cursor-pointer"
+                  >
+                    <span class="text-base">👑</span>
+                    <div class="flex-1 min-w-0">
+                      <p class="leading-none flex items-center justify-between">
+                        <span class="font-black text-slate-900">Gói Hội Viên Pro & Ultra</span>
+                        <span class="text-[9px] bg-red-600 text-white px-1.5 py-0.2 rounded font-black">ƯU ĐÃI</span>
+                      </p>
+                      <p class="text-[10px] text-amber-800 font-semibold mt-0.5 truncate">{{ studentCountdownText }}</p>
+                    </div>
+                  </button>
+
                   <!-- Mở Modal Hồ Sơ Khách Hàng -->
                   <button
                     type="button"
@@ -360,6 +389,22 @@
                 <span>Soát Vé Mã QR</span>
               </Link>
 
+              <!-- Mở Modal Gói Hội Viên trên Mobile -->
+              <button
+                type="button"
+                @click="showMembershipModal = true; isMobileMenuOpen = false"
+                class="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 transition my-1 cursor-pointer"
+              >
+                <span class="text-lg">🎓</span>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between">
+                    <p class="font-black text-xs leading-tight">Gói Hội Viên (Eco, Pro, Ultra)</p>
+                    <span class="text-[9.5px] bg-[#dc2626] text-white px-1.5 py-0.2 rounded-full font-black">NÂNG CẤP</span>
+                  </div>
+                  <p class="text-[10px] text-amber-800 mt-0.5 font-medium">{{ studentCountdownText }}</p>
+                </div>
+              </button>
+
               <!-- Khu vực Nghiệp vụ -->
               <div class="pt-2.5 border-t border-slate-100">
                 <div class="text-[10px] font-black uppercase text-slate-400 px-3 py-1 tracking-wider">
@@ -536,15 +581,17 @@
     <LanguageModal v-model="showLanguageModal" @change="onLanguageChange" />
     <AuthModal v-model="showAuthModal" />
     <ProfileModal v-model="showProfileModal" :user="$page.props.auth?.user" :initial-tab="profileActiveTab" />
+    <MembershipModal :is-open="showMembershipModal" @close="showMembershipModal = false" />
   </header>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import LanguageModal from '@/Components/LanguageModal.vue';
 import AuthModal from '@/Components/AuthModal.vue';
 import ProfileModal from '@/Components/ProfileModal.vue';
+import MembershipModal from '@/Components/MembershipModal.vue';
 
 const page = usePage();
 
@@ -571,8 +618,38 @@ const quickSearchQuery = ref('');
 const showLanguageModal = ref(false);
 const showAuthModal = ref(false);
 const showProfileModal = ref(false);
+const showMembershipModal = ref(false);
 const profileActiveTab = ref('info');
 const currentLang = ref('vi');
+
+const isStudentUser = computed(() => {
+  const u = page.props.auth?.user;
+  if (!u) return false;
+  return Boolean(
+    u.is_student ||
+    String(u.email || '').includes('.edu.vn') ||
+    String(u.email || '').includes('sinhvien')
+  );
+});
+
+const studentCountdownText = computed(() => {
+  const u = page.props.auth?.user;
+  if (!u) return 'Gói SV 30%';
+  if (u.membership_plan === 'ULTRA_40') {
+    return `Ultra 40%: Còn ${u.student_days_remaining ?? 365} ngày`;
+  }
+  if (u.membership_plan === 'PRO_25') {
+    return `Pro 25%: Còn ${u.student_days_remaining ?? 365} ngày`;
+  }
+  if (u.membership_plan === 'ECO_20') {
+    return `Eco 20%: Còn ${u.student_days_remaining ?? 180} ngày`;
+  }
+  if (u.is_student || String(u.email || '').includes('.edu.vn') || String(u.email || '').includes('sinhvien')) {
+    const days = u.student_days_remaining ?? 365;
+    return `SV 30%: Còn ${days} ngày`;
+  }
+  return 'Gói Hội Viên';
+});
 
 onMounted(() => {
   const s = localStorage.getItem('bushub_locale');

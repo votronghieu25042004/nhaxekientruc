@@ -75,6 +75,8 @@ Route::get('my-bookings', [TripController::class, 'myBookings'])->name('my.booki
 Route::get('api/my-bookings', [TripController::class, 'myBookingsApi'])->name('api.myBookings');
 Route::get('api/vouchers', [TripController::class, 'activeVouchersApi'])->name('api.vouchers.list');
 Route::post('api/vouchers/apply', [TripController::class, 'applyVoucher'])->name('api.vouchers.apply');
+Route::post('membership/subscribe', [TripController::class, 'subscribeMembership'])->name('membership.subscribe');
+Route::post('api/membership/subscribe', [TripController::class, 'subscribeMembership']);
 
 // Customer Reviews
 Route::get('booking/{code}/review', [ReviewController::class, 'show'])->name('reviews.show');

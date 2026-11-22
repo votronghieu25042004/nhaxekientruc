@@ -257,6 +257,13 @@
                   {{ v.discount_type === 'PERCENT' ? `Giảm ${v.discount_value}% tối đa ${formatCurrency(v.max_discount)}` : `Giảm ngay ${formatCurrency(v.discount_value)}` }}
                 </div>
                 <div class="text-[11px] text-slate-500 mt-0.5 line-clamp-2" :title="v.description">{{ v.description }}</div>
+
+                <!-- Khoảng giá ghế áp dụng (min_seat_price & max_seat_price) -->
+                <div class="mt-2 flex items-center gap-1.5 flex-wrap">
+                  <span class="px-2 py-0.5 rounded-md text-[10px] font-black border" :class="(v.min_seat_price > 0 || v.max_seat_price) ? 'bg-amber-50 text-amber-900 border-amber-300' : 'bg-slate-100 text-slate-600 border-slate-200'">
+                    💺 Áp dụng ghế: {{ formatCurrency(v.min_seat_price || 0) }} - {{ v.max_seat_price ? formatCurrency(v.max_seat_price) : 'Mọi mức giá' }}
+                  </span>
+                </div>
               </div>
 
               <div class="pt-2 border-t border-slate-100 text-[11px] space-y-1">
@@ -559,6 +566,41 @@
             </div>
           </div>
 
+          <!-- Giới hạn theo khoảng giá ghế (Yêu cầu 3) -->
+          <div class="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="block font-bold text-amber-950 text-xs">💺 Khoảng Giá Ghế Áp Dụng (VNĐ)</label>
+              <div class="flex items-center gap-1 text-[10px]">
+                <button type="button" @click="voucherForm.min_seat_price = 0; voucherForm.max_seat_price = 200000" class="px-2 py-0.5 rounded bg-white border border-amber-300 text-amber-900 font-bold hover:bg-amber-100 cursor-pointer">≤ 200k</button>
+                <button type="button" @click="voucherForm.min_seat_price = 0; voucherForm.max_seat_price = 300000" class="px-2 py-0.5 rounded bg-white border border-amber-300 text-amber-900 font-bold hover:bg-amber-100 cursor-pointer">≤ 300k</button>
+                <button type="button" @click="voucherForm.min_seat_price = 0; voucherForm.max_seat_price = null" class="px-2 py-0.5 rounded bg-white border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 cursor-pointer">Mọi giá</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] text-slate-500 mb-0.5 font-semibold">Giá ghế từ (VNĐ)</label>
+                <input 
+                  type="number" 
+                  v-model.number="voucherForm.min_seat_price" 
+                  placeholder="0"
+                  class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 text-xs font-bold"
+                />
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-500 mb-0.5 font-semibold">Giá ghế đến (VNĐ)</label>
+                <input 
+                  type="number" 
+                  v-model.number="voucherForm.max_seat_price" 
+                  placeholder="Để trống nếu không giới hạn"
+                  class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 text-xs font-bold"
+                />
+              </div>
+            </div>
+            <p class="text-[10px] text-amber-900/80">
+              Chỉ những ghế có giá vé trong khoảng trên mới được áp dụng mã giảm giá này (ví dụ: 0đ đến 200.000đ hoặc 300.000đ).
+            </p>
+          </div>
+
           <div>
             <label class="block font-bold text-slate-700 mb-1">Mô Tả & Điều Kiện Áp Dụng</label>
             <input 
@@ -686,6 +728,41 @@
             </div>
           </div>
 
+          <!-- Giới hạn theo khoảng giá ghế (Yêu cầu 3) -->
+          <div class="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="block font-bold text-amber-950 text-xs">💺 Khoảng Giá Ghế Áp Dụng (VNĐ)</label>
+              <div class="flex items-center gap-1 text-[10px]">
+                <button type="button" @click="editVoucherForm.min_seat_price = 0; editVoucherForm.max_seat_price = 200000" class="px-2 py-0.5 rounded bg-white border border-amber-300 text-amber-900 font-bold hover:bg-amber-100 cursor-pointer">≤ 200k</button>
+                <button type="button" @click="editVoucherForm.min_seat_price = 0; editVoucherForm.max_seat_price = 300000" class="px-2 py-0.5 rounded bg-white border border-amber-300 text-amber-900 font-bold hover:bg-amber-100 cursor-pointer">≤ 300k</button>
+                <button type="button" @click="editVoucherForm.min_seat_price = 0; editVoucherForm.max_seat_price = null" class="px-2 py-0.5 rounded bg-white border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 cursor-pointer">Mọi giá</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] text-slate-500 mb-0.5 font-semibold">Giá ghế từ (VNĐ)</label>
+                <input 
+                  type="number" 
+                  v-model.number="editVoucherForm.min_seat_price" 
+                  placeholder="0"
+                  class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 text-xs font-bold"
+                />
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-500 mb-0.5 font-semibold">Giá ghế đến (VNĐ)</label>
+                <input 
+                  type="number" 
+                  v-model.number="editVoucherForm.max_seat_price" 
+                  placeholder="Để trống nếu không giới hạn"
+                  class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 text-xs font-bold"
+                />
+              </div>
+            </div>
+            <p class="text-[10px] text-amber-900/80">
+              Chỉ những ghế có giá vé trong khoảng trên mới được áp dụng mã giảm giá này.
+            </p>
+          </div>
+
           <div>
             <label class="block font-bold text-slate-700 mb-1">Mô Tả & Điều Kiện Áp Dụng</label>
             <input 
@@ -775,6 +852,8 @@ const voucherForm = reactive({
   discount_type: 'PERCENT',
   discount_value: 20,
   target_audience: 'ALL',
+  min_seat_price: 0,
+  max_seat_price: null,
   usage_limit: 100,
   max_uses_per_user: 2,
   valid_until: '',
@@ -788,6 +867,8 @@ const editVoucherForm = reactive({
   target_audience: 'ALL',
   min_order_value: 0,
   max_discount: 100000,
+  min_seat_price: 0,
+  max_seat_price: null,
   usage_limit: 100,
   max_uses_per_user: 2,
   valid_until: '',
@@ -804,6 +885,8 @@ const openEditVoucherModal = (v) => {
   editVoucherForm.target_audience = v.target_audience || 'ALL';
   editVoucherForm.min_order_value = v.min_order_value ?? 0;
   editVoucherForm.max_discount = v.max_discount ?? 100000;
+  editVoucherForm.min_seat_price = v.min_seat_price ?? 0;
+  editVoucherForm.max_seat_price = v.max_seat_price ?? null;
   editVoucherForm.usage_limit = v.usage_limit ?? 100;
   editVoucherForm.max_uses_per_user = v.max_uses_per_user || (v.target_audience === 'STUDENT' ? 1 : 2);
   editVoucherForm.valid_until = v.valid_until ? String(v.valid_until).substring(0, 10) : '';
