@@ -62,7 +62,7 @@
           <div class="flex items-center gap-2.5 flex-wrap">
             <!-- Nút kích hoạt Demo SOS cho người dùng test -->
             <button
-              v-if="!isSosActive"
+              v-if="false /* Ẩn nút Test Còi SOS demo theo yêu cầu */"
               @click="triggerSos"
               class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-xl text-xs border border-red-200 transition flex items-center gap-1.5 cursor-pointer"
               title="Mô phỏng tài xế ấn còi khẩn cấp trên xe"
@@ -313,7 +313,7 @@
                     <span>📞</span>
                     <span>Gọi Bác Tài</span>
                   </a>
-                  <button 
+                  <button v-if="false" 
                     @click="triggerSosForBus(selectedBus)" 
                     class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-xl border border-red-200 transition flex items-center gap-1 cursor-pointer"
                   >

@@ -21,8 +21,11 @@
       <!-- Right: Nút [+ Bán Vé Nhanh] + Profile & Role Switcher -->
       <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
         <!-- NÚT [ + BÁN VÉ NHANH ] NỔI BẬT Ở HEADER THEO YÊU CẦU -->
+        <!-- CHUÔNG THÔNG BÁO ADMIN -->
+        <NotificationDropdown role="admin" customButtonClass="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200" />
+
         <Link 
-          href="/admin/pos" 
+          href="/admin/pos"  
           class="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-[#dc2626] hover:bg-red-700 text-white font-bold text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 transition-all active:scale-95 cursor-pointer whitespace-nowrap shadow-xs"
           title="Mở màn hình POS bán vé nhanh tại quầy và tổng đài"
         >
@@ -545,7 +548,15 @@
                   <Link href="/admin/refunds" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/refunds') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
                     <span class="text-base">💸</span><span>Hoàn Tiền & Hủy Vé</span>
                   </Link>
-                  <Link href="/admin/finance" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/finance') ? 'bg-emerald-50 text-emerald-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
+                  <Link href="/admin/invoices"
+            class="px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+            :class="$page.url.startsWith('/admin/invoices') ? 'bg-[#dc2626] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'"
+          >
+            <span>📑</span>
+            <span>Kho Hóa Đơn & PDF</span>
+          </Link>
+
+          <Link href="/admin/finance"  @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/finance') ? 'bg-emerald-50 text-emerald-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">
                     <span class="text-base">💰</span><span>Quản Lý Doanh Thu & Tiền Xe</span>
                   </Link>
                   <Link href="/admin/roles" @click="isMobileAdminOpen = false" class="flex items-center gap-3 px-3 py-2 rounded-xl transition" :class="$page.url.startsWith('/admin/roles') ? 'bg-red-50 text-red-700 font-black' : 'text-slate-700 hover:bg-slate-50 font-bold'">

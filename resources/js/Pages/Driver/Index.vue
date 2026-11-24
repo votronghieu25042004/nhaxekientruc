@@ -1,5 +1,6 @@
 <script setup>
 import AiChatModal from '@/Components/AiChatModal.vue'
+import NotificationDropdown from '@/Components/NotificationDropdown.vue';
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { Head, Link, router, useForm } from '@inertiajs/vue3'
 import axios from 'axios'
@@ -1603,6 +1604,9 @@ onUnmounted(() => {
 
         <!-- Nút thao tác góc phải (Đúng hình 1: Ban Đêm & Khẩn Cấp SOS) -->
         <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <!-- CHUÔNG THÔNG BÁO TÀI XẾ -->
+          <NotificationDropdown role="driver" customButtonClass="bg-white/10 hover:bg-white/20 text-white border border-white/20" />
+
           <!-- Chuyển Giao diện Ngày/Đêm -->
           <button
             type="button"
@@ -2103,6 +2107,19 @@ onUnmounted(() => {
                       {{ st.address || (stIdx === 0 ? 'Điểm xuất phát bến đi ban đầu' : (stIdx === (getTripDropoffStops(trip).length - 1) ? 'Bến xe kết thúc hành trình' : 'Trạm đón trả trên tuyến')) }}
                     </div>
 
+                    <!-- NÚT CHỈ ĐƯỜNG TỪNG TRẠM -->
+                    <div class="pt-2 flex items-center justify-between gap-2 flex-wrap">
+                      <a
+                        :href="`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(st.address || st.stop_name || st.name)}`"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 font-bold text-[11px] border border-blue-200 dark:border-blue-800 transition active:scale-95 cursor-pointer"
+                      >
+                        <span>🗺️ Chỉ Đường (Google Maps)</span>
+                        <span>➔</span>
+                      </a>
+                    </div>
+
                     <!-- NỘI DUNG 1: TRẠM XUẤT PHÁT -->
                     <div v-if="stIdx === 0" class="mt-3 pt-3 border-t border-slate-100 dark:border-zinc-800 space-y-2">
                       <div class="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-blue-950 dark:text-blue-200">
@@ -2522,6 +2539,20 @@ onUnmounted(() => {
                     <i class="fa-solid fa-clock text-blue-500"></i>
                     <span>Dự kiến: <strong class="text-slate-900 dark:text-white text-base">{{ nextStop?.planned_time || '23:15' }}</strong></span>
                   </div>
+                </div>
+
+                <!-- NÚT CHỈ ĐƯỜNG GOOGLE MAPS CHO BÁC TÀI -->
+                <div class="pt-3 flex items-center justify-center">
+                  <a
+                    :href="`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(nextStop?.stop_name || nextStop?.address || 'Bến xe Trung tâm Đà Nẵng')}`"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-500/25 transition active:scale-95 cursor-pointer"
+                  >
+                    <span>🗺️</span>
+                    <span>Mở Chỉ Đường Trạm Tiếp Theo (Google Maps)</span>
+                    <span>➔</span>
+                  </a>
                 </div>
               </div>
 

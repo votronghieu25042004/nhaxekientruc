@@ -1503,6 +1503,13 @@ const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currenc
                 </div>
 
                 <form @submit.prevent="submitAssign" class="space-y-3.5 text-xs">
+                    <!-- THÔNG BÁO XUNG ĐỘT TRÙNG LỊCH PHÂN CÔNG (NẾU CÓ) -->
+                    <div v-if="assignForm.hasErrors || $page.props.flash?.error" class="p-3.5 bg-red-50 border-2 border-red-300 rounded-2xl text-red-700 text-xs font-bold flex items-start gap-2.5 shadow-sm">
+                        <span class="text-lg shrink-0">⚠️</span>
+                        <div class="leading-relaxed">
+                            {{ assignForm.errors.driver_id || assignForm.errors.bus_id || assignForm.errors.conflict || $page.props.flash?.error }}
+                        </div>
+                    </div>
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Tài Xế Chính *</label>
                         <select v-model="assignForm.driver_id" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800">

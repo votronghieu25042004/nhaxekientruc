@@ -32,9 +32,11 @@ class HandleInertiaRequests extends Middleware
                     'student_days_remaining' => $user->student_days_remaining,
                     'student_days_total' => $user->student_days_total,
                     'student_registered_at' => $user->student_registered_at ? $user->student_registered_at->format('d/m/Y') : ($user->created_at ? $user->created_at->format('d/m/Y') : null),
-                    'student_discount_expires_at' => $user->student_discount_expires_at ? $user->student_discount_expires_at->format('d/m/Y') : null,
-                    'student_first_trip_used' => (bool)$user->student_first_trip_used,
-                    'membership_plan' => ($user->membership_plan && $user->membership_plan !== 'CANCELLED') ? $user->membership_plan : 'STANDARD',
+                    'student_first_trip_used' => (bool)($user->student_first_trip_used || \App\Models\Booking::where('user_id', $user->id)
+                        ->whereIn('voucher_code', ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])
+                        ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
+                        ->exists()),
+                    'membership_plan' => $user->membership_plan ?: 'STANDARD',
                     'membership_discount_percent' => ($user->membership_plan && $user->membership_plan !== 'CANCELLED') ? (int)$user->membership_discount_percent : 0,
                     'membership_registered_at' => $user->student_registered_at ? $user->student_registered_at->format('d/m/Y') : ($user->created_at ? $user->created_at->format('d/m/Y') : now()->format('d/m/Y')),
                     'membership_expires_at' => ($user->membership_plan && $user->membership_plan !== 'CANCELLED' && $user->membership_expires_at) ? $user->membership_expires_at->format('d/m/Y') : null,

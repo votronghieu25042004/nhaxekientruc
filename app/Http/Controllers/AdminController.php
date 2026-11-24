@@ -90,17 +90,22 @@ class AdminController extends Controller
 
         $conductorCashHeld = 0;
         foreach ($unsettledTrips as $ut) {
-            $cashBookings = $ut->bookings->where('payment_status', '!=', 'REFUNDED');
+            $cashBookings = $ut->bookings->whereNotIn('checkin_status', ['NO_SHOW', 'CANCELLED'])->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
             foreach ($cashBookings as $cb) {
-                if ($cb->payment_method === 'CASH' || $cb->booking_source === 'ROADSIDE') {
-                    $conductorCashHeld += (int)$cb->total_amount;
-                } else if ($cb->paid_amount < $cb->total_amount) {
-                    $conductorCashHeld += (int)($cb->total_amount - $cb->paid_amount);
+                $tot = (float)$cb->total_amount;
+                $isRoadside = in_array($cb->booking_source, ['ROADSIDE', 'ROADSIDE_ON_BUS']);
+                if ($cb->payment_method === 'CASH' || $isRoadside) {
+                    if ($cb->payment_status === 'PAID' || $cb->checkin_status === 'CHECKED_IN') {
+                        $conductorCashHeld += (int)$tot;
+                    } else {
+                        $conductorCashHeld += (int)$cb->paid_amount;
+                    }
+                } elseif ($cb->payment_method === 'DEPOSIT_30' || str_contains($cb->notes ?? '', 'Cọc trước 30%')) {
+                    if ($cb->checkin_status === 'CHECKED_IN') {
+                        $conductorCashHeld += (int)max(0, $tot - round($tot * 0.3));
+                    }
                 }
             }
-        }
-        if ($conductorCashHeld == 0) {
-            $conductorCashHeld = 2610000; // Chuyến đang chạy BH-HIB-0039
         }
 
         // ==================== 2. REALTIME ALERT FEED ====================
@@ -1416,12 +1421,13 @@ class AdminController extends Controller
             })->values()->toArray();
 
             $rawPlan = strtoupper((string)($u->membership_plan ?? ''));
-            $isCancelledOrStandard = ($rawPlan === 'CANCELLED' || $rawPlan === 'STANDARD' || $rawPlan === 'THUONG' || empty($rawPlan));
+            $isCancelled = ($rawPlan === 'CANCELLED');
+            $isCancelledOrStandard = ($isCancelled || $rawPlan === 'STANDARD' || $rawPlan === 'THUONG' || empty($rawPlan));
             $isUltra = !$isCancelledOrStandard && str_contains($rawPlan, 'ULTRA');
             $isPro = !$isCancelledOrStandard && (str_contains($rawPlan, 'PRO') || $u->is_student);
-            $membershipPlan = $isUltra ? 'ULTRA' : ($isPro ? 'PRO' : 'THUONG');
-            $planDisplayName = $isUltra ? 'Gói ULTRA (-40%)' : ($isPro ? ($u->is_student ? 'Sinh Viên Pro (-30%)' : 'Gói PRO (-30%)') : 'Gói THƯỜNG');
-            $discountPct = $isUltra ? 40 : ($isPro ? 30 : 0);
+            $membershipPlan = $isCancelled ? 'CANCELLED' : ($isUltra ? 'ULTRA' : ($isPro ? 'PRO' : 'THUONG'));
+            $planDisplayName = $isCancelled ? 'Đã Hủy Gói (Hết hạn)' : ($isUltra ? 'Gói ULTRA (-40%)' : ($isPro ? ($u->is_student ? 'Sinh Viên Pro (-30%)' : 'Gói PRO (-30%)') : 'Gói THƯỜNG'));
+            $discountPct = ($isCancelledOrStandard) ? 0 : ($isUltra ? 40 : 30);
             $regDate = $u->student_registered_at ? Carbon::parse($u->student_registered_at)->format('d/m/Y') : ($u->created_at ? Carbon::parse($u->created_at)->format('d/m/Y') : '-');
             $expDate = ($u->membership_expires_at ?? $u->student_discount_expires_at) ? Carbon::parse($u->membership_expires_at ?? $u->student_discount_expires_at)->format('d/m/Y') : '-';
 
@@ -2115,10 +2121,75 @@ class AdminController extends Controller
     public function assignDriver(Request $request, $id)
     {
         $trip = Trip::findOrFail($id);
+        $newDep = Carbon::parse($trip->departure_time);
+        $newArr = Carbon::parse($trip->arrival_time ?: $newDep->copy()->addHours(4));
 
-        if ($request->has('driver_id')) {
-            $trip->driver_id = $request->input('driver_id');
+        // 1. Kiểm tra chống trùng lịch Tài xế chính
+        if ($request->has('driver_id') && $request->driver_id) {
+            $driverId = $request->input('driver_id');
+            $driverConflict = Trip::where('id', '!=', $trip->id)
+                ->where(function($q) use ($driverId) {
+                    $q->where('driver_id', $driverId)->orWhere('second_driver_id', $driverId);
+                })
+                ->whereIn('status', ['SCHEDULED', 'IN_TRANSIT', 'READY', 'BOARDING', 'RUNNING'])
+                ->where(function($q) use ($newDep, $newArr) {
+                    $bufDep = $newDep->copy()->subHours(2);
+                    $bufArr = $newArr->copy()->addHours(2);
+                    $q->whereBetween('departure_time', [$bufDep, $bufArr])
+                      ->orWhereBetween('arrival_time', [$bufDep, $bufArr])
+                      ->orWhere(function($sub) use ($bufDep, $bufArr) {
+                          $sub->where('departure_time', '<=', $bufDep)
+                              ->where('arrival_time', '>=', $bufArr);
+                      });
+                })
+                ->with(['driver', 'route'])
+                ->first();
+
+            if ($driverConflict) {
+                $dName = $driverConflict->driver?->name ?? 'Tài xế đã chọn';
+                $depStr = Carbon::parse($driverConflict->departure_time)->format('H:i d/m');
+                $arrStr = Carbon::parse($driverConflict->arrival_time)->format('H:i d/m');
+                $msg = "CẢNH BÁO XUNG ĐỘT TÀI XẾ: Bác tài {$dName} đang lái chuyến #{$driverConflict->trip_code} ({$driverConflict->route?->name}) từ {$depStr} đến {$arrStr}. Không thể phân công 2 chuyến cùng lúc!";
+                if ($request->wantsJson() || $request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+                return back()->withErrors(['driver_id' => $msg]);
+            }
+            $trip->driver_id = $driverId;
         }
+
+        // 2. Kiểm tra chống trùng lịch Xe buýt
+        if ($request->has('bus_id') && $request->bus_id) {
+            $busId = $request->input('bus_id');
+            $busConflict = Trip::where('id', '!=', $trip->id)
+                ->where('bus_id', $busId)
+                ->whereIn('status', ['SCHEDULED', 'IN_TRANSIT', 'READY', 'BOARDING', 'RUNNING'])
+                ->where(function($q) use ($newDep, $newArr) {
+                    $bufDep = $newDep->copy()->subMinutes(45);
+                    $bufArr = $newArr->copy()->addMinutes(45);
+                    $q->whereBetween('departure_time', [$bufDep, $bufArr])
+                      ->orWhereBetween('arrival_time', [$bufDep, $bufArr])
+                      ->orWhere(function($sub) use ($bufDep, $bufArr) {
+                          $sub->where('departure_time', '<=', $bufDep)
+                              ->where('arrival_time', '>=', $bufArr);
+                      });
+                })
+                ->with(['bus', 'route'])
+                ->first();
+
+            if ($busConflict) {
+                $plate = $busConflict->bus?->license_plate ?? 'Xe buýt đã chọn';
+                $depStr = Carbon::parse($busConflict->departure_time)->format('H:i d/m');
+                $arrStr = Carbon::parse($busConflict->arrival_time)->format('H:i d/m');
+                $msg = "CẢNH BÁO XUNG ĐỘT XE: Xe {$plate} đang chạy chuyến #{$busConflict->trip_code} ({$busConflict->route?->name}) từ {$depStr} đến {$arrStr}. Cần thời gian bảo dưỡng dọn dẹp giữa các chuyến!";
+                if ($request->wantsJson() || $request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+                return back()->withErrors(['bus_id' => $msg]);
+            }
+            $trip->bus_id = $busId;
+        }
+
         if ($request->has('second_driver_id')) {
             $trip->second_driver_id = $request->input('second_driver_id') ?: null;
         }
@@ -2127,9 +2198,6 @@ class AdminController extends Controller
         }
         if ($request->has('second_conductor_id')) {
             $trip->second_conductor_id = $request->input('second_conductor_id') ?: null;
-        }
-        if ($request->has('bus_id')) {
-            $trip->bus_id = $request->input('bus_id');
         }
 
         $trip->save();
@@ -4006,5 +4074,270 @@ class AdminController extends Controller
 
         return back()->with('success', "Đã từ chối hoàn tiền cho vé #{$booking->booking_code} và gửi thông báo về Gmail của khách hàng.");
     }
-}
 
+    /**
+     * Admin tạo tài khoản khách hàng mới
+     */
+    public function storeCustomer(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:100',
+            'phone' => 'required|string|max:20|unique:users,phone',
+            'email' => 'nullable|email|max:100|unique:users,email',
+            'password' => 'nullable|string|min:6',
+            'loyalty_tier' => 'nullable|string|in:MEMBER,SILVER,GOLD,DIAMOND',
+            'reward_points' => 'nullable|integer|min:0',
+        ], [
+            'name.required' => 'Vui lòng nhập họ và tên khách hàng.',
+            'phone.required' => 'Vui lòng nhập số điện thoại.',
+            'phone.unique' => 'Số điện thoại này đã được đăng ký tài khoản.',
+            'email.unique' => 'Email này đã được sử dụng.',
+            'password.min' => 'Mật khẩu phải từ 6 ký tự trở lên.',
+        ]);
+
+        $rawPassword = $request->input('password') ?: '123456';
+
+        $user = User::create([
+            'name' => $request->name,
+            'phone' => $request->phone,
+            'email' => $request->email ?: null,
+            'password' => \Illuminate\Support\Facades\Hash::make($rawPassword),
+            'role' => 'customer',
+            'loyalty_tier' => $request->input('loyalty_tier', 'MEMBER'),
+            'reward_points' => (int) $request->input('reward_points', 0),
+            'status' => 'ACTIVE',
+        ]);
+
+        return back()->with('success', "Đã tạo tài khoản khách hàng {$user->name} ({$user->phone}) thành công! Mật khẩu khởi tạo: {$rawPassword}");
+    }
+
+    /**
+     * Quản lý & Rà soát Kho Hóa Đơn & Chứng Từ PDF cho Admin
+     */
+    public function invoices(Request $request)
+    {
+        $q = trim((string) $request->input('q', ''));
+        $type = $request->input('type', 'ALL'); // 'ALL', 'TICKET', 'MEMBERSHIP', 'REFUND'
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+
+        $invoices = [];
+        $pdfDir = \App\Services\PdfTicketService::getPdfStorageDirectory();
+
+        // 1. Hóa đơn Vé xe điện tử
+        if ($type === 'ALL' || $type === 'TICKET') {
+            $ticketQuery = Booking::with(['trip.route', 'user'])
+                ->whereIn('payment_status', ['PAID', 'DEPOSIT_PAID'])
+                ->where('payment_status', '!=', 'CANCELLED');
+
+            if ($q) {
+                $ticketQuery->where(function($sub) use ($q) {
+                    $sub->where('booking_code', 'like', "%{$q}%")
+                        ->orWhere('customer_name', 'like', "%{$q}%")
+                        ->orWhere('customer_phone', 'like', "%{$q}%");
+                });
+            }
+            if ($dateFrom) $ticketQuery->whereDate('created_at', '>=', $dateFrom);
+            if ($dateTo) $ticketQuery->whereDate('created_at', '<=', $dateTo);
+
+            $paidBookings = $ticketQuery->orderBy('created_at', 'desc')->take(60)->get();
+
+            foreach ($paidBookings as $b) {
+                $pdfFile = "ve-{$b->booking_code}.pdf";
+                $hasPdf = file_exists("{$pdfDir}/{$pdfFile}");
+                $invoices[] = [
+                    'id' => 'ticket_' . $b->id,
+                    'code' => $b->booking_code,
+                    'type' => 'TICKET',
+                    'type_label' => 'Vé Xe Điện Tử',
+                    'badge_class' => 'bg-emerald-100 text-emerald-800 border-emerald-300',
+                    'customer_name' => $b->customer_name,
+                    'customer_phone' => $b->customer_phone,
+                    'service_name' => $b->trip?->route?->name ?? 'Tuyến liên tỉnh',
+                    'amount' => (float)($b->paid_amount ?: $b->total_amount),
+                    'payment_method' => $b->payment_status === 'PAID' ? 'VietQR (100%)' : 'Cọc 30%',
+                    'created_at' => $b->created_at ? $b->created_at->format('d/m/Y H:i') : '',
+                    'has_pdf' => $hasPdf,
+                    'filename' => $pdfFile,
+                    'view_url' => "/admin/invoices/{$b->booking_code}/view",
+                    'download_url' => "/admin/invoices/{$b->booking_code}/download",
+                ];
+            }
+        }
+
+        // 2. Hóa đơn Nâng cấp Gói Hội Viên VIP
+        if ($type === 'ALL' || $type === 'MEMBERSHIP') {
+            try {
+                $subQuery = \Illuminate\Support\Facades\DB::table('membership_subscriptions')
+                    ->join('users', 'membership_subscriptions.user_id', '=', 'users.id')
+                    ->select('membership_subscriptions.*', 'users.name as user_name', 'users.phone as user_phone');
+
+                if ($q) {
+                    $subQuery->where(function($sub) use ($q) {
+                        $sub->where('users.name', 'like', "%{$q}%")
+                            ->orWhere('users.phone', 'like', "%{$q}%")
+                            ->orWhere('membership_subscriptions.plan_code', 'like', "%{$q}%");
+                    });
+                }
+
+                $subs = $subQuery->orderBy('membership_subscriptions.created_at', 'desc')->take(30)->get();
+
+                foreach ($subs as $s) {
+                    $code = 'HV' . str_pad($s->id, 6, '0', STR_PAD_LEFT);
+                    $pdfFile = "hoa-don-hoi-vien-{$code}.pdf";
+                    $hasPdf = file_exists("{$pdfDir}/{$pdfFile}");
+                    $invoices[] = [
+                        'id' => 'membership_' . $s->id,
+                        'code' => $code,
+                        'type' => 'MEMBERSHIP',
+                        'type_label' => 'Gói Hội Viên VIP',
+                        'badge_class' => 'bg-purple-100 text-purple-800 border-purple-300',
+                        'customer_name' => $s->user_name,
+                        'customer_phone' => $s->user_phone,
+                        'service_name' => $s->plan_name,
+                        'amount' => (float)$s->price,
+                        'payment_method' => 'VietQR Tự Động',
+                        'created_at' => Carbon::parse($s->created_at)->format('d/m/Y H:i'),
+                        'has_pdf' => $hasPdf,
+                        'filename' => $pdfFile,
+                        'view_url' => "/admin/invoices/{$code}/view",
+                        'download_url' => "/admin/invoices/{$code}/download",
+                    ];
+                }
+            } catch (\Exception $ex) {}
+        }
+
+        // 3. Biên lai Hoàn tiền vé
+        if ($type === 'ALL' || $type === 'REFUND') {
+            $refundQuery = Booking::with(['trip.route', 'user'])
+                ->where(function($q) {
+                    $q->whereIn('refund_status', ['APPROVED', 'COMPLETED'])
+                      ->orWhere('payment_status', 'REFUNDED');
+                });
+
+            if ($q) {
+                $refundQuery->where(function($sub) use ($q) {
+                    $sub->where('booking_code', 'like', "%{$q}%")
+                        ->orWhere('customer_name', 'like', "%{$q}%")
+                        ->orWhere('customer_phone', 'like', "%{$q}%");
+                });
+            }
+
+            $refunds = $refundQuery->orderBy('updated_at', 'desc')->take(30)->get();
+
+            foreach ($refunds as $b) {
+                $pdfFile = "hoa-don-hoan-tien-{$b->booking_code}.pdf";
+                $hasPdf = file_exists("{$pdfDir}/{$pdfFile}");
+                $invoices[] = [
+                    'id' => 'refund_' . $b->id,
+                    'code' => 'HT-' . $b->booking_code,
+                    'type' => 'REFUND',
+                    'type_label' => 'Biên Lai Hoàn Tiền',
+                    'badge_class' => 'bg-rose-100 text-rose-800 border-rose-300',
+                    'customer_name' => $b->customer_name,
+                    'customer_phone' => $b->customer_phone,
+                    'service_name' => 'Hoàn hủy vé: ' . ($b->trip?->route?->name ?? 'Tuyến liên tỉnh'),
+                    'amount' => (float)($b->refund_amount ?: $b->paid_amount),
+                    'payment_method' => $b->refund_bank_name ?: 'Chuyển khoản hoàn',
+                    'created_at' => $b->updated_at ? $b->updated_at->format('d/m/Y H:i') : '',
+                    'has_pdf' => $hasPdf,
+                    'filename' => $pdfFile,
+                    'view_url' => "/admin/invoices/HT-{$b->booking_code}/view",
+                    'download_url' => "/admin/invoices/HT-{$b->booking_code}/download",
+                ];
+            }
+        }
+
+        // Sắp xếp lại theo thời gian mới nhất
+        usort($invoices, function($a, $b) {
+            return strcmp($b['created_at'], $a['created_at']);
+        });
+
+        $totalRevenue = array_sum(array_column(array_filter($invoices, fn($i) => $i['type'] !== 'REFUND'), 'amount'));
+        $totalRefund = array_sum(array_column(array_filter($invoices, fn($i) => $i['type'] === 'REFUND'), 'amount'));
+
+        return \Inertia\Inertia::render('Admin/Invoices', [
+            'invoices' => $invoices,
+            'filters' => ['q' => $q, 'type' => $type, 'date_from' => $dateFrom, 'date_to' => $dateTo],
+            'metrics' => [
+                'total_count' => count($invoices),
+                'total_revenue' => $totalRevenue,
+                'total_refund' => $totalRefund,
+                'pdf_storage_dir' => $pdfDir,
+            ]
+        ]);
+    }
+
+    /**
+     * Xem trực tiếp hóa đơn PDF hoặc HTML
+     */
+    public function viewInvoicePdf($code)
+    {
+        $code = str_replace('HT-', '', $code);
+        $dir = \App\Services\PdfTicketService::getPdfStorageDirectory();
+
+        // Thử tìm file PDF
+        $candidates = [
+            "{$dir}/ve-{$code}.pdf",
+            "{$dir}/hoa-don-hoi-vien-{$code}.pdf",
+            "{$dir}/hoa-don-hoan-tien-{$code}.pdf",
+        ];
+        foreach ($candidates as $pdf) {
+            if (file_exists($pdf)) {
+                return response()->file($pdf, ['Content-Type' => 'application/pdf']);
+            }
+        }
+
+        // Thử tìm file HTML
+        $htmlCandidates = [
+            "{$dir}/ve-{$code}.html",
+            "{$dir}/hoa-don-hoi-vien-{$code}.html",
+            "{$dir}/hoa-don-hoan-tien-{$code}.html",
+        ];
+        foreach ($htmlCandidates as $html) {
+            if (file_exists($html)) {
+                return response(file_get_contents($html))->header('Content-Type', 'text/html; charset=utf-8');
+            }
+        }
+
+        // Nếu chưa sinh, tự động kết xuất vé từ Booking
+        $booking = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'bookingSeats'])->where('booking_code', $code)->first();
+        if ($booking) {
+            $html = \App\Services\PdfTicketService::generateTicketHtml($booking);
+            return response($html)->header('Content-Type', 'text/html; charset=utf-8');
+        }
+
+        abort(404, 'Không tìm thấy chứng từ hóa đơn.');
+    }
+
+    /**
+     * Tải file hóa đơn PDF
+     */
+    public function downloadInvoicePdf($code)
+    {
+        $rawCode = str_replace('HT-', '', $code);
+        $dir = \App\Services\PdfTicketService::getPdfStorageDirectory();
+
+        $candidates = [
+            "{$dir}/ve-{$rawCode}.pdf",
+            "{$dir}/hoa-don-hoi-vien-{$rawCode}.pdf",
+            "{$dir}/hoa-don-hoan-tien-{$rawCode}.pdf",
+        ];
+        foreach ($candidates as $pdf) {
+            if (file_exists($pdf)) {
+                return response()->download($pdf);
+            }
+        }
+
+        $booking = Booking::where('booking_code', $rawCode)->first();
+        if ($booking) {
+            $pdfPath = \App\Services\PdfTicketService::saveTicketToPdfFolder($booking);
+            if ($pdfPath && file_exists($pdfPath)) {
+                return response()->download($pdfPath);
+            }
+        }
+
+        abort(404, 'File PDF chưa được kết xuất.');
+    }
+
+}

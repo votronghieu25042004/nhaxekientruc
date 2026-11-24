@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "votronghieu25042004/bushub-booking",
+    "name": "votronghieu25042004/nhaxekientruc",
     "type": "project",
-    "description": "BusHub - Digital Intercity Bus Terminal Platform",
+    "description": "NhaXeKienTruc - Cổng Đặt Vé Xe Khách Trực Tuyến Nhà Xe Kiến Trúc",
     "keywords": [
         "laravel",
         "framework"

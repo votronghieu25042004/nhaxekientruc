@@ -717,6 +717,9 @@ const submitChangePassword = () => {
 
 const logout = () => {
   closeModal()
+  try {
+    localStorage.removeItem('nhaxekientruc_read_notifs')
+  } catch (e) {}
   router.post('/logout')
 }
 

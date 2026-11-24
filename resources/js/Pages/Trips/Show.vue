@@ -1895,6 +1895,16 @@ const availableVouchers = computed(() => {
       requirement: 'Áp dụng cho tài khoản sinh viên có email trường (.edu.vn), dùng suốt 1 năm',
     },
     {
+      code: 'SINHVIEN10',
+      title: 'Đặc Quyền Sinh Viên (Giảm 10%)',
+      discount: '10%',
+      badge: '🎓 SINH VIÊN 10%',
+      target_audience: 'STUDENT',
+      desc: 'Giảm 10% giá vé xe cho sinh viên các trường đại học',
+      requirement: 'Áp dụng cho tài khoản sinh viên có email trường (.edu.vn)',
+      is_active: true,
+    },
+    {
       code: 'CHAOBAOMOI',
       title: 'Gói Ưu Đãi Khách Mới 10%',
       discount: '10%',
@@ -1987,6 +1997,8 @@ const applyVoucherFromList = (v) => {
       } else {
         voucherError.value = 'Không đủ điều kiện áp dụng mã vé 0-Đồng này!';
       }
+    } else if (v.code === 'SINHVIEN10' || v.code === 'SV10') {
+      voucherError.value = 'Mã giảm giá 10% chỉ dành riêng cho sinh viên có email trường (.edu.vn)! Vui lòng điền email sinh viên ở thông tin hành khách phía trên.';
     } else if (v.code === 'SINHVIEN30' || v.code === 'SINHVIEN') {
       voucherError.value = 'Mã giảm giá 30% chỉ dành riêng cho tài khoản sinh viên có email trường (.edu.vn)! Vui lòng điền email sinh viên ở thông tin hành khách phía trên.';
     } else if (v.type === 'MIN_200K') {

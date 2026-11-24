@@ -250,6 +250,12 @@ Route::prefix('admin')->group(function () {
     // SOS Resolution & Auto-Cronjob Trigger
     Route::post('incidents/{id}/resolve-sos', [AdminController::class, 'resolveSos'])->name('admin.incidents.resolveSos');
     Route::post('system/run-auto-cron', [AdminController::class, 'runAutoCron'])->name('admin.system.runAutoCron');
+
+    // Admin Customer creation & Invoices PDF Archive
+    Route::post('customers', [AdminController::class, 'storeCustomer'])->name('admin.customers.store');
+    Route::get('invoices', [AdminController::class, 'invoices'])->name('admin.invoices');
+    Route::get('invoices/{code}/view', [AdminController::class, 'viewInvoicePdf'])->name('admin.invoices.view');
+    Route::get('invoices/{code}/download', [AdminController::class, 'downloadInvoicePdf'])->name('admin.invoices.download');
 });
 
 // AI Chatbot Assistant & Auto Notification
@@ -259,3 +265,5 @@ Route::post('ai/auto-notify', [AiAssistantController::class, 'autoNotify'])->nam
 Route::post('api/ai/auto-notify', [AiAssistantController::class, 'autoNotify']);
 Route::post('ai/custom-notify', [AiAssistantController::class, 'customNotify'])->name('ai.customNotify');
 Route::post('api/ai/custom-notify', [AiAssistantController::class, 'customNotify']);
+Route::get('api/notifications', [\App\Http\Controllers\NotificationController::class, 'getNotifications'])->name('api.notifications');
+Route::post('api/notifications/mark-read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('api.notifications.mark-read');

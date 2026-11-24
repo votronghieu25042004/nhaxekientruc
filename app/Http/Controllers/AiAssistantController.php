@@ -5,376 +5,999 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Trip;
 use App\Models\Route;
-use App\Models\Bus;
 use App\Models\Booking;
+use App\Models\CancellationPolicy;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class AiAssistantController extends Controller
 {
     /**
-     * Tra cứu & trò chuyện thông minh với Trợ Lý AI nhaxekientruc
+     * Endpoint API nhận tin nhắn chat từ khách hàng và phản hồi thông minh.
      */
     public function chat(Request $request)
     {
-        $message = trim($request->input('message', ''));
+        $message = trim((string) $request->input('message', ''));
+        $history = (array) $request->input('history', []);
+        $user = Auth::user();
+
         if (empty($message)) {
+            $greetingName = $user ? $user->name : 'quý khách';
             return response()->json([
-                'reply' => 'Chào bạn! Tôi là Trợ Lý AI của nhaxekientruc Bến xe Trung tâm Đà Nẵng. Tôi có thể giúp gì cho chuyến đi của bạn hôm nay?',
-                'data' => null
+                'reply' => "Dạ em chào {$greetingName} ạ! Em là **Trợ lý AI Nhà xe Kiến Trúc Đà Nẵng**. Em có thể hỗ trợ gì cho hành trình sắp tới của bạn ạ?",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Ưu đãi sinh viên 30%'],
             ]);
         }
 
+        $context = $this->buildBusHubContext();
         $lower = mb_strtolower($message, 'UTF-8');
+        $matchingTrips = $this->findMatchingTrips($message);
 
-        // 0. KIỂM TRA TÍNH HỢP LỆ CỦA NGÀY THÁNG (Không có ngày 32, ngày 35...)
-        if (preg_match('/(?:ngày|ngay|hôm|mùng)\s*(\d{1,2})/ui', $lower, $dayMatches)) {
-            $dayNum = (int)$dayMatches[1];
-            if ($dayNum > 31 || $dayNum === 0) {
+        // Thử gọi Gemini API với multi-turn history & multi-model fallback
+        $geminiKey = env('GEMINI_API_KEY');
+        if (file_exists(base_path('.env'))) {
+            $envLines = file(base_path('.env'), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($envLines as $line) {
+                if (str_starts_with(trim($line), 'GEMINI_API_KEY=')) {
+                    $val = trim(substr(trim($line), strlen('GEMINI_API_KEY=')));
+                    $val = trim($val, '"\'');
+                    if (!empty($val)) {
+                        $geminiKey = $val;
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (!empty($geminiKey) && str_starts_with($geminiKey, 'AIzaSy')) {
+            $geminiReply = $this->callGeminiApi($message, $user, $context, $geminiKey, $matchingTrips, $history);
+            if ($geminiReply) {
                 return response()->json([
-                    'reply' => "Dạ bạn ơi, một tháng theo lịch dương chỉ có tối đa **31 ngày** (hoặc 28, 29, 30 ngày tùy theo từng tháng), hoàn toàn không có **ngày {$dayNum}** bạn nhé! 😊\n\nBạn vui lòng kiểm tra lại ngày khởi hành chính xác (ví dụ ngày 30 hoặc ngày 31) để tôi tra cứu lịch trình và giá vé tốt nhất cho bạn ạ!",
-                    'data' => null,
-                    'suggestions' => ['Xem xe ngày 30', 'Xem xe ngày 31', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn']
+                    'reply' => $geminiReply['reply'],
+                    'suggestions' => $geminiReply['suggestions'] ?? ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên'],
+                    'trips' => $matchingTrips,
+                    'source' => 'gemini-live',
                 ]);
             }
         }
 
-        // KIỂM TRA CÁC TUYẾN NGOÀI PHẠM VI KHAI THÁC CỦA NHAXEKIENTRUC (vd: SaPa, Đà Lạt, Nha Trang, Hải Phòng...)
-        $unsupportedDestinations = [
-            'sapa' => 'SaPa (Lào Cai)',
-            'sa pa' => 'SaPa (Lào Cai)',
-            'lào cai' => 'Lào Cai',
-            'lao cai' => 'Lào Cai',
-            'đà lạt' => 'Đà Lạt (Lâm Đồng)',
-            'da lat' => 'Đà Lạt (Lâm Đồng)',
-            'nha trang' => 'Nha Trang (Khánh Hòa)',
-            'phú quốc' => 'Phú Quốc',
-            'phu quoc' => 'Phú Quốc',
-            'vũng tàu' => 'Vũng Tàu',
-            'vung tau' => 'Vũng Tàu',
-            'cần thơ' => 'Cần Thơ',
-            'can tho' => 'Cần Thơ',
-            'hải phòng' => 'Hải Phòng',
-            'hai phong' => 'Hải Phòng',
-            'hạ long' => 'Hạ Long (Quảng Ninh)',
-            'ha long' => 'Hạ Long (Quảng Ninh)',
-            'hà nội' => 'Hà Nội',
-            'ha noi' => 'Hà Nội',
-            'hà giang' => 'Hà Giang',
-            'ninh bình' => 'Ninh Bình',
-            'mộc châu' => 'Mộc Châu',
+        // Phản hồi thông minh đa ngữ cảnh từ Natural Conversational Engine
+        $result = $this->generateSmartKnowledgeReply($message, $lower, $context, $user, $matchingTrips);
+
+        return response()->json([
+            'reply' => $result['reply'],
+            'suggestions' => $result['suggestions'] ?? ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên'],
+            'trips' => $matchingTrips,
+            'source' => $result['source'] ?? 'smart-engine',
+        ]);
+    }
+
+    /**
+     * Bộ xử lý hội thoại tự nhiên thông minh chuyên sâu cho Nhà xe Kiến Trúc Đà Nẵng.
+     */
+    public function generateSmartKnowledgeReply(string $rawMessage, string $lower, array $context, $user = null, array $matchingTrips = []): array
+    {
+        // ==================== 1. XỬ LÝ PHÀN NÀN / ĐÁNH GIÁ CHẤT LƯỢNG / "SAO DỐT VẬY" ====================
+        if (preg_match('/(sao dốt|sao ngu|dốt vậy|dốt thế|dốt quá|ngu vậy|ngu quá|kém vậy|kém thế|trả lời chả liên quan|không liên quan|trả lời vớ vẩn|trả lời sai|chẳng hiểu gì|không hiểu gì|gemini pro xịn|sao dở vậy)/u', $lower)) {
+            $nameStr = $user ? " bạn **{$user->name}**" : "";
+            return [
+                'reply' => "Dạ em thành thật xin lỗi{$nameStr} vì phản hồi trước đó chưa đúng trọng tâm khiến bạn phiền lòng ạ! 🙏\n\n" .
+                           "Hệ thống Trợ lý AI của Nhà xe Kiến Trúc vừa được nâng cấp toàn diện thuật toán phân tích ngữ cảnh câu hỏi. Em có thể giải đáp chính xác và chi tiết cho bạn về:\n" .
+                           "• 🛣️ **Tra cứu chuyến xe & Đặt vé trực tiếp:** Tìm các chuyến xe đang mở bán theo ngày, giờ xuất bến, giá vé và bấm vào thẻ chuyến để chuyển thẳng sang trang chọn ghế đặt vé.\n" .
+                           "• 🔐 **Đăng nhập Quản trị viên (Admin):** Khẳng định rõ quyền hạn bảo mật và từ chối cung cấp quyền admin ra ngoài.\n" .
+                           "• 👤 **Nhận diện tài khoản:** Xem hạng thành viên, điểm tích lũy và tra cứu vé xe cá nhân.\n" .
+                           "• 💳 **Chính sách đặt cọc 30% & Mã giảm giá Sinh viên 30% (`PRO30`).**\n\n" .
+                           "Bạn đang cần kiểm tra thông tin chuyến xe nào, bạn cứ nhắn lại để em hiển thị và hỗ trợ bạn đặt vé ngay nhé!",
+                'suggestions' => ['Có xe từ Quảng Trị đi Huế không?', 'Cách đăng nhập vào admin', 'Bạn nhớ tôi không', 'Xem bảng giá vé các tuyến']
+            ];
+        }
+
+        // ==================== 2. HỎI ĐĂNG NHẬP ADMIN / TRANG QUẢN TRỊ ====================
+        if (preg_match('/(đăng nhập vào admin|đăng nhập admin|link admin|vào admin|vào trang quản trị|trang quản trị|cách vào admin|quản trị viên|admin login|link dashboard|bảng điều khiển admin|trang admin|tài khoản admin)/u', $lower)) {
+            return [
+                'reply' => "Dạ em là Trợ lý tư vấn khách hàng nên **hoàn toàn không có quyền hạn can thiệp, cung cấp tài khoản hay cấp quyền truy cập vào trang Quản trị (Admin)** đâu ạ! 😊\n\n" .
+                           "Hệ thống Quản trị chỉ dành riêng cho Ban quản lý và nhân sự kỹ thuật được ủy quyền của Nhà xe Kiến Trúc nhằm đảm bảo an toàn và bảo mật dữ liệu hành trình.\n\n" .
+                           "• Nếu bạn là **Khách hàng**: Bạn vui lòng bấm nút **'Đăng Nhập'** ở góc trên thanh menu để đăng nhập tài khoản thành viên thông thường, quản lý vé đã đặt và tích lũy điểm thưởng nhé.\n" .
+                           "• Nếu bạn là **Nhân sự nội bộ của Nhà xe**: Vui lòng liên hệ quản trị viên hệ thống hoặc sử dụng tài khoản nghiệp vụ đã được cấp theo đúng quy định nội bộ ạ!",
+                'suggestions' => ['Đăng nhập tài khoản khách', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%', 'Mã giảm giá PRO30']
+            ];
+        }
+
+        // ==================== 2.1. HỎI NGÀY THÁNG / "NGÀY MAI LÀ NGÀY MẤY" / "HÔM NAY NGÀY MẤY" ====================
+        if (preg_match('/(ngày mai là ngày mấy|ngày mai ngày mấy|hôm nay ngày mấy|hôm nay là ngày mấy|mai là ngày mấy|mai ngày mấy|bây giờ là mấy giờ|mấy giờ rồi|ngày mai|hôm nay)/u', $lower) && (str_contains($lower, 'ngày mấy') || str_contains($lower, 'ngày bao nhiêu') || str_contains($lower, 'thứ mấy') || str_contains($lower, 'mấy giờ') || str_contains($lower, 'ngày nào'))) {
+            $now = Carbon::now();
+            $tomorrow = Carbon::tomorrow();
+            $thuVN = match($now->dayOfWeek) {
+                0 => 'Chủ Nhật',
+                1 => 'Thứ Hai',
+                2 => 'Thứ Ba',
+                3 => 'Thứ Tư',
+                4 => 'Thứ Năm',
+                5 => 'Thứ Sáu',
+                6 => 'Thứ Bảy',
+                default => 'Hôm nay',
+            };
+            $thuMaiVN = match($tomorrow->dayOfWeek) {
+                0 => 'Chủ Nhật',
+                1 => 'Thứ Hai',
+                2 => 'Thứ Ba',
+                3 => 'Thứ Tư',
+                4 => 'Thứ Năm',
+                5 => 'Thứ Sáu',
+                6 => 'Thứ Bảy',
+                default => 'Ngày mai',
+            };
+
+            return [
+                'reply' => "Dạ hôm nay là **{$thuVN}, ngày " . $now->format('d/m/Y') . "** (giờ Việt Nam) bạn nhé! 😊\n\n" .
+                           "📅 **Ngày mai sẽ là: {$thuMaiVN}, ngày " . $tomorrow->format('d/m/Y') . "**.\n\n" .
+                           "Bạn đang có kế hoạch đặt vé xe cho ngày mai hoặc cần tra cứu các chuyến xe khởi hành từ Đà Nẵng đi Huế, Quảng Trị, Quy Nhơn, Buôn Ma Thuột... không ạ? Bạn có thể nhắn tuyến đường để em hiển thị danh sách chuyến xe phù hợp và hỗ trợ bạn chọn ghế đặt vé ngay nhé!",
+                'suggestions' => ['Xem chuyến xe ngày mai', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // ==================== 3. NHẬN DIỆN DANH TÍNH / "BẠN NHỚ TÔI KHÔNG" / "TÔI LÀ AI" ====================
+        if (preg_match('/(nhớ tôi|nhớ tui|nhớ em|nhớ anh|nhớ tao|có nhớ tôi|có nhớ tui|bạn nhớ tôi|bạn nhớ tui|tôi là ai|tui là ai|tôi tên gì|tui tên gì|biết tôi là ai|biết tui là ai|bạn biết tôi|thông tin của tôi|tài khoản của tôi|hồ sơ của tôi|điểm của tôi|tôi có bao nhiêu điểm|tôi là hạng gì)/u', $lower)) {
+            if ($user) {
+                $tierCode = $user->loyalty_tier ?? 'MEMBER';
+                $tierName = match($tierCode) {
+                    'DIAMOND' => '💎 VIP Kim Cương',
+                    'GOLD' => '👑 VIP Vàng',
+                    'SILVER' => '🥈 Thân Thiết Bạc',
+                    default => '⭐ Hội Viên Thân Thiết',
+                };
+                $points = number_format($user->loyalty_points ?? 0);
+
+                // Tìm vé xe gần nhất của khách
+                $latestBooking = Booking::with('trip.route')
+                    ->where(function($q) use ($user) {
+                        $q->where('user_id', $user->id)->orWhere('customer_phone', $user->phone);
+                    })
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+
+                $bookingText = "";
+                if ($latestBooking) {
+                    $depTime = $latestBooking->trip?->departure_time ? Carbon::parse($latestBooking->trip->departure_time)->format('H:i d/m/Y') : 'Sắp tới';
+                    $routeName = $latestBooking->trip?->route?->name ?? 'Tuyến xe';
+                    $bookingText = "\n\n🎫 **Vé xe gần nhất của bạn:**\n• Mã vé: **#{$latestBooking->booking_code}** ({$routeName})\n• Thời gian khởi hành: **{$depTime}**\n• Bạn có thể vào mục **'Quản Lý Vé'** trên thanh menu để xem mã QR Check-in và tải hóa đơn PDF nhé!";
+                }
+
+                $reply = "Dạ em nhớ bạn chứ ạ! 😊\n\nEm luôn ghi nhận đầy đủ thông tin tài khoản của bạn trên hệ thống Nhà xe Kiến Trúc:\n" .
+                         "• Họ và tên: **{$user->name}**\n" .
+                         "• Số điện thoại: **{$user->phone}**" .
+                         ($user->email ? "\n• Email: **{$user->email}**" : "") .
+                         "\n• Hạng thành viên: **{$tierName}**\n" .
+                         "• Điểm thưởng tích lũy: **{$points} điểm**" .
+                         $bookingText .
+                         "\n\nBạn đang có dự định đặt vé chuyến xe nào sắp tới không, để em hỗ trợ bạn tốt nhất nhé?";
+
+                return [
+                    'reply' => $reply,
+                    'suggestions' => ['Xem vé của tôi', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
+                ];
+            } else {
+                return [
+                    'reply' => "Dạ hiện tại bạn đang truy cập với tư cách **Khách vãng lai** (chưa đăng nhập tài khoản) nên em chưa nhận diện được thông tin họ tên và số điện thoại của bạn ạ! 😊\n\n" .
+                               "👉 Bạn chỉ cần bấm vào nút **'Đăng Nhập'** ở góc trên bên phải màn hình để đăng nhập tài khoản. Ngay sau đó, em sẽ nhận diện được bạn, hiển thị các vé xe bạn đã mua và tích lũy điểm thưởng thành viên tự động nhé!",
+                    'suggestions' => ['Đăng nhập ngay', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên']
+                ];
+            }
+        }
+
+        // ==================== 4. PHÂN TÍCH TUYẾN ĐƯỜNG: ĐIỂM ĐI -> ĐIỂM ĐẾN (ORIGIN -> DESTINATION) ====================
+        $routeAnalysis = $this->analyzeRouteQuery($lower);
+        if ($routeAnalysis !== null) {
+            return $routeAnalysis;
+        }
+
+        // ==================== 5. CHÀO HỎI & LỊCH SỰ ====================
+        if (preg_match('/^(chào|chào bạn|hello|hi|alo|bạn ơi|em ơi|ad ơi|admin ơi|có ai không|bot ơi|nhà xe ơi|bạn khỏe không|bạn khỏe k|sức khỏe|bạn thế nào|khỏe không)/u', $lower)) {
+            $nameStr = $user ? (" bạn **" . $user->name . "**") : "";
+            return [
+                'reply' => "Dạ em chào{$nameStr} ạ! Em là **Trợ lý AI Nhà xe Kiến Trúc Đà Nẵng**, luôn sẵn sàng hỗ trợ bạn 24/7! 😊\n\nBạn đang cần tra cứu chuyến xe đi tỉnh thành nào (Huế, Quảng Trị, Quảng Bình, Quy Nhơn, Đắk Lắk...), hay cần em tư vấn giá vé, cách chọn ghế và chính sách cọc 30% giữ chỗ ạ?",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Ưu đãi sinh viên 30%']
+            ];
+        }
+
+        // ==================== 6. CẢM ƠN ====================
+        if (preg_match('/(cảm ơn|cam on|thank|thanks|tks|tuyệt vời|tốt quá|ok em|dạ cảm ơn|oke)/u', $lower)) {
+            return [
+                'reply' => "Dạ không có chi ạ! Rất vui được hỗ trợ bạn. Chúc bạn có một hành trình thật vui vẻ, an toàn và thoải mái cùng Nhà xe Kiến Trúc Đà Nẵng nhé! ❤️\n\nNếu cần thêm thông tin gì khác, bạn cứ nhắn cho em bất cứ lúc nào nha!",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Quản lý vé của tôi', 'Hotline 1900 6868']
+            ];
+        }
+
+        // ==================== 7. TẠM BIỆT ====================
+        if (preg_match('/(tạm biệt|tam biet|bye|goodbye|hẹn gặp lại|hen gap lai)/u', $lower)) {
+            return [
+                'reply' => "Dạ tạm biệt bạn nhé! Chúc bạn một ngày tràn đầy năng lượng và bình an. Hẹn sớm gặp lại bạn trên các chuyến xe Limousine của Nhà xe Kiến Trúc Đà Nẵng! 👋🚌",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // ==================== 8. GIỚI THIỆU NHÀ XE & TRỢ LÝ ====================
+        if (preg_match('/(bạn là ai|ban la ai|bạn tên gì|ai tạo ra bạn|nhà xe kiến trúc là gì|giới thiệu về nhà xe)/u', $lower)) {
+            return [
+                'reply' => "Dạ em là **Trợ lý Trực Tuyến Thông Minh của Nhà xe Kiến Trúc Đà Nẵng**! 🚌\n\nEm được thiết kế để hỗ trợ bạn hoàn toàn tự động 24/7:\n• Tra cứu lịch trình, giờ chạy và giá vé mọi tuyến đường.\n• Hướng dẫn đặt vé giữ chỗ 100% chỉ với **cọc 30%** linh hoạt.\n• Áp dụng mã ưu đãi Sinh viên giảm 30% (`PRO30`).\n• Hỗ trợ quy trình hủy vé hoàn tiền tự động và quản lý hóa đơn vé điện tử PDF.\n\nNhà xe Kiến Trúc luôn đặt tiêu chí: **Đúng Giờ - Văn Minh - Đẳng Cấp Limousine** lên hàng đầu!",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã giảm giá PRO30']
+            ];
+        }
+
+        // ==================== 9. BẢNG GIÁ VÉ & DANH SÁCH CÁC TUYẾN XE ====================
+        if (preg_match('/(bảng giá|giá vé|vé bao nhiêu|tiền vé|vé rẻ nhất|giá các tuyến|vé đắt nhất|so sánh giá|các tuyến|danh sách tuyến|nhà xe có những tuyến|có những tuyến nào|nhà xe đi đâu|có xe đi đâu|lộ trình|tất cả tuyến|tuyến đường)/u', $lower)) {
+            return [
+                'reply' => "🚌 **DANH SÁCH CÁC TUYẾN XE & BẢNG GIÁ NIÊM YẾT NHÀ XE KIẾN TRÚC:**\n\n" .
+                           "Toàn bộ giá vé đã bao gồm bảo hiểm hành khách, nước uống, khăn lạnh và tiện ích Limousine cao cấp:\n\n" .
+                           "1. 🛣️ **Đà Nẵng ⇄ Thừa Thiên Huế:** **150.000đ/vé** (Cọc 30% chỉ: **45.000đ** | SV mã `PRO30`: **105.000đ**)\n" .
+                           "2. 🛣️ **Đà Nẵng ⇄ Quảng Trị (Đông Hà):** **200.000đ/vé** (Cọc 30% chỉ: **60.000đ** | SV mã `PRO30`: **140.000đ**)\n" .
+                           "3. 🛣️ **Đà Nẵng ⇄ Quảng Bình (Đồng Hới):** **280.000đ/vé** (Cọc 30% chỉ: **84.000đ** | SV mã `PRO30`: **196.000đ**)\n" .
+                           "4. 🛣️ **Đà Nẵng ⇄ Quy Nhơn (Bình Định):** **360.000đ/vé** (Cọc 30% chỉ: **108.000đ** | SV mã `PRO30`: **252.000đ**)\n" .
+                           "5. 🛣️ **Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk):** **420.000đ/vé** (Cọc 30% chỉ: **126.000đ** | SV mã `PRO30`: **294.000đ**)\n\n" .
+                           "💡 **Điểm đặc biệt:** Quý khách chỉ cần **cọc trước 30%**, số tiền 70% còn lại gửi bác tài khi lên xe rất tiện lợi!",
+                'suggestions' => ['Đặt vé đi Huế', 'Đặt vé đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã giảm giá PRO30']
+            ];
+        }
+
+        // ==================== 10. GIỜ XE CHẠY / KHUNG GIỜ XUẤT BẾN / XE ĐÊM ====================
+        if (preg_match('/(mấy giờ có xe|giờ xuất bến|giờ chạy|chuyến sớm nhất|chuyến muộn nhất|có xe đêm không|chạy ban đêm|lịch trình chạy|thời gian chạy)/u', $lower)) {
+            return [
+                'reply' => "🕒 **LỊCH TRÌNH KHUNG GIỜ XUẤT BẾN HÀNG NGÀY TẠI ĐÀ NẴNG:**\n\n" .
+                           "• 🛣️ **Đà Nẵng ⇄ Huế:** 06:00, 06:30, 08:00, 08:30, 09:30, 11:00, 14:00, 14:30 (chạy liên tục, khoảng 2 tiếng)\n" .
+                           "• 🛣️ **Đà Nẵng ⇄ Quảng Trị (Đông Hà):** 07:00, 07:15, 08:30, 09:00, 11:00, 15:30, 18:00, 20:00 (~3.5 tiếng)\n" .
+                           "• 🛣️ **Đà Nẵng ⇄ Quảng Bình (Đồng Hới):** 06:00, 06:30, 07:00, 07:30, 08:00, 08:30, 19:30, 20:00 (~5 tiếng)\n" .
+                           "• 🛣️ **Đà Nẵng ⇄ Quy Nhơn (Bình Định):** 06:00, 07:30, 08:00, 09:30 | **Xe đêm:** 15:30, 18:00, 20:00, 22:45 (~6 tiếng)\n" .
+                           "• 🛣️ **Đà Nẵng ⇄ Buôn Ma Thuột:** 06:00, 06:30, 07:30, 08:00, 08:30 | **Xe đêm VIP:** 19:00, 20:00, 20:30, 23:30 (~10 tiếng)\n\n" .
+                           "Bạn dự định đi vào khung giờ nào để em hỗ trợ kiểm tra số ghế trống cho bạn nhé?",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Xe đêm Buôn Ma Thuột', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // ==================== 11.0. TÀI KHOẢN SINH VIÊN / KHÔNG PHẢI SINH VIÊN / MƯỢN TÀI KHOẢN SINH VIÊN ====================
+        if (preg_match('/(không phải.*sinh viên|chẳng phải.*sinh viên|k phải.*sinh viên|ko phải.*sinh viên|không có thẻ.*sinh viên|k có thẻ.*sinh viên|ko có thẻ.*sinh viên|đăng nhập acc sinh viên|đăng nhập.*tài khoản sinh viên|mượn acc sinh viên|dùng acc sinh viên|dùng chung.*sinh viên|dùng ké.*sinh viên|fake sinh viên|giả sinh viên|mượn thẻ sinh viên|thẻ sinh viên người khác|không phải sv|k phải sv|ko phải sv|không là sinh viên|k là sinh viên|chưa là sinh viên)/u', $lower)) {
+            return [
+                'reply' => "Dạ **không được** bạn nhé! 🚫\n\nQuy chế của Nhà xe Kiến Trúc quy định rất nghiêm ngặt về chương trình ưu đãi học sinh - sinh viên nhằm đảm bảo tính công bằng:\n\n" .
+                           "1. 👤 **Tài khoản chính chủ:** Tài khoản sinh viên được liên kết với số điện thoại và thông tin cá nhân của chính bạn sinh viên đó.\n" .
+                           "2. 🪪 **Bắt buộc đối soát thực tế khi lên xe:** Dù bạn có đăng nhập được tài khoản hay áp mã `PRO30` / `SINHVIEN`, khi lên xe Bác tài và Phụ xe **bắt buộc kiểm tra Thẻ sinh viên chính chủ còn hạn** (hoặc ứng dụng VNeID xác thực thông tin học sinh - sinh viên).\n" .
+                           "3. ⚠️ **Xử lý vi phạm:** Nếu không xuất trình được thẻ sinh viên chính chủ trùng khớp, nhà xe sẽ hủy ưu đãi và yêu cầu phụ thu 100% phần chênh lệch giá vé gốc.\n\n" .
+                           "👉 **Gợi ý:** Bạn hoàn toàn có thể đăng ký một **tài khoản thành viên thông thường** (hoàn toàn miễn phí) để được tích điểm thưởng loyalty, đổi vé miễn phí và nhận các chương trình khuyến mãi định kỳ của nhà xe nhé!",
+                'suggestions' => ['Đăng ký tài khoản thường', 'Bảng giá vé các tuyến', 'Chính sách cọc 30%', 'Đà Nẵng đi Huế']
+            ];
+        }
+
+        // ==================== 11.1. TỪ CHỐI / THẮC MẮC CHÍNH SÁCH ĐẶT CỌC 30% ("Không cọc được không", "tại sao phải cọc") ====================
+        if (preg_match('/(không cọc|k cọc|ko cọc|chưa muốn cọc|không muốn cọc|tại sao.*cọc|sao phải cọc|sao bắt cọc|bắt buộc.*cọc|k có thẻ ngân hàng.*cọc|không có ngân hàng.*cọc|không chuyển khoản.*cọc|cọc tiền mặt|không trả cọc|không đưa cọc)/u', $lower)) {
+            return [
+                'reply' => "Dạ quy định của Nhà xe Kiến Trúc là **bắt buộc phải đặt cọc trước 30%** để giữ chỗ bạn nhé! 💳\n\n" .
+                           "**Tại sao nhà xe bắt buộc cọc trước 30%?**\n" .
+                           "• 🔒 **Bảo vệ quyền lợi của bạn:** Ngay khi thanh toán cọc 30%, hệ thống tự động khóa chính xác vị trí giường nằm bạn đã chọn, cam kết 100% không bị người khác đặt đè hoặc trùng chỗ.\n" .
+                           "• 🤝 **Cam kết hai chiều:** Giúp nhà xe bố trí đúng số lượng xe, tránh tình trạng đặt vé ảo/bỏ bom chuyến, đảm bảo xe luôn xuất bến đúng giờ.\n" .
+                           "• 💵 **Linh hoạt tài chính:** Bạn không cần thanh toán hết 100% ngay. Khoản cọc chỉ từ **42.000đ - 126.000đ** tùy tuyến, còn lại **70%** bạn thanh toán trực tiếp cho bác tài khi lên xe bằng tiền mặt hoặc chuyển khoản.\n\n" .
+                           "💡 *Nếu bạn không có app ngân hàng để quét mã VietQR:* Bạn có thể nhờ người thân quét giúp trong vòng 10 phút, hoặc đến trực tiếp Văn phòng bến xe Đà Nẵng để nhân viên phòng vé xuất vé giấy thu tiền mặt nhé!",
+                'suggestions' => ['Cách quét mã VietQR', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách hủy vé']
+            ];
+        }
+
+        // ==================== 11.2. THÚ CƯNG, VẬT NUÔI (CHÓ, MÈO) ====================
+        if (preg_match('/(chó|mèo|thú cưng|pet|động vật|vật nuôi|cún|mang chó|mang mèo|chở chó|chở mèo)/u', $lower)) {
+            return [
+                'reply' => "Dạ quy định vận chuyển thú cưng tại Nhà xe Kiến Trúc như sau ạ: 🐾\n\n" .
+                           "• 🚫 **Trên khoang giường nằm:** Hoàn toàn **KHÔNG ĐƯỢC** mang chó, mèo hoặc bất kỳ vật nuôi nào lên khoang hành khách (nhằm đảm bảo không gian yên tĩnh, vệ sinh và phòng tránh dị ứng lông thú cho các hành khách khác).\n" .
+                           "• 📦 **Dưới khoang hành lý chuyên dụng:** Nhà xe chỉ nhận chở thú cưng nhỏ được **nhốt an toàn trong lồng kín, có khay vệ sinh và lỗ thông gió**, kèm giấy chứng nhận tiêm phòng dại còn hiệu lực.\n\n" .
+                           "Quý khách vui lòng liên hệ trước qua hotline **1900 8886** khi đặt vé để nhà xe bố trí vị trí khoang hầm thông thoáng nhất cho bé cưng nhé!",
+                'suggestions' => ['Hotline 1900 8886', 'Quy định hành lý 20kg', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // ==================== 11.3. QUÊN ĐỒ, THẤT LẠC HÀNH LÝ TRÊN XE ====================
+        if (preg_match('/(quên đồ|để quên|rơi đồ|mất đồ|thất lạc|bỏ quên|quên điện thoại|quên ví|quên balo|quên hành lý|rơi ví|rơi điện thoại)/u', $lower)) {
+            return [
+                'reply' => "Dạ nếu bạn vừa để quên đồ đạc hoặc hành lý trên xe, bạn hãy **bình tĩnh và gọi ngay hotline khẩn cấp: 1900 8886** (hoặc số điện thoại của Bác tài ghi trên vé/tin nhắn) nhé! 📞\n\n" .
+                           "Bạn vui lòng cung cấp nhanh các thông tin sau:\n" .
+                           "1. 🎫 **Mã vé (#KT-...)** hoặc Số điện thoại đặt vé.\n" .
+                           "2. 🚌 **Tuyến xe và giờ khởi hành** bạn vừa đi.\n" .
+                           "3. 💺 **Số giường và vị trí** bạn nghi ngờ để quên đồ.\n" .
+                           "4. 📦 **Đặc điểm nhận dạng món đồ** (màu sắc, loại đồ, túi xách...).\n\n" .
+                           "Bác tài và Phụ xe sẽ kiểm tra ngay lập tức tại vị trí giường nằm và bảo quản cẩn thận để gửi lại bạn tại Văn phòng bến xe gần nhất ạ!",
+                'suggestions' => ['Hotline 1900 8886', 'Xem vé của tôi', 'Văn phòng nhà xe', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // ==================== 11.4. TRẺ EM, NGƯỜI CAO TUỔI, PHỤ NỮ MANG THAI ====================
+        if (preg_match('/(trẻ em|em bé|trẻ con|mấy tuổi.*mua vé|con nít|người già|người cao tuổi|bà bầu|mang thai|say xe.*nằm đâu)/u', $lower)) {
+            return [
+                'reply' => "Dạ chính sách vé dành cho trẻ em và hành khách đặc biệt tại Nhà xe Kiến Trúc như sau ạ: 👶👵\n\n" .
+                           "• 👶 **Trẻ em dưới 5 tuổi (cao dưới 1.1m):** Được **miễn phí vé 100%** khi nằm chung giường với bố mẹ hoặc người giám hộ.\n" .
+                           "• 👦 **Trẻ em từ 5 tuổi trở lên (hoặc cao từ 1.1m):** Bắt buộc mua **01 vé riêng** để có giường nằm riêng biệt, đảm bảo an toàn tối đa trên suốt hành trình.\n" .
+                           "• 👵 **Người cao tuổi, phụ nữ mang thai, người say xe:** Nhà xe luôn ưu tiên hỗ trợ các **giường tầng dưới (tầng 1) ở khu vực giữa xe (từ giường A2 đến A5)** - đây là vị trí êm ái, ít dằn xóc và thuận tiện lên xuống nhất.\n\n" .
+                           "Quý khách có thể tự do chọn các vị trí giường tầng 1 này trực tiếp trên sơ đồ xe khi đặt vé ạ!",
+                'suggestions' => ['Đặt vé tầng 1', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // ==================== 11.5. ĐÓN TẬN NHÀ, XE TRUNG CHUYỂN, ĐÓN DỌC ĐƯỜNG ====================
+        if (preg_match('/(đón tận nhà|rước tận nhà|đón tận nơi|trả tận nhà|trả tận nơi|xe trung chuyển|đón dọc đường|bắt xe dọc đường|rước dọc đường|đón tại nhà)/u', $lower)) {
+            return [
+                'reply' => "Dạ Nhà xe Kiến Trúc có dịch vụ **xe trung chuyển đón/trả tận nơi trong khu vực nội thành TP. Đà Nẵng hoàn toàn miễn phí** ạ! 🚐\n\n" .
+                           "• 📍 **Phạm vi đón trả tại Đà Nẵng:** Các quận Hải Châu, Thanh Khê, Cẩm Lệ, Sơn Trà, Ngũ Hành Sơn, Liên Chiểu (trong bán kính 7km tính từ bến xe và văn phòng). Bác tài xe trung chuyển sẽ gọi cho bạn trước 30 - 45 phút giờ xe chạy.\n" .
+                           "• 🛣️ **Đón trả dọc đường Quốc lộ 1A:** Xe có đón/trả tại các điểm dừng cố định trên trục QL1A (như Ngã ba Huế, Trạm thu phí, các nút giao lớn) nếu bạn ghi chú điểm hẹn trước khi đặt vé.\n" .
+                           "• 🏁 **Tại tỉnh đến (Huế, Quảng Trị, Quảng Bình, Quy Nhơn, Buôn Ma Thuột):** Xe trả khách tại Bến xe trung tâm tỉnh và dọc theo tuyến đường chính vào thành phố ạ!",
+                'suggestions' => ['Hotline 1900 8886', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // ==================== 11.6. GỬI KÈM XE MÁY, CƯỚC VẬN CHUYỂN XE MÁY ====================
+        if (preg_match('/(gửi xe máy|chở xe máy|cước xe máy|gửi xe số|gửi xe ga|bọc xốp xe máy|vận chuyển xe máy|gửi mô tô|gửi xe theo xe)/u', $lower)) {
+            return [
+                'reply' => "Dạ Nhà xe Kiến Trúc **có nhận vận chuyển xe máy kèm theo chuyến đi** của hành khách ạ! 🏍️\n\n" .
+                           "• 🛡️ **Bọc xốp chống trầy xước:** Đội ngũ phụ xe chuyên nghiệp sẽ bọc xốp giảm chấn nhiều lớp, ràng buộc chắc chắn trong hầm xe chuyên dụng, cam kết an toàn tuyệt đối.\n" .
+                           "• 💰 **Bảng giá cước gửi xe máy tham khảo:**\n" .
+                           "  - Xe số (Wave, Sirius, Future...): **150.000đ - 200.000đ**\n" .
+                           "  - Xe tay ga (Vision, AirBlade, Lead...): **200.000đ - 280.000đ**\n" .
+                           "  - Xe tay ga lớn / Côn tay (SH, NVX, Exciter, Winner...): **280.000đ - 350.000đ**\n" .
+                           "• ⚠️ **Lưu ý quan trọng:** Bạn vui lòng mang xe đến bến trước giờ khởi hành ít nhất **45 phút** để nhân viên kỹ thuật hỗ trợ rút bớt xăng và đóng gói xe cẩn thận nhé!",
+                'suggestions' => ['Hotline gửi xe máy', 'Đà Nẵng đi Buôn Ma Thuột', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // ==================== 11.7. DỪNG NGHỈ, ĂN CƠM, ĐI VỆ SINH ====================
+        if (preg_match('/(ăn cơm|dừng nghỉ|trạm dừng|nghỉ ngơi|đi vệ sinh|dừng chân|có dừng lại|ăn uống dọc đường)/u', $lower)) {
+            return [
+                'reply' => "Dạ trên các hành trình di chuyển, Nhà xe Kiến Trúc luôn bố trí thời gian dừng nghỉ hợp lý và chu đáo: 🍽️\n\n" .
+                           "• 🛑 **Các chặng dài (Quảng Bình ~5h, Quy Nhơn ~6h, Buôn Ma Thuột ~10h):** Xe luôn dừng tại các **Trạm dừng chân tiêu chuẩn sạch sẽ, văn minh** dọc tuyến. Thời gian dừng từ **20 - 30 phút** để hành khách dùng cơm, giải khát, đi vệ sinh và mua sắm đặc sản.\n" .
+                           "• 🍲 **Trạm dừng chân uy tín:** Giá cả niêm yết rõ ràng, đồ ăn đảm bảo an toàn vệ sinh thực phẩm, không chặt chém.\n" .
+                           "• 🛣️ **Chặng ngắn (Đà Nẵng ⇄ Huế ~2h):** Xe chạy thông suốt qua Hầm đường bộ Hải Vân, không dừng ăn cơm và chỉ dừng trả khách tại các trạm trả khách cố định nhé!",
+                'suggestions' => ['Đà Nẵng đi Quy Nhơn', 'Đà Nẵng đi Buôn Ma Thuột', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // ==================== 11.8. AN TOÀN TÀI XẾ, CHỐNG SAY XE ====================
+        if (preg_match('/(lái ẩu|phóng nhanh|vượt ẩu|an toàn không|có say xe không|say xe|chống say xe|tài xế lái thế nào|chạy ẩu|lái an toàn)/u', $lower)) {
+            return [
+                'reply' => "Dạ bạn hoàn toàn yên tâm 100% về độ an toàn và chất lượng chuyến đi của Nhà xe Kiến Trúc ạ! 🛡️\n\n" .
+                           "• 👨‍✈️ **Đội ngũ Bác tài chuẩn mực:** 100% tài xế có bằng lái hạng E, kinh nghiệm trên 8 năm lái xe đường dài, được kiểm tra nồng độ cồn và sức khỏe trước mỗi chuyến xuất bến. Tuyệt đối **không phóng nhanh, không vượt ẩu, không bắt khách dọc đường**.\n" .
+                           "• 🚌 **Hệ thống xe chống say tối tân:** Xe Limousine trang bị **bầu hơi giảm chấn êm ái**, hạn chế tối đa cảm giác dằn xóc khi qua cầu phà hoặc đèo dốc.\n" .
+                           "• 🌿 **Không gian trong lành:** Khoang xe có điều hòa lọc khí ion âm và xông tinh dầu quế/sả tự nhiên khử mùi 100%, không hề có mùi xăng xe khó chịu, giúp bạn ngủ một giấc êm đềm tới bến!",
+                'suggestions' => ['Đặt vé giường tầng 1', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // ==================== 11.9. THỜI GIAN NHẬN TIỀN HOÀN KHI HỦY VÉ ====================
+        if (preg_match('/(bao lâu.*tiền|mấy ngày.*tiền|bao giờ.*tiền|tiền hoàn.*khi nào|hoàn tiền trong bao lâu|thời gian hoàn tiền)/u', $lower)) {
+            return [
+                'reply' => "Dạ sau khi bạn bấm hủy vé trên website tại mục **'Quản Lý Vé'**, quy trình hoàn tiền sẽ được xử lý như sau ạ: ⏱️\n\n" .
+                           "• 💳 **Phương thức hoàn tiền:** Tiền hoàn sẽ được chuyển khoản trực tiếp về số tài khoản ngân hàng bạn đã cung cấp khi gửi yêu cầu hủy vé.\n" .
+                           "• ⏳ **Thời gian nhận tiền:** Trong vòng **24h - 48h làm việc** (hệ thống kế toán sẽ kiểm tra đối soát và giải ngân tự động).\n" .
+                           "• 📄 **Hóa đơn hoàn tiền:** Bạn sẽ nhận được file Hóa đơn hoàn tiền PDF có mã tham chiếu để tiện kiểm tra với ngân hàng.\n\n" .
+                           "Nếu sau 48h bạn chưa nhận được tiền hoàn, bạn có thể gọi hotline **1900 8886** để kế toán hỗ trợ kiểm tra lệnh chuyển tiền ngay lập tức nhé!",
+                'suggestions' => ['Vào Quản Lý Vé', 'Hotline 1900 8886', 'Chính sách cọc 30%', 'Đà Nẵng đi Huế']
+            ];
+        }
+
+        // ==================== 11.10. ĐẶC SẢN, DU LỊCH ĐÀ NẴNG ====================
+        if (preg_match('/(ăn gì|chơi gì|món gì|món ngon|quán ngon|ăn ở đâu|chơi ở đâu|du lịch đà nẵng|quán ăn|đặc sản|đà nẵng có gì|điểm tham quan|cầu rồng|bà nà|sơn trà|mì quảng|bánh tráng|hải sản)/u', $lower)) {
+            return [
+                'reply' => "Dạ em xin gợi ý cho bạn một số món ngon và điểm du lịch nức tiếng tại **Đà Nẵng** không thể bỏ lỡ nhé! 🌊🍜\n\n" .
+                           "🍽️ **Đặc sản nhất định phải thử:**\n" .
+                           "• **Mì Quảng:** Mì Quảng ếch Bếp Trang, Mì Quảng Bà Mua (nước lèo đậm đà, bánh tráng giòn rụm).\n" .
+                           "• **Bánh tráng cuốn thịt heo hai đầu da:** Quán Trần hoặc Đại Lộc (nước mắm nêm thơm lừng).\n" .
+                           "• **Hải sản tươi sống:** Dọc đường Võ Nguyên Giáp, hải sản Năm Đảnh, Bé Mặn.\n\n" .
+                           "📸 **Điểm vui chơi ngắm cảnh:**\n" .
+                           "• **Cầu Rồng:** Phun lửa và phun nước vào lúc 21:00 thứ Bảy & Chủ Nhật hàng tuần.\n" .
+                           "• **Bán đảo Sơn Trà & Chùa Linh Ứng:** Tượng Phật Bà nhìn ra biển Đông bình yên.\n" .
+                           "• **Bà Nà Hills & Cầu Vàng bàn tay khổng lồ:** Khí hậu 4 mùa trong 1 ngày tuyệt đẹp!\n\n" .
+                           "Nhà xe Kiến Trúc có xe trung chuyển đưa đón bạn thuận tiện trong nội thành Đà Nẵng đến các điểm hẹn nhé!",
+                'suggestions' => ['Đặt vé đi Đà Nẵng', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // ==================== 11.11. CHÍNH SÁCH ĐẶT CỌC 30% & PHƯƠNG THỨC THANH TOÁN TỔNG QUÁT ====================
+        if (preg_match('/(cọc|đặt cọc|30%|thanh toán|chuyển khoản|vietqr|quét mã|tiền mặt|chuyển tiền|giữ chỗ)/u', $lower)) {
+            return [
+                'reply' => "💳 **CHÍNH SÁCH ĐẶT CỌC 30% & PHƯƠNG THỨC THANH TOÁN:**\n\n" .
+                           "• **Chính sách cọc 30% giữ chỗ 100%:** Bạn không cần phải thanh toán toàn bộ 100% giá vé ngay. Chỉ cần thanh toán trước **30% giá vé**, hệ thống sẽ khóa đúng vị trí giường nằm bạn đã chọn và phát hành mã QR Check-in an toàn tuyệt đối!\n" .
+                           "• **70% số tiền còn lại:** Bạn thanh toán trực tiếp cho Bác tài hoặc Phụ xe bằng tiền mặt hoặc chuyển khoản khi lên xe.\n" .
+                           "• **Cổng thanh toán VietQR tự động:** Quét mã QR bằng mọi ứng dụng ngân hàng (Vietcombank, MBBank, Techcombank, BIDV, MoMo...), hệ thống tự động đối soát xác nhận trong 3 giây.\n" .
+                           "• Hóa đơn điện tử PDF chuẩn đối soát sẽ được tự động lưu về máy sau khi thanh toán cọc thành công.",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Cách đặt vé', 'Chính sách hủy vé']
+            ];
+        }
+
+        // ==================== 12. ƯU ĐÃI SINH VIÊN - GIẢM 30% MÃ PRO30 (TỔNG QUÁT) ====================
+        if (preg_match('/(sinh viên|học sinh|giảm giá|khuyến mãi|voucher|mã giảm|pro30|sinhvien|ưu đãi|giảm 30%)/u', $lower)) {
+            return [
+                'reply' => "🎓 **CHƯƠNG TRÌNH ƯU ĐÃI SINH VIÊN - GIẢM NGAY 30%:**\n\n" .
+                           "Nhà xe Kiến Trúc Đà Nẵng luôn đồng hành cùng các bạn học sinh - sinh viên với chính sách giảm **30% trực tiếp trên mọi tuyến xe**:\n\n" .
+                           "• **Mã ưu đãi:** Nhập mã **`PRO30`** hoặc **`SINHVIEN`** tại bước xác nhận đặt vé.\n" .
+                           "• **Giá vé sau giảm 30%:**\n" .
+                           "  - Đà Nẵng ⇄ Huế: 150.000đ ➔ chỉ còn **105.000đ**\n" .
+                           "  - Đà Nẵng ⇄ Quảng Trị: 200.000đ ➔ chỉ còn **140.000đ**\n" .
+                           "  - Đà Nẵng ⇄ Quảng Bình: 280.000đ ➔ chỉ còn **196.000đ**\n" .
+                           "  - Đà Nẵng ⇄ Quy Nhơn: 360.000đ ➔ chỉ còn **252.000đ**\n" .
+                           "  - Đà Nẵng ⇄ Buôn Ma Thuột: 420.000đ ➔ chỉ còn **294.000đ**\n\n" .
+                           "• **Điều kiện áp dụng:** Khi lên xe, bạn chỉ cần xuất trình thẻ Sinh viên/Học sinh còn hạn hoặc ứng dụng VNeID cho phụ xe kiểm tra nhanh nhé!",
+                'suggestions' => ['Đặt vé Huế 105k', 'Đặt vé Quy Nhơn 252k', 'Chính sách cọc 30%', 'Cách nhập mã giảm giá']
+            ];
+        }
+
+        // ==================== 13. CHÍNH SÁCH HỦY VÉ & HOÀN TIỀN TỰ PHỤC VỤ ====================
+        if (preg_match('/(hủy vé|hoàn tiền|đổi vé|dời vé|trả vé|chính sách hủy|hủy chuyến|đổi chuyến)/u', $lower)) {
+            return [
+                'reply' => "🚫 **QUY TRÌNH HỦY VÉ & HOÀN TIỀN TỰ PHỤC VỤ TRÊN WEBSITE:**\n\n" .
+                           "Quý khách có thể tự hủy vé và nhận hoàn tiền trực tiếp ngay trên trang web mà không cần gọi điện:\n\n" .
+                           "1. Truy cập mục **'Quản Lý Vé'** trên thanh menu.\n" .
+                           "2. Tại vé bạn muốn hủy, bấm nút **'🚫 Hủy Vé & Hoàn Tiền'**.\n" .
+                           "3. Nhập số tài khoản ngân hàng để hệ thống tự động đối soát chuyển tiền hoàn.\n\n" .
+                           "• **Quy định tỷ lệ hoàn tiền:**\n" .
+                           "  - **Hủy trong vòng 2 giờ đầu** sau khi đặt vé: Hoàn **100%** không mất phí.\n" .
+                           "  - **Hủy trước giờ xe chạy từ 24 giờ trở lên:** Hoàn **100%** số tiền đã thanh toán.\n" .
+                           "  - **Hủy trước giờ xe chạy 12 - 24 giờ:** Hoàn **80%** số tiền.\n" .
+                           "  - **Hủy trước giờ xe chạy 4 - 12 giờ:** Hoàn **70%** số tiền.\n" .
+                           "  - Hủy dưới 4 giờ trước khi khởi hành: Không áp dụng hoàn tiền.\n\n" .
+                           "Hóa đơn hoàn tiền chuẩn PDF sẽ được xuất tự động để bạn lưu đối soát.",
+                'suggestions' => ['Vào Quản Lý Vé', 'Chính sách cọc 30%', 'Hotline hỗ trợ', 'Đà Nẵng đi Huế']
+            ];
+        }
+
+        // ==================== 14. QUY ĐỊNH HÀNH LÝ, XE MÁY & THÚ CƯNG ====================
+        if (preg_match('/(hành lý|vali|gửi xe|xe máy|thú cưng|chó|mèo|hàng hóa|ký gửi|mang đồ|bao nhiêu kg)/u', $lower)) {
+            return [
+                'reply' => "🧳 **QUY ĐỊNH HÀNH LÝ, KÝ GỬI XE MÁY & THÚ CƯNG:**\n\n" .
+                           "• **Hành lý cá nhân:** Mỗi hành khách được mang miễn phí tối đa **20kg hành lý** (vali, ba lô, kiện đồ).\n" .
+                           "• **Gửi kèm xe máy (xe số, xe ga):** Nhà xe có khoang hầm xe chuyên dụng rộng rãi, bọc xốp giảm chấn chống trầy xước an toàn. Quý khách vui lòng đến bến trước 45 phút để nhân viên kỹ thuật hỗ trợ rút bớt xăng và đưa xe vào hầm.\n" .
+                           "• **Thú cưng (chó, mèo):** Cần có lồng nhốt thông thoáng khí và được bố trí tại khoang hành lý thông gió thoáng mát để đảm bảo vệ sinh khoang hành khách điều hòa.\n" .
+                           "• **Hàng hóa bưu phẩm:** Nhận gửi hàng nhanh trong ngày dọc tuyến Đà Nẵng - Huế - Quảng Trị - Quảng Bình - Quy Nhơn - Buôn Ma Thuột.",
+                'suggestions' => ['Hotline gửi xe máy', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Buôn Ma Thuột', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // ==================== 15. ĐIỂM ĐÓN, ĐIỂM TRẢ, VĂN PHÒNG & XE TRUNG CHUYỂN ====================
+        if (preg_match('/(đón ở đâu|điểm đón|rước ở đâu|bến xe trung tâm|núi thành|566 núi thành|trả ở đâu|điểm trả|địa chỉ nhà xe|văn phòng nhà xe|trụ sở nhà xe|nhà xe ở đâu|bến xe ở đâu|quầy vé ở đâu|địa chỉ bến)/u', $lower)) {
+            return [
+                'reply' => "📍 **ĐỊA ĐIỂM ĐÓN - TRẢ KHÁCH VÀ XE TRUNG CHUYỂN:**\n\n" .
+                           "• **Tại Đà Nẵng (Điểm khởi hành trung tâm):**\n" .
+                           "  - **Văn phòng Nhà xe:** Số 566 Núi Thành, P. Hòa Cường Nam, Q. Hải Châu, TP. Đà Nẵng.\n" .
+                           "  - **Bến xe Trung tâm Đà Nẵng:** Quầy vé số 14, đường Tôn Đức Thắng, Q. Liên Chiểu.\n" .
+                           "  - **Xe trung chuyển miễn phí:** Đón trả tận nơi trong nội thành Đà Nẵng (bán kính 5km xung quanh văn phòng và bến xe).\n\n" .
+                           "• **Tại các tỉnh điểm đến:**\n" .
+                           "  - **Huế:** Bến xe Phía Nam Huế / Trạm dừng An Cựu.\n" .
+                           "  - **Quảng Trị:** Bến xe Đông Hà / Dọc Quốc Lộ 1A.\n" .
+                           "  - **Quảng Bình:** Bến xe Đồng Hới / Trạm ngã ba Lệ Thủy.\n" .
+                           "  - **Quy Nhơn:** Bến xe Trung tâm Quy Nhơn.\n" .
+                           "  - **Đắk Lắk:** Bến xe Liên tỉnh Buôn Ma Thuột.",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Hotline 1900 6868', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // ==================== 16. TIỆN NGHI TRÊN XE LIMOUSINE ====================
+        if (preg_match('/(tiện nghi|tiện ích|wifi|máy lạnh|điều hòa|ghế massage|nước uống|sạc pin|cổng sạc|usb|type-c|xe có sạch không|vệ sinh|chăn gối|giường nằm|phòng nằm)/u', $lower)) {
+            return [
+                'reply' => "🚌 **TIỆN NGHI CAO CẤP TRÊN XE LIMOUSINE KIẾN TRÚC ĐÀ NẴNG:**\n\n" .
+                           "Toàn bộ dàn xe đều là Limousine Cung Điện & Mobihome VIP đời mới:\n" .
+                           "• 📶 **Wifi 5G tốc độ cao:** Phủ sóng căng đét suốt toàn bộ lộ trình.\n" .
+                           "• 🔌 **Cổng sạc đa năng:** Mỗi giường có cổng Type-C và USB sạc nhanh cho điện thoại, tablet.\n" .
+                           "• 💆 **Hệ thống massage lưng đa chế độ:** Giảm nhức mỏi, thư giãn tối đa trên các cung đường dài.\n" .
+                           "• 🛏️ **Không gian riêng tư:** Rèm che cách biệt tuyệt đối, chăn gối giặt sấy khử khuẩn 100% sau mỗi chuyến.\n" .
+                           "• 🧊 **Nước khoáng & khăn lạnh miễn phí:** Phục vụ chu đáo tận tay hành khách.\n" .
+                           "• ❄️ **Điều hòa lọc khí ion:** Khoang xe thơm tho, sạch sẽ, không mùi xe khó chịu.",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên']
+            ];
+        }
+
+        // ==================== 17. HƯỚNG DẪN ĐẶT VÉ & CHỌN GHẾ ====================
+        if (preg_match('/(cách đặt vé|hướng dẫn đặt|mua vé như thế nào|làm sao để đặt|quy trình đặt|chọn ghế thế nào|đặt vé online|sơ đồ ghế|tầng 1 hay tầng 2|chọn chỗ)/u', $lower)) {
+            return [
+                'reply' => "Dạ quy trình đặt vé xe online tại Nhà xe Kiến Trúc cực kỳ đơn giản với **3 bước**:\n\n" .
+                           "1. 🔍 **Bước 1 - Tìm chuyến:** Chọn Điểm đi, Điểm đến và Ngày đi tại thanh tìm kiếm ở đầu trang web, bấm **'Tìm Kiếm Xe'**.\n" .
+                           "2. 💺 **Bước 2 - Chọn chỗ trên sơ đồ 2 tầng:** Bấm **'Chọn Chuyến'** để xem sơ đồ xe trực quan. Quý khách có thể tự do bấm chọn giường tầng 1 (A1 - A6: êm ái, thích hợp người lớn tuổi hoặc say xe) hoặc tầng 2 (B1 - B6: thoáng mát, ngắm cảnh đẹp).\n" .
+                           "3. 💳 **Bước 3 - Thanh toán cọc 30%:** Nhập Họ tên, Số điện thoại và quét mã VietQR tự động. Bạn chỉ cần cọc trước **30% giá vé** là vị trí giường đã được khóa 100%!\n\n" .
+                           "Vé điện tử kèm mã QR Check-in sẽ được hiển thị ngay tức thì và tự động tải file hóa đơn PDF về máy.",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã giảm giá PRO30']
+            ];
+        }
+
+        // ==================== 18. TỔNG ĐÀI, HOTLINE & QUÊN ĐỒ ====================
+        if (preg_match('/(hotline|tổng đài|số điện thoại|sdt|liên hệ|gặp nhân viên|tư vấn viên|quên đồ|thất lạc|khiếu nại)/u', $lower)) {
+            return [
+                'reply' => "📞 **THÔNG TIN LIÊN HỆ & TỔNG ĐÀI HỖ TRỢ 24/7:**\n\n" .
+                           "• **Tổng đài đặt vé & hỗ trợ hành khách:** **1900 6868** hoặc **0905.123.456**\n" .
+                           "• **Hỗ trợ tìm hành lý / Quên đồ trên xe:** Quý khách gọi ngay hotline **0905.123.456**, đọc mã vé hoặc biển số xe để nhân viên liên hệ tài xế kiểm tra khoang xe ngay lập tức.\n" .
+                           "• **Văn phòng chính:** 566 Núi Thành, P. Hòa Cường Nam, Q. Hải Châu, TP. Đà Nẵng\n" .
+                           "• **Email hỗ trợ:** support@nhaxekientruc.vn\n\n" .
+                           "Đội ngũ nhân viên và các bác tài luôn sẵn sàng phục vụ quý khách chu đáo nhất!",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Chính sách cọc 30%', 'Mã giảm giá PRO30', 'Hướng dẫn đặt vé']
+            ];
+        }
+
+        // ==================== 19. TRUY VẤN VỀ TÀI XẾ / CHẤT LƯỢNG PHỤC VỤ ====================
+        if (preg_match('/(tài xế|bác tài|phụ xe|lơ xe|lái xe có an toàn|tay lái|thái độ)/u', $lower)) {
+            return [
+                'reply' => "👨‍✈️ **ĐỘI NGŨ BÁC TÀI & PHỤ XE NHÀ XE KIẾN TRÚC:**\n\n" .
+                           "• Toàn bộ tài xế của Nhà xe Kiến Trúc đều có bằng lái hạng E, kinh nghiệm trên **8 năm cầm lái đường dài miền Trung & Tây Nguyên**.\n" .
+                           "• Tuyệt đối **không phóng nhanh vượt ẩu, không bắt khách dọc đường, không chở quá số người quy định**.\n" .
+                           "• Thái độ phục vụ lịch sự, thân thiện, chu đáo, hỗ trợ bốc xếp hành lý tận tình cho hành khách.\n" .
+                           "• Xe được kiểm tra kỹ thuật định kỳ trước mỗi chuyến xuất bến để đảm bảo an toàn tuyệt đối.",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Hotline 1900 6868']
+            ];
+        }
+
+        // ==================== 20. PHẢN HỒI THÔNG MINH THEO TỪ KHÓA (KHÔNG BAO GIỜ LẶP TỜ RƠI) ====================
+        $greetingUser = $user ? (" bạn **" . $user->name . "**") : "";
+
+        // Kiểm tra xem khách đang hỏi về tiền/giá
+        if (str_contains($lower, 'giá') || str_contains($lower, 'tiền') || str_contains($lower, 'phí')) {
+            return [
+                'reply' => "Dạ{$greetingUser}, về giá vé và chi phí di chuyển tại Nhà xe Kiến Trúc Đà Nẵng:\n\n" .
+                           "• Giá vé các tuyến dao động từ **150.000đ - 420.000đ** tùy theo chặng đường.\n" .
+                           "• Bạn chỉ cần thanh toán **đặt cọc 30%** (chỉ từ 45.000đ) để giữ chỗ chắc chắn 100%.\n" .
+                           "• Sinh viên được giảm **30%** khi áp mã `PRO30`.\n\n" .
+                           "Bạn đang cần kiểm tra giá vé cho chặng đường cụ thể nào ạ?",
+                'suggestions' => ['Đà Nẵng đi Huế (150k)', 'Đà Nẵng đi Quảng Trị (200k)', 'Đà Nẵng đi Quy Nhơn (360k)', 'Chính sách cọc 30%']
+            ];
+        }
+
+        // Mặc định câu trả lời tự nhiên, lịch sự và giải đáp theo đúng câu hỏi
+        return [
+            'reply' => "Dạ em là Trợ lý trực tuyến của **Nhà xe Kiến Trúc Đà Nẵng** đây ạ! 😊\n\n" .
+                       "Em đã ghi nhận câu hỏi: *\"{$rawMessage}\"* của{$greetingUser}.\n\n" .
+                       "Để giải đáp nhanh và chuẩn xác nhất cho bạn, em có thể hỗ trợ ngay các mục sau:\n" .
+                       "• 🚌 **Tra cứu tuyến xe:** Đà Nẵng đi Huế, Quảng Trị, Quảng Bình, Quy Nhơn, Buôn Ma Thuột.\n" .
+                       "• 💳 **Chính sách đặt cọc 30%:** Giữ chỗ 100%, số tiền còn lại gửi bác tài khi lên xe.\n" .
+                       "• 🎓 **Mã ưu đãi sinh viên 30% (`PRO30`).**\n" .
+                       "• 🔐 **Hướng dẫn đăng nhập Quản trị viên (Admin) tại `/login`.**\n\n" .
+                       "Bạn muốn em tư vấn chi tiết hơn về mục nào trên đây ạ?",
+            'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
+        ];
+    }
+
+    /**
+     * Phân tích chuyên sâu truy vấn tuyến đường (Origin -> Destination hoặc Tuyến cụ thể).
+     */
+    private function analyzeRouteQuery(string $lower): ?array
+    {
+        // Danh mục các địa danh chuẩn hóa
+        $locations = [
+            'da_nang' => [
+                'name' => 'Đà Nẵng',
+                'keywords' => ['đà nẵng', 'da nang', 'đn', 'dn', 'hải châu', 'liên chiểu']
+            ],
+            'hue' => [
+                'name' => 'Thừa Thiên Huế',
+                'keywords' => ['huế', 'hue', 'thừa thiên huế', 'thừa thiên', 'thua thien']
+            ],
+            'quang_tri' => [
+                'name' => 'Quảng Trị (Đông Hà)',
+                'keywords' => ['quảng trị', 'quang tri', 'đông hà', 'dong ha']
+            ],
+            'quang_binh' => [
+                'name' => 'Quảng Bình (Đồng Hới)',
+                'keywords' => ['quảng bình', 'quang binh', 'đồng hới', 'dong hoi']
+            ],
+            'quy_nhon' => [
+                'name' => 'Quy Nhơn (Bình Định)',
+                'keywords' => ['quy nhơn', 'quy nhon', 'bình định', 'binh dinh']
+            ],
+            'dak_lak' => [
+                'name' => 'Buôn Ma Thuột (Đắk Lắk)',
+                'keywords' => ['buôn ma thuột', 'buon ma thuot', 'bmt', 'đắk lắk', 'dak lak', 'daklak']
+            ],
         ];
 
-        foreach ($unsupportedDestinations as $uKey => $uName) {
-            if (str_contains($lower, $uKey)) {
-                return response()->json([
-                    'reply' => "Dạ hiện tại nhà xe nhaxekientruc **chưa khai thác tuyến đường Đà Nẵng đi {$uName}** bạn nhé! 😊\n\nHiện tại nhaxekientruc chuyên phục vụ các tuyến xe giường nằm chất lượng cao xuất phát từ **Bến xe Trung tâm Đà Nẵng** đi các tỉnh Miền Trung & Tây Nguyên:\n• 🚌 **Đà Nẵng ⇄ Thừa Thiên Huế** (06:30, 09:00, 13:30, 17:00 | 150.000đ)\n• 🚌 **Đà Nẵng ⇄ Quảng Trị (Đông Hà)** (07:00, 11:30, 16:00 | 140.000đ)\n• 🚌 **Đà Nẵng ⇄ Quảng Bình (Đồng Hới)** (06:00, 13:00 | 180.000đ)\n• 🚌 **Đà Nẵng ⇄ Quy Nhơn (Bình Định)** (07:30, 15:00 | 240.000đ)\n• 🚌 **Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk)** (07:30, 19:00 | 420.000đ)\n\nBạn có muốn tham khảo lịch trình hoặc chọn chỗ trên các tuyến này không ạ?",
-                    'data' => null,
-                    'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Đà Nẵng đi Buôn Ma Thuột', 'Chính sách cọc 30%']
-                ]);
-            }
-        }
-
-        // 1. Chào hỏi thông thường (Hi, Hello, Xin chào, Chào bạn...)
-        $cleanGreeting = trim($lower, " .,!?~-");
-        $greetingWords = ['hi', 'hello', 'hey', 'alo', 'xin chào', 'chào', 'chào bạn', 'chào ad', 'chào bot', 'helo', 'hế lô', 'chào nha', 'hi bạn', 'hi bot', 'yo'];
-        if (in_array($cleanGreeting, $greetingWords) || (preg_match('/^(hi|hello|xin chào|chào bạn|chào ad)\b/u', $cleanGreeting) && mb_strlen($cleanGreeting) <= 18)) {
-            return response()->json([
-                'reply' => "Chào bạn! Tôi là Trợ Lý AI của nhaxekientruc. Tôi có thể giúp gì cho bạn hôm nay? 😊\n\nBạn có thể hỏi tôi về:\n• Tra cứu lịch trình chuyến xe (Đà Nẵng đi Huế, Quảng Trị, Quy Nhơn, Đắk Lắk...)\n• Giá vé, chọn ghế ngồi & chính sách cọc linh hoạt 30%\n• Thông tin điểm đón bến xe & gửi vé điện tử QR qua Gmail",
-                'data' => null,
-                'suggestions' => ['Xem các chuyến hôm nay', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
-            ]);
-        }
-
-        // 2. Các câu hỏi cá nhân, ngoài lề (Nhớ tôi không, bạn là ai, thời tiết, tán gẫu...)
-        $personalOrOffTopicQueries = [
-            'nhớ tôi không', 'nhớ tôi ko', 'nhớ tui không', 'nhớ tui ko',
-            'nhớ tao không', 'nhớ tao ko', 'nhớ anh không', 'nhớ em không',
-            'có nhớ tôi', 'có nhớ tui', 'có nhớ tao', 'bạn nhớ tôi', 'bạn nhớ tui',
-            'tôi là ai', 'tui là ai', 'biết tôi là ai', 'biết tui là ai',
-            'bạn biết tôi không', 'bạn biết tui không', 'bạn là ai', 'bạn tên gì',
-            'người yêu', 'yêu tôi không', 'yêu tui không', 'ai tạo ra bạn',
-            'thời tiết', 'chơi game', 'kể chuyện', 'hát đi', 'làm thơ', 'hôm nay ăn gì'
+        // Tuyến ngoại mạng (chưa khai thác)
+        $unsupportedExternal = [
+            'hà nội' => 'Hà Nội', 'ha noi' => 'Hà Nội',
+            'sài gòn' => 'TP. Hồ Chí Minh (Sài Gòn)', 'sai gon' => 'TP. Hồ Chí Minh (Sài Gòn)', 'tphcm' => 'TP. Hồ Chí Minh', 'hồ chí minh' => 'TP. Hồ Chí Minh',
+            'nha trang' => 'Nha Trang', 'cần thơ' => 'Cần Thơ', 'can tho' => 'Cần Thơ',
+            'hải phòng' => 'Hải Phòng', 'đà lạt' => 'Đà Lạt', 'da lat' => 'Đà Lạt',
+            'sa pa' => 'Sa Pa', 'sapa' => 'Sa Pa', 'vũng tàu' => 'Vũng Tàu',
+            'nghệ an' => 'Nghệ An', 'thanh hóa' => 'Thanh Hóa', 'quảng ngãi' => 'Quảng Ngãi', 'phú yên' => 'Phú Yên'
         ];
 
-        foreach ($personalOrOffTopicQueries as $pq) {
-            if (str_contains($lower, $pq)) {
-                return response()->json([
-                    'reply' => "Chào bạn, tôi là Trợ Lý AI của hệ thống nhaxekientruc. Tôi chỉ trả lời những gì liên quan đến website, lịch trình xe, đặt vé và dịch vụ của trang web mình thôi bạn nhé! 😊\n\nBạn có cần tôi hỗ trợ tra cứu chuyến xe hay thông tin gì về vé xe không ạ?",
-                    'data' => null,
-                    'suggestions' => ['Tra cứu chuyến hôm nay', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách đặt cọc 30%']
-                ]);
+        // 1. Kiểm tra nếu có hỏi đến các tỉnh ngoài mạng lưới
+        foreach ($unsupportedExternal as $extKey => $extName) {
+            if (str_contains($lower, $extKey)) {
+                return [
+                    'reply' => "Dạ hiện tại Nhà xe Kiến Trúc **chưa khai thác tuyến xe đi/đến {$extName}** bạn nhé! 😊\n\n" .
+                               "Hiện tại, Nhà xe Kiến Trúc chuyên phục vụ 5 tuyến Limousine chất lượng cao kết nối từ trung tâm **TP. Đà Nẵng**:\n" .
+                               "1. 🛣️ **Đà Nẵng ⇄ Thừa Thiên Huế:** 150.000đ (khoảng 2 tiếng)\n" .
+                               "2. 🛣️ **Đà Nẵng ⇄ Quảng Trị (Đông Hà):** 200.000đ (~3.5 tiếng)\n" .
+                               "3. 🛣️ **Đà Nẵng ⇄ Quảng Bình (Đồng Hới):** 280.000đ (~5 tiếng)\n" .
+                               "4. 🛣️ **Đà Nẵng ⇄ Quy Nhơn (Bình Định):** 360.000đ (~6 tiếng)\n" .
+                               "5. 🛣️ **Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk):** 420.000đ (~10 tiếng)\n\n" .
+                               "Bạn có muốn tham khảo lịch trình và giá vé của một trong các tuyến trên không ạ?",
+                    'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã giảm giá PRO30']
+                ];
             }
         }
 
-        // 2. Hỏi về chính sách đặt cọc & thanh toán
-        if (str_contains($lower, 'cọc') || str_contains($lower, 'thanh toán') || str_contains($lower, 'giá vé') || str_contains($lower, 'chính sách')) {
-            return response()->json([
-                'reply' => "💡 **Chính sách Đặt Vé & Thanh Toán tại nhaxekientruc:**\n\n1. **Đặt cọc linh hoạt 30%:** Giúp quý khách giữ chắc ghế mong muốn, 70% còn lại thanh toán khi lên xe hoặc qua QR bác tài/lơ xe.\n2. **Thanh toán 100%:** Nhận ngay Vé điện tử có mã QR check-in ưu tiên tại cổng bến xe.\n3. **Hủy / Đổi vé:** Miễn phí trước 2 tiếng trước giờ khởi hành tại Bến xe Đà Nẵng.\n4. **Gửi tự động qua Gmail:** AI tự động gửi email nhắc xuất bến trước 45 phút và nhắc trạm trả trước 10 phút.",
-                'data' => null,
-                'suggestions' => ['Xem các chuyến hôm nay', 'Xe đi Huế', 'Gửi Gmail tự động trước 45p']
-            ]);
+        // 2. Trích xuất vị trí các địa danh xuất hiện trong câu hỏi
+        $foundLocations = [];
+        foreach ($locations as $code => $info) {
+            $earliestPos = null;
+            foreach ($info['keywords'] as $kw) {
+                $pos = mb_strpos($lower, $kw, 0, 'UTF-8');
+                if ($pos !== false) {
+                    if ($earliestPos === null || $pos < $earliestPos) {
+                        $earliestPos = $pos;
+                    }
+                }
+            }
+            if ($earliestPos !== null) {
+                $foundLocations[] = [
+                    'code' => $code,
+                    'name' => $info['name'],
+                    'pos' => $earliestPos
+                ];
+            }
         }
 
-        // 3. Hỏi về điểm đón & trả khách
-        if (str_contains($lower, 'điểm đón') || str_contains($lower, 'điểm trả') || str_contains($lower, 'đón ở đâu') || str_contains($lower, 'trả ở đâu') || str_contains($lower, 'bến xe')) {
-            return response()->json([
-                'reply' => "📍 **Quy định Điểm Đón & Điểm Trả Khách tại nhaxekientruc:**\n\n- 🚌 **Điểm đón khách DUY NHẤT:** Bến xe Trung tâm Đà Nẵng (*185 Tôn Đức Thắng, P. Hòa Minh, Q. Liên Chiểu, TP. Đà Nẵng*).\n- 🚏 **Điểm trả khách:** Xe trả khách đúng các trạm dừng cố định theo từng tuyến:\n  • **Tuyến Huế:** Trạm Phú Bài, Bến xe Phía Nam Huế (97 An Dương Vương)\n  • **Tuyến Quảng Trị:** Trạm Hải Lăng, TX. Quảng Trị, Bến xe Đông Hà\n  • **Tuyến Quảng Bình:** Trạm Lệ Thủy, BX Đồng Hới, Trạm Ba Đồn\n  • **Tuyến Quy Nhơn:** Trạm Tam Kỳ, BX Quảng Ngãi, BX Quy Nhơn\n  • **Tuyến Buôn Ma Thuột:** BX Pleiku, BX Liên Tỉnh Đắk Lắk",
-                'data' => null,
-                'suggestions' => ['Tìm xe đi Huế', 'Tìm xe đi Quảng Trị', 'Tìm xe đi Quy Nhơn']
-            ]);
+        // Sắp xếp theo thứ tự xuất hiện trong câu (từ điểm đi đến điểm đến)
+        usort($foundLocations, fn($a, $b) => $a['pos'] <=> $b['pos']);
+
+        // NẾU CÓ TỪ 2 ĐỊA DANH TRỞ LÊN ĐƯỢC NHẮC ĐẾN (VÍ DỤ: "XE TỪ QUẢNG TRỊ ĐI HUẾ", "ĐÀ NẴNG ĐI HUẾ", "HUẾ VỀ ĐÀ NẴNG"...)
+        if (count($foundLocations) >= 2) {
+            $loc1 = $foundLocations[0];
+            $loc2 = $foundLocations[1];
+
+            $code1 = $loc1['code'];
+            $code2 = $loc2['code'];
+
+            // Kiểm tra xem đây có phải là tuyến xe kết nối với Đà Nẵng không
+            $isDirect = ($code1 === 'da_nang' || $code2 === 'da_nang');
+
+            if ($isDirect) {
+                // Tuyến trực tiếp kết nối với Đà Nẵng
+                $targetCode = ($code1 === 'da_nang') ? $code2 : $code1;
+                $directionStr = ($code1 === 'da_nang') 
+                    ? "Đà Nẵng ➔ {$loc2['name']}" 
+                    : "{$loc1['name']} ➔ Đà Nẵng";
+
+                return $this->buildDirectRouteDetail($targetCode, $directionStr);
+            } else {
+                // CẢ 2 ĐỊA DANH ĐỀU KHÔNG PHẢI ĐÀ NẴNG (VÍ DỤ: "QUẢNG TRỊ ĐI HUẾ", "HUẾ ĐI QUẢNG TRỊ", "QUY NHƠN ĐI BUÔN MA THUỘT"...)
+                return [
+                    'reply' => "Dạ hiện tại Nhà xe Kiến Trúc **chưa có tuyến xe chạy trực tiếp từ {$loc1['name']} đi {$loc2['name']}** (hoặc chiều ngược lại) bạn nhé! 😊\n\n" .
+                               "🚌 **Mạng lưới tuyến xe của Nhà xe Kiến Trúc:**\n" .
+                               "Toàn bộ các tuyến xe giường nằm Limousine cao cấp của Nhà xe đều vận hành theo mô hình kết nối tập trung từ/đến **Đầu mối trung tâm TP. Đà Nẵng**, bao gồm 5 tuyến chính:\n" .
+                               "1. 🛣️ **Đà Nẵng ⇄ Thừa Thiên Huế:** 150.000đ • Chạy liên tục từ 06:00 - 17:00 (~2 tiếng)\n" .
+                               "2. 🛣️ **Đà Nẵng ⇄ Quảng Trị (Đông Hà):** 200.000đ • Nhiều chuyến sáng, chiều & tối (~3.5 tiếng)\n" .
+                               "3. 🛣️ **Đà Nẵng ⇄ Quảng Bình (Đồng Hới):** 280.000đ • Chuyến sáng & xe đêm (~5 tiếng)\n" .
+                               "4. 🛣️ **Đà Nẵng ⇄ Quy Nhơn (Bình Định):** 360.000đ • Chuyến sáng 07:30 & xe đêm 20:00, 22:45 (~6 tiếng)\n" .
+                               "5. 🛣️ **Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk):** 420.000đ • Xe đêm VIP 19:00, 20:30, 23:30 (~10 tiếng)\n\n" .
+                               "💡 **Gợi ý phương án di chuyển thuận tiện cho bạn:**\n" .
+                               "• Chặng từ **{$loc1['name']} đi {$loc2['name']}** là cự ly ngắn dọc Quốc Lộ 1A (hoặc giữa các tỉnh lân cận), bạn có thể bắt các tuyến xe khách địa phương nội tỉnh, xe buýt liên tỉnh hoặc đi tàu hỏa Bắc - Nam để di chuyển nhanh chóng và thuận tiện nhất.\n" .
+                               "• Nếu bạn muốn trải nghiệm dịch vụ Limousine của Nhà xe Kiến Trúc, bạn có thể đi chặng **{$loc1['name']} ➔ Đà Nẵng**, sau đó chuyển tiếp chuyến từ **Đà Nẵng ➔ {$loc2['name']}** nhé!",
+                    'suggestions' => [
+                        "Đà Nẵng đi {$loc1['name']}",
+                        "Đà Nẵng đi {$loc2['name']}",
+                        'Xem tất cả các tuyến',
+                        'Chính sách cọc 30%'
+                    ]
+                ];
+            }
         }
 
-        // 4. Tìm kiếm chuyến đi thực tế theo địa danh
-        $destinations = [
+        // NẾU CHỈ NHẮC ĐẾN 1 ĐỊA DANH DUY NHẤT (VÍ DỤ: "CÓ XE ĐI HUẾ KHÔNG", "GIÁ VÉ QUẢNG TRỊ", "XE QUY NHƠN")
+        if (count($foundLocations) === 1) {
+            $loc = $foundLocations[0];
+            if ($loc['code'] !== 'da_nang') {
+                return $this->buildDirectRouteDetail($loc['code'], "Đà Nẵng ⇄ {$loc['name']}");
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Tạo thông tin chi tiết đầy đủ cho một tuyến xe trực tiếp kết nối với Đà Nẵng.
+     */
+    private function buildDirectRouteDetail(string $code, string $displayDirection): array
+    {
+        $info = match($code) {
+            'hue' => [
+                'name' => 'Thừa Thiên Huế',
+                'distance' => '100km',
+                'time' => 'Khoảng 2 giờ (qua hầm đường bộ Hải Vân)',
+                'hours' => '06:00, 06:30, 08:00, 08:30, 09:30, 11:00, 14:00, 14:30',
+                'price' => '150.000đ',
+                'deposit' => '45.000đ (30%)',
+                'student_price' => '105.000đ',
+                'bus' => 'Thaco Mobihome VIP & Limousine 22 Phòng Cung Điện'
+            ],
+            'quang_tri' => [
+                'name' => 'Quảng Trị (Đông Hà)',
+                'distance' => '165km',
+                'time' => 'Khoảng 3.5 giờ',
+                'hours' => '07:00, 07:15, 08:30, 09:00, 11:00, 15:30, 18:00, 20:00',
+                'price' => '200.000đ',
+                'deposit' => '60.000đ (30%)',
+                'student_price' => '140.000đ',
+                'bus' => 'Tracomeco Limousine 22 Phòng Cung Điện VIP'
+            ],
+            'quang_binh' => [
+                'name' => 'Quảng Bình (Đồng Hới)',
+                'distance' => '270km',
+                'time' => 'Khoảng 5 giờ',
+                'hours' => '06:00, 06:30, 07:00, 07:30, 08:00, 08:30, 19:30, 20:00',
+                'price' => '280.000đ',
+                'deposit' => '84.000đ (30%)',
+                'student_price' => '196.000đ',
+                'bus' => 'Limousine 34 Phòng Nằm VIP & Mobihome'
+            ],
+            'quy_nhon' => [
+                'name' => 'Quy Nhơn (Bình Định)',
+                'distance' => '315km',
+                'time' => 'Khoảng 6 giờ',
+                'hours' => '06:00, 07:30, 08:00, 09:30 (Sáng) & 15:30, 18:00, 20:00, 22:45 (Xe đêm)',
+                'price' => '360.000đ',
+                'deposit' => '108.000đ (30%)',
+                'student_price' => '252.000đ',
+                'bus' => 'Limousine VIP 22 Phòng Cung Điện & Giường nằm êm ái'
+            ],
+            'dak_lak' => [
+                'name' => 'Buôn Ma Thuột (Đắk Lắk)',
+                'distance' => '480km',
+                'time' => 'Khoảng 10 giờ (xe chạy đêm êm ái)',
+                'hours' => '06:00, 07:30, 08:00, 08:30 (Sáng) & 19:00, 20:00, 20:30, 23:30 (Xe đêm VIP)',
+                'price' => '420.000đ',
+                'deposit' => '126.000đ (30%)',
+                'student_price' => '294.000đ',
+                'bus' => 'Mobihome VIP 34 Phòng & Limousine Hạng Thương Gia'
+            ],
+            default => null
+        };
+
+        if (!$info) {
+            return [
+                'reply' => "Dạ bạn có thể tra cứu lịch trình các chuyến xe trực tiếp tại thanh tìm kiếm trên trang chủ nhé!",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
+            ];
+        }
+
+        return [
+            'reply' => "🚌 **THÔNG TIN CHI TIẾT TUYẾN {$displayDirection}:**\n\n" .
+                       "• **Cự ly di chuyển:** {$info['distance']} ({$info['time']})\n" .
+                       "• **Các khung giờ xuất bến:** **{$info['hours']}**\n" .
+                       "• **Giá vé niêm yết:** **{$info['price']}/vé**\n" .
+                       "• **Đặt cọc giữ chỗ 30%:** Chỉ **{$info['deposit']}** (khóa giường 100%, 70% còn lại thanh toán khi lên xe)\n" .
+                       "• **Ưu đãi Sinh viên (-30% mã `PRO30`):** Chỉ còn **{$info['student_price']}**\n" .
+                       "• **Dòng xe & Tiện ích:** {$info['bus']} (Wifi 5G, cổng sạc Type-C, ghế massage, chăn gối khử khuẩn, nước suối miễn phí)\n\n" .
+                       "👉 Quý khách có thể bấm nút **'Tìm kiếm xe'** trên trang chủ để xem sơ đồ 2 tầng và chọn vị trí giường nằm yêu thích nhé!",
+            'suggestions' => [
+                "Đặt vé {$info['name']}",
+                'Chính sách cọc 30%',
+                'Mã giảm giá PRO30',
+                'Xem tuyến khác'
+            ]
+        ];
+    }
+
+    /**
+     * Gọi Gemini API nếu có cấu hình Google API Studio Key hợp lệ
+     * Hỗ trợ đa lượt đàm thoại (multi-turn context), tự động dự phòng đa model (gemini-3.1-flash-lite, gemini-3-flash-preview)
+     */
+    private function callGeminiApi(string $message, $user, array $context, string $apiKey, array $matchingTrips = [], array $history = []): ?array
+    {
+        try {
+            $userDesc = $user 
+                ? "Khách hàng tên {$user->name}, SĐT {$user->phone}, hạng {$user->loyalty_tier}, tích lũy {$user->loyalty_points} điểm."
+                : "Khách hàng là khách vãng lai chưa đăng nhập.";
+
+            $now = Carbon::now();
+            $tomorrow = Carbon::tomorrow();
+            $thuVN = match($now->dayOfWeek) {
+                0 => 'Chủ Nhật', 1 => 'Thứ Hai', 2 => 'Thứ Ba', 3 => 'Thứ Tư', 4 => 'Thứ Năm', 5 => 'Thứ Sáu', 6 => 'Thứ Bảy', default => 'Hôm nay'
+            };
+            $thuMaiVN = match($tomorrow->dayOfWeek) {
+                0 => 'Chủ Nhật', 1 => 'Thứ Hai', 2 => 'Thứ Ba', 3 => 'Thứ Tư', 4 => 'Thứ Năm', 5 => 'Thứ Sáu', 6 => 'Thứ Bảy', default => 'Ngày mai'
+            };
+
+            $timeContext = "THỜI GIAN THỰC TẾ: Hôm nay là {$thuVN}, ngày " . $now->format('d/m/Y') . " (giờ Việt Nam). Ngày mai là {$thuMaiVN}, ngày " . $tomorrow->format('d/m/Y') . ".";
+
+            $tripInfoContext = "";
+            if (!empty($matchingTrips)) {
+                $tripInfoContext = "\n\nCÁC CHUYẾN XE THỰC TẾ ĐANG MỞ BÁN PHÙ HỢP CÂU HỎI:\n";
+                foreach ($matchingTrips as $mt) {
+                    $dayTag = $mt['is_today'] ? '(Hôm nay)' : ($mt['is_tomorrow'] ? '(Ngày mai)' : '');
+                    $tripInfoContext .= "- Chuyến #{$mt['id']}: {$mt['route_name']} lúc {$mt['time_str']} ngày {$mt['date_str']} {$dayTag}, vé {$mt['price_formatted']} (cọc 30%: {$mt['deposit_price_formatted']}), xe {$mt['bus_type']} BKS {$mt['license_plate']}. Đường dẫn đặt vé: {$mt['book_url']}\n";
+                }
+                $tripInfoContext .= "Hãy giới thiệu các chuyến xe này để khách chọn và thông báo khách có thể bấm trực tiếp vào thẻ chuyến xe bên dưới tin nhắn để chọn ghế đặt vé ngay lập tức.\n";
+            }
+
+            $systemPrompt = "Bạn là Trợ lý AI cao cấp, đa năng, cực kỳ thông minh và tận tâm của Nhà xe Kiến Trúc Đà Nẵng (nhaxekientruc). "
+                . "TÁC PHONG: Luôn xưng 'em', gọi khách là 'bạn' (hoặc 'quý khách' / tên riêng nếu có). Trả lời thông minh, đúng trọng tâm, gãy gọn, có cấu trúc markdown rõ ràng, dùng emoji sinh động. "
+                . "{$timeContext} "
+                . "THÔNG TIN KHÁCH HÀNG: {$userDesc} "
+                . "MẠNG LƯỚI TUYẾN XE: Nhà xe phục vụ 5 tuyến liên tỉnh kết nối từ/đến trung tâm TP. Đà Nẵng: "
+                . "1) Đà Nẵng ⇄ Huế (140.000đ - 150.000đ, ~2h-2.5h, cọc 30% = 42k-45k). "
+                . "2) Đà Nẵng ⇄ Quảng Trị (160.000đ - 200.000đ, ~3.5h, cọc 30% = 48k-60k). "
+                . "3) Đà Nẵng ⇄ Quảng Bình (195.000đ - 280.000đ, ~5h, cọc 30% = 58.5k-84k). "
+                . "4) Đà Nẵng ⇄ Quy Nhơn (240.000đ - 360.000đ, ~6h, cọc 30% = 72k-108k). "
+                . "5) Đà Nẵng ⇄ Buôn Ma Thuột (380.000đ - 420.000đ, ~9-10h, cọc 30% = 114k-126k). "
+                . "QUAN TRỌNG VỀ ĐỊA LÝ: Nhà xe Kiến Trúc KHÔNG có tuyến xe chạy trực tiếp giữa các tỉnh trung gian (ví dụ: Quảng Trị đi Huế, Huế đi Quảng Bình, Quy Nhơn đi Buôn Ma Thuột... KHÔNG CÓ tuyến trực tiếp). Nếu khách hỏi các tuyến này, phải trả lời rõ ràng là nhà xe chưa có tuyến trực tiếp giữa hai tỉnh này, toàn bộ tuyến đều xuất phát từ hoặc về Đà Nẵng, đồng thời gợi ý khách đi xe khách nội tỉnh dọc QL1A hoặc đi chặng trung chuyển về Đà Nẵng. "
+                . "BẢO MẬT ADMIN: Khi khách hỏi 'bạn có cách nào đăng nhập vào admin không' hoặc xin link/cách vào admin, bạn phải trả lời là bạn không có quyền hạn can thiệp, không cung cấp tài khoản hay cấp quyền vào trang quản trị (chỉ dành cho ban quản lý và kỹ thuật nội bộ của nhà xe). "
+                . "CHÍNH SÁCH: Cọc 30% giữ chỗ 100%, 70% còn lại thanh toán cho bác tài khi lên xe. Ưu đãi sinh viên giảm 30% mã PRO30. Hủy vé tự phục vụ hoàn 100% trong 2h hoặc trước 24h tại mục 'Quản Lý Vé'. Hành lý miễn phí 20kg, nhận gửi xe máy có bọc xốp. "
+                . "KHẢ NĂNG TOÀN DIỆN: Trả lời thông minh mọi câu hỏi của khách hàng, từ lịch trình, du lịch, quán ăn ngon tại Đà Nẵng, thơ ca, kiến thức tổng quát, giao tiếp vui vẻ. Không từ chối hay trả lời mẫu rập khuôn.";
+
+            // Xây dựng contents đa lượt (Multi-turn conversation history)
+            $contents = [];
+            if (!empty($history) && is_array($history)) {
+                $recentTurns = array_slice($history, -8);
+                foreach ($recentTurns as $turn) {
+                    $role = (($turn['role'] ?? '') === 'model' || ($turn['role'] ?? '') === 'assistant') ? 'model' : 'user';
+                    $contentStr = trim((string)($turn['content'] ?? ''));
+                    if (!empty($contentStr)) {
+                        $contents[] = [
+                            'role' => $role,
+                            'parts' => [['text' => $contentStr]]
+                        ];
+                    }
+                }
+            }
+
+            // Lượt người dùng hiện tại kèm ngữ cảnh hệ thống
+            $currentUserText = $message;
+            if (!empty($tripInfoContext)) {
+                $currentUserText .= "\n\n[DỮ LIỆU CHUYẾN XE HỆ THỐNG]:" . $tripInfoContext;
+            }
+
+            $contents[] = [
+                'role' => 'user',
+                'parts' => [['text' => $currentUserText]]
+            ];
+
+            // Danh sách model ưu tiên tự động chuyển đổi khi gặp tải cao hoặc hạn ngạch
+            $candidateModels = [
+                'gemini-3.1-flash-lite',
+                'gemini-3-flash-preview',
+                'gemini-flash-latest'
+            ];
+
+            foreach ($candidateModels as $modelName) {
+                try {
+                    $response = Http::timeout(20)->withHeaders([
+                        'Content-Type' => 'application/json',
+                        'x-goog-api-key' => $apiKey,
+                    ])->post(
+                        "https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$apiKey}",
+                        [
+                            'system_instruction' => [
+                                'parts' => [['text' => $systemPrompt]]
+                            ],
+                            'contents' => $contents,
+                            'generationConfig' => [
+                                'temperature' => 0.7,
+                                'maxOutputTokens' => 2048,
+                            ]
+                        ]
+                    );
+
+                    if ($response->successful()) {
+                        $replyText = $response->json('candidates.0.content.parts.0.text');
+                        if (!empty($replyText)) {
+                            return [
+                                'reply' => trim($replyText),
+                                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên'],
+                            ];
+                        }
+                    }
+                } catch (\Throwable $mEx) {
+                    Log::warning("[GEMINI_MODEL_RETRY] {$modelName}: " . $mEx->getMessage());
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning("[GEMINI_API_ERROR] " . $e->getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * Tra cứu chuyến xe phù hợp thời gian thực từ Database.
+     */
+    public function findMatchingTrips(string $query): array
+    {
+        $lower = mb_strtolower($query, 'UTF-8');
+        
+        $destMap = [
             'huế' => 'Huế',
             'hue' => 'Huế',
+            'thừa thiên' => 'Huế',
             'quảng trị' => 'Quảng Trị',
             'quang tri' => 'Quảng Trị',
             'đông hà' => 'Quảng Trị',
-            'dong ha' => 'Quảng Trị',
             'quảng bình' => 'Quảng Bình',
             'quang binh' => 'Quảng Bình',
             'đồng hới' => 'Quảng Bình',
-            'dong hoi' => 'Quảng Bình',
             'quy nhơn' => 'Quy Nhơn',
             'quy nhon' => 'Quy Nhơn',
-            'quảng ngãi' => 'Quy Nhơn',
-            'quang ngai' => 'Quy Nhơn',
+            'bình định' => 'Quy Nhơn',
             'buôn ma thuột' => 'Buôn Ma Thuột',
-            'buon ma thuot' => 'Buôn Ma Thuột',
             'đắk lắk' => 'Buôn Ma Thuột',
             'dak lak' => 'Buôn Ma Thuột',
-            'pleiku' => 'Buôn Ma Thuột',
+            'bmt' => 'Buôn Ma Thuột',
+            'đà nẵng' => 'Đà Nẵng',
+            'da nang' => 'Đà Nẵng'
         ];
 
+        // Tuyến không khai thác trực tiếp giữa các tỉnh lân cận
+        if ((str_contains($lower, 'quảng trị') || str_contains($lower, 'đông hà')) && (str_contains($lower, 'huế') || str_contains($lower, 'thừa thiên')) && !str_contains($lower, 'đà nẵng')) {
+            return [];
+        }
+
+        // Kiểm tra xem câu hỏi có liên quan đến tìm chuyến / vé xe không
+        $isTripQuery = preg_match('/(chuyến|xe|vé|đặt vé|lịch|giờ chạy|chạy|đi|đến|về|khởi hành|tuyến|sáng|chiều|tối|ngày mai|hôm nay)/u', $lower);
+        if (!$isTripQuery) {
+            return [];
+        }
+
         $matchedDest = null;
-        foreach ($destinations as $key => $val) {
+        foreach ($destMap as $key => $name) {
             if (str_contains($lower, $key)) {
-                $matchedDest = $val;
+                $matchedDest = $name;
                 break;
             }
         }
 
-        $isBookingIntent = str_contains($lower, 'đặt xe')
-            || str_contains($lower, 'dat xe')
-            || str_contains($lower, 'đặt vé')
-            || str_contains($lower, 'dat ve')
-            || str_contains($lower, 'mua vé')
-            || str_contains($lower, 'mua ve')
-            || str_contains($lower, 'đi xe')
-            || str_contains($lower, 'di xe')
-            || str_contains($lower, 'bắt xe')
-            || str_contains($lower, 'bat xe')
-            || str_contains($lower, 'book xe')
-            || str_contains($lower, 'book vé')
-            || str_contains($lower, 'muốn đi')
-            || str_contains($lower, 'cần đi')
-            || str_contains($lower, 'tìm xe')
-            || str_contains($lower, 'chuyến')
-            || str_contains($lower, 'hôm nay')
-            || str_contains($lower, 'ngày mai')
-            || str_contains($lower, 'lịch chạy');
+        $queryBuilder = Trip::with(['route', 'bus'])
+            ->whereIn('status', ['SCHEDULED', 'OPEN_FOR_SALE', 'READY', 'BOARDING'])
+            ->where('departure_time', '>=', Carbon::now());
 
-        if ($matchedDest || $isBookingIntent) {
-            $query = Trip::with(['route.stops', 'bus', 'driver'])
-                ->whereNotIn('status', ['CANCELLED']);
-
-            if ($matchedDest) {
-                $query->whereHas('route', function($q) use ($matchedDest) {
-                    $q->where('name', 'like', "%{$matchedDest}%");
-                });
-            } else {
-                $query->whereDate('departure_time', '>=', Carbon::today('Asia/Ho_Chi_Minh')->subDay());
-            }
-
-            $trips = $query->orderBy('departure_time', 'asc')->take(6)->get();
-
-            $tripList = [];
-            foreach ($trips as $t) {
-                $depTime = Carbon::parse($t->departure_time)->timezone('Asia/Ho_Chi_Minh')->format('H:i d/m');
-                $price = number_format($t->base_price ?: ($t->floor1_price ?: 140000), 0, ',', '.') . 'đ';
-                $status = ($t->status === 'RUNNING' || $t->status === 'IN_TRANSIT') ? '🟢 (Đang chạy)' : '🔵 (Sắp xuất bến)';
-                $driverName = ($t->driver && $t->driver->name) ? $t->driver->name : 'Bác tài nhaxekientruc';
-                $busPlate = ($t->bus && $t->bus->license_plate) ? $t->bus->license_plate : ($t->bus?->plate_number ?: '43B-012.34');
-
-                $tripList[] = [
-                    'id' => $t->id,
-                    'route_name' => $t->route?->name ?? 'Tuyến đường',
-                    'departure_time' => $depTime,
-                    'price' => $price,
-                    'bus_plate' => $busPlate,
-                    'driver' => $driverName,
-                    'status' => $t->status
-                ];
-            }
-
-            if ($matchedDest) {
-                $reply = "Dạ vâng! Tôi đã tìm thấy các chuyến xe đi **{$matchedDest}** chất lượng cao khởi hành từ Bến xe Trung tâm Đà Nẵng:\n\n";
-                foreach ($tripList as $item) {
-                    $reply .= "• 🚌 **{$item['route_name']}**\n";
-                    $reply .= "  - Xuất bến: **{$item['departure_time']}** | Giá từ: **{$item['price']}**\n";
-                    $reply .= "  - Xe: `{$item['bus_plate']}` | Bác tài: {$item['driver']}\n\n";
-                }
-                $reply .= "Quý khách có thể bấm trực tiếp vào các thẻ chuyến xe bên dưới để chọn vị trí ghế ngồi trực quan và giữ chỗ cọc 30% nhé! 😊";
-            } else {
-                $reply = "Dạ vâng! nhaxekientruc rất hân hạnh được phục vụ bạn đặt vé xe khách công nghệ cao khởi hành từ **Bến xe Trung tâm Đà Nẵng**! 🚍✨\n\nHiện tại nhà xe có các tuyến xuất phát liên tục hằng ngày:\n• 🚌 **Đà Nẵng ⇄ Thừa Thiên Huế** (06:30, 09:00, 13:30, 17:00 | từ 140.000đ)\n• 🚌 **Đà Nẵng ⇄ Quảng Trị (Đông Hà)** (07:00, 11:30, 16:00 | từ 130.000đ)\n• 🚌 **Đà Nẵng ⇄ Quảng Bình (Đồng Hới)** (06:00, 13:00 | từ 170.000đ)\n• 🚌 **Đà Nẵng ⇄ Quy Nhơn (Bình Định)** (07:30, 15:00 | từ 230.000đ)\n• 🚌 **Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk)** (07:30, 19:00 | từ 400.000đ)\n\nTôi đã tổng hợp các chuyến xe sắp xuất bến gần nhất bên dưới. Bạn có thể bấm chọn ngay chuyến đi mong muốn hoặc bấm vào các gợi ý bên dưới để xem riêng từng tuyến nhé!";
-            }
-
-            return response()->json([
-                'reply' => $reply,
-                'data' => $tripList,
-                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Đà Nẵng đi Buôn Ma Thuột', 'Chính sách cọc 30%']
-            ]);
+        if ($matchedDest) {
+            $queryBuilder->whereHas('route', function($q) use ($matchedDest) {
+                $q->where('origin', 'like', "%{$matchedDest}%")
+                  ->orWhere('destination', 'like', "%{$matchedDest}%");
+            });
         }
 
-        return response()->json([
-            'reply' => "Tôi là Trợ Lý AI chuyên biệt của hệ thống nhaxekientruc. Tôi sẵn sàng hỗ trợ bạn đặt vé, tra cứu lịch trình chuyến xe và dịch vụ của nhà xe! 😊\n\nTôi có thể giúp bạn:\n• 🔍 Tra cứu lịch trình & giá vé xe (Đà Nẵng đi Huế, Quảng Trị, Quảng Bình, Quy Nhơn, Buôn Ma Thuột...)\n• 🎫 Hướng dẫn đặt vé & chọn chỗ ngồi 2 tầng trực quan\n• 💡 Chính sách đặt cọc linh hoạt 30%\n• 📍 Thông tin trạm đón & trả khách cố định\n\nBạn muốn tìm chuyến đi đến đâu ạ?",
-            'data' => null,
-            'suggestions' => ['Tôi muốn đặt xe', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
-        ]);
+        $trips = $queryBuilder->orderBy('departure_time', 'asc')->take(4)->get();
+
+        return $trips->map(function($t) {
+            $depTime = Carbon::parse($t->departure_time);
+            return [
+                'id' => $t->id,
+                'origin' => $t->route->origin ?? 'Đà Nẵng',
+                'destination' => $t->route->destination ?? 'Điểm đến',
+                'route_name' => ($t->route->origin ?? 'Đà Nẵng') . ' ➔ ' . ($t->route->destination ?? 'Điểm đến'),
+                'departure_time' => (string) $t->departure_time,
+                'time_str' => $depTime->format('H:i'),
+                'date_str' => $depTime->format('d/m/Y'),
+                'is_today' => $depTime->isToday(),
+                'is_tomorrow' => $depTime->isTomorrow(),
+                'price' => (int) $t->price,
+                'price_formatted' => number_format($t->price, 0, ',', '.') . 'đ',
+                'deposit_price_formatted' => number_format($t->price * 0.3, 0, ',', '.') . 'đ',
+                'bus_type' => $t->bus->bus_type ?? 'Limousine VIP',
+                'license_plate' => $t->bus->license_plate ?? '43B-VIP',
+                'book_url' => "/trips/{$t->id}",
+            ];
+        })->toArray();
     }
 
     /**
-     * TỰ ĐỘNG QUÉT & GỬI GMAIL TRƯỚC 45 PHÚT XUẤT BẾN & TRƯỚC 10 PHÚT ĐẾN TRẠM
+     * Nạp dữ liệu sống từ Database.
      */
-    public function autoNotify(Request $request)
+    private function buildBusHubContext(): array
     {
-        $trips = Trip::with(['route.stops', 'bus', 'driver', 'bookings.user'])
-            ->where('status', '!=', 'CANCELLED')
-            ->orderBy('departure_time', 'asc')
-            ->get();
+        try {
+            $routes = Route::where('is_active', true)->with('stops')->get();
+            $trips = Trip::with(['route', 'bus'])
+                ->whereDate('departure_time', '>=', Carbon::today())
+                ->whereIn('status', ['SCHEDULED', 'OPEN_FOR_SALE', 'READY', 'BOARDING', 'IN_TRANSIT'])
+                ->orderBy('departure_time', 'asc')
+                ->take(15)
+                ->get();
+            $policies = CancellationPolicy::where('is_active', true)->orderBy('hours_before', 'desc')->get();
 
-        $notifications = [];
-        $samplePlates = ['43B-012.34', '43B-018.99', '43B-023.45', '43B-034.56', '43B-045.67', '43B-056.78', '43B-067.89', '43B-078.90'];
-        $sampleDrivers = [
-            ['name' => 'Nguyễn Văn Hùng', 'phone' => '0905.123.456'],
-            ['name' => 'Trần Đình Trọng', 'phone' => '0905.234.567'],
-            ['name' => 'Lê Hoàng Nam', 'phone' => '0905.345.678'],
-            ['name' => 'Phạm Quốc Bảo', 'phone' => '0905.456.789'],
-            ['name' => 'Hoàng Minh Tuấn', 'phone' => '0905.567.890'],
-        ];
-
-        $sampleEmails = [
-            'khachhang.danang@gmail.com',
-            'hoangnam.travel@gmail.com',
-            'tran.thi.mai@gmail.com',
-            'le.van.duc@gmail.com',
-            'nguyen.thanh.tam@gmail.com'
-        ];
-
-        $idx = 0;
-        foreach ($trips as $trip) {
-            $dep = Carbon::parse($trip->departure_time);
-            $busPlate = ($trip->bus && !empty($trip->bus->plate_number)) ? $trip->bus->plate_number : $samplePlates[$idx % count($samplePlates)];
-            $driverData = $sampleDrivers[$idx % count($sampleDrivers)];
-            $driverName = ($trip->driver && !empty($trip->driver->name)) ? $trip->driver->name : $driverData['name'];
-            $driverPhone = ($trip->driver && !empty($trip->driver->phone)) ? $trip->driver->phone : $driverData['phone'];
-            $gate = 'Cổng số ' . (($idx % 5) + 1);
-            $targetEmail = $sampleEmails[$idx % count($sampleEmails)];
-            $idx++;
-
-            // 1. Tự động nhận biết chuyến xe và gửi Gmail trước 45 phút xuất bến
-            $notifications[] = [
-                'id' => uniqid('notif_dep_'),
-                'type' => 'DEPARTURE_REMINDER_45M',
-                'badge' => '⏰ Tự Động Gửi Gmail (Trước 45p)',
-                'trip_id' => $trip->id,
-                'route_name' => $trip->route->name,
-                'departure_time' => $dep->format('H:i d/m/Y'),
-                'recipient_email' => $targetEmail,
-                'recipient_count' => rand(15, 36),
-                'bus_plate' => $busPlate,
-                'driver' => "{$driverName} ({$driverPhone})",
-                'pickup_location' => "Bến xe Trung tâm Đà Nẵng ({$gate})",
-                'email_subject' => "📧 [nhaxekientruc Đà Nẵng] Nhắc nhở xuất bến trước 45 phút - Chuyến {$trip->route->name}",
-                'message' => "Kính gửi Quý khách: Hệ thống tự động nhận diện chuyến xe {$trip->route->name} (Biển số: {$busPlate}) do Bác tài {$driverName} ({$driverPhone}) điều khiển sẽ xuất bến trong 45 phút tới lúc {$dep->format('H:i')} tại {$gate} - Bến xe Trung tâm Đà Nẵng. Quý khách vui lòng có mặt tại phòng chờ trước 15 phút!",
-                'status' => 'GMAIL_SENT',
-                'time_sent' => Carbon::now()->subMinutes(rand(5, 30))->format('H:i:s')
+            return [
+                'routes' => $routes,
+                'trips' => $trips,
+                'policies' => $policies
             ];
-
-            // 2. Tự động gửi Gmail nhắc trước khi đến trạm trả 10-15 phút
-            $destinationStation = $trip->route->stops->last()->stop_name ?? 'Bến xe Phía Nam';
-            $notifications[] = [
-                'id' => uniqid('notif_arr_'),
-                'type' => 'ARRIVAL_REMINDER_10M',
-                'badge' => '🚏 Tự Động Gửi Gmail (Trước 10p Đến)',
-                'trip_id' => $trip->id,
-                'route_name' => $trip->route->name,
-                'destination' => $destinationStation,
-                'recipient_email' => $targetEmail,
-                'recipient_count' => rand(10, 30),
-                'bus_plate' => $busPlate,
-                'email_subject' => "🚏 [nhaxekientruc Đà Nẵng] Thông báo xe sắp cập trạm {$destinationStation}",
-                'message' => "Thông báo: Xe {$busPlate} đang cách {$destinationStation} 10 phút di chuyển. Quý khách vui lòng kiểm tra hành lý xách tay, tư trang cá nhân để chuẩn bị xuống xe an toàn. Cảm ơn Quý khách!",
-                'status' => 'GMAIL_SENT',
-                'time_sent' => Carbon::now()->subMinutes(rand(2, 15))->format('H:i:s')
-            ];
+        } catch (\Exception $e) {
+            return [];
         }
-
-        $realEmailsSent = 0;
-        foreach ($trips as $trip) {
-            foreach ($trip->bookings as $b) {
-                if (!in_array($b->payment_status, ['CANCELLED', 'REFUNDED'])) {
-                    if (\App\Services\EmailService::sendDepartureReminder($b)) {
-                        $realEmailsSent++;
-                    }
-                }
-            }
-        }
-
-        return response()->json([
-            'status' => 'success',
-            'message' => $realEmailsSent > 0 
-                ? "Hệ thống AI đã tự động gửi Gmail thật nhắc 45 phút tới {$realEmailsSent} hành khách có vé!"
-                : "Hệ thống AI đã quét các chuyến xe hôm nay và kích hoạt tiến trình gửi Gmail nhắc nhở 45 phút!",
-            'real_sent' => $realEmailsSent,
-            'total_sent' => count($notifications),
-            'notifications' => $notifications,
-            'trips_available' => $trips->map(function($t) {
-                return [
-                    'id' => $t->id,
-                    'name' => $t->route->name . ' (' . Carbon::parse($t->departure_time)->format('H:i') . ' - ' . ($t->bus->plate_number ?? '43B-012.34') . ')'
-                ];
-            })
-        ]);
-    }
-
-    /**
-     * TỰ SOẠN NỘI DUNG TÙY CHỈNH & GỬI GMAIL NHANH CHO HÀNH KHÁCH
-     */
-    public function customNotify(Request $request)
-    {
-        $tripId = $request->input('trip_id');
-        $subject = trim($request->input('subject', 'Thông báo từ Bến xe Trung tâm Đà Nẵng'));
-        $content = trim($request->input('content', ''));
-
-        if (empty($content)) {
-            return response()->json(['status' => 'error', 'message' => 'Vui lòng nhập nội dung thông báo.'], 422);
-        }
-
-        $trip = Trip::with(['route', 'bus', 'driver', 'bookings'])->find($tripId) ?? Trip::with(['route', 'bus', 'driver'])->first();
-        $busPlate = $trip->bus->plate_number ?? '43B-012.34';
-        $routeName = $trip->route->name ?? 'Đà Nẵng ⇄ Tuyến liên tỉnh';
-
-        $customItem = [
-            'id' => uniqid('notif_custom_'),
-            'type' => 'CUSTOM_ANNOUNCEMENT',
-            'badge' => '✍️ Thông Báo Tùy Chỉnh (Đã Gửi Gmail)',
-            'trip_id' => $trip ? $trip->id : 1,
-            'route_name' => $routeName,
-            'bus_plate' => $busPlate,
-            'recipient_email' => 'toanbo.khachhang@gmail.com',
-            'recipient_count' => rand(18, 40),
-            'email_subject' => "📢 [nhaxekientruc Thông Báo] {$subject}",
-            'message' => $content,
-            'status' => 'GMAIL_SENT',
-            'time_sent' => Carbon::now()->format('H:i:s')
-        ];
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Đã gửi thành công email thông báo tùy chỉnh tới toàn bộ hành khách của chuyến xe!',
-            'notification' => $customItem
-        ]);
     }
 }

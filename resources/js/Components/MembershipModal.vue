@@ -952,8 +952,8 @@ const confirmPaymentNow = async () => {
 
 const initSavedVouchers = () => {
   try {
-    const list = JSON.parse(localStorage.getItem('bushub_saved_vouchers') || localStorage.getItem('saved_vouchers') || '[]');
-    savedVoucherCodes.value = list;
+    const list = JSON.parse(localStorage.getItem('nhaxekientruc_saved_vouchers') || localStorage.getItem('bushub_saved_vouchers') || localStorage.getItem('saved_vouchers') || '[]');
+    savedVoucherCodes.value = Array.isArray(list) ? list : [];
   } catch (e) {
     savedVoucherCodes.value = [];
   }
@@ -967,18 +967,18 @@ const isVoucherSaved = (code) => {
 const saveVoucherToWallet = (code) => {
   if (!code) return;
   try {
-    let list = JSON.parse(localStorage.getItem('bushub_saved_vouchers') || '[]');
-    if (!list.includes(code)) {
-      list.push(code);
-      localStorage.setItem('bushub_saved_vouchers', JSON.stringify(list));
-    }
-    let listLegacy = JSON.parse(localStorage.getItem('saved_vouchers') || '[]');
-    if (!listLegacy.includes(code)) {
-      listLegacy.push(code);
-      localStorage.setItem('saved_vouchers', JSON.stringify(listLegacy));
-    }
-    savedVoucherCodes.value = [...list];
-    copyToast.value = `Đã lưu mã ${code} vào ví thành công!`;
+    const keys = ['nhaxekientruc_saved_vouchers', 'bushub_saved_vouchers', 'saved_vouchers'];
+    keys.forEach(k => {
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) {}
+      if (!list.includes(code)) {
+        list.push(code);
+        localStorage.setItem(k, JSON.stringify(list));
+      }
+    });
+    savedVoucherCodes.value = [...new Set([...savedVoucherCodes.value, code])];
+    window.dispatchEvent(new CustomEvent('voucher-saved-to-wallet', { detail: { code } }));
+    copyToast.value = `✓ Đã lưu mã [${code}] vào ví thành công!`;
     setTimeout(() => { copyToast.value = ''; }, 2500);
   } catch (e) {}
 };
