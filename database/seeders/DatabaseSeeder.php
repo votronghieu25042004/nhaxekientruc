@@ -35,26 +35,26 @@ class DatabaseSeeder extends Seeder
         // 2. TẠO 20 TÀI KHOẢN LƠ XE (Conductor)
         // ============================================================
         $conductorsData = [
-            ['name' => 'Nguyễn Văn Phúc', 'phone' => '0905221133', 'email' => 'loxe1@bushub.vn'],
-            ['name' => 'Lê Quốc Đạt',     'phone' => '0905334455', 'email' => 'loxe2@bushub.vn'],
-            ['name' => 'Phạm Thành Long',  'phone' => '0905447788', 'email' => 'loxe3@bushub.vn'],
-            ['name' => 'Vũ Anh Tuấn',      'phone' => '0905558899', 'email' => 'loxe4@bushub.vn'],
-            ['name' => 'Đỗ Minh Trí',      'phone' => '0905669900', 'email' => 'loxe5@bushub.vn'],
-            ['name' => 'Hoàng Hải Nam',    'phone' => '0905771122', 'email' => 'loxe6@bushub.vn'],
-            ['name' => 'Bùi Gia Huy',      'phone' => '0905882233', 'email' => 'loxe7@bushub.vn'],
-            ['name' => 'Ngô Tiến Dũng',    'phone' => '0905993344', 'email' => 'loxe8@bushub.vn'],
-            ['name' => 'Dương Văn Kiên',   'phone' => '0905004455', 'email' => 'loxe9@bushub.vn'],
-            ['name' => 'Trần Quốc Thanh',  'phone' => '0905115566', 'email' => 'loxe10@bushub.vn'],
-            ['name' => 'Nguyễn Hữu Hải',  'phone' => '0905226677', 'email' => 'loxe11@bushub.vn'],
-            ['name' => 'Đinh Nhật Quang',  'phone' => '0905337788', 'email' => 'loxe12@bushub.vn'],
-            ['name' => 'Hoàng Quốc Việt',  'phone' => '0905448899', 'email' => 'loxe13@bushub.vn'],
-            ['name' => 'Phạm Đăng Khoa',   'phone' => '0905559900', 'email' => 'loxe14@bushub.vn'],
-            ['name' => 'Trương Trung Hiếu', 'phone' => '0905660011', 'email' => 'loxe15@bushub.vn'],
-            ['name' => 'Phan Thanh Bình',  'phone' => '0905771123', 'email' => 'loxe16@bushub.vn'],
-            ['name' => 'Lê Đại Nghĩa',    'phone' => '0905882234', 'email' => 'loxe17@bushub.vn'],
-            ['name' => 'Nguyễn Đức Thuận', 'phone' => '0905993345', 'email' => 'loxe18@bushub.vn'],
-            ['name' => 'Mai Văn Phong',    'phone' => '0905004456', 'email' => 'loxe19@bushub.vn'],
-            ['name' => 'Võ Tấn Hùng',     'phone' => '0905115567', 'email' => 'loxe20@bushub.vn'],
+            ['name' => 'Nguyễn Văn Phúc', 'phone' => '0905221101', 'email' => 'loxe1@gmail.com'],
+            ['name' => 'Lê Quốc Đạt',     'phone' => '0905221102', 'email' => 'loxe2@gmail.com'],
+            ['name' => 'Phạm Thành Long',  'phone' => '0905221103', 'email' => 'loxe3@gmail.com'],
+            ['name' => 'Vũ Anh Tuấn',      'phone' => '0905221104', 'email' => 'loxe4@gmail.com'],
+            ['name' => 'Đỗ Minh Trí',      'phone' => '0905221105', 'email' => 'loxe5@gmail.com'],
+            ['name' => 'Hoàng Hải Nam',    'phone' => '0905221106', 'email' => 'loxe6@gmail.com'],
+            ['name' => 'Bùi Gia Huy',      'phone' => '0905221107', 'email' => 'loxe7@gmail.com'],
+            ['name' => 'Ngô Tiến Dũng',    'phone' => '0905221108', 'email' => 'loxe8@gmail.com'],
+            ['name' => 'Dương Văn Kiên',   'phone' => '0905221109', 'email' => 'loxe9@gmail.com'],
+            ['name' => 'Trần Quốc Thanh',  'phone' => '0905221110', 'email' => 'loxe10@gmail.com'],
+            ['name' => 'Nguyễn Hữu Hải',  'phone' => '0905226677', 'email' => 'loxe11@gmail.com'],
+            ['name' => 'Đinh Nhật Quang',  'phone' => '0905337788', 'email' => 'loxe12@gmail.com'],
+            ['name' => 'Hoàng Quốc Việt',  'phone' => '0905448899', 'email' => 'loxe13@gmail.com'],
+            ['name' => 'Phạm Đăng Khoa',   'phone' => '0905559900', 'email' => 'loxe14@gmail.com'],
+            ['name' => 'Trương Trung Hiếu', 'phone' => '0905660011', 'email' => 'loxe15@gmail.com'],
+            ['name' => 'Phan Thanh Bình',  'phone' => '0905771123', 'email' => 'loxe16@gmail.com'],
+            ['name' => 'Lê Đại Nghĩa',    'phone' => '0905882234', 'email' => 'loxe17@gmail.com'],
+            ['name' => 'Nguyễn Đức Thuận', 'phone' => '0905993345', 'email' => 'loxe18@gmail.com'],
+            ['name' => 'Mai Văn Phong',    'phone' => '0905004456', 'email' => 'loxe19@gmail.com'],
+            ['name' => 'Võ Tấn Hùng',     'phone' => '0905115567', 'email' => 'loxe20@gmail.com'],
         ];
 
         $conductors = [];
@@ -72,16 +72,16 @@ class DatabaseSeeder extends Seeder
         // 3. TẠO 10 TÀI KHOẢN TÀI XẾ (Driver users để login)
         // ============================================================
         $driverUsersData = [
-            ['name' => 'Nguyễn Văn Hùng',  'phone' => '0905123456', 'email' => 'taixe1@bushub.vn'],
-            ['name' => 'Trần Đình Trọng',  'phone' => '0905234567', 'email' => 'taixe2@bushub.vn'],
-            ['name' => 'Lê Hoàng Nam',     'phone' => '0905345678', 'email' => 'taixe3@bushub.vn'],
-            ['name' => 'Phạm Quốc Bảo',   'phone' => '0905456789', 'email' => 'taixe4@bushub.vn'],
-            ['name' => 'Hoàng Minh Tuấn', 'phone' => '0905567890', 'email' => 'taixe5@bushub.vn'],
-            ['name' => 'Đặng Văn Lâm',    'phone' => '0905678901', 'email' => 'taixe6@bushub.vn'],
-            ['name' => 'Bùi Tiến Dũng',   'phone' => '0905789012', 'email' => 'taixe7@bushub.vn'],
-            ['name' => 'Hồ Tấn Tài',      'phone' => '0905890123', 'email' => 'taixe8@bushub.vn'],
-            ['name' => 'Vũ Văn Thanh',    'phone' => '0905901234', 'email' => 'taixe9@bushub.vn'],
-            ['name' => 'Trần Văn Kiên',   'phone' => '0905012345', 'email' => 'taixe10@bushub.vn'],
+            ['name' => 'Trần Văn Kiên',   'phone' => '0905123401', 'email' => 'taixe1@gmail.com'],
+            ['name' => 'Nguyễn Văn Hùng',  'phone' => '0905123402', 'email' => 'taixe2@gmail.com'],
+            ['name' => 'Trần Đình Trọng',  'phone' => '0905123403', 'email' => 'taixe3@gmail.com'],
+            ['name' => 'Lê Hoàng Nam',     'phone' => '0905123404', 'email' => 'taixe4@gmail.com'],
+            ['name' => 'Phạm Quốc Bảo',   'phone' => '0905123405', 'email' => 'taixe5@gmail.com'],
+            ['name' => 'Hoàng Minh Tuấn', 'phone' => '0905123406', 'email' => 'taixe6@gmail.com'],
+            ['name' => 'Đặng Văn Lâm',    'phone' => '0905123407', 'email' => 'taixe7@gmail.com'],
+            ['name' => 'Bùi Tiến Dũng',   'phone' => '0905123408', 'email' => 'taixe8@gmail.com'],
+            ['name' => 'Hồ Tấn Tài',      'phone' => '0905123409', 'email' => 'taixe9@gmail.com'],
+            ['name' => 'Vũ Văn Thanh',    'phone' => '0905123410', 'email' => 'taixe10@gmail.com'],
         ];
 
         $driverUsers = [];
@@ -120,16 +120,16 @@ class DatabaseSeeder extends Seeder
         // 5. TẠO 10 DRIVERS (linked to driver user accounts)
         // ============================================================
         $driversData = [
-            ['name' => 'Nguyễn Văn Hùng',  'phone' => '0905123456', 'license_number' => 'GPLX-43000001', 'license_class' => 'E', 'years_experience' => 10, 'avg_rating' => 4.8, 'total_trips' => 120],
-            ['name' => 'Trần Đình Trọng',  'phone' => '0905234567', 'license_number' => 'GPLX-43000002', 'license_class' => 'E', 'years_experience' => 8,  'avg_rating' => 4.7, 'total_trips' => 95],
-            ['name' => 'Lê Hoàng Nam',     'phone' => '0905345678', 'license_number' => 'GPLX-43000003', 'license_class' => 'E', 'years_experience' => 12, 'avg_rating' => 4.9, 'total_trips' => 155],
-            ['name' => 'Phạm Quốc Bảo',   'phone' => '0905456789', 'license_number' => 'GPLX-43000004', 'license_class' => 'E', 'years_experience' => 7,  'avg_rating' => 4.6, 'total_trips' => 78],
-            ['name' => 'Hoàng Minh Tuấn', 'phone' => '0905567890', 'license_number' => 'GPLX-43000005', 'license_class' => 'E', 'years_experience' => 9,  'avg_rating' => 4.8, 'total_trips' => 110],
-            ['name' => 'Đặng Văn Lâm',    'phone' => '0905678901', 'license_number' => 'GPLX-43000006', 'license_class' => 'E', 'years_experience' => 11, 'avg_rating' => 4.7, 'total_trips' => 130],
-            ['name' => 'Bùi Tiến Dũng',   'phone' => '0905789012', 'license_number' => 'GPLX-43000007', 'license_class' => 'E', 'years_experience' => 14, 'avg_rating' => 4.9, 'total_trips' => 180],
-            ['name' => 'Hồ Tấn Tài',      'phone' => '0905890123', 'license_number' => 'GPLX-43000008', 'license_class' => 'E', 'years_experience' => 6,  'avg_rating' => 4.5, 'total_trips' => 65],
-            ['name' => 'Vũ Văn Thanh',    'phone' => '0905901234', 'license_number' => 'GPLX-43000009', 'license_class' => 'E', 'years_experience' => 10, 'avg_rating' => 4.7, 'total_trips' => 115],
-            ['name' => 'Trần Văn Kiên',   'phone' => '0905012345', 'license_number' => 'GPLX-43000010', 'license_class' => 'E', 'years_experience' => 8,  'avg_rating' => 4.6, 'total_trips' => 90],
+            ['name' => 'Trần Văn Kiên',   'phone' => '0905123401', 'license_number' => 'GPLX-43000001', 'license_class' => 'E', 'years_experience' => 10, 'avg_rating' => 4.9, 'total_trips' => 120],
+            ['name' => 'Nguyễn Văn Hùng',  'phone' => '0905123402', 'license_number' => 'GPLX-43000002', 'license_class' => 'E', 'years_experience' => 8,  'avg_rating' => 4.8, 'total_trips' => 95],
+            ['name' => 'Trần Đình Trọng',  'phone' => '0905123403', 'license_number' => 'GPLX-43000003', 'license_class' => 'E', 'years_experience' => 12, 'avg_rating' => 4.9, 'total_trips' => 155],
+            ['name' => 'Lê Hoàng Nam',     'phone' => '0905123404', 'license_number' => 'GPLX-43000004', 'license_class' => 'E', 'years_experience' => 7,  'avg_rating' => 4.6, 'total_trips' => 78],
+            ['name' => 'Phạm Quốc Bảo',   'phone' => '0905123405', 'license_number' => 'GPLX-43000005', 'license_class' => 'E', 'years_experience' => 9,  'avg_rating' => 4.8, 'total_trips' => 110],
+            ['name' => 'Hoàng Minh Tuấn', 'phone' => '0905123406', 'license_number' => 'GPLX-43000006', 'license_class' => 'E', 'years_experience' => 11, 'avg_rating' => 4.7, 'total_trips' => 130],
+            ['name' => 'Đặng Văn Lâm',    'phone' => '0905123407', 'license_number' => 'GPLX-43000007', 'license_class' => 'E', 'years_experience' => 14, 'avg_rating' => 4.9, 'total_trips' => 180],
+            ['name' => 'Bùi Tiến Dũng',   'phone' => '0905123408', 'license_number' => 'GPLX-43000008', 'license_class' => 'E', 'years_experience' => 6,  'avg_rating' => 4.5, 'total_trips' => 65],
+            ['name' => 'Hồ Tấn Tài',      'phone' => '0905123409', 'license_number' => 'GPLX-43000009', 'license_class' => 'E', 'years_experience' => 10, 'avg_rating' => 4.7, 'total_trips' => 115],
+            ['name' => 'Vũ Văn Thanh',    'phone' => '0905123410', 'license_number' => 'GPLX-43000010', 'license_class' => 'E', 'years_experience' => 8,  'avg_rating' => 4.6, 'total_trips' => 90],
         ];
 
         $drivers = [];

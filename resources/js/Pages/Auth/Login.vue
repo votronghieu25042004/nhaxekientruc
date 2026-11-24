@@ -1260,13 +1260,13 @@ const selectRoleQuickLogin = (role) => {
   activeRoleTab.value = role;
   switchTab('login');
   if (role === 'driver') {
-    loginForm.email = 'taixe1@bushub.vn';
+    loginForm.email = 'taixe1@gmail.com';
     loginForm.password = '123456';
   } else if (role === 'conductor') {
-    loginForm.email = 'loxe1@bushub.vn';
+    loginForm.email = 'loxe1@gmail.com';
     loginForm.password = '123456';
   } else if (role === 'admin') {
-    loginForm.email = 'admin@bushub.vn';
+    loginForm.email = 'admin@nhaxekientruc.vn';
     loginForm.password = '123456';
   } else {
     loginForm.email = '';

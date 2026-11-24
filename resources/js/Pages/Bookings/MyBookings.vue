@@ -53,6 +53,33 @@
       <!-- TAB 1: VÉ XE CỦA TÔI (CHUYẾN ĐANG CHẠY / SẮP ĐI & LỊCH SỬ CHUYẾN CŨ) -->
       <!-- ==================================================================== -->
       <div v-if="activeTab === 'bookings'" class="space-y-4 sm:space-y-6">
+
+        <!-- BỘ LỌC SUB-TABS: VÉ SẮP KHỞI HÀNH vs LỊCH SỬ CHUYẾN ĐI -->
+        <div v-if="bookings.length > 0" class="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+          <button
+            type="button"
+            @click="bookingSubTab = 'active'"
+            :class="bookingSubTab === 'active' ? 'bg-white text-red-600 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 font-bold'"
+            class="flex-1 py-2 sm:py-2.5 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+          >
+            <span>🚍 Vé Sắp Khởi Hành</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] bg-red-50 text-red-700 font-mono font-black border border-red-200">
+              {{ activeBookings.length }}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            @click="bookingSubTab = 'past'"
+            :class="bookingSubTab === 'past' ? 'bg-white text-slate-900 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 font-bold'"
+            class="flex-1 py-2 sm:py-2.5 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+          >
+            <span>🕒 Lịch Sử Chuyến Đi</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-700 font-mono font-bold">
+              {{ pastBookings.length }}
+            </span>
+          </button>
+        </div>
         
         <!-- Empty State Khi Không Tìm Thấy Vé -->
         <div 
@@ -78,8 +105,9 @@
           </Link>
         </div>
 
-        <!-- 1. PHẦN 1: CHUYẾN XE ĐANG DI CHUYỂN HOẶC SẮP ĐI (CÓ THEO DÕI LIVE GPS "XE ĐI TỚI ĐÂU RỒI") -->
-        <div v-if="activeBookings.length > 0" class="space-y-4">
+        <!-- 1. PHẦN 1: VÉ SẮP KHỞI HÀNH (ACTIVE SUB-TAB) -->
+        <div v-if="bookingSubTab === 'active'" class="space-y-4">
+          <div v-if="activeBookings.length > 0" class="space-y-4">
           <div class="flex items-center justify-between">
             <h2 class="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
@@ -97,6 +125,14 @@
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-mono font-black text-sm text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-lg">
                   #{{ b.booking_code }}
+                </span>
+
+                <!-- ĐỒNG HỒ ĐẾM NGƯỢC XUẤT BẾN -->
+                <span
+                  v-if="getDepartureCountdown(b.departure_raw, b.departure_time)"
+                  class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1 shadow-2xs"
+                >
+                  {{ getDepartureCountdown(b.departure_raw, b.departure_time) }}
                 </span>
 
                 <!-- Khứ hồi tag -->
@@ -248,7 +284,16 @@
           </div>
         </div>
 
-        <!-- 2. PHẦN 2: LỊCH SỬ CÁC CHUYẾN XE ĐÃ ĐI (HOÀN THÀNH AN TOÀN) -->
+                  <div v-else class="bg-white p-8 rounded-3xl border border-slate-200 text-center space-y-2">
+            <div class="text-3xl">🚍</div>
+            <h4 class="text-sm font-black text-slate-800">Không có vé nào sắp khởi hành</h4>
+            <p class="text-xs text-slate-500">Quý khách chưa có chuyến xe nào sắp đi. Hãy đặt vé mới hoặc kiểm tra tab "Lịch Sử Chuyến Đi".</p>
+          </div>
+        </div>
+
+        <!-- 2. PHẦN 2: LỊCH SỬ CHUYẾN ĐI (PAST SUB-TAB) -->
+        <div v-if="bookingSubTab === 'past'" class="space-y-4">
+<!-- 2. PHẦN 2: LỊCH SỬ CÁC CHUYẾN XE ĐÃ ĐI (HOÀN THÀNH AN TOÀN) -->
         <div v-if="pastBookings.length > 0" class="space-y-4 pt-4 border-t border-slate-200">
           <div class="flex items-center justify-between">
             <h2 class="text-sm font-black text-slate-700 uppercase tracking-wide flex items-center gap-2">
@@ -306,6 +351,12 @@
           </div>
         </div>
 
+        <div v-if="pastBookings.length === 0" class="bg-white p-8 rounded-3xl border border-slate-200 text-center space-y-2">
+          <div class="text-3xl">📜</div>
+          <h4 class="text-sm font-black text-slate-800">Chưa có lịch sử chuyến đi cũ</h4>
+          <p class="text-xs text-slate-500">Các chuyến xe sau khi hoàn thành hành trình sẽ được lưu tại đây kèm điểm thưởng tích lũy.</p>
+        </div>
+      </div>
       </div>
 
       <!-- ==================================================================== -->
@@ -467,12 +518,21 @@
           </div>
 
           <!-- Nút xem đầy đủ -->
-          <div class="pt-2 flex items-center justify-end gap-2">
+          <div class="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2">
+            <Link 
+              v-if="trackingBooking.trip_id"
+              :href="`/trips/${trackingBooking.trip_id}/live-tracking`"
+              class="w-full sm:w-1/2 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs text-center shadow-md transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>🗺️</span>
+              <span>Bản Đồ Xe Chạy Trực Tiếp</span>
+            </Link>
             <Link 
               :href="`/booking/${trackingBooking.booking_code}/detail`"
-              class="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs text-center shadow-md transition cursor-pointer"
+              :class="trackingBooking.trip_id ? 'w-full sm:w-1/2' : 'w-full'"
+              class="py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs text-center shadow-md transition cursor-pointer"
             >
-              Xem Chi Tiết Vé & QR Check-in ➔
+              Chi Tiết Vé & QR Check-in ➔
             </Link>
           </div>
         </div>
@@ -574,6 +634,38 @@ const props = defineProps({
 });
 
 const activeTab = ref('bookings'); // 'bookings' | 'loyalty'
+const bookingSubTab = ref('active'); // 'active' (Vé Sắp Đi) | 'past' (Lịch Sử)
+
+const getDepartureCountdown = (depRaw, depTimeStr) => {
+  if (!depRaw && !depTimeStr) return null;
+  let depDate = depRaw ? new Date(depRaw) : null;
+  if (!depDate || isNaN(depDate.getTime())) {
+    // Thử parse depTimeStr dạng "HH:mm dd/MM/yyyy"
+    if (depTimeStr) {
+      const parts = depTimeStr.split(' ');
+      if (parts.length === 2) {
+        const timeParts = parts[0].split(':');
+        const dateParts = parts[1].split('/');
+        if (dateParts.length === 3) {
+          depDate = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1]);
+        }
+      }
+    }
+  }
+  if (!depDate || isNaN(depDate.getTime())) return null;
+  const now = new Date();
+  const diffMs = depDate.getTime() - now.getTime();
+  if (diffMs <= 0) {
+    return '⚡ Đang trong khung giờ xuất bến';
+  }
+  const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  if (diffHrs > 24) {
+    const days = Math.floor(diffHrs / 24);
+    return `⏳ Xe xuất bến sau ${days} ngày ${diffHrs % 24}h`;
+  }
+  return `⏳ Xe xuất bến sau ${diffHrs} giờ ${diffMins} phút`;
+};
 
 // Tách danh sách vé: Đang đi & Sắp đi vs Lịch sử đã hoàn thành
 const activeBookings = computed(() => {

@@ -294,6 +294,111 @@
 
       </div>
 
+    <!-- MODAL HƯỚNG DẪN MUA VÉ XE TRỰC TUYẾN 4 BƯỚC -->
+    <Teleport to="body">
+    <div
+      v-if="showGuide"
+      class="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+      @click.self="showGuide = false"
+    >
+      <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 animate-in zoom-in-95 text-slate-800 max-h-[90vh] overflow-y-auto">
+        <!-- Header -->
+        <div class="flex items-start justify-between pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center text-2xl shadow-xs shrink-0">
+              📖
+            </div>
+            <div>
+              <span class="px-2.5 py-0.5 rounded-md bg-red-100 text-red-700 text-[10px] font-black uppercase tracking-wider">
+                Cẩm Nang Đặt Vé
+              </span>
+              <h3 class="text-base sm:text-lg font-black text-slate-900 mt-0.5">
+                Hướng Dẫn Mua Vé Xe Trực Tuyến 4 Bước Dễ Dàng
+              </h3>
+              <p class="text-xs text-slate-500">Giữ chỗ 100%, thanh toán linh hoạt, xuất vé điện tử tức thì</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            @click="showGuide = false"
+            class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- 4 Bước mua vé -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <!-- Bước 1 -->
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 hover:border-red-300 transition">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-red-600 text-white font-black text-xs flex items-center justify-center">1</span>
+              <h4 class="text-xs font-black text-slate-900">Chọn Lộ Trình & Ngày Đi</h4>
+            </div>
+            <p class="text-[11px] text-slate-600 leading-relaxed">
+              Chọn điểm đi (Đà Nẵng), điểm đến (Huế, Quy Nhơn, Quảng Trị, Đồng Hới...), chọn ngày khởi hành (chọn thêm ngày về nếu đi Khứ hồi) và bấm <b>Tìm kiếm xe</b>.
+            </p>
+          </div>
+
+          <!-- Bước 2 -->
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 hover:border-red-300 transition">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-red-600 text-white font-black text-xs flex items-center justify-center">2</span>
+              <h4 class="text-xs font-black text-slate-900">Chọn Chuyến & Vị Trí Ghế</h4>
+            </div>
+            <p class="text-[11px] text-slate-600 leading-relaxed">
+              Xem chi tiết giờ chạy, loại xe Limousine VIP phòng nằm hoặc ghế ngả. Mở sơ đồ 2 tầng trực quan để tự chọn vị trí ghế/giường mong muốn.
+            </p>
+          </div>
+
+          <!-- Bước 3 -->
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 hover:border-red-300 transition">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-red-600 text-white font-black text-xs flex items-center justify-center">3</span>
+              <h4 class="text-xs font-black text-slate-900">Nhập Thông Tin & Mã Giảm Giá</h4>
+            </div>
+            <p class="text-[11px] text-slate-600 leading-relaxed">
+              Nhập Tên và Số điện thoại nhận vé. Nếu là sinh viên, nhập ngay mã <b class="text-red-600">PRO30</b> hoặc <b class="text-red-600">SINHVIEN</b> để được giảm ngay 30% giá vé!
+            </p>
+          </div>
+
+          <!-- Bước 4 -->
+          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 hover:border-red-300 transition">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-full bg-red-600 text-white font-black text-xs flex items-center justify-center">4</span>
+              <h4 class="text-xs font-black text-slate-900">Thanh Toán & Nhận Vé Tức Thì</h4>
+            </div>
+            <p class="text-[11px] text-slate-600 leading-relaxed">
+              Chọn <b>Thanh toán 100%</b> hoặc <b>Cọc 30%</b> giữ chỗ (70% còn lại gửi bác tài khi lên xe). Quét mã VietQR nhận vé điện tử kèm mã QR và file PDF lưu về máy.
+            </p>
+          </div>
+        </div>
+
+        <!-- Lưu ý hỗ trợ -->
+        <div class="p-3.5 bg-amber-50 rounded-2xl border border-amber-200/70 flex items-center gap-3">
+          <span class="text-xl">💡</span>
+          <p class="text-[11px] text-amber-900 leading-relaxed">
+            <b>Mẹo nhỏ:</b> Quý khách có thể tự hủy vé trên hệ thống để hoàn tiền tự động theo chính sách nếu có thay đổi lịch trình. Cần hỗ trợ gọi ngay Hotline <b>1900 6067</b> (24/7).
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+          <div class="text-[11px] text-slate-500 font-medium">
+            Nhà xe Kiến Trúc Đà Nẵng • Đồng hành trên mọi nẻo đường
+          </div>
+          <button
+            type="button"
+            @click="showGuide = false"
+            class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md transition cursor-pointer"
+          >
+            Đã hiểu & Đặt vé ngay
+          </button>
+        </div>
+      </div>
+    </div>
+    </Teleport>
+
     </div>
   </div>
 </template>
@@ -419,7 +524,7 @@ const recentSearches = ref([
 
 onMounted(() => {
   try {
-    const saved = localStorage.getItem('bushub_recent_searches');
+    const saved = localStorage.getItem('nhaxekientruc_recent_searches') || localStorage.getItem('bushub_recent_searches');
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -451,7 +556,7 @@ const handleSearch = () => {
     ].slice(0, 4);
     recentSearches.value = newRecent;
     try {
-      localStorage.setItem('bushub_recent_searches', JSON.stringify(newRecent));
+      localStorage.setItem('nhaxekientruc_recent_searches', JSON.stringify(newRecent));
     } catch (e) {}
   }
 

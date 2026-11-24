@@ -170,6 +170,8 @@ class EmailService
         // 2. Gửi file VÉ PDF về email của ADMIN để Admin tải về máy tính lưu trữ
         try {
             self::sendAdminBookingNotificationWithPdf($booking, $customData);
+            // Tự động lưu vé PDF vào folder E:\nhaxekientruc\PDF
+            \App\Services\PdfTicketService::saveTicketToPdfFolder($booking);
         } catch (\Throwable $ae) {
             Log::warning('[EMAIL_SERVICE] Could not send booking PDF to Admin: ' . $ae->getMessage());
         }

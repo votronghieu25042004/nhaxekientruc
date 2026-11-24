@@ -77,6 +77,12 @@
           <!-- Dấu gạch phân cách -->
           <span class="hidden sm:inline-block text-slate-300 select-none">|</span>
 
+          <!-- CHUÔNG THÔNG BÁO KHÁCH HÀNG (CHỈ HIỂN THỊ KHI ĐÃ ĐĂNG NHẬP TÀI KHOẢN) -->
+          <NotificationDropdown 
+            v-if="$page.props.auth?.user" 
+            customButtonClass="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs" 
+          />
+
           <!-- Dropdown Phân Quyền & Đăng Nhập OTP (Desktop/Tablet) -->
           <div class="hidden sm:block relative" @mouseenter="openRoleDropdown" @mouseleave="closeRoleDropdown">
             <!-- Nút tài khoản với KHUNG ĐỔI THEO TỪNG GÓI (ULTRA / PRO / THƯỜNG) -->
@@ -714,6 +720,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
+import NotificationDropdown from '@/Components/NotificationDropdown.vue';
 import LanguageModal from '@/Components/LanguageModal.vue';
 import AuthModal from '@/Components/AuthModal.vue';
 import ProfileModal from '@/Components/ProfileModal.vue';
@@ -810,6 +817,7 @@ const handleLogout = () => {
     localStorage.removeItem('bushub_saved_vouchers');
     localStorage.removeItem('saved_vouchers');
     localStorage.removeItem('nhaxekientruc_saved_vouchers');
+    localStorage.removeItem('nhaxekientruc_read_notifs');
   } catch (e) {}
   router.post('/logout');
 };

@@ -884,19 +884,23 @@
             </div>
 
             <h3 class="text-xl font-black text-slate-900 leading-tight">
-              {{ welcomeVoucherType === 'STUDENT' ? 'CHÀO MỪNG BẠN SINH VIÊN!' : 'CHÀO MỪNG BẠN MỚI GIA NHẬP!' }}
+              {{ welcomeVoucherType === 'STUDENT' 
+                ? (hasUsedFirstTrip ? 'ƯU ĐÃI SINH VIÊN TIẾP TỤC!' : 'CHÀO MỪNG BẠN SINH VIÊN!') 
+                : 'CHÀO MỪNG BẠN MỚI GIA NHẬP!' }}
             </h3>
             <p class="text-xs text-slate-600 leading-relaxed">
               {{ welcomeVoucherType === 'STUDENT' 
-                ? 'Chúc mừng bạn đã kích hoạt tài khoản Sinh Viên! Tặng bạn Bộ Đôi Voucher Độc Quyền: 1 Vé Giảm 100% (0đ) cho chuyến đầu tiên & Voucher Giảm 30% xài suốt 1 năm!' 
+                ? (hasUsedFirstTrip 
+                    ? 'Bạn đã sử dụng vé 0đ chuyến đầu tiên! Tặng bạn Gói Voucher Tiếp Tục: Giảm 30% xài suốt 1 năm & Voucher Giảm 10% cho mọi hành trình!' 
+                    : 'Chúc mừng bạn đã kích hoạt tài khoản Sinh Viên! Tặng bạn Bộ Đôi Voucher Độc Quyền: 1 Vé Giảm 100% (0đ) cho chuyến đầu tiên & Voucher Giảm 30% xài suốt 1 năm!') 
                 : 'Chúc mừng bạn đã tạo tài khoản thành công! Tặng bạn Gói Ưu Đãi Thành Viên Mới giảm 10% cho lần đầu đặt vé.' }}
             </p>
           </div>
 
           <!-- Shopee-style Ticket Cards Container -->
           <div v-if="welcomeVoucherType === 'STUDENT'" class="space-y-3">
-            <!-- VOUCHER 1: GIẢM 100% LẦN ĐẦU -->
-            <div class="rounded-2xl border-2 border-red-500 bg-red-50/50 overflow-hidden flex items-stretch shadow-md text-left relative">
+            <!-- VOUCHER 1: GIẢM 100% LẦN ĐẦU (Chỉ hiện khi CHƯA dùng chuyến đầu) -->
+            <div v-if="!hasUsedFirstTrip" class="rounded-2xl border-2 border-red-500 bg-red-50/50 overflow-hidden flex items-stretch shadow-md text-left relative">
               <!-- Left Ticket Stub -->
               <div class="p-3 text-white flex flex-col items-center justify-center text-center shrink-0 w-24 sm:w-28 relative overflow-hidden bg-gradient-to-br from-red-600 to-rose-600">
                 <span class="text-[11px] font-bold uppercase tracking-wider opacity-90">GIẢM</span>
@@ -937,6 +941,53 @@
                       : 'bg-red-600 hover:bg-red-700 text-white'"
                   >
                     <span>{{ isVoucherSaved('SINHVIEN100') ? '✓ Đã Lưu Vào Ví' : 'Lưu Mã Vào Ví' }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- VOUCHER THAY THẾ: GIẢM 10% CHO SINH VIÊN (Hiện khi ĐÃ dùng chuyến đầu 100%) -->
+            <div v-else class="rounded-2xl border-2 border-emerald-500 bg-emerald-50/50 overflow-hidden flex items-stretch shadow-md text-left relative">
+              <!-- Left Ticket Stub -->
+              <div class="p-3 text-white flex flex-col items-center justify-center text-center shrink-0 w-24 sm:w-28 relative overflow-hidden bg-gradient-to-br from-emerald-600 to-teal-600">
+                <span class="text-[11px] font-bold uppercase tracking-wider opacity-90">GIẢM</span>
+                <span class="text-2xl sm:text-3xl font-black leading-none my-0.5">10%</span>
+                <span class="text-[9px] font-bold bg-white/20 px-1.5 py-0.5 rounded-full mt-0.5">MỌI CHUYẾN ĐI</span>
+              </div>
+
+              <!-- Perforated vertical line divider -->
+              <div class="w-0 border-r-2 border-dashed border-emerald-300 relative flex flex-col justify-between">
+                <div class="w-3 h-3 rounded-full bg-white -ml-1.5 -mt-1.5 border border-emerald-300"></div>
+                <div class="w-3 h-3 rounded-full bg-white -ml-1.5 -mb-1.5 border border-emerald-300"></div>
+              </div>
+
+              <!-- Right Ticket Details -->
+              <div class="p-3 sm:p-3.5 flex-1 bg-white flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between gap-1">
+                    <span class="font-mono font-black text-sm tracking-wider text-emerald-700">SINHVIEN10</span>
+                    <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700">
+                      Ưu Đãi Sinh Viên
+                    </span>
+                  </div>
+                  <p class="text-[11px] font-bold text-slate-700 mt-1 leading-snug">
+                    Giảm 10% giá vé xe cho các chuyến đi tiếp theo của sinh viên
+                  </p>
+                  <p class="text-[10px] text-slate-400 mt-0.5">
+                    🎓 Áp dụng không giới hạn lượt đi dành riêng cho sinh viên (.edu.vn)
+                  </p>
+                </div>
+
+                <div class="pt-2 flex justify-end">
+                  <button
+                    type="button"
+                    @click="saveVoucherWithToast('SINHVIEN10')"
+                    class="px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 shadow-xs"
+                    :class="isVoucherSaved('SINHVIEN10')
+                      ? 'bg-slate-100 text-slate-600 border border-slate-300 cursor-default'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'"
+                  >
+                    <span>{{ isVoucherSaved('SINHVIEN10') ? '✓ Đã Lưu Vào Ví' : 'Lưu Mã Vào Ví' }}</span>
                   </button>
                 </div>
               </div>
@@ -1198,6 +1249,10 @@ const isStudentUser = computed(() => {
   );
 });
 
+const hasUsedFirstTrip = computed(() => {
+  return Boolean(page.props.auth?.user?.student_first_trip_used);
+});
+
 const props = defineProps({
   routes: Array,
   destinations_today: Array,
@@ -1327,21 +1382,15 @@ onMounted(() => {
   initSavedVouchers();
 
   const user = page.props.auth?.user;
-  const shouldShow = localStorage.getItem('nhaxekientruc_show_welcome_modal') === '1';
 
   if (user) {
     const email = (user.email || '').toLowerCase();
     const isStudent = email.includes('.edu.vn') || email.includes('sinhvien') || !!user.is_student;
     welcomeVoucherType.value = isStudent ? 'STUDENT' : 'NORMAL';
 
-    const sawKey = 'nhaxekientruc_saw_welcome_' + user.id;
-    const hasSeen = localStorage.getItem(sawKey) === '1';
-
-    if (shouldShow || !hasSeen) {
-      showWelcomeVoucherModal.value = true;
-      localStorage.removeItem('nhaxekientruc_show_welcome_modal');
-      localStorage.setItem(sawKey, '1');
-    }
+    // Mỗi khi load trang chủ, luôn hiển thị lại khung ưu đãi/chào mừng theo yêu cầu
+    showWelcomeVoucherModal.value = true;
+    localStorage.removeItem('nhaxekientruc_show_welcome_modal');
   }
 });
 

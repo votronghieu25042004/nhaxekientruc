@@ -94,8 +94,8 @@ class TripScheduleService
         $targetDateStr = $date->toDateString();
         $existingCount = Trip::whereDate('departure_time', $targetDateStr)->count();
 
-        // Nếu ngày này chưa có đủ chuyến xe chuẩn mực (ít nhất 10 chuyến), sinh đầy đủ 20 chuyến
-        if ($existingCount < 10) {
+        // Nếu ngày này chưa có đủ 20 chuyến chuẩn mực cho 10 xe (mỗi xe 2 chuyến), sinh đầy đủ các chuyến còn thiếu
+        if ($existingCount < 20) {
             self::generateTripsForDate($date, $now);
         }
     }
@@ -375,7 +375,11 @@ class TripScheduleService
         }
         $drivers = Driver::orderBy('id', 'asc')->get();
         $conductors = User::where('role', 'conductor')
-            ->where('email', 'like', 'loxe%@bushub.vn')
+            ->where(function($q) {
+                $q->where('email', 'like', 'loxe%@gmail.com')
+                  ->orWhere('email', 'like', 'loxe%@nhaxekientruc.vn')
+                  ->orWhere('email', 'like', 'loxe%@bushub.vn');
+            })
             ->orderBy('id', 'asc')
             ->get();
         if ($conductors->count() < 10) {
@@ -504,7 +508,9 @@ class TripScheduleService
                     $status = 'OPEN_FOR_SALE';
                 }
 
-                $tripCode = 'KT-' . $date->format('md') . '-' . str_pad($bus->id * 10 + (int)$h, 4, '0', STR_PAD_LEFT);
+                $baseCode = sprintf('KT-%s-%02d%02d', $date->format('md'), $bus->id, (int)$h);
+                $tripCode = $baseCode;
+                $suffix = 1;
 
                 // Kiểm tra xem chuyến này đã tồn tại chưa
                 $trip = Trip::where('bus_id', $bus->id)
@@ -512,6 +518,11 @@ class TripScheduleService
                     ->first();
 
                 if (!$trip) {
+                    while (Trip::where('trip_code', $tripCode)->exists()) {
+                        $suffix++;
+                        $tripCode = $baseCode . '-' . $suffix;
+                    }
+
                     $trip = Trip::create([
                         'trip_code'         => $tripCode,
                         'route_id'          => $tItem['route']->id,

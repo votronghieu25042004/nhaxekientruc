@@ -40,22 +40,22 @@ class AuthController extends Controller
         // Hỗ trợ alias đăng nhập nhanh
         $user = null;
         if (in_array($cleanEmail, ['admin', 'admin@bushub.vn', 'admin@nhaxekientruc.vn'])) {
-            $user = User::where('email', 'admin@bushub.vn')->orWhere('role', 'admin')->first();
+            $user = User::where('email', 'admin@nhaxekientruc.vn')->orWhere('email', 'admin@bushub.vn')->orWhere('role', 'admin')->first();
         } elseif (in_array($cleanEmail, ['09025042004', 'hieu', 'tronghieu', 'votronghieu', 'tronghieuvo9@gmail.com']) || $cleanPhone === '09025042004') {
             $user = User::where('phone', '09025042004')->orWhere('email', 'tronghieuvo9@gmail.com')->orWhere('id', 304)->first();
-        } elseif (preg_match('/^(?:loxe|lox|lx)\s*([0-9]+)$/i', $cleanEmail, $m)) {
+        } elseif (preg_match('/^(?:loxe|lox|lx)\s*([0-9]+)(?:@[a-z0-9.-]+)?$/i', $cleanEmail, $m)) {
             $num = (int)$m[1];
-            $user = User::where('email', "loxe{$num}@bushub.vn")
+            $user = User::where('email', "loxe{$num}@gmail.com")
+                ->orWhere('email', "loxe{$num}@nhaxekientruc.vn")
+                ->orWhere('email', "loxe{$num}@bushub.vn")
                 ->orWhere('name', "Nguyễn Văn Phúc {$num}")
-                ->orWhere('name', "Nguyễn Văn Phúc{$num}")
-                ->orWhere('email', "loxe{$num}@gmail.com")
                 ->first();
-        } elseif (preg_match('/^(?:taixe|driver|tx)\s*([0-9]+)$/i', $cleanEmail, $m)) {
+        } elseif (preg_match('/^(?:taixe|driver|tx)\s*([0-9]+)(?:@[a-z0-9.-]+)?$/i', $cleanEmail, $m)) {
             $num = (int)$m[1];
-            $user = User::where('email', "taixe{$num}@bushub.vn")
+            $user = User::where('email', "taixe{$num}@gmail.com")
+                ->orWhere('email', "taixe{$num}@nhaxekientruc.vn")
+                ->orWhere('email', "taixe{$num}@bushub.vn")
                 ->orWhere('name', "Trần Văn Kiên {$num}")
-                ->orWhere('name', "Trần Văn Kiên{$num}")
-                ->orWhere('email', "taixe{$num}@gmail.com")
                 ->first();
         } elseif (in_array($cleanEmail, ['sinhvien', 'sv', 'dau'])) {
             $user = User::where('email', 'sinhvien@dau.edu.vn')->first();
@@ -275,6 +275,8 @@ class AuthController extends Controller
                 'password' => Hash::make('123456'),
             ]);
         }
+
+// Đã bỏ tự động lưu PDF khi đăng ký tài khoản mới theo yêu cầu
 
         Auth::login($user, true);
         if ($request->hasSession()) {

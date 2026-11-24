@@ -32,7 +32,7 @@
                                 <tr>
                                     <td align="center">
                                         <!-- Logo Trường ĐH Kiến Trúc -->
-                                        <img src="https://raw.githubusercontent.com/votronghieu25042004/bushub-booking/main/public/images/logo.png" width="68" height="68" alt="Logo Đại Học Kiến Trúc Đà Nẵng" style="display: block; margin: 0 auto 10px auto; width: 68px; height: 68px; object-fit: contain; border: 0;" />
+                                        <img src="https://raw.githubusercontent.com/votronghieu25042004/nhaxekientruc/main/public/images/logo.png" width="68" height="68" alt="Logo Đại Học Kiến Trúc Đà Nẵng" style="display: block; margin: 0 auto 10px auto; width: 68px; height: 68px; object-fit: contain; border: 0;" />
                                         
                                         <!-- Tên Trường -->
                                         <div style="font-size: 13px; font-weight: 800; color: #b91c1c; text-transform: uppercase; letter-spacing: 1px; line-height: 1.3;">

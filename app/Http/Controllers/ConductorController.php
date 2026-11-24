@@ -51,17 +51,18 @@ class ConductorController extends Controller
             ->get();
 
         $user = Auth::user();
-        // Xác định quyền hiển thị menu chuyển đổi cổng & chọn tài khoản:
-        // - Mặc định luôn là TRUE (để Admin/Dev trải nghiệm, đổi cổng thông tin và chọn các acc để test).
-        // - Chỉ chuyển thành FALSE khi: tài khoản đăng nhập có role === 'conductor' VÀ được đánh dấu 'is_real_conductor_login' từ form /login VÀ không có cờ admin.
-        $isAdminViewing = true;
-        if ($user && in_array($user->role, ['conductor', 'staff']) && session('is_real_conductor_login') === true && !session('admin_mode') && !$request->has('admin_view')) {
-            $isAdminViewing = false;
-        }
+        // Xác định quyền hiển thị Admin Viewing Mode:
+        // - CHỈ hiển thị khi tài khoản đăng nhập có role === 'admin'.
+        // - Khi Lơ xe (conductor / staff) đăng nhập thật thì luôn ẩn thanh Admin Viewing Mode.
+        $isAdminViewing = ($user && $user->role === 'admin');
 
         // Lấy danh sách tài khoản Lơ xe và gắn kèm biển số xe được phân công thực tế từ trips (Loại bỏ trùng lặp tên)
         $conductorAccounts = \App\Models\User::where('role', 'conductor')
-            ->where('email', 'like', 'loxe%@bushub.vn')
+            ->where(function ($q) {
+                $q->where('email', 'like', 'loxe%@gmail.com')
+                  ->orWhere('email', 'like', 'loxe%@nhaxekientruc.vn')
+                  ->orWhere('email', 'like', 'loxe%@bushub.vn');
+            })
             ->orderBy('id', 'asc')
             ->get(['id', 'name', 'email', 'phone']);
 
@@ -77,11 +78,12 @@ class ConductorController extends Controller
                 ->values();
         }
 
-        $conductorAccounts = $conductorAccounts->map(function ($acc) use ($allTrips, $buses) {
+        $conductorAccounts = $conductorAccounts->map(function ($acc, $idx) use ($allTrips, $buses) {
             $assignedTrip = $allTrips->first(function ($t) use ($acc) {
                 return $t->conductor_id == $acc->id || ($t->second_conductor_id ?? null) == $acc->id;
             });
-            $acc->vehicle_plate = $assignedTrip?->bus?->license_plate ?? '43B-012.34';
+            $fallbackPlate = (isset($buses[$idx % $buses->count()]) ? $buses[$idx % $buses->count()]->license_plate : '43B-012.34');
+            $acc->vehicle_plate = $assignedTrip?->bus?->license_plate ?? $fallbackPlate;
             return $acc;
         });
 
@@ -536,14 +538,37 @@ class ConductorController extends Controller
             $roadsidePaxCount = $activeBookings->where('booking_source', 'ROADSIDE_ON_BUS')->count();
 
             // 1. Tiền thanh toán Online / Đã cọc Web (VNPAY, Chuyển khoản, Momo, ONLINE_DEPOSIT)
-            $onlineBookings = $activeBookings->where('payment_method', '!=', 'CASH');
-            $onlinePaidAmount = (float) $onlineBookings->sum('paid_amount');
-            $onlinePaidCount = $onlineBookings->where('paid_amount', '>', 0)->count();
+            $onlinePaidAmount = 0;
+            $cashCollectedAmount = 0;
+            $onlinePaidCount = 0;
+            $cashCollectedCount = 0;
 
-            // 2. Tiền mặt Lơ xe ĐÃ THU thực tế trên xe (vé bắt dọc đường + tiền mặt đã thu khi lên xe)
-            $cashBookings = $activeBookings->where('payment_method', 'CASH')->where('payment_status', 'PAID');
-            $cashCollectedAmount = (float) $cashBookings->sum('paid_amount');
-            $cashCollectedCount = $cashBookings->count();
+            foreach ($activeBookings as $b) {
+                $tot = (float) $b->total_amount;
+                $paid = (float) $b->paid_amount;
+                $isRoadside = ($b->booking_source === 'ROADSIDE_ON_BUS');
+
+                if ($b->payment_method === 'CASH' || $isRoadside) {
+                    if ($b->payment_status === 'PAID' || $b->checkin_status === 'CHECKED_IN') {
+                        $cashCollectedAmount += $tot;
+                        $cashCollectedCount++;
+                    } else {
+                        $cashCollectedAmount += $paid;
+                        if ($paid > 0) $cashCollectedCount++;
+                    }
+                } elseif ($b->payment_method === 'DEPOSIT_30' || str_contains($b->notes ?? '', 'Cọc trước 30%')) {
+                    $onlineDeposit = round($tot * 0.3);
+                    $onlinePaidAmount += $onlineDeposit;
+                    $onlinePaidCount++;
+                    if ($b->payment_status === 'PAID' || $b->checkin_status === 'CHECKED_IN') {
+                        $cashCollectedAmount += max(0, $tot - $onlineDeposit);
+                        $cashCollectedCount++;
+                    }
+                } else {
+                    $onlinePaidAmount += $paid;
+                    if ($paid > 0) $onlinePaidCount++;
+                }
+            }
 
             // 3. Tiền mặt CÒN THIẾU cần thu (gồm khách chưa trả + khách mới cọc 30-50%, tuyệt đối không tính khách đã lên xe vì đã thanh toán 100%)
             $uncollectedBookings = $activeBookings->filter(function ($b) {
@@ -951,7 +976,9 @@ class ConductorController extends Controller
         if ($remainingAmount > 0 && $collectCash) {
             $booking->paid_amount = $booking->total_amount;
             $booking->payment_status = 'PAID';
-            $booking->payment_method = 'CASH';
+            if ($booking->payment_method === 'CASH' || empty($booking->payment_method)) {
+                $booking->payment_method = 'CASH';
+            }
             $booking->notes = ($booking->notes ? $booking->notes . ' | ' : '') . 'Đã thu ' . number_format($remainingAmount, 0, ',', '.') . 'đ tiền mặt khi lên xe';
         }
 
@@ -1014,7 +1041,9 @@ class ConductorController extends Controller
         if ($remainingAmount > 0 && $collectCash) {
             $booking->paid_amount = $booking->total_amount;
             $booking->payment_status = 'PAID';
-            $booking->payment_method = 'CASH';
+            if ($booking->payment_method === 'CASH' || empty($booking->payment_method)) {
+                $booking->payment_method = 'CASH';
+            }
             $booking->notes = ($booking->notes ? $booking->notes . ' | ' : '') . 'Đã thu ' . number_format($remainingAmount, 0, ',', '.') . 'đ tiền mặt khi lên xe';
         }
 
@@ -1095,11 +1124,12 @@ class ConductorController extends Controller
     public function collectPayment(Request $request, $bookingId)
     {
         $booking = Booking::findOrFail($bookingId);
+        $rem = max(0, (float)$booking->total_amount - (float)$booking->paid_amount);
 
         $booking->update([
             'payment_status' => 'PAID',
-            'payment_method' => 'CASH',
             'paid_amount' => $booking->total_amount,
+            'notes' => ($booking->notes ? $booking->notes . ' | ' : '') . ($rem > 0 ? ('Đã thu ' . number_format($rem, 0, ',', '.') . 'đ tiền mặt') : 'Đã thanh toán đủ'),
         ]);
 
         AuditLog::log('COLLECT_CASH', "Lơ xe đã thu đủ tiền mặt " . number_format($booking->total_amount, 0, ',', '.') . "đ từ khách {$booking->customer_name} (Vé {$booking->booking_code})", 'Booking', $booking->id);
@@ -1222,10 +1252,12 @@ class ConductorController extends Controller
     {
         $request->validate([
             'new_seat_number' => 'required|string',
+            'old_seat_number' => 'nullable|string',
         ]);
 
         $booking = Booking::with('bookingSeats')->findOrFail($bookingId);
         $newSeat = trim($request->input('new_seat_number'));
+        $oldSeatInput = $request->input('old_seat_number');
 
         // Kiểm tra xem ghế mới có trống không (đồng bộ 100% với cả 4 bên)
         $allOccupied = SeatSegmentService::getAllBookedSeatsForTrip($booking->trip_id);
@@ -1236,16 +1268,26 @@ class ConductorController extends Controller
             return back()->with('error', "Ghế {$newSeat} hiện đang có khách ngồi! Vui lòng chọn ghế khác.");
         }
 
-        $oldSeat = $booking->bookingSeats->first() ? $booking->bookingSeats->first()->seat_number : 'N/A';
+        // Tìm đúng bản ghi ghế cần đổi
+        $seatRecord = null;
+        if ($oldSeatInput) {
+            $seatRecord = $booking->bookingSeats->firstWhere('seat_number', $oldSeatInput);
+        }
+        if (!$seatRecord) {
+            $seatRecord = $booking->bookingSeats->first();
+        }
+
+        if (!$seatRecord) {
+            return back()->with('error', 'Không tìm thấy thông tin ghế của vé này để đổi!');
+        }
+
+        $oldSeat = $seatRecord->seat_number;
 
         // Cập nhật số ghế
-        if ($booking->bookingSeats->isNotEmpty()) {
-            $seatRecord = $booking->bookingSeats->first();
-            $seatRecord->update([
-                'seat_number' => $newSeat,
-                'floor' => str_starts_with($newSeat, 'B') ? 2 : 1,
-            ]);
-        }
+        $seatRecord->update([
+            'seat_number' => $newSeat,
+            'floor' => str_starts_with($newSeat, 'B') ? 2 : 1,
+        ]);
 
         $booking->update([
             'notes' => ($booking->notes ? $booking->notes . ' | ' : '') . "Đổi từ ghế {$oldSeat} sang {$newSeat} bởi " . (Auth::user()->name ?? 'Lơ xe'),
@@ -1266,7 +1308,7 @@ class ConductorController extends Controller
     public function updateTripStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:SCHEDULED,BOARDING,IN_TRANSIT,COMPLETED,CANCELLED',
+            'status' => 'required|in:SCHEDULED,DRIVER_CONFIRMED,READY,BOARDING,IN_TRANSIT,REST_STOP,COMPLETED,CLOSED,CANCELLED',
         ]);
 
         $trip = Trip::findOrFail($id);
@@ -1387,9 +1429,34 @@ class ConductorController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $activeBookings = $trip->bookings->whereNotIn('checkin_status', ['NO_SHOW', 'CANCELLED']);
-        $cashCollected = $activeBookings->where('payment_method', 'CASH')->where('payment_status', 'PAID')->sum('paid_amount');
-        $totalExpenses = $trip->expenses->sum('amount');
+        $activeBookings = $trip->bookings->whereNotIn('checkin_status', ['NO_SHOW', 'CANCELLED'])->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
+        $totalRevenue = 0;
+        $onlinePaid = 0;
+        $cashCollected = 0;
+
+        foreach ($activeBookings as $b) {
+            $tot = (float)($b->total_price ?: $b->total_amount ?: 0);
+            $paid = (float)($b->paid_amount ?: 0);
+            $totalRevenue += $tot;
+
+            if ($b->payment_method === 'CASH' || $b->booking_source === 'ROADSIDE_ON_BUS') {
+                if ($b->payment_status === 'PAID' || $b->checkin_status === 'CHECKED_IN') {
+                    $cashCollected += $tot;
+                } else {
+                    $cashCollected += $paid;
+                }
+            } elseif ($b->payment_method === 'DEPOSIT_30' || str_contains($b->notes ?? '', 'Cọc trước 30%')) {
+                $depositOnline = round($tot * 0.3);
+                $onlinePaid += $depositOnline;
+                if ($b->payment_status === 'PAID' || $b->checkin_status === 'CHECKED_IN') {
+                    $cashCollected += max(0, $tot - $depositOnline);
+                }
+            } else {
+                $onlinePaid += $paid;
+            }
+        }
+
+        $totalExpenses = (float)$trip->expenses->sum('amount');
         $expectedCash = max(0, $cashCollected - $totalExpenses);
         $actualCash = (float) $validated['actual_cash_submitted'];
         $diff = $actualCash - $expectedCash;
@@ -1397,9 +1464,9 @@ class ConductorController extends Controller
         $closing = TripClosing::updateOrCreate(
             ['trip_id' => $trip->id],
             [
-                'total_revenue' => $cashCollected,
+                'total_revenue' => $totalRevenue,
                 'total_expenses' => $totalExpenses,
-                'net_profit' => max(0, $cashCollected - $totalExpenses),
+                'net_profit' => max(0, $totalRevenue - $totalExpenses),
                 'expected_cash_from_conductor' => $expectedCash,
                 'actual_cash_submitted' => $actualCash,
                 'cash_discrepancy' => $diff,
@@ -1415,6 +1482,10 @@ class ConductorController extends Controller
             'closed_at' => Carbon::now(),
             'closed_by' => Auth::id(),
         ]);
+
+        if ($trip->bus) {
+            $trip->bus->update(['status' => 'ACTIVE']);
+        }
 
         AuditLog::log('CLOSE_TRIP', "Chốt ca chuyến {$trip->trip_code}. Thực nộp: " . number_format($actualCash) . "đ (Chênh lệch: " . number_format($diff) . "đ)", 'TripClosing', $closing->id);
 

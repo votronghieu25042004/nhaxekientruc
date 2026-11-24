@@ -156,6 +156,12 @@
           </div>
 
           <div class="flex flex-wrap items-center gap-3">
+            <button
+              @click="showCreateModal = true"
+              class="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <span>➕ Thêm Khách Hàng</span>
+            </button>
             <!-- Toggle View Mode: Grid Cards vs Table -->
             <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
               <button
@@ -670,15 +676,156 @@
       </div>
     </div>
 
+        <!-- MODAL TẠO TÀI KHOẢN KHÁCH HÀNG MỚI (ADMIN) -->
+    <div
+      v-if="showCreateModal"
+      class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+    >
+      <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="w-9 h-9 rounded-xl bg-red-100 text-red-600 flex items-center justify-center font-black">➕</span>
+            <div>
+              <h3 class="font-black text-slate-900 text-base">Thêm Khách Hàng Mới</h3>
+              <p class="text-xs text-slate-500">Tạo tài khoản trực tiếp cho hành khách vào hệ thống</p>
+            </div>
+          </div>
+          <button
+            @click="showCreateModal = false"
+            class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <form @submit.prevent="submitCreateCustomer" class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Họ và Tên <span class="text-red-500">*</span></label>
+            <input
+              v-model="createForm.name"
+              type="text"
+              required
+              placeholder="VD: Nguyễn Văn An"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-red-500 focus:ring-1 focus:ring-red-500"
+            />
+            <p v-if="createForm.errors.name" class="text-xs text-red-600 mt-1">{{ createForm.errors.name }}</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Số Điện Thoại <span class="text-red-500">*</span></label>
+              <input
+                v-model="createForm.phone"
+                type="text"
+                required
+                placeholder="VD: 0905123456"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-red-500 focus:ring-1 focus:ring-red-500"
+              />
+              <p v-if="createForm.errors.phone" class="text-xs text-red-600 mt-1">{{ createForm.errors.phone }}</p>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Email</label>
+              <input
+                v-model="createForm.email"
+                type="email"
+                placeholder="VD: an.nguyen@gmail.com"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-red-500 focus:ring-1 focus:ring-red-500"
+              />
+              <p v-if="createForm.errors.email" class="text-xs text-red-600 mt-1">{{ createForm.errors.email }}</p>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Mật Khẩu Đăng Nhập <span class="text-red-500">*</span></label>
+            <input
+              v-model="createForm.password"
+              type="password"
+              required
+              placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-red-500 focus:ring-1 focus:ring-red-500"
+            />
+            <p v-if="createForm.errors.password" class="text-xs text-red-600 mt-1">{{ createForm.errors.password }}</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Hạng Hội Viên</label>
+              <select
+                v-model="createForm.tier"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-red-500 focus:ring-1 focus:ring-red-500 bg-white"
+              >
+                <option value="STANDARD">Thường (Mới Đăng Ký)</option>
+                <option value="SILVER">🥈 Thân Thiết Bạc</option>
+                <option value="GOLD">👑 VIP Vàng</option>
+                <option value="DIAMOND">💎 VIP Kim Cương</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Điểm Tích Lũy Ban Đầu</label>
+              <input
+                v-model.number="createForm.loyalty_points"
+                type="number"
+                min="0"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-red-500 focus:ring-1 focus:ring-red-500"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              @click="showCreateModal = false"
+              class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              :disabled="createForm.processing"
+              class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+            >
+              <span v-if="createForm.processing">Đang tạo...</span>
+              <span v-else>➕ Tạo Tài Khoản</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <AiChatModal />
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
 import AdminHeader from '@/Components/AdminHeader.vue';
 import AiChatModal from '@/Components/AiChatModal.vue';
+
+
+const showCreateModal = ref(false);
+const createForm = useForm({
+  name: '',
+  phone: '',
+  email: '',
+  password: '',
+  tier: 'STANDARD',
+  loyalty_points: 0,
+});
+
+const submitCreateCustomer = () => {
+  createForm.post('/admin/customers', {
+    preserveScroll: true,
+    onSuccess: () => {
+      showCreateModal.value = false;
+      createForm.reset();
+      alert('Đã tạo tài khoản khách hàng thành công!');
+    },
+    onError: (errors) => {
+      console.error('Create customer error:', errors);
+    }
+  });
+};
 
 const props = defineProps({
   customers: Array,

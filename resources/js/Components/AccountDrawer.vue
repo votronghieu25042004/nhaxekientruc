@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <Teleport to="body">
     <div>
       <!-- Backdrop -->
@@ -135,6 +135,9 @@ defineProps({
 defineEmits(['update:modelValue', 'openLogin']);
 
 const logout = () => {
+  try {
+    localStorage.removeItem('nhaxekientruc_read_notifs');
+  } catch (e) {}
   router.post('/logout', {}, {
     onSuccess: () => window.location.reload()
   });

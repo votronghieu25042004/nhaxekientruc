@@ -1,4 +1,5 @@
 <script setup>
+import NotificationDropdown from '@/Components/NotificationDropdown.vue';
 import { ref, computed, onBeforeUnmount, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { Head, Link, useForm, router } from '@inertiajs/vue3'
 import axios from 'axios'
@@ -317,6 +318,7 @@ const roadsideForm = useForm({
 // Seat Swap Form (Tình huống 3: Khách đổi chỗ cho người nhà)
 const seatSwapForm = useForm({
     new_seat_number: '',
+    old_seat_number: '',
 })
 
 // Closing Form
@@ -840,6 +842,7 @@ const openChangeSeatModal = (booking) => {
 
 const submitChangeSeat = () => {
     if (!selectedBooking.value) return
+    seatSwapForm.old_seat_number = selectedBooking.value.seat_number || (selectedBooking.value.seats ? selectedBooking.value.seats[0] : '')
     seatSwapForm.post(`/conductor/bookings/${selectedBooking.value.id}/change-seat`, {
         preserveScroll: true,
         onSuccess: () => {
@@ -1172,6 +1175,9 @@ onBeforeUnmount(() => {
 
         <!-- Conductor Actions Group (Pill Buttons - Cuộn ngang mượt mà trên điện thoại) -->
         <div class="flex items-center gap-2 overflow-x-auto scrollbar-none w-full sm:w-auto py-1 sm:py-0 shrink-0">
+          <!-- CHUÔNG THÔNG BÁO LƠ XE -->
+          <NotificationDropdown role="conductor" customButtonClass="bg-white/15 hover:bg-white/25 text-white border border-white/25" />
+
           <!-- Bán vé dọc đường -->
           <button
             @click="openRoadsideModalWithSeat(null)"
@@ -3642,7 +3648,7 @@ onBeforeUnmount(() => {
               <div class="p-2.5 rounded-xl bg-white/90 border border-amber-200 text-xs space-y-1 font-mono">
                 <div class="flex justify-between">
                   <span class="text-slate-500 font-sans">Email:</span>
-                  <strong class="text-slate-900">loxe1@nhaxekientruc.vn</strong>
+                  <strong class="text-slate-900">loxe1@gmail.com</strong>
                 </div>
                 <div class="flex justify-between">
                   <span class="text-slate-500 font-sans">Mật khẩu:</span>
@@ -3650,7 +3656,7 @@ onBeforeUnmount(() => {
                 </div>
               </div>
               <button
-                @click="copyText('loxe1@nhaxekientruc.vn', 'Email Lơ xe 1')"
+                @click="copyText('loxe1@gmail.com', 'Email Lơ xe 1')"
                 class="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs cursor-pointer shadow-xs transition"
               >
                 📋 Sao chép thông tin đăng nhập
@@ -3663,7 +3669,7 @@ onBeforeUnmount(() => {
                 <span class="px-2 py-0.5 rounded-md bg-blue-600 text-white font-black text-[10px] uppercase">
                   Tài khoản chính 2
                 </span>
-                <span class="font-mono text-xs font-bold text-blue-900 bg-white px-2 py-0.5 rounded border border-blue-300">Xe: 43B-012.34</span>
+                <span class="font-mono text-xs font-bold text-blue-900 bg-white px-2 py-0.5 rounded border border-blue-300">Xe: 43B-018.99</span>
               </div>
               <div>
                 <strong class="text-sm font-black text-slate-900 block">Lê Quốc Đạt (Lơ Xe Tuyến Huế)</strong>
@@ -3672,7 +3678,7 @@ onBeforeUnmount(() => {
               <div class="p-2.5 rounded-xl bg-white/90 border border-blue-200 text-xs space-y-1 font-mono">
                 <div class="flex justify-between">
                   <span class="text-slate-500 font-sans">Email:</span>
-                  <strong class="text-slate-900">loxe2@nhaxekientruc.vn</strong>
+                  <strong class="text-slate-900">loxe2@gmail.com</strong>
                 </div>
                 <div class="flex justify-between">
                   <span class="text-slate-500 font-sans">Mật khẩu:</span>
@@ -3680,7 +3686,7 @@ onBeforeUnmount(() => {
                 </div>
               </div>
               <button
-                @click="copyText('loxe2@nhaxekientruc.vn', 'Email Lơ xe 2')"
+                @click="copyText('loxe2@gmail.com', 'Email Lơ xe 2')"
                 class="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs cursor-pointer shadow-xs transition"
               >
                 📋 Sao chép thông tin đăng nhập

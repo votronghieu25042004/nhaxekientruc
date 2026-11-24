@@ -364,7 +364,68 @@
                     class="max-w-[80%] rounded-2xl p-3.5 text-xs leading-relaxed shadow-2xs"
                     :class="msg.role === 'user' ? 'bg-red-600 text-white rounded-tr-xs' : 'bg-slate-100 text-slate-800 rounded-tl-xs border border-slate-200'"
                   >
-                    <div class="whitespace-pre-wrap">{{ msg.content }}</div>
+                    <div v-if="msg.role === 'assistant'" class="space-y-1.5">
+                      <div class="leading-relaxed" v-html="formatAiMessage(msg.content)"></div>
+
+                      <!-- Interactive Trip Cards (Bấm vào để chuyển sang trang chọn ghế & đặt vé ngay) -->
+                      <div v-if="msg.trips && msg.trips.length > 0" class="mt-3 space-y-2 pt-2 border-t border-slate-200/80">
+                        <div class="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                          <span class="flex items-center gap-1.5">
+                            <span>🚌</span>
+                            <span>Chuyến xe phù hợp (Bấm để chọn ghế đặt vé):</span>
+                          </span>
+                          <span class="text-[10px] text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
+                            {{ msg.trips.length }} chuyến
+                          </span>
+                        </div>
+
+                        <div
+                          v-for="trip in msg.trips"
+                          :key="trip.id"
+                          @click="goToTrip(trip.book_url)"
+                          class="group cursor-pointer p-3 rounded-xl border border-red-200/80 hover:border-red-500 bg-white hover:bg-gradient-to-r hover:from-red-50/70 hover:to-amber-50/40 shadow-2xs hover:shadow-md transition-all duration-200 active:scale-[0.99]"
+                        >
+                          <div class="flex items-center justify-between gap-2">
+                            <div class="font-bold text-slate-900 group-hover:text-red-600 transition-colors flex items-center gap-1.5 text-xs">
+                              <span>{{ trip.route_name }}</span>
+                              <span v-if="trip.is_today" class="px-1.5 py-0.5 rounded text-[9px] bg-red-600 text-white font-bold">Hôm nay</span>
+                              <span v-else-if="trip.is_tomorrow" class="px-1.5 py-0.5 rounded text-[9px] bg-amber-500 text-white font-bold">Ngày mai</span>
+                            </div>
+                            <div class="text-right">
+                              <span class="font-extrabold text-red-600 text-xs">{{ trip.price_formatted }}</span>
+                              <span class="text-[9px] text-slate-400 block">Cọc 30%: {{ trip.deposit_price_formatted }}</span>
+                            </div>
+                          </div>
+
+                          <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600">
+                            <div class="flex items-center gap-1.5">
+                              <span class="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">⏰ {{ trip.time_str }} ({{ trip.date_str }})</span>
+                              <span class="text-slate-500 text-[10px] hidden sm:inline">• {{ trip.bus_type }}</span>
+                            </div>
+                            <span class="font-bold text-red-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-[11px]">
+                              <span>Chọn ghế & đặt vé</span>
+                              <span>➔</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Interactive Suggestion Chips -->
+                      <div v-if="msg.suggestions && msg.suggestions.length > 0" class="flex flex-wrap gap-1.5 mt-2.5 pt-2 border-t border-slate-200/80">
+                        <button
+                          v-for="(sug, sIdx) in msg.suggestions"
+                          :key="sIdx"
+                          @click="sendPrompt(sug)"
+                          type="button"
+                          class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-white hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200 hover:border-red-300 shadow-2xs transition active:scale-95 cursor-pointer flex items-center gap-1"
+                        >
+                          <span>💡</span>
+                          <span>{{ sug }}</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div v-else class="whitespace-pre-wrap text-xs">{{ msg.content }}</div>
+
                     <div class="text-[9px] mt-1 text-right" :class="msg.role === 'user' ? 'text-red-200' : 'text-slate-400'">
                       {{ msg.time }}
                     </div>
@@ -449,7 +510,7 @@ const isAdminUser = computed(() => {
 // Các đoạn chat: Chỉ lưu vào LocalStorage khi đã đăng nhập tài khoản
 const getInitialSessions = () => {
   if (typeof window !== 'undefined' && currentUser.value) {
-    const saved = localStorage.getItem(`bushub_chat_sessions_${currentUser.value.id}`);
+    const saved = localStorage.getItem(`nhaxekientruc_chat_sessions_${currentUser.value.id}`) || localStorage.getItem(`bushub_chat_sessions_${currentUser.value.id}`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -492,7 +553,7 @@ const chatSessions = ref(getInitialSessions());
 const persistSessions = () => {
   if (typeof window !== 'undefined' && currentUser.value) {
     try {
-      localStorage.setItem(`bushub_chat_sessions_${currentUser.value.id}`, JSON.stringify(chatSessions.value));
+      localStorage.setItem(`nhaxekientruc_chat_sessions_${currentUser.value.id}`, JSON.stringify(chatSessions.value));
     } catch (e) {}
   }
 };
@@ -624,6 +685,33 @@ const scrollToBottom = () => {
   });
 };
 
+const formatAiMessage = (content) => {
+  if (!content) return '';
+  let html = content
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  // Bold **text**
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-red-600">$1</strong>');
+  // Italic *text*
+  html = html.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
+  // Markdown links [text](url)
+  html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-red-600 underline font-bold hover:text-red-800" onclick="window.location.href=\'$2\'; return false;">$1</a>');
+  // Bullet lists
+  html = html.replace(/^[•\-\*]\s+(.*)$/gm, '<div class="flex items-start gap-1.5 my-1"><span class="text-red-500 font-bold shrink-0">•</span><span>$1</span></div>');
+  // Numbered lists
+  html = html.replace(/^(\d+)\.\s+(.*)$/gm, '<div class="flex items-start gap-1.5 my-1"><span class="font-bold text-slate-700 shrink-0">$1.</span><span>$2</span></div>');
+  // Newlines to <br/>
+  html = html.replace(/\n/g, '<br/>');
+  return html;
+};
+
+const goToTrip = (url) => {
+  if (!url) return;
+  isOpen.value = false;
+  window.location.href = url;
+};
+
 const sendPrompt = (text) => {
   inputQuery.value = text;
   sendMessage();
@@ -649,21 +737,37 @@ const sendMessage = async () => {
   isAiTyping.value = true;
 
   try {
+    // Send last 8 conversation turns for rich contextual memory
+    const recentHistory = currentSession.messages
+      .slice(0, -1)
+      .slice(-8)
+      .map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        content: m.content
+      }));
+
     const res = await fetch('/api/ai/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
       },
-      body: JSON.stringify({ message: query })
+      body: JSON.stringify({ 
+        message: query,
+        history: recentHistory
+      })
     });
 
     const data = await res.json();
     const reply = data.reply || generateSmartReply(query);
+    const suggestions = data.suggestions || [];
+    const trips = data.trips || [];
 
     currentSession.messages.push({
       role: 'assistant',
       content: reply,
+      suggestions: suggestions,
+      trips: trips,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
     });
   } catch (err) {
@@ -683,77 +787,90 @@ const sendMessage = async () => {
 const generateSmartReply = (q) => {
   const lower = q.toLowerCase();
 
-  // 0. Kiểm tra ngày không tồn tại (ngày 32, ngày 35, ngày 0...)
-  const dayMatch = lower.match(/(?:ngày|ngay|hôm|mùng)\s*(\d{1,2})/i);
-  if (dayMatch) {
-    const dayNum = parseInt(dayMatch[1], 10);
-    if (dayNum > 31 || dayNum === 0) {
-      return `Dạ bạn ơi, một tháng theo lịch dương chỉ có tối đa 31 ngày (hoặc 28, 29, 30 ngày tùy theo từng tháng), hoàn toàn không có ngày ${dayNum} bạn nhé! 😊\n\nBạn vui lòng kiểm tra lại ngày khởi hành chính xác (ví dụ ngày 30 hoặc ngày 31) để tôi tra cứu lịch trình và giá vé tốt nhất cho bạn ạ!`;
-    }
+  // 0. Phàn nàn / Đánh giá / "Sao dốt vậy"
+  if (/(sao dốt|sao ngu|dốt vậy|dốt thế|kém vậy|chả liên quan|không liên quan|vớ vẩn|trả lời sai|chẳng hiểu gì|không hiểu gì|gemini pro)/i.test(lower)) {
+    return 'Dạ em thành thật xin lỗi bạn vì câu trả lời trước đó chưa đúng trọng tâm khiến bạn phiền lòng ạ! 🙏 Em vừa được cập nhật thuật toán phân tích ngữ cảnh mới. Em có thể giải đáp chính xác về: tra cứu tuyến xe (kể cả tuyến có chạy trực tiếp hay không), hướng dẫn đăng nhập admin tại /login, chính sách cọc 30% và mã giảm giá sinh viên PRO30. Bạn đang cần hỗ trợ thông tin nào ạ?';
   }
 
-  // Tuyến chưa khai thác
+  // 1. Đăng nhập Admin / Trang quản trị
+  if (/(đăng nhập vào admin|đăng nhập admin|link admin|vào admin|vào trang quản trị|trang quản trị|cách vào admin|quản trị viên|admin login|bảng điều khiển admin)/i.test(lower)) {
+    return 'Dạ em là Trợ lý tư vấn khách hàng nên hoàn toàn không có quyền hạn can thiệp, cung cấp tài khoản hay cấp quyền truy cập vào trang Quản trị (Admin) đâu ạ! 😊\n\nTrang Quản trị chỉ dành riêng cho Ban quản lý và nhân sự được ủy quyền của Nhà xe Kiến Trúc. Nếu bạn là khách hàng, bạn vui lòng đăng nhập tài khoản thành viên thông thường để quản lý vé xe và tích lũy điểm thưởng nhé!';
+  }
+
+  // 2. Nhận diện danh tính / "Bạn nhớ tôi không"
+  if (/(nhớ tôi|nhớ tui|nhớ em|nhớ anh|có nhớ tôi|bạn nhớ tôi|tôi là ai|tài khoản của tôi|thông tin của tôi)/i.test(lower)) {
+    return 'Dạ em chào bạn ạ! 😊 Nếu bạn đã đăng nhập tài khoản trên website, hệ thống sẽ tự động hiển thị thông tin thành viên và các vé xe bạn đã đặt tại mục "Quản Lý Vé". Nếu bạn đang truy cập với tư cách khách vãng lai, bạn bấm nút "Đăng Nhập" ở góc trên bên phải để em nhận diện bạn ngay nhé!';
+  }
+
+  // 3. Phân tích tuyến đường: Điểm đi -> Điểm đến (Origin -> Destination)
+  const hasHue = lower.includes('huế') || lower.includes('hue');
+  const hasQuangTri = lower.includes('quảng trị') || lower.includes('quang tri') || lower.includes('đông hà');
+  const hasQuangBinh = lower.includes('quảng bình') || lower.includes('quang binh') || lower.includes('đồng hới');
+  const hasQuyNhon = lower.includes('quy nhơn') || lower.includes('quy nhon') || lower.includes('bình định');
+  const hasDakLak = lower.includes('buôn ma thuột') || lower.includes('đắk lắk') || lower.includes('bmt');
+  const hasDaNang = lower.includes('đà nẵng') || lower.includes('da nang');
+
+  // Tuyến không trực tiếp (ví dụ: Quảng Trị đi Huế, Huế đi Quảng Bình...)
+  if ((hasQuangTri && hasHue && !hasDaNang) || (hasQuangBinh && hasHue && !hasDaNang) || (hasQuyNhon && hasDakLak && !hasDaNang) || (hasQuangTri && hasQuyNhon && !hasDaNang)) {
+    return 'Dạ hiện tại Nhà xe Kiến Trúc chưa có tuyến xe chạy trực tiếp giữa hai tỉnh này (hoặc chiều ngược lại) bạn nhé! 😊\n\n🚌 Toàn bộ mạng lưới xe Limousine cao cấp của Nhà xe Kiến Trúc hiện đang kết nối từ/đến Đầu mối trung tâm TP. Đà Nẵng (gồm 5 tuyến: Đà Nẵng ⇄ Huế 150k, Đà Nẵng ⇄ Quảng Trị 200k, Đà Nẵng ⇄ Quảng Bình 280k, Đà Nẵng ⇄ Quy Nhơn 360k, Đà Nẵng ⇄ Buôn Ma Thuột 420k).\n\n💡 Bạn có thể bắt xe khách địa phương hoặc tàu hỏa Bắc - Nam dọc Quốc Lộ 1A để di chuyển nhanh nhất, hoặc đi xe Kiến Trúc về Đà Nẵng rồi nối chuyến tiếp theo nhé!';
+  }
+
+  // Tuyến chưa khai thác (ngoại tỉnh xa)
   const unsupported = [
-    { key: 'sapa', name: 'SaPa (Lào Cai)' },
-    { key: 'sa pa', name: 'SaPa (Lào Cai)' },
-    { key: 'lào cai', name: 'Lào Cai' },
-    { key: 'lao cai', name: 'Lào Cai' },
-    { key: 'đà lạt', name: 'Đà Lạt' },
-    { key: 'da lat', name: 'Đà Lạt' },
-    { key: 'nha trang', name: 'Nha Trang' },
     { key: 'hà nội', name: 'Hà Nội' },
-    { key: 'hải phòng', name: 'Hải Phòng' },
-    { key: 'vũng tàu', name: 'Vũng Tàu' },
-    { key: 'phú quốc', name: 'Phú Quốc' },
-    { key: 'cần thơ', name: 'Cần Thơ' }
+    { key: 'sài gòn', name: 'Sài Gòn (TP.HCM)' },
+    { key: 'tphcm', name: 'TP.HCM' },
+    { key: 'nha trang', name: 'Nha Trang' },
+    { key: 'đà lạt', name: 'Đà Lạt' },
+    { key: 'cần thơ', name: 'Cần Thơ' },
+    { key: 'sapa', name: 'SaPa' },
+    { key: 'vũng tàu', name: 'Vũng Tàu' }
   ];
   for (const u of unsupported) {
     if (lower.includes(u.key)) {
-      return `Dạ hiện tại nhà xe nhaxekientruc chưa khai thác tuyến đường Đà Nẵng đi ${u.name} bạn nhé! 😊\n\nHiện tại nhaxekientruc chuyên phục vụ các tuyến xe giường nằm chất lượng cao xuất phát từ Bến xe Trung tâm Đà Nẵng đi:\n• 🚌 Đà Nẵng ⇄ Thừa Thiên Huế (06:30, 09:00, 13:30, 17:00 | 150.000đ)\n• 🚌 Đà Nẵng ⇄ Quảng Trị (Đông Hà) (07:00, 11:30, 16:00 | 140.000đ)\n• 🚌 Đà Nẵng ⇄ Quảng Bình (Đồng Hới) (06:00, 13:00 | 180.000đ)\n• 🚌 Đà Nẵng ⇄ Quy Nhơn (Bình Định) (07:30, 15:00 | 240.000đ)\n• 🚌 Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk) (07:30, 19:00 | 420.000đ)\n\nBạn có muốn tham khảo lịch trình các tuyến trên không ạ?`;
+      return `Dạ hiện tại Nhà xe Kiến Trúc chưa khai thác tuyến xe đi/đến ${u.name} bạn nhé! 😊 Nhà xe hiện chuyên phục vụ 5 tuyến Limousine chất lượng cao kết nối từ trung tâm TP. Đà Nẵng đi Huế, Quảng Trị, Quảng Bình, Quy Nhơn và Buôn Ma Thuột ạ!`;
     }
   }
 
-  // 1. Chào hỏi thông thường (Hi, Hello, Xin chào, Chào bạn...)
-  const cleanGreeting = lower.replace(/[.,!?~-]/g, '').trim();
-  const greetingWords = ['hi', 'hello', 'hey', 'alo', 'xin chào', 'chào', 'chào bạn', 'chào ad', 'chào bot', 'helo', 'hế lô', 'chào nha', 'hi bạn', 'hi bot', 'yo'];
-  if (greetingWords.includes(cleanGreeting) || /^(hi|hello|xin chào|chào bạn|chào ad)\b/u.test(cleanGreeting)) {
-    return 'Chào bạn! Tôi là Trợ Lý AI của nhaxekientruc. Tôi có thể giúp gì cho bạn hôm nay? 😊 Bạn cần tra cứu lịch trình chuyến xe, xem giá vé hay chính sách đặt cọc 30% ạ?';
+  // Chào hỏi
+  const greetingWords = ['hi', 'hello', 'hey', 'alo', 'xin chào', 'chào', 'chào bạn', 'chào ad', 'chào bot'];
+  if (greetingWords.some(w => lower.startsWith(w))) {
+    return 'Dạ em chào bạn! Em là Trợ lý AI của Nhà xe Kiến Trúc Đà Nẵng. Em có thể hỗ trợ gì cho bạn hôm nay ạ? Bạn cần tra cứu lịch trình chuyến xe, xem giá vé hay chính sách đặt cọc 30% giữ chỗ ạ? 😊';
   }
 
-  // 2. Các câu hỏi cá nhân, ngoài lề (Nhớ tôi không, bạn là ai, thời tiết, tán gẫu...)
-  const personalQueries = [
-    'nhớ tôi không', 'nhớ tôi ko', 'nhớ tui không', 'nhớ tui ko',
-    'nhớ tao không', 'nhớ tao ko', 'nhớ anh không', 'nhớ em không',
-    'có nhớ tôi', 'có nhớ tui', 'có nhớ tao', 'bạn nhớ tôi', 'bạn nhớ tui',
-    'tôi là ai', 'tui là ai', 'biết tôi là ai', 'biết tui là ai',
-    'bạn biết tôi không', 'bạn biết tui không', 'bạn là ai', 'bạn tên gì',
-    'người yêu', 'yêu tôi không', 'yêu tui không', 'ai tạo ra bạn',
-    'thời tiết', 'chơi game', 'kể chuyện', 'hát đi', 'làm thơ', 'hôm nay ăn gì'
-  ];
-  if (personalQueries.some(pq => lower.includes(pq))) {
-    return 'Chào bạn, tôi là Trợ Lý AI của hệ thống nhaxekientruc. Tôi chỉ trả lời những gì liên quan đến website, lịch trình xe, đặt vé và dịch vụ của trang web mình thôi bạn nhé! 😊 Bạn có cần tôi hỗ trợ tra cứu chuyến xe hay thông tin gì về vé xe không ạ?';
+  // Tuyến cụ thể
+  if (hasQuangTri) {
+    return '🚌 Tuyến Đà Nẵng ⇄ Quảng Trị (Đông Hà): Cự ly 165km (~3.5 giờ). Giá vé 200.000đ/vé (Cọc 30% chỉ 60.000đ | SV mã PRO30 chỉ 140.000đ). Giờ xuất bến: 07:00, 07:15, 08:30, 09:00, 11:00, 15:30, 18:00, 20:00.';
+  }
+  if (hasHue) {
+    return '🚌 Tuyến Đà Nẵng ⇄ Thừa Thiên Huế: Cự ly 100km (~2 giờ). Giá vé 150.000đ/vé (Cọc 30% chỉ 45.000đ | SV mã PRO30 chỉ 105.000đ). Giờ xuất bến liên tục: 06:00, 06:30, 08:00, 08:30, 09:30, 11:00, 14:00, 14:30.';
+  }
+  if (hasQuyNhon) {
+    return '🚌 Tuyến Đà Nẵng ⇄ Quy Nhơn (Bình Định): Cự ly 315km (~6 giờ). Giá vé 360.000đ/vé (Cọc 30% chỉ 108.000đ | SV mã PRO30 chỉ 252.000đ). Giờ xuất bến sáng: 06:00, 07:30, 08:00, 09:30 & Xe đêm: 15:30, 18:00, 20:00, 22:45.';
+  }
+  if (hasDakLak) {
+    return '🚌 Tuyến Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk): Cự ly 480km (~10 giờ). Giá vé 420.000đ/vé (Cọc 30% chỉ 126.000đ | SV mã PRO30 chỉ 294.000đ). Xe đêm VIP giường nằm êm ái: 19:00, 20:00, 20:30, 23:30.';
+  }
+  if (hasQuangBinh) {
+    return '🚌 Tuyến Đà Nẵng ⇄ Quảng Bình (Đồng Hới): Cự ly 270km (~5 giờ). Giá vé 280.000đ/vé (Cọc 30% chỉ 84.000đ | SV mã PRO30 chỉ 196.000đ). Giờ xuất bến: 06:00, 06:30, 07:00, 07:30, 08:00, 08:30, 19:30, 20:00.';
   }
 
-  if (lower.includes('quảng trị') || lower.includes('đông hà')) {
-    return 'Tuyến Đà Nẵng ⇄ Đông Hà (Quảng Trị) có các chuyến xuất bến lúc 07:00, 11:30 và 16:00 hàng ngày. Cự ly 175km (3.5 giờ di chuyển), giá vé chỉ 140.000đ/vé xe giường nằm VIP.';
-  }
-  if (lower.includes('huế') || lower.includes('thừa thiên')) {
-    return 'Tuyến Đà Nẵng ⇄ Huế xuất bến liên tục lúc 06:30, 09:00, 13:30, 17:00 hàng ngày. Giá vé 120.000đ, thời gian chạy khoảng 2.0 giờ.';
-  }
-  if (lower.includes('quy nhơn') || lower.includes('bình định')) {
-    return 'Tuyến Đà Nẵng ⇄ Quy Nhơn xuất bến lúc 07:30 và 15:00 hàng ngày. Cự ly 315km, giá vé 240.000đ/vé.';
-  }
-  if (lower.includes('buôn ma thuột') || lower.includes('đắk lắk')) {
-    return 'Tuyến Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk) có các chuyến xuất bến lúc 07:30, 08:30 và 19:00 hàng ngày. Giá vé 420.000đ/vé xe giường nằm VIP.';
-  }
-  if (lower.includes('cọc') || lower.includes('30%') || lower.includes('thanh toán')) {
-    return 'Bạn chỉ cần thanh toán đặt cọc 30% tiền vé trực tuyến để hệ thống giữ đúng số giường/ghế đã chọn. Phần 70% còn lại bạn thanh toán cho lơ xe khi lên xe rất linh hoạt!';
-  }
-  if (lower.includes('hủy') || lower.includes('đổi')) {
-    return 'nhaxekientruc cam kết hoàn tiền 100% nếu hủy trước 12 tiếng và hỗ trợ đổi chuyến miễn phí 01 lần trước giờ xuất bến 04 tiếng.';
+  // Đặt cọc 30% & Thanh toán
+  if (/(cọc|30%|thanh toán|vietqr|chuyển khoản|giữ chỗ)/i.test(lower)) {
+    return '💳 Bạn chỉ cần thanh toán đặt cọc 30% tiền vé trực tuyến qua mã VietQR tự động để hệ thống khóa đúng số giường/phòng đã chọn. 70% số tiền còn lại bạn gửi cho bác tài khi lên xe rất tiện lợi!';
   }
 
-  return 'Tôi là Trợ Lý AI chuyên biệt của hệ thống nhaxekientruc. Tôi chỉ trả lời những thông tin liên quan đến website, lịch trình chuyến xe, đặt vé và dịch vụ của trang web mình thôi bạn nhé! 😊 Bạn có thể hỏi tôi về lịch trình xe Đà Nẵng đi Huế, Quảng Trị, Quy Nhơn, Đắk Lắk... hoặc chính sách cọc vé 30%.';
+  // Hủy vé & Đổi vé
+  if (/(hủy|hoàn tiền|đổi vé|dời)/i.test(lower)) {
+    return '🚫 Nhà xe Kiến Trúc hỗ trợ hủy vé tự động 100% trong vòng 2 giờ đầu hoặc trước giờ xe chạy 24 giờ tại mục "Quản Lý Vé" trên website, hoàn tiền trực tiếp qua số tài khoản ngân hàng của bạn!';
+  }
+
+  // Điểm đón / Văn phòng
+  if (/(văn phòng|địa chỉ|ở đâu|đón ở đâu|bến xe)/i.test(lower)) {
+    return '📍 Văn phòng chính Nhà xe Kiến Trúc tại: Số 566 Núi Thành, P. Hòa Cường Nam, Q. Hải Châu, TP. Đà Nẵng. Quầy vé số 14 - Bến xe Trung tâm Đà Nẵng. Có xe trung chuyển miễn phí bán kính 5km nội thành Đà Nẵng!';
+  }
+
+  return 'Dạ em là Trợ lý trực tuyến của Nhà xe Kiến Trúc Đà Nẵng! 😊 Em có thể giải đáp cho bạn về lịch trình chuyến xe (Huế, Quảng Trị, Quảng Bình, Quy Nhơn, Buôn Ma Thuột), chính sách cọc 30% giữ chỗ, ưu đãi sinh viên PRO30 hoặc hướng dẫn đăng nhập admin nhé!';
 };
 
 const triggerAutoEmail = async (isAll) => {

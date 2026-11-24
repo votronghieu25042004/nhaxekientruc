@@ -43,10 +43,17 @@ class Trip extends Model {
 
         $now = \Carbon\Carbon::now('Asia/Ho_Chi_Minh');
 
-        // 1. Chuyến đã qua giờ đến => COMPLETED
-        self::where('arrival_time', '<=', $now)
+        // 1. Chuyến đã qua giờ đến => COMPLETED và giải phóng xe về ACTIVE
+        $completedTrips = self::where('arrival_time', '<=', $now)
             ->whereNotIn('status', ['COMPLETED', 'CANCELLED', 'CLOSED'])
-            ->update(['status' => 'COMPLETED']);
+            ->get();
+        foreach ($completedTrips as $cTrip) {
+            $cTrip->status = 'COMPLETED';
+            $cTrip->save();
+            if ($cTrip->bus_id) {
+                Bus::where('id', $cTrip->bus_id)->where('status', 'RUNNING')->update(['status' => 'ACTIVE']);
+            }
+        }
 
         // 2. Chuyến đang trong giờ chạy (departure <= now < arrival) => IN_TRANSIT
         self::where('departure_time', '<=', $now)
@@ -66,12 +73,13 @@ class Trip extends Model {
             ->whereIn('status', ['IN_TRANSIT', 'BOARDING'])
             ->update(['status' => 'OPEN_FOR_SALE']);
 
-        // 5. Tự động check-in cho chuyến xe ĐÃ HOÀN THÀNH (100% lên xe, ngoại trừ vé đã hủy)
+        // 5. Tự động check-in cho chuyến xe ĐÃ HOÀN THÀNH:
+        // TUYỆT ĐỐI KHÔNG GHI ĐÈ các vé đã bị NO_SHOW hoặc CANCELLED hoặc REFUNDED!
         \App\Models\Booking::whereHas('trip', function($q) {
             $q->whereIn('status', ['COMPLETED', 'CLOSED']);
         })
-        ->where('payment_status', '!=', 'REFUNDED')
-        ->where('checkin_status', '!=', 'CHECKED_IN')
+        ->whereNotIn('payment_status', ['REFUNDED', 'CANCELLED'])
+        ->whereNotIn('checkin_status', ['NO_SHOW', 'CANCELLED', 'CHECKED_IN'])
         ->update([
             'checkin_status' => 'CHECKED_IN',
             'checkin_method' => 'QR_AUTO',
@@ -79,20 +87,22 @@ class Trip extends Model {
         ]);
 
         // 6. Tự động check-in cho chuyến xe ĐANG CHẠY (IN_TRANSIT):
-        // 85-90% hành khách tự động lên xe, chỉ để lại 1-2 trường hợp thực tế (đón ở trạm tiếp theo hoặc cọc 30%)
+        // Chỉ tự động check-in cho những vé ĐÃ THANH TOÁN ĐỦ 100% (payment_status = PAID) và đang PENDING.
+        // TUYỆT ĐỐI KHÔNG tự động check-in vé cọc DEPOSIT hoặc chưa thanh toán (để Lơ xe thu đủ tiền mặt khi lên xe).
         $inTransitTrips = self::where('status', 'IN_TRANSIT')->get();
         foreach ($inTransitTrips as $itTrip) {
-            $itBookings = $itTrip->bookings()->where('payment_status', '!=', 'REFUNDED')->get();
+            $itBookings = $itTrip->bookings()
+                ->where('payment_status', 'PAID')
+                ->whereNotIn('checkin_status', ['CHECKED_IN', 'NO_SHOW', 'CANCELLED'])
+                ->get();
             $total = $itBookings->count();
             if ($total > 0) {
                 $boardCount = max(1, $total - 2);
                 foreach ($itBookings->take($boardCount) as $bk) {
-                    if ($bk->checkin_status !== 'CHECKED_IN') {
-                        $bk->checkin_status = 'CHECKED_IN';
-                        $bk->checkin_method = 'QR_AUTO';
-                        $bk->checked_in_at = $itTrip->departure_time;
-                        $bk->save();
-                    }
+                    $bk->checkin_status = 'CHECKED_IN';
+                    $bk->checkin_method = 'QR_AUTO';
+                    $bk->checked_in_at = $itTrip->departure_time;
+                    $bk->save();
                 }
             }
         }

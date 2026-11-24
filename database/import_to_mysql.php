@@ -4,7 +4,7 @@ $host = '127.0.0.1';
 $port = 3306;
 $user = 'root';
 $pass = '';
-$dbName = 'futa_bus_booking';
+$dbName = 'nhaxekientruc';
 
 echo "=== TỰ ĐỘNG KHỞI TẠO VÀ IMPORT DỮ LIỆU MYSQL VÀO XAMPP ===\n";
 
@@ -22,8 +22,11 @@ try {
     // 3. Chọn database
     $pdo->exec("USE `{$dbName}`;");
 
-    // 4. Đọc file futa_bus_booking.sql
-    $sqlFile = __DIR__ . '/futa_bus_booking.sql';
+    // 4. Đọc file nhaxekientruc.sql
+    $sqlFile = __DIR__ . '/nhaxekientruc.sql';
+    if (!file_exists($sqlFile)) {
+        $sqlFile = __DIR__ . '/bushub_booking.sql';
+    }
     if (!file_exists($sqlFile)) {
         die("❌ Không tìm thấy file SQL tại: {$sqlFile}\n");
     }
@@ -36,7 +39,7 @@ try {
     $pdo->exec("SET FOREIGN_KEY_CHECKS=1;");
 
     echo "✓ Đã IMPORT thành công toàn bộ bảng & dữ liệu thật vào MySQL XAMPP!\n";
-    echo "🎉 Dự án FUTA Bus Lines hiện đã chạy 100% trên MySQL XAMPP (Database: {$dbName}) giống như Homestay!\n";
+    echo "🎉 Dự án Nhà Xe Kiến Trúc hiện đã chạy 100% trên MySQL XAMPP (Database: {$dbName})!\n";
 
 } catch (PDOException $e) {
     echo "❌ Lỗi: " . $e->getMessage() . "\n";

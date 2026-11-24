@@ -30,13 +30,10 @@ class DriverController extends Controller
         \App\Services\TripScheduleService::ensureUpcomingTripsExist(3);
         Trip::syncRealTimeStatuses();
         $user = Auth::user();
-        // Xác định quyền hiển thị menu chuyển đổi cổng & chọn tài khoản:
-        // - Mặc định luôn là TRUE (để Admin/Dev trải nghiệm, đổi cổng thông tin và chọn các acc để test).
-        // - Chỉ chuyển thành FALSE khi: tài khoản đăng nhập có role === 'driver' VÀ được đánh dấu 'is_real_driver_login' từ form /login VÀ không có cờ admin.
-        $isAdminViewing = true;
-        if ($user && $user->role === 'driver' && session('is_real_driver_login') === true && !session('admin_mode') && !$request->has('admin_view')) {
-            $isAdminViewing = false;
-        }
+        // Xác định quyền hiển thị Admin Viewing Mode:
+        // - CHỈ hiển thị khi tài khoản đăng nhập có role === 'admin'.
+        // - Khi Bác tài (driver) đăng nhập thật thì luôn ẩn thanh Admin Viewing Mode.
+        $isAdminViewing = ($user && $user->role === 'admin');
 
         $today = Carbon::today();
         $tomorrow = Carbon::tomorrow();
@@ -548,6 +545,7 @@ class DriverController extends Controller
         ];
 
         return Inertia::render('Driver/Index', [
+            'isAdminViewing' => $isAdminViewing,
             'drivers' => $driversWithStats,
             'currentDriver' => $currentDriver,
             'selectedTrip' => $selectedTrip,
@@ -914,13 +912,37 @@ class DriverController extends Controller
 
         $trip = Trip::with(['bookings.bookingSeats', 'expenses', 'route'])->findOrFail($id);
 
-        // Tính toán doanh thu và chi phí
-        $totalRevenue = (float)($trip->bookings->sum('total_price') ?: $trip->bookings->sum('total_amount') ?: 0);
-        $onlinePaid = (float)$trip->bookings->where('payment_method', '!=', 'CASH')->whereIn('payment_status', ['PAID', 'DEPOSIT_PAID', 'PARTIALLY_PAID'])->sum('paid_amount');
-        $roadsideAndRemainingCash = max(0, $totalRevenue - $onlinePaid);
-        $totalExpenses = $trip->expenses->sum('amount') ?: 0;
-        $netProfit = $totalRevenue - $totalExpenses;
-        $expectedCash = max(0, $roadsideAndRemainingCash - $totalExpenses);
+        // Tính toán doanh thu và chi phí đồng bộ 100% với Lơ xe & Admin
+        $activeBookings = $trip->bookings->whereNotIn('checkin_status', ['NO_SHOW', 'CANCELLED'])->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
+        $totalRevenue = 0;
+        $onlinePaid = 0;
+        $cashCollected = 0;
+
+        foreach ($activeBookings as $b) {
+            $tot = (float)($b->total_price ?: $b->total_amount ?: 0);
+            $paid = (float)($b->paid_amount ?: 0);
+            $totalRevenue += $tot;
+
+            if ($b->payment_method === 'CASH' || $b->booking_source === 'ROADSIDE_ON_BUS') {
+                if ($b->payment_status === 'PAID' || $b->checkin_status === 'CHECKED_IN') {
+                    $cashCollected += $tot;
+                } else {
+                    $cashCollected += $paid;
+                }
+            } elseif ($b->payment_method === 'DEPOSIT_30' || str_contains($b->notes ?? '', 'Cọc trước 30%')) {
+                $depositOnline = round($tot * 0.3);
+                $onlinePaid += $depositOnline;
+                if ($b->payment_status === 'PAID' || $b->checkin_status === 'CHECKED_IN') {
+                    $cashCollected += max(0, $tot - $depositOnline);
+                }
+            } else {
+                $onlinePaid += $paid;
+            }
+        }
+
+        $totalExpenses = (float)($trip->expenses->sum('amount') ?: 0);
+        $netProfit = max(0, $totalRevenue - $totalExpenses);
+        $expectedCash = max(0, $cashCollected - $totalExpenses);
 
         $actualCash = (float) $request->actual_cash_submitted;
         $discrepancy = $actualCash - $expectedCash;
@@ -945,9 +967,13 @@ class DriverController extends Controller
             ]
         );
 
-        $trip->status = 'COMPLETED';
+        $trip->status = 'CLOSED';
         $trip->closed_at = now();
         $trip->save();
+
+        if ($trip->bus) {
+            $trip->bus->update(['status' => 'ACTIVE']);
+        }
 
         AuditLog::create([
             'trip_id' => $trip->id,

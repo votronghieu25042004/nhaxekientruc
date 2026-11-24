@@ -551,14 +551,12 @@ class TripController extends Controller
         $hasUsedStudentFirstTrip = false;
         if ($user) {
             try {
-                $hasUsedStudentFirstTrip = Booking::where('user_id', $user->id)
-                    ->where(function ($q) {
-                        $q->whereIn('voucher_code', ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])
-                          ->orWhereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
-                    })
+                $hasUsedStudentFirstTrip = (bool)$user->student_first_trip_used || Booking::where('user_id', $user->id)
+                    ->whereIn('voucher_code', ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])
+                    ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
                     ->exists();
             } catch (\Throwable $e) {
-                $hasUsedStudentFirstTrip = false;
+                $hasUsedStudentFirstTrip = (bool)($user->student_first_trip_used ?? false);
             }
         }
 
@@ -755,14 +753,12 @@ class TripController extends Controller
                 return back()->withErrors(['voucher' => 'Ưu đãi chuyến xe đầu tiên chỉ áp dụng cho tối đa 1 ghế. Quý khách vui lòng chọn đúng 1 ghế!']);
             }
             if ($userId) {
-                $hasUsedFirstTrip = $authUser->student_first_trip_used || Booking::where('user_id', $userId)
-                    ->where(function ($q) {
-                        $q->whereIn('voucher_code', ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])
-                          ->orWhereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
-                    })
+                $hasUsedFirstTrip = (bool)$authUser->student_first_trip_used || Booking::where('user_id', $userId)
+                    ->whereIn('voucher_code', ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])
+                    ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
                     ->exists();
-                if ($hasUsedFirstTrip && !in_array(strtoupper($voucherCode), ['SINHVIEN', 'SINHVIEN30'])) {
-                    return back()->withErrors(['voucher' => 'Tài khoản đã sử dụng chuyến xe đầu tiên. Vui lòng sử dụng mã SINHVIEN (Giảm 30%) cho các chuyến tiếp theo!']);
+                if ($hasUsedFirstTrip && !in_array(strtoupper($voucherCode), ['SINHVIEN', 'SINHVIEN30', 'SINHVIEN10', 'SV10', 'PRO30'])) {
+                    return back()->withErrors(['voucher' => 'Tài khoản đã sử dụng chuyến xe miễn phí 100% lần đầu tiên rồi. Vui lòng sử dụng mã SINHVIEN30 (Giảm 30%) hoặc SINHVIEN10 (Giảm 10%) cho các chuyến tiếp theo!']);
                 }
             }
 
@@ -798,6 +794,16 @@ class TripController extends Controller
             }
 
             $studentDiscount = round($totalAmount * ($discountPercent / 100));
+            $totalAmount = max(0, $totalAmount - $studentDiscount);
+            $discountAmount += $studentDiscount;
+        } elseif (in_array(strtoupper($voucherCode), ['SINHVIEN10', 'SV10'])) {
+            if (!$isStudent) {
+                return back()->withErrors(['voucher' => 'Mã [SINHVIEN10] dành riêng cho đối tượng Sinh viên (email .edu.vn)!']);
+            }
+            $studentDiscount = round($totalAmount * 0.10);
+            if ($studentDiscount > 50000) {
+                $studentDiscount = 50000;
+            }
             $totalAmount = max(0, $totalAmount - $studentDiscount);
             $discountAmount += $studentDiscount;
         } elseif (in_array(strtoupper($voucherCode), ['CHAOBAOMOI', 'CHAOBANMOI', 'KHACHMOI10'])) {
@@ -943,6 +949,12 @@ class TripController extends Controller
             'dropoffStop',
             'bookingSeats',
         ])->where('booking_code', $code)->firstOrFail();
+
+        if (in_array($booking->payment_status, ['PAID', 'DEPOSIT_PAID', 'PARTIALLY_PAID'])) {
+            try {
+                \App\Services\PdfTicketService::saveTicketToPdfFolder($booking);
+            } catch (\Throwable $e) {}
+        }
 
         $isDeposit = ($booking->payment_method === 'DEPOSIT_30' || str_contains($booking->notes ?? '', 'Cọc trước 30%'));
         $targetPayAmount = $isDeposit ? (float) round($booking->total_amount * 0.3) : (float) $booking->total_amount;
@@ -1128,6 +1140,10 @@ class TripController extends Controller
             ], 400);
         }
 
+        try {
+            \App\Services\PdfTicketService::saveTicketToPdfFolder($booking);
+        } catch (\Throwable $e) {}
+
         AuditLog::log('CONFIRM_VIETQR_PAYMENT', "Giao dịch thanh toán VietQR cho đơn vé {$booking->booking_code} đã được xác thực.", 'Booking', $booking->id);
 
         return response()->json([
@@ -1199,6 +1215,9 @@ class TripController extends Controller
             $booking->payment_method = $isDeposit ? 'DEPOSIT_30' : 'VIETQR';
             $booking->payment_ref_code = $request->input('referenceCode') ?? ('MB-' . now()->format('YmdHis'));
             $booking->save();
+                        try {
+                            \App\Services\PdfTicketService::saveTicketToPdfFolder($booking);
+                        } catch (\Throwable $e) {}
 
             AuditLog::log('WEBHOOK_VIETQR_PAID', "Tự động nhận tiền thật từ MBBank 09025042004 (VO TRONG HIEU) cho vé {$booking->booking_code}. Số tiền: " . number_format($amount ?: $targetPayAmount) . "đ (" . ($isDeposit ? "Cọc 30%" : "Đủ 100%") . "). Nội dung: {$content}", 'Booking', $booking->id);
 
@@ -1250,6 +1269,10 @@ class TripController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
+                } catch (\Throwable $e) {}
+
+                try {
+                    \App\Services\PdfTicketService::saveMembershipInvoiceToPdfFolder($targetUser, $planName, $amount > 0 ? $amount : $price, $voucherCode);
                 } catch (\Throwable $e) {}
 
                 AuditLog::log('WEBHOOK_MEMBERSHIP_PAID', "Tự động kích hoạt {$planName} cho hội viên #{$targetUser->id} ({$targetUser->name}) qua SePay webhook MBBank. Số tiền: " . number_format($amount ?: $price) . "đ. Nội dung: {$content}", 'User', $targetUser->id);
@@ -1602,19 +1625,26 @@ class TripController extends Controller
     {
         $trip = Trip::with(['route.stops', 'bus', 'driver', 'conductor'])->findOrFail($id);
 
-        return response()->json([
-            'trip_id'       => $trip->id,
-            'status'        => $trip->status,
-            'current_lat'   => $trip->current_lat ?? 16.0544,
-            'current_lng'   => $trip->current_lng ?? 108.2022,
-            'current_speed' => $trip->current_speed_kmh ?? 0,
-            'gps_updated_at'=> $trip->gps_updated_at?->toIso8601String(),
-            'current_stop_order' => $trip->current_stop_order ?? 0,
-            'delay_minutes' => $trip->delay_minutes ?? 0,
-            'stops'         => $trip->route?->stops->sortBy('stop_order')->values(),
-            'driver_name'   => $trip->driver?->name,
-            'conductor_name'=> $trip->conductor?->name,
-            'bus_plate'     => $trip->bus?->license_plate,
+        if ($request->wantsJson() && !$request->header('X-Inertia')) {
+            return response()->json([
+                'trip_id'       => $trip->id,
+                'status'        => $trip->status,
+                'current_lat'   => $trip->current_lat ?? 16.0544,
+                'current_lng'   => $trip->current_lng ?? 108.2022,
+                'current_speed' => $trip->current_speed_kmh ?? 0,
+                'gps_updated_at'=> $trip->gps_updated_at?->toIso8601String(),
+                'current_stop_order' => $trip->current_stop_order ?? 0,
+                'delay_minutes' => $trip->delay_minutes ?? 0,
+                'stops'         => $trip->route?->stops->sortBy('stop_order')->values(),
+                'driver_name'   => $trip->driver?->name,
+                'conductor_name'=> $trip->conductor?->name,
+                'bus_plate'     => $trip->bus?->license_plate,
+            ]);
+        }
+
+        return Inertia::render('Trips/LiveTracking', [
+            'trip' => $trip,
+            'stops' => $trip->route?->stops->sortBy('stop_order')->values() ?? [],
         ]);
     }
 
@@ -1740,6 +1770,7 @@ class TripController extends Controller
                 'origin'         => $b->trip?->route?->origin,
                 'destination'    => $b->trip?->route?->destination,
                 'departure_time' => $b->trip?->departure_time?->format('H:i d/m/Y'),
+                'departure_raw'  => $b->trip?->departure_time?->toIso8601String(),
                 'arrival_time'   => $b->trip?->arrival_time?->format('H:i d/m/Y'),
                 'trip_status'    => $b->trip?->status,
                 'trip_id'        => $b->trip?->id,
@@ -1861,6 +1892,7 @@ class TripController extends Controller
             'VE0DONG' => 'SINHVIEN0DONG',
             'SVVN' => 'SINHVIEN30',
             'SV2026' => 'SINHVIEN30',
+            'SV10' => 'SINHVIEN10',
             'BANMOI10' => 'CHAOBAOMOI',
             'KHACHMOI10' => 'CHAOBAOMOI',
             'CHAOBANMOI' => 'CHAOBANMOI',
@@ -2003,17 +2035,15 @@ class TripController extends Controller
                 ];
             }
             if ($authUser) {
-                $hasUsedFirstTrip = $authUser->student_first_trip_used || Booking::where('user_id', $authUser->id)
-                    ->where(function ($q) {
-                        $q->whereIn('voucher_code', ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])
-                          ->orWhereNotIn('payment_status', ['CANCELLED', 'REFUNDED']);
-                    })
+                $hasUsedFirstTrip = (bool)$authUser->student_first_trip_used || Booking::where('user_id', $authUser->id)
+                    ->whereIn('voucher_code', ['SINHVIEN100', 'SINHVIEN0DONG', 'SV0DONG', 'TET0DONG', 'VE0DONG'])
+                    ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
                     ->exists();
 
                 if ($hasUsedFirstTrip) {
                     return [
                         'valid' => false,
-                        'message' => 'Bạn đã sử dụng ưu đãi chuyến xe đầu tiên. Vui lòng sử dụng mã SINHVIEN30 (Giảm 30% trong 1 năm) cho các chuyến tiếp theo!'
+                        'message' => 'Bạn đã sử dụng gói miễn phí 100% chuyến đầu tiên rồi. Vui lòng sử dụng mã SINHVIEN30 (Giảm 30%) hoặc SINHVIEN10 (Giảm 10%) cho chuyến đi này!'
                     ];
                 }
             }
@@ -2165,7 +2195,7 @@ class TripController extends Controller
 
         $discountPercent = $plan === 'ULTRA' ? 40 : 30;
         $planName = $plan === 'ULTRA' ? 'Gói ULTRA (Giảm 40%)' : ($isStudent ? 'Gói Sinh Viên PRO (Giảm 30%)' : 'Gói PRO (Giảm 30%)');
-        $voucherCode = $plan === 'ULTRA' ? 'ULTRA40' : 'PRO30';
+        $voucherCode = $plan === 'ULTRA' ? 'ULTRA40' : ($isStudent ? 'SINHVIEN30' : 'PRO30');
         $price = $plan === 'ULTRA' ? ($isStudent ? 239000 : 599000) : ($isStudent ? 0 : 349000);
 
         $user->membership_plan = $plan;
@@ -2189,6 +2219,15 @@ class TripController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+        } catch (\Throwable $e) {}
+
+        try {
+            \App\Services\PdfTicketService::saveMembershipInvoiceToPdfFolder(
+                $user,
+                $planName,
+                $price,
+                $voucherCode
+            );
         } catch (\Throwable $e) {}
 
         $roleText = $isStudent ? 'Sinh viên' : 'Hội viên';
@@ -2224,8 +2263,8 @@ class TripController extends Controller
         $rawPlan = strtoupper(trim($request->input('plan', 'PRO')));
         $plan = str_contains($rawPlan, 'ULTRA') ? 'ULTRA' : 'PRO';
         $discountPercent = $plan === 'ULTRA' ? 40 : 30;
-        $voucherCode = $plan === 'ULTRA' ? 'ULTRA40' : 'PRO30';
         $isStudent = (bool)($user->is_student || str_contains(strtolower($user->email ?? ''), '.edu.vn') || str_contains(strtolower($user->email ?? ''), 'sinhvien'));
+        $voucherCode = $plan === 'ULTRA' ? 'ULTRA40' : ($isStudent ? 'SINHVIEN30' : 'PRO30');
         $planName = $plan === 'ULTRA' ? 'Gói ULTRA (Giảm 40%)' : ($isStudent ? 'Gói Sinh Viên PRO (Giảm 30%)' : 'Gói PRO (Giảm 30%)');
         $isCancelled = strtoupper((string)($user->membership_plan ?? '')) === 'CANCELLED';
         $isRebuy = $isCancelled;
