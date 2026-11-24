@@ -1416,8 +1416,9 @@ class AdminController extends Controller
             })->values()->toArray();
 
             $rawPlan = strtoupper((string)($u->membership_plan ?? ''));
-            $isUltra = str_contains($rawPlan, 'ULTRA');
-            $isPro = str_contains($rawPlan, 'PRO') || $u->is_student;
+            $isCancelledOrStandard = ($rawPlan === 'CANCELLED' || $rawPlan === 'STANDARD' || $rawPlan === 'THUONG' || empty($rawPlan));
+            $isUltra = !$isCancelledOrStandard && str_contains($rawPlan, 'ULTRA');
+            $isPro = !$isCancelledOrStandard && (str_contains($rawPlan, 'PRO') || $u->is_student);
             $membershipPlan = $isUltra ? 'ULTRA' : ($isPro ? 'PRO' : 'THUONG');
             $planDisplayName = $isUltra ? 'Gói ULTRA (-40%)' : ($isPro ? ($u->is_student ? 'Sinh Viên Pro (-30%)' : 'Gói PRO (-30%)') : 'Gói THƯỜNG');
             $discountPct = $isUltra ? 40 : ($isPro ? 30 : 0);
@@ -3559,12 +3560,15 @@ class AdminController extends Controller
                 \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $userId)->delete();
             } catch (\Throwable $e) {}
 
+            \Illuminate\Support\Facades\DB::table('membership_subscriptions')->where('user_id', $userId)->delete();
+
             // 7. Xóa vĩnh viễn User khỏi database
             $user->delete();
+            \Illuminate\Support\Facades\DB::table('users')->where('id', $userId)->delete();
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("[DELETE_USER_DATA_ERR] " . $e->getMessage());
             // Đảm bảo vẫn xóa user nếu có thể
-            try { $user->delete(); } catch (\Throwable $ex) {}
+            try { \Illuminate\Support\Facades\DB::table('users')->where('id', $userId)->delete(); } catch (\Throwable $ex) {}
         }
 
         $message = "Đã XÓA VĨNH VIỄN tài khoản [{$userName}] cùng toàn bộ vé xe và dữ liệu liên quan thành công!";

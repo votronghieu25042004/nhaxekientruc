@@ -42,33 +42,10 @@
             </p>
           </div>
 
-          <!-- Cards Voucher Shopee Style: Khách Mới 10% (CHAOBAOMOI) & Sinh Viên 30% (SINHVIEN) -->
+          <!-- Cards Voucher Shopee Style: Chỉ để Sinh Viên 30% (SINHVIEN) -->
           <div class="flex sm:flex-wrap items-center justify-start sm:justify-center gap-2.5 sm:gap-3 overflow-x-auto scrollbar-none w-full sm:w-auto px-1 py-1">
-            <!-- Card 1: Khách mới 10% -->
-            <div class="flex-shrink-0 rounded-2xl overflow-hidden shadow-xl border-2 border-white/40 transform hover:scale-105 transition-all duration-300">
-              <div class="bg-[#00767a] px-4 py-1.5 text-center flex items-center justify-between gap-2">
-                <span class="text-white font-black text-xs sm:text-sm tracking-wide whitespace-nowrap">
-                  Khách Mới Giảm 10%
-                </span>
-                <button
-                  type="button"
-                  @click="saveWelcomeVoucher('CHAOBAOMOI')"
-                  class="px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer transition shadow-xs"
-                  :class="isVoucherSaved('CHAOBAOMOI') ? 'bg-white/20 text-white' : 'bg-amber-300 hover:bg-amber-400 text-slate-900'"
-                >
-                  {{ isVoucherSaved('CHAOBAOMOI') ? '✓ Đã Lưu' : 'Lưu Mã' }}
-                </button>
-              </div>
-              <div class="bg-[#fce8a6] px-3.5 py-1 text-center flex items-center justify-center gap-2">
-                <span class="text-slate-900 text-[11px] font-bold whitespace-nowrap">Nhập mã</span>
-                <span class="text-[#00767a] font-black text-xs sm:text-sm tracking-wider bg-white px-2 py-0.5 rounded shadow-xs border border-[#00767a]/40 font-mono whitespace-nowrap">
-                  CHAOBAOMOI
-                </span>
-              </div>
-            </div>
-
-            <!-- Card 2: Sinh viên 30% (Chỉ hiện khi là sinh viên) -->
-            <div v-if="isStudentUser" class="flex-shrink-0 rounded-2xl overflow-hidden shadow-xl border-2 border-amber-300/60 transform hover:scale-105 transition-all duration-300">
+            <!-- Card: Sinh viên 30% -->
+            <div class="flex-shrink-0 rounded-2xl overflow-hidden shadow-xl border-2 border-amber-300/60 transform hover:scale-105 transition-all duration-300">
               <div class="bg-gradient-to-r from-red-600 to-rose-600 px-4 py-1.5 text-center flex items-center justify-between gap-2">
                 <span class="text-white font-black text-xs sm:text-sm tracking-wide whitespace-nowrap flex items-center gap-1">
                   <span>🎓</span>
@@ -1293,6 +1270,11 @@ const showVoucherToast = ref(false);
 const voucherToastMsg = ref('');
 
 const initSavedVouchers = () => {
+  const user = page.props.auth?.user;
+  if (!user) {
+    savedVouchers.value = [];
+    return;
+  }
   try {
     savedVouchers.value = JSON.parse(localStorage.getItem('nhaxekientruc_saved_vouchers') || '[]');
   } catch (e) {
@@ -1301,10 +1283,20 @@ const initSavedVouchers = () => {
 };
 
 const saveWelcomeVoucher = (code) => {
+  if (!code) return;
   if (!savedVouchers.value.includes(code)) {
     savedVouchers.value.push(code);
     try {
-      localStorage.setItem('nhaxekientruc_saved_vouchers', JSON.stringify(savedVouchers.value));
+      const keys = ['nhaxekientruc_saved_vouchers', 'bushub_saved_vouchers', 'saved_vouchers'];
+      keys.forEach(k => {
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) {}
+        if (!list.includes(code)) {
+          list.push(code);
+          localStorage.setItem(k, JSON.stringify(list));
+        }
+      });
+      window.dispatchEvent(new CustomEvent('voucher-saved-to-wallet', { detail: { code } }));
     } catch (e) {}
   }
 };
@@ -1327,12 +1319,6 @@ const closeWelcomeModal = () => {
 };
 
 const useVoucherNow = () => {
-  if (welcomeVoucherType.value === 'STUDENT') {
-    saveWelcomeVoucher('SINHVIEN100');
-    saveWelcomeVoucher('SINHVIEN30');
-  } else {
-    saveWelcomeVoucher('CHAOBAOMOI');
-  }
   showWelcomeVoucherModal.value = false;
   window.scrollTo({ top: 300, behavior: 'smooth' });
 };

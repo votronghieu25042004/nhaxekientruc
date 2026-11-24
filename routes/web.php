@@ -78,6 +78,7 @@ Route::post('api/vouchers/apply', [TripController::class, 'applyVoucher'])->name
 Route::post('membership/subscribe', [TripController::class, 'subscribeMembership'])->name('membership.subscribe');
 Route::post('api/membership/subscribe', [TripController::class, 'subscribeMembership']);
 Route::get('api/membership/check-payment', [TripController::class, 'checkMembershipPayment'])->name('api.membership.checkPayment');
+Route::post('api/membership/cancel', [TripController::class, 'cancelMembership'])->name('api.membership.cancel');
 
 // Customer Reviews
 Route::get('booking/{code}/review', [ReviewController::class, 'show'])->name('reviews.show');

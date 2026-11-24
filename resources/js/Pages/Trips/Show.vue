@@ -970,7 +970,19 @@
                           </span>
                         </div>
                         <span 
-                          v-if="props.hasUsedStudentFirstTrip && (v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG')"
+                          v-if="v.is_active === false"
+                          class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-600"
+                        >
+                          🚫 Tạm ngưng
+                        </span>
+                        <span 
+                          v-else-if="String(props.user?.membership_plan || '').toUpperCase().includes('ULTRA') && (v.code.includes('30') || v.code === 'SINHVIEN')"
+                          class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800"
+                        >
+                          🚫 Không khả dụng (Ultra 40%)
+                        </span>
+                        <span 
+                          v-else-if="props.hasUsedStudentFirstTrip && (v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG')"
                           class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700"
                         >
                           🚫 Đã hết lượt
@@ -988,8 +1000,20 @@
 
                     <!-- Nút Lưu Mã (Vẫn giữ mở kho để lưu tiếp mã khác) -->
                     <div class="pt-2 flex items-center justify-end gap-1.5">
+                      <span
+                        v-if="v.is_active === false"
+                        class="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-400 text-[10px] font-bold border border-slate-200"
+                      >
+                        🚫 Tạm ngưng
+                      </span>
+                      <span
+                        v-else-if="String(props.user?.membership_plan || '').toUpperCase().includes('ULTRA') && (v.code.includes('30') || v.code === 'SINHVIEN')"
+                        class="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-400 text-[10px] font-bold border border-slate-200"
+                      >
+                        Không khả dụng
+                      </span>
                       <button
-                        v-if="!isVoucherSaved(v.code)"
+                        v-else-if="!isVoucherSaved(v.code)"
                         type="button"
                         @click.stop="saveVoucher(v.code)"
                         class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-[11px] font-black transition cursor-pointer shadow-xs active:scale-95 flex items-center gap-1"
@@ -1082,13 +1106,21 @@
                         </div>
                         <span
                           class="px-1.5 py-0.5 rounded text-[9px] font-bold"
-                          :class="(props.hasUsedStudentFirstTrip && (v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG'))
-                            ? 'bg-rose-100 text-rose-700'
-                            : (isVoucherEligible(v) ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600')"
+                          :class="v.is_active === false
+                            ? 'bg-slate-200 text-slate-600'
+                            : (String(props.user?.membership_plan || '').toUpperCase().includes('ULTRA') && (v.code.includes('30') || v.code === 'SINHVIEN')
+                              ? 'bg-amber-100 text-amber-800'
+                              : ((props.hasUsedStudentFirstTrip && (v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG'))
+                                ? 'bg-rose-100 text-rose-700'
+                                : (isVoucherEligible(v) ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600')))"
                         >
-                          {{ (props.hasUsedStudentFirstTrip && (v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG'))
-                            ? '🚫 Đã hết lượt'
-                            : (isVoucherEligible(v) ? '✓ Khả dụng' : '⚠️ Chưa đủ ĐK') }}
+                          {{ v.is_active === false
+                            ? '🚫 Tạm ngưng'
+                            : (String(props.user?.membership_plan || '').toUpperCase().includes('ULTRA') && (v.code.includes('30') || v.code === 'SINHVIEN')
+                              ? '🚫 Không khả dụng (Ultra 40%)'
+                              : ((props.hasUsedStudentFirstTrip && (v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG'))
+                                ? '🚫 Đã hết lượt'
+                                : (isVoucherEligible(v) ? '✓ Khả dụng' : '⚠️ Chưa đủ ĐK'))) }}
                         </span>
                       </div>
                       <p class="text-[11px] font-bold text-slate-700 mt-0.5 truncate">{{ v.title }}</p>
@@ -1106,12 +1138,13 @@
                         v-if="!appliedVoucher || appliedVoucher.code !== v.code"
                         type="button"
                         @click.stop="applyVoucherFromList(v)"
-                        class="px-3 py-1 rounded-lg text-[10.5px] font-black transition cursor-pointer shadow-2xs"
+                        :disabled="!isVoucherEligible(v)"
+                        class="px-3 py-1 rounded-lg text-[10.5px] font-black transition shadow-2xs"
                         :class="isVoucherEligible(v)
-                          ? 'bg-red-600 hover:bg-red-700 text-white'
-                          : 'bg-slate-200 text-slate-500 hover:bg-slate-300'"
+                          ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer'
+                          : 'bg-slate-200 text-slate-400 cursor-not-allowed'"
                       >
-                        Áp Dụng
+                        {{ v.is_active === false ? 'Tạm ngưng' : (String(props.user?.membership_plan || '').toUpperCase().includes('ULTRA') && (v.code.includes('30') || v.code === 'SINHVIEN') ? 'Không khả dụng' : 'Áp Dụng') }}
                       </button>
 
                       <span v-else class="text-[10.5px] font-black text-emerald-700 bg-emerald-100 px-2 py-1 rounded-lg">
@@ -1436,7 +1469,7 @@
 <script setup>
 import AiChatModal from '@/Components/AiChatModal.vue';
 import AuthModal from '@/Components/AuthModal.vue';
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import Navbar from '@/Components/Navbar.vue';
@@ -1739,20 +1772,31 @@ const voucherSaveMessage = ref('');
 
 const initSavedVouchers = () => {
   try {
-    savedVouchers.value = JSON.parse(localStorage.getItem('nhaxekientruc_saved_vouchers') || '[]');
+    const list = JSON.parse(localStorage.getItem('nhaxekientruc_saved_vouchers') || localStorage.getItem('bushub_saved_vouchers') || localStorage.getItem('saved_vouchers') || '[]');
+    savedVouchers.value = Array.isArray(list) ? list : [];
   } catch (e) {
     savedVouchers.value = [];
   }
 };
 
 const saveVoucher = (code) => {
+  if (!code) return;
   if (!savedVouchers.value.includes(code)) {
     savedVouchers.value.push(code);
     try {
-      localStorage.setItem('nhaxekientruc_saved_vouchers', JSON.stringify(savedVouchers.value));
+      const keys = ['nhaxekientruc_saved_vouchers', 'bushub_saved_vouchers', 'saved_vouchers'];
+      keys.forEach(k => {
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) {}
+        if (!list.includes(code)) {
+          list.push(code);
+          localStorage.setItem(k, JSON.stringify(list));
+        }
+      });
+      window.dispatchEvent(new CustomEvent('voucher-saved-to-wallet', { detail: { code } }));
     } catch (e) {}
   }
-  voucherSaveMessage.value = `✓ Đã lưu mã [${code}] vào ví thành công! Bạn có thể lưu tiếp các mã khác bên dưới.`;
+  voucherSaveMessage.value = `✓ Đã lưu mã [${code}] vào ví thành công! Bạn có thể chọn áp dụng ngay.`;
   setTimeout(() => {
     voucherSaveMessage.value = '';
   }, 4000);
@@ -1766,6 +1810,7 @@ const serverVouchers = ref([]);
 
 onMounted(async () => {
   initSavedVouchers();
+  window.addEventListener('voucher-saved-to-wallet', initSavedVouchers);
   if (!props.vouchers || props.vouchers.length === 0) {
     try {
       const res = await axios.get('/api/vouchers');
@@ -1774,6 +1819,10 @@ onMounted(async () => {
       }
     } catch (e) {}
   }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('voucher-saved-to-wallet', initSavedVouchers);
 });
 
 const rawVouchersList = computed(() => {
@@ -1821,6 +1870,7 @@ const availableVouchers = computed(() => {
         discount_value: v.discount_value,
         discount_type: v.discount_type,
         max_discount: v.max_discount,
+        is_active: v.is_active !== false && v.is_active !== 0 && v.is_active !== '0',
       };
     });
   }
@@ -1876,6 +1926,17 @@ const isCustomerStudent = computed(() => {
 });
 
 const isVoucherEligible = (v) => {
+  if (v.is_active === false) return false;
+
+  const userPlan = String(props.user?.membership_plan || '').toUpperCase();
+  const code = String(v.code || '').toUpperCase();
+  if (userPlan === 'CANCELLED' && ['ULTRA40', 'PRO30', 'ECO20', 'SINHVIEN30', 'SINHVIEN'].includes(code)) {
+    return false;
+  }
+  if (userPlan.includes('ULTRA') && (code.includes('30') || code === 'SINHVIEN' || code === 'SINHVIEN30' || code === 'PRO30')) {
+    return false;
+  }
+
   if (v.target_audience === 'STUDENT' || v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG') {
     if (!isCustomerStudent.value) return false;
     if ((v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG') && (props.hasUsedStudentFirstTrip || selectedSeats.value.length > 1)) {
@@ -1889,6 +1950,21 @@ const isVoucherEligible = (v) => {
 };
 
 const applyVoucherFromList = (v) => {
+  if (v.is_active === false) {
+    voucherError.value = `Mã ưu đãi "${v.code}" hiện đang tạm ngưng sử dụng!`;
+    return;
+  }
+
+  const userPlan = String(props.user?.membership_plan || '').toUpperCase();
+  const code = String(v.code || '').toUpperCase();
+  if (userPlan === 'CANCELLED' && ['ULTRA40', 'PRO30', 'ECO20', 'SINHVIEN30', 'SINHVIEN'].includes(code)) {
+    voucherError.value = 'Gói hội viên của bạn đã bị hủy, mã ưu đãi độc quyền này không còn khả dụng!';
+    return;
+  }
+  if (userPlan.includes('ULTRA') && (code.includes('30') || code === 'SINHVIEN' || code === 'SINHVIEN30' || code === 'PRO30')) {
+    voucherError.value = 'Bạn đang sử dụng Gói ULTRA VIP (Giảm 40%), không cần dùng mã 30%!';
+    return;
+  }
   if (v.code === 'SINHVIEN100' || v.code === 'SINHVIEN0DONG') {
     if (!isCustomerStudent.value) {
       voucherError.value = 'Mã vé 0-Đồng [SINHVIEN0DONG] chỉ dành riêng cho sinh viên (.edu.vn)! Vui lòng điền email sinh viên ở thông tin hành khách phía trên.';

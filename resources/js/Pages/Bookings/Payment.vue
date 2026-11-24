@@ -387,60 +387,15 @@
               </div>
             </div>
 
-            <!-- KHỐI TỰ ĐỘNG NHẬN DIỆN CHUYỂN KHOẢN (REAL-TIME 24/7) -->
-            <div class="p-5 rounded-3xl bg-gradient-to-br from-emerald-50 via-white to-teal-50 border-2 border-emerald-300 shadow-sm space-y-3">
-              <div class="flex items-start gap-3.5">
-                <div class="relative flex items-center justify-center shrink-0 mt-0.5">
-                  <span class="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center text-lg font-black shadow-md shadow-emerald-500/20">
-                    ⚡
-                  </span>
-                  <span class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 animate-ping"></span>
-                  <span class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-600"></span>
-                </div>
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="text-xs font-black text-emerald-800 uppercase tracking-wider">
-                      HỆ THỐNG ĐANG TỰ ĐỘNG LẮNG NGHE GIAO DỊCH CHUYỂN KHOẢN
-                    </span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse">
-                      Real-time 24/7
-                    </span>
-                  </div>
-                  <p class="text-[11.5px] text-slate-600 mt-1 leading-relaxed">
-                    Sau khi bạn chuyển khoản thành công với nội dung <strong class="text-amber-800 font-mono bg-amber-100/80 px-1 py-0.5 rounded">{{ vietQr.content }}</strong>, hệ thống sẽ <strong>TỰ ĐỘNG CHUYỂN SANG TRANG VÉ</strong> trong giây lát mà bạn <strong>không cần bấm thêm bất kỳ nút nào</strong>!
-                  </p>
-                </div>
+            <!-- Hướng dẫn thanh toán tự động qua VietQR -->
+            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center space-y-1.5 shadow-2xs">
+              <div class="flex items-center justify-center gap-2 text-xs font-bold text-slate-700">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Thanh toán tự động qua VietQR MBBank</span>
               </div>
-
-              <!-- Thanh sóng radar quét tự động -->
-              <div class="w-full bg-white rounded-xl p-2.5 border border-emerald-200 flex items-center justify-between text-xs text-slate-500">
-                <div class="flex items-center gap-2.5">
-                  <div class="flex space-x-1">
-                    <span class="w-1.5 h-4 bg-emerald-500 rounded-full animate-bounce [animation-delay:0ms]"></span>
-                    <span class="w-1.5 h-4 bg-emerald-400 rounded-full animate-bounce [animation-delay:150ms]"></span>
-                    <span class="w-1.5 h-4 bg-emerald-300 rounded-full animate-bounce [animation-delay:300ms]"></span>
-                  </div>
-                  <span class="text-[11px] text-emerald-700 font-bold">Đang kết nối tài khoản ngân hàng & MoMo theo thời gian thực...</span>
-                </div>
-                <span class="text-[10px] text-slate-400 font-mono">Tự động kích hoạt vé</span>
-              </div>
-            </div>
-
-            <!-- KHỐI DỰ PHÒNG XÁC NHẬN KHI ĐÃ CHUYỂN TIỀN THẬT TỪ APP NGÂN HÀNG -->
-            <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs text-center space-y-2.5">
-              <div class="text-left space-y-0.5">
-                <span class="text-xs font-bold text-slate-800 block">Đã thực hiện chuyển khoản từ App MBBank / MoMo?</span>
-                <span class="text-[11px] text-slate-500 block">Sau khi chuyển tiền xong, nếu cổng ngân hàng chưa kịp đẩy tín hiệu tự động, bạn có thể bấm nút dưới đây để kích hoạt vé ngay:</span>
-              </div>
-              <button
-                @click="manualConfirm"
-                :disabled="isConfirming"
-                type="button"
-                class="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs uppercase tracking-wider transition shadow-md shadow-red-500/20 cursor-pointer disabled:opacity-50 active:scale-95"
-              >
-                <span v-if="isConfirming">⏳ Đang kích hoạt vé & gửi email...</span>
-                <span v-else>✓ Tôi Đã Chuyển Khoản Rồi - Kích Hoạt Vé Ngay</span>
-              </button>
+              <p class="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
+                Quý khách vui lòng mở ứng dụng ngân hàng quét mã QR hoặc chuyển khoản đúng Số tài khoản &amp; Nội dung chuyển khoản. Khi hệ thống ngân hàng xác nhận, vé sẽ tự động được kích hoạt.
+              </p>
             </div>
 
           </div>
@@ -545,7 +500,6 @@ const isPaid = ref(
 );
 const isExpired = ref(false);
 const copiedField = ref(null);
-const isConfirming = ref(false);
 
 // Quản lý URL ảnh QR động có fallback
 const mbbankCurrentQr = ref(props.vietQr.mbbank_qr_url || props.vietQr.mbbank_local_qr || '/images/qr/mbbank_qr.png');
@@ -623,26 +577,7 @@ const redirectToTicket = () => {
   }, 1200);
 };
 
-// Xác nhận thủ công nếu khách đã chuyển tiền từ App Ngân Hàng
-const manualConfirm = async () => {
-  if (isConfirming.value || isPaid.value) return;
-  isConfirming.value = true;
-  try {
-    const res = await axios.post(`/api/booking/${props.booking.booking_code}/confirm-payment`);
-    if (res.data?.success) {
-      isPaid.value = true;
-      if (pollInterval) clearInterval(pollInterval);
-      if (timerInterval) clearInterval(timerInterval);
-      redirectToTicket();
-    } else {
-      alert(res.data?.message || 'Chưa nhận được giao dịch.');
-    }
-  } catch (err) {
-    alert('Lỗi xác nhận: ' + (err.response?.data?.message || err.message));
-  } finally {
-    isConfirming.value = false;
-  }
-};
+
 
 // Polling tự động lắng nghe giao dịch từ máy chủ (chỉ chuyển khi có tiền thật từ SePay hoặc Xác nhận)
 const checkStatus = async () => {

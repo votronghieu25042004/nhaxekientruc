@@ -376,25 +376,30 @@
             </div>
 
             <!-- Hộp Mã Giảm Giá Độc Quyền Dành Cho Gói -->
-            <div v-if="isUltraPlan || isProPlan" class="mt-3 p-3 bg-white rounded-2xl border-2 border-dashed flex items-center justify-between gap-2"
+            <div v-if="isUltraPlan || isProPlan" class="mt-3 p-3 bg-white rounded-2xl border-2 border-dashed flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                  :class="isUltraPlan ? 'border-amber-400 bg-amber-50/50' : 'border-emerald-400 bg-emerald-50/50'">
               <div>
                 <span class="text-[10.5px] font-bold text-slate-500 block">Mã Giảm Giá Độc Quyền Của Bạn:</span>
                 <span class="text-base font-black font-mono tracking-wider"
                       :class="isUltraPlan ? 'text-amber-700' : 'text-emerald-700'">
-                  {{ isUltraPlan ? 'ULTRA40' : 'PRO30' }}
+                  {{ userVoucherCode }}
                 </span>
                 <span class="text-[10px] text-slate-500 block mt-0.5">
                   (Giảm {{ isUltraPlan ? '40%' : '30%' }} toàn bộ vé khi thanh toán trực tuyến)
                 </span>
+                <span v-if="savedVoucherNotification" class="text-[10.5px] font-bold text-emerald-700 block mt-1">
+                  {{ savedVoucherNotification }}
+                </span>
               </div>
               <button
                 type="button"
-                @click="copyVoucherCode(isUltraPlan ? 'ULTRA40' : 'PRO30')"
-                class="px-3 py-1.5 rounded-xl font-black text-xs text-white shadow-xs transition cursor-pointer active:scale-95"
-                :class="isUltraPlan ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-700'"
+                @click="saveVoucherToWallet(userVoucherCode)"
+                class="px-3.5 py-2 rounded-xl font-black text-xs shadow-xs transition cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
+                :class="isSavedInWallet
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                  : (isUltraPlan ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white')"
               >
-                {{ copiedCode ? 'Đã sao chép! ✓' : 'Sao chép mã' }}
+                <span>{{ isSavedInWallet ? '✓ Đã Lưu Vào Ví' : '📥 Lưu Mã Vào Ví' }}</span>
               </button>
             </div>
           </div>
@@ -500,13 +505,56 @@ const copyVoucherCode = (code) => {
 
 const isUltraPlan = computed(() => {
   const plan = String(props.user?.membership_plan || '').toUpperCase()
+  if (plan === 'CANCELLED' || plan === 'STANDARD' || plan === 'THUONG' || !plan) return false
   return plan.includes('ULTRA')
 })
 
 const isProPlan = computed(() => {
   const plan = String(props.user?.membership_plan || '').toUpperCase()
-  return plan.includes('PRO') || Boolean(props.user?.is_student)
+  if (plan === 'CANCELLED' || plan === 'STANDARD' || plan === 'THUONG' || !plan) return false
+  return plan.includes('PRO')
 })
+
+const userVoucherCode = computed(() => {
+  if (isUltraPlan.value) return 'ULTRA40'
+  if (props.user?.is_student) return 'SINHVIEN30'
+  return 'PRO30'
+})
+
+const savedVoucherNotification = ref('')
+const isSavedInWallet = ref(false)
+
+const checkSavedInWallet = () => {
+  try {
+    const list = JSON.parse(localStorage.getItem('nhaxekientruc_saved_vouchers') || localStorage.getItem('bushub_saved_vouchers') || '[]')
+    isSavedInWallet.value = list.includes(userVoucherCode.value)
+  } catch (e) {
+    isSavedInWallet.value = false
+  }
+}
+
+watch([() => props.modelValue, userVoucherCode], () => {
+  checkSavedInWallet()
+}, { immediate: true })
+
+const saveVoucherToWallet = (code) => {
+  try {
+    const keys = ['nhaxekientruc_saved_vouchers', 'bushub_saved_vouchers', 'saved_vouchers']
+    keys.forEach(k => {
+      let list = []
+      try { list = JSON.parse(localStorage.getItem(k) || '[]') } catch (e) {}
+      if (!list.includes(code)) {
+        list.push(code)
+        localStorage.setItem(k, JSON.stringify(list))
+      }
+    })
+    try { navigator.clipboard.writeText(code) } catch (e) {}
+    isSavedInWallet.value = true
+    savedVoucherNotification.value = `✓ Đã lưu mã [${code}] vào ví voucher thành công!`
+    window.dispatchEvent(new CustomEvent('voucher-saved-to-wallet', { detail: { code } }))
+    setTimeout(() => { savedVoucherNotification.value = '' }, 3500)
+  } catch (e) {}
+}
 
 const activeTab = ref(props.initialTab || 'info')
 

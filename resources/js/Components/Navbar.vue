@@ -1,47 +1,48 @@
 <template>
   <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs transition-all">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6">
-      <div class="flex items-center justify-between h-16 gap-4">
+    <div class="w-full max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 gap-2 lg:gap-4">
         
         <!-- Logo Brand nhaxekientruc -->
-        <Link href="/" class="flex items-center gap-2.5 group flex-shrink-0">
+        <Link href="/" class="flex items-center gap-2.5 group shrink-0">
           <div class="w-10 h-10 rounded-xl bg-white border border-red-200/90 flex items-center justify-center p-1 shadow-xs group-hover:scale-105 transition-all">
             <img src="/images/logo.png" alt="Logo Trường ĐH Kiến Trúc Đà Nẵng" class="w-full h-full object-contain" />
           </div>
-          <div>
+          <div class="shrink-0">
             <span class="text-xl font-black tracking-tight text-red-600 block leading-none">
               nhaxekientruc
             </span>
-            <span class="text-[9.5px] text-slate-400 font-bold block tracking-wider uppercase mt-1">ĐH KIẾN TRÚC ĐÀ NẴNG</span>
+            <span class="text-[9.5px] text-slate-400 font-bold block tracking-wider uppercase mt-1 whitespace-nowrap">ĐH KIẾN TRÚC ĐÀ NẴNG</span>
           </div>
         </Link>
 
         <!-- Menu Điều Hướng Chuẩn (Trang Chủ, Tìm Chuyến, Lịch Trình, Quản Lý Vé) -->
-        <nav class="hidden md:flex items-center gap-8 text-[15px] font-semibold text-slate-700">
+        <!-- Xích qua bên phải, nằm ngay sát bên cạnh nút Nâng cấp VIP -->
+        <nav class="hidden md:flex items-center gap-5 lg:gap-7 ml-auto mr-3 lg:mr-5 text-[15px] font-semibold text-slate-700 shrink-0 whitespace-nowrap">
           <Link
             href="/"
-            class="transition-all py-1"
+            class="transition-all py-1 whitespace-nowrap shrink-0"
             :class="$page.url === '/' ? 'text-red-600 font-bold border-b-2 border-red-600 pb-1' : 'hover:text-red-600 text-slate-600'"
           >
             Trang Chủ
           </Link>
           <Link
             href="/trips"
-            class="transition-all py-1"
+            class="transition-all py-1 whitespace-nowrap shrink-0"
             :class="$page.url.startsWith('/trips') ? 'text-red-600 font-bold border-b-2 border-red-600 pb-1' : 'hover:text-red-600 text-slate-600'"
           >
             Tìm Chuyến
           </Link>
           <Link
             href="/schedules"
-            class="transition-all py-1"
+            class="transition-all py-1 whitespace-nowrap shrink-0"
             :class="$page.url.startsWith('/schedules') ? 'text-red-600 font-bold border-b-2 border-red-600 pb-1' : 'hover:text-red-600 text-slate-600'"
           >
             Lịch Trình
           </Link>
           <Link
             href="/my-bookings"
-            class="transition-all py-1"
+            class="transition-all py-1 whitespace-nowrap shrink-0"
             :class="$page.url.startsWith('/my-bookings') ? 'text-red-600 font-bold border-b-2 border-red-600 pb-1' : 'hover:text-red-600 text-slate-600'"
           >
             Quản Lý Vé
@@ -49,17 +50,28 @@
         </nav>
 
         <!-- Cổng Đăng Nhập & Ngôn Ngữ Theo Mẫu: VN | [👤] Đăng nhập -->
-        <div class="flex items-center gap-2 sm:gap-3">
+        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
           
-          <!-- Nút Ngôn Ngữ: Đa Ngôn Ngữ (Desktop/Tablet) -->
+          <!-- Nút Countdown Gói Sinh Viên / Hội Viên Pro & Ultra Chuẩn Đẹp Như Cũ -->
+          <button
+            type="button"
+            @click="showMembershipModal = true"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition shadow-2xs border cursor-pointer active:scale-95 bg-amber-50 hover:bg-amber-100 text-amber-950 border-amber-300"
+            title="Bấm để xem quyền lợi & nâng cấp gói hội viên"
+          >
+            <span class="text-sm">{{ userMembershipPlan === 'ULTRA' ? '👑' : (userMembershipPlan === 'PRO' ? '🎓' : '👑') }}</span>
+            <span class="font-black whitespace-nowrap">{{ userMembershipPlan === 'THUONG' ? 'Gói Ưu Đãi Hội Viên' : studentCountdownText }}</span>
+            <span class="text-[9.5px] bg-[#dc2626] text-white px-1.5 py-0.5 rounded-full font-black uppercase tracking-tight shadow-xs">{{ userMembershipPlan === 'THUONG' ? 'Khám phá' : 'Nâng cấp' }}</span>
+          </button>
+
+          <!-- Nút Ngôn Ngữ (Desktop/Tablet) -->
           <button
             type="button"
             @click="showLanguageModal = true"
-            class="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer px-2.5 py-1.5 rounded-xl hover:bg-slate-100 border border-slate-200/80 tracking-wide"
+            class="hidden sm:inline-flex items-center justify-center text-xs font-bold text-slate-700 hover:text-red-600 transition cursor-pointer px-3 py-1.5 rounded-full hover:bg-slate-50 border border-slate-200 shadow-2xs tracking-wide font-mono"
             title="Đổi ngôn ngữ hiển thị"
           >
-            <span class="text-sm leading-none">{{ currentLangFlag }}</span>
-            <span class="font-mono text-xs">{{ currentLangCode }}</span>
+            {{ currentLangCode }}
           </button>
 
           <!-- Dấu gạch phân cách -->
@@ -92,7 +104,7 @@
               <!-- Tên người dùng ngắn gọn & Badge gói -->
               <span v-if="$page.props.auth?.user" class="flex items-center gap-1.5">
                 <span 
-                  class="font-black truncate max-w-[110px]"
+                  class="font-black whitespace-nowrap"
                   :class="userMembershipPlan === 'ULTRA' ? 'text-amber-950' : (userMembershipPlan === 'PRO' ? 'text-emerald-950' : 'text-slate-900')"
                 >
                   {{ cleanUserDisplayName }}
@@ -487,6 +499,21 @@
                 </button>
               </div>
 
+              <!-- Dành cho Khách chưa đăng nhập trên Mobile -->
+              <div v-else class="my-1.5">
+                <button
+                  type="button"
+                  @click="showMembershipModal = true; isMobileMenuOpen = false"
+                  class="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100/90 text-amber-950 border border-amber-300 font-black text-xs shadow-xs flex items-center justify-between cursor-pointer"
+                >
+                  <span class="flex items-center gap-2">
+                    <span class="text-base">👑</span>
+                    <span>Gói Hội Viên & Ưu Đãi Sinh Viên</span>
+                  </span>
+                  <span class="text-[9.5px] bg-red-600 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-tight">Khám phá</span>
+                </button>
+              </div>
+
               <!-- Khu vực Nghiệp vụ -->
               <div class="pt-2.5 border-t border-slate-100">
                 <div class="text-[10px] font-black uppercase text-slate-400 px-3 py-1 tracking-wider">
@@ -589,9 +616,8 @@
                       <span class="text-base">🌐</span>
                       <span>Ngôn Ngữ / Language</span>
                     </span>
-                    <span class="inline-flex items-center gap-1 font-mono text-red-600 font-black">
-                      <span>{{ currentLangFlag }}</span>
-                      <span>{{ currentLangCode }}</span>
+                    <span class="font-mono text-red-600 font-black text-xs">
+                      {{ currentLangCode }}
                     </span>
                   </button>
 
@@ -682,7 +708,7 @@
     <LanguageModal v-model="showLanguageModal" @change="onLanguageChange" />
     <AuthModal v-model="showAuthModal" />
     <ProfileModal v-model="showProfileModal" :user="$page.props.auth?.user" :initial-tab="profileActiveTab" @open-membership="showMembershipModal = true" />
-    <MembershipModal :is-open="showMembershipModal" @close="showMembershipModal = false" />
+    <MembershipModal :is-open="showMembershipModal" @close="showMembershipModal = false" @open-auth="showMembershipModal = false; showAuthModal = true" />
 </template>
 
 <script setup>
@@ -730,8 +756,10 @@ const userMembershipPlan = computed(() => {
   const u = page.props.auth?.user;
   if (!u) return 'THUONG';
   const plan = String(u.membership_plan || '').toUpperCase();
+  if (plan === 'CANCELLED' || plan === 'STANDARD' || plan === 'THUONG' || !plan) return 'THUONG';
   if (plan.includes('ULTRA')) return 'ULTRA';
-  if (plan.includes('PRO') || u.is_student) return 'PRO';
+  if (plan.includes('PRO')) return 'PRO';
+  if (plan.includes('ECO')) return 'ECO';
   return 'THUONG';
 });
 
@@ -743,15 +771,15 @@ const cleanUserDisplayName = computed(() => {
 
 const navbarMembershipBadgeText = computed(() => {
   const u = page.props.auth?.user;
-  if (!u) return 'Gói Hội Viên';
-  const days = u.student_days_remaining ?? 365;
+  if (!u) return 'Gói Ưu Đãi Hội Viên';
+  const days = u.student_days_remaining ?? 0;
   if (userMembershipPlan.value === 'ULTRA') {
-    return `ULTRA (-40%): Còn ${days} ngày`;
+    return `Ultra 40%: Còn ${days} ngày`;
   }
   if (userMembershipPlan.value === 'PRO') {
-    return `${u.is_student ? 'SV PRO' : 'PRO'} (-30%): Còn ${days} ngày`;
+    return `SV 30%: Còn ${days} ngày`;
   }
-  return 'Gói THƯỜNG';
+  return 'Gói Ưu Đãi Hội Viên';
 });
 
 const studentCountdownText = computed(() => {
@@ -778,6 +806,11 @@ const openProfile = (tab = 'info') => {
 
 const handleLogout = () => {
   isRoleOpen.value = false;
+  try {
+    localStorage.removeItem('bushub_saved_vouchers');
+    localStorage.removeItem('saved_vouchers');
+    localStorage.removeItem('nhaxekientruc_saved_vouchers');
+  } catch (e) {}
   router.post('/logout');
 };
 

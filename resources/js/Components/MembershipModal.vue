@@ -36,32 +36,42 @@
           </div>
 
           <!-- Trạng thái hiện tại của người dùng (Chỉ hiện khi đang ở bước chọn gói và đã có gói) -->
-          <div v-if="currentPlanInfo && modalStep === 'select_plan'" class="mt-4 p-3 bg-black/30 backdrop-blur-md rounded-2xl border border-white/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-            <div class="flex items-center gap-2">
-              <span class="text-lg">🎓</span>
+          <div v-if="currentPlanInfo && modalStep === 'select_plan'" class="mt-4 p-3.5 bg-black/35 backdrop-blur-md rounded-2xl border border-white/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">{{ String(currentPlanInfo.name).includes('ULTRA') ? '👑' : '🎓' }}</span>
               <div>
                 <div class="font-bold text-white flex items-center gap-1.5">
                   <span>Gói đang dùng:</span>
                   <span class="text-amber-300 font-black uppercase">{{ currentPlanInfo.name }}</span>
                   <span class="px-2 py-0.2 rounded-full bg-emerald-500 text-white text-[10px] font-black">HOẠT ĐỘNG</span>
                 </div>
-                <div class="text-[11px] text-red-200">
+                <div class="text-[11px] text-red-200 mt-0.5">
                   Bắt đầu: {{ currentPlanInfo.registered_at }} • Hết hạn: {{ currentPlanInfo.expires_at }}
                 </div>
               </div>
             </div>
 
-            <div class="text-right sm:text-right">
-              <div class="text-xs font-mono font-black text-amber-300 bg-amber-400/20 px-2.5 py-1 rounded-xl border border-amber-300/40 inline-flex items-center gap-1">
+            <div class="flex items-center gap-2 self-end sm:self-center">
+              <div class="text-xs font-mono font-black text-amber-300 bg-amber-400/20 px-2.5 py-1.5 rounded-xl border border-amber-300/40 inline-flex items-center gap-1">
                 <span>⏱️ Còn lại:</span>
                 <span>{{ currentPlanInfo.days_left }} ngày</span>
               </div>
+              <button
+                type="button"
+                @click="handleCancelCurrentPlan"
+                :disabled="isCancelling"
+                class="px-3 py-1.5 rounded-xl bg-red-600/95 hover:bg-red-700 text-white font-black text-[11px] shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer disabled:opacity-50"
+                title="Hủy gói này để có thể mua gói khác"
+              >
+                <span>🗑️</span>
+                <span>{{ isCancelling ? 'Đang hủy...' : 'Hủy Gói Đang Dùng' }}</span>
+              </button>
             </div>
           </div>
         </div>
 
         <!-- BƯỚC 1: CHỌN GÓI DỊCH VỤ -->
-        <div v-if="modalStep === 'select_plan'" class="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1">
+        <div v-if="modalStep === 'select_plan'" class="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
           
           <!-- Toggle: Sinh Viên vs Khách Thường -->
           <div class="flex items-center justify-center">
@@ -88,21 +98,32 @@
             </div>
           </div>
 
-          <!-- Thông báo trợ giá sinh viên -->
-          <div v-if="targetRole === 'student'" class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs flex items-center gap-2.5">
-            <span class="text-2xl">🎓</span>
-            <div>
-              <strong class="text-emerald-950 font-bold">Đặc quyền Sinh viên (Có sẵn 1 Năm - Giảm 30%):</strong>
-              <p class="text-slate-700 mt-0.5">Tất cả tài khoản Sinh viên khi đăng ký thành công được <strong>cấp sẵn Gói Sinh Viên PRO (Giảm 30% / 1 Năm) hoàn toàn miễn phí 0đ</strong>. Nếu có nhu cầu giảm cao hơn, bạn có thể <strong>nâng cấp lên Gói ULTRA để giảm 40%</strong> mọi chuyến đi!</p>
+          <!-- Cảnh báo bắt buộc hủy gói cũ nếu muốn mua gói khác -->
+          <div v-if="currentPlanInfo" class="p-3.5 bg-amber-50 border-2 border-amber-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
+            <div class="flex items-center gap-2.5 text-xs text-amber-950">
+              <span class="text-2xl shrink-0">⚠️</span>
+              <div>
+                <p class="font-black text-xs text-amber-900 uppercase">Bạn đang sử dụng: {{ currentPlanInfo.name }}</p>
+                <p class="text-slate-700 mt-0.5">Theo quy định, bạn cần <strong>hủy gói đang sử dụng</strong> trước khi được chọn mua hoặc đăng ký gói dịch vụ khác.</p>
+              </div>
             </div>
+            <button
+              type="button"
+              @click="handleCancelCurrentPlan"
+              :disabled="isCancelling"
+              class="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50 active:scale-95"
+            >
+              <span>🗑️</span>
+              <span>{{ isCancelling ? 'Đang hủy...' : 'Hủy Gói Để Mua Gói Mới' }}</span>
+            </button>
           </div>
 
-          <!-- 3 CỘT GÓI DỊCH VỤ (BỎ CHỮ PASS, DÙNG GÓI ECO, GÓI PRO, GÓI ULTRA) -->
+          <!-- 3 CỘT GÓI DỊCH VỤ -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             
             <!-- GÓI 1: GÓI ECO (GIẢM 20%) -->
             <div 
-              @click="selectedPlan = 'ECO_20'"
+              @click="selectPlan('ECO_20')"
               class="rounded-2xl border-2 p-4 flex flex-col justify-between transition cursor-pointer relative"
               :class="selectedPlan === 'ECO_20' ? 'border-red-600 bg-red-50/20 shadow-md ring-2 ring-red-600/20' : 'border-slate-200 hover:border-slate-300 bg-white'"
             >
@@ -118,8 +139,12 @@
                 </div>
 
                 <div class="py-2 border-y border-slate-100">
-                  <div class="text-2xl font-black text-red-600">
-                    {{ targetRole === 'student' ? '49.000đ' : '199.000đ' }}
+                  <div class="flex items-baseline gap-1.5">
+                    <span class="text-2xl font-black text-red-600">
+                      {{ targetRole === 'student' ? '49.000đ' : '199.000đ' }}
+                    </span>
+                    <span v-if="targetRole === 'student'" class="text-xs font-bold text-slate-400 line-through">199.000đ</span>
+                    <span v-if="targetRole === 'student'" class="text-[9px] font-black text-red-700 bg-red-100 px-1 py-0.2 rounded uppercase">Tiết kiệm 75%</span>
                   </div>
                   <div class="text-[10px] text-slate-400">
                     Thời hạn: 6 tháng (180 ngày)
@@ -151,9 +176,9 @@
               </button>
             </div>
 
-            <!-- GÓI 2: GÓI PRO (GIẢM 30% - CÓ SẴN 1 NĂM KHI SINH VIÊN ĐĂNG KÝ) -->
+            <!-- GÓI 2: GÓI PRO (GIẢM 30% - SINH VIÊN PRO) -->
             <div 
-              @click="selectedPlan = 'PRO_30'"
+              @click="selectPlan('PRO_30')"
               class="rounded-2xl border-2 p-4 flex flex-col justify-between transition cursor-pointer relative"
               :class="selectedPlan === 'PRO_30' ? 'border-emerald-600 bg-emerald-50/20 shadow-md ring-2 ring-emerald-600/30' : 'border-slate-200 hover:border-slate-300 bg-white'"
             >
@@ -161,7 +186,9 @@
                 <div class="flex items-center justify-between">
                   <span class="text-xs font-bold px-2 py-0.5 rounded-full"
                         :class="targetRole === 'student' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-blue-50 text-blue-700 border border-blue-200'">
-                    {{ targetRole === 'student' ? '🎓 Có Sẵn 1 Năm' : '1 Năm Trọn Gói' }}
+                    {{ targetRole === 'student' 
+                        ? (isActivePlan('PRO_30') ? '✓ Đang Sử Dụng' : (isStudentRebuyPro ? '🎓 Sinh Viên Mua Lại' : (isGuest ? '🎓 Nhận 1 Năm 0đ' : '🎓 Có Sẵn 1 Năm'))) 
+                        : '1 Năm Trọn Gói' }}
                   </span>
                   <span v-if="selectedPlan === 'PRO_30'" class="w-4 h-4 rounded-full bg-emerald-600 text-white text-[10px] flex items-center justify-center font-bold">✓</span>
                 </div>
@@ -172,21 +199,49 @@
                     <span v-if="targetRole === 'student'" class="text-xs">🎓</span>
                   </h3>
                   <p class="text-[11px] text-emerald-800 font-semibold">
-                    {{ targetRole === 'student' ? 'Có sẵn 1 năm (365 ngày) khi đăng ký thành công' : 'Giảm 30% suốt 365 ngày' }}
+                    {{ targetRole === 'student' 
+                        ? (isStudentRebuyPro ? 'Mua lại sau khi hủy (Trợ giá sinh viên)' : 'Có sẵn 1 năm (365 ngày) khi đăng ký thành công') 
+                        : 'Giảm 30% suốt 365 ngày' }}
                   </p>
                 </div>
 
                 <div class="py-2 border-y border-slate-100">
                   <div v-if="targetRole === 'student'" class="space-y-0.5">
-                    <div class="flex items-baseline gap-1.5">
-                      <span class="text-3xl font-black text-emerald-600">0đ</span>
-                      <span class="text-xs font-bold text-slate-400 line-through">349.000đ</span>
-                      <span class="text-[9.5px] font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-md uppercase">MIỄN PHÍ 100%</span>
+                    <!-- Sinh viên mua lại sau khi đã hủy gói trước đó -->
+                    <div v-if="isStudentRebuyPro" class="space-y-0.5">
+                      <div class="flex items-baseline gap-1.5">
+                        <span class="text-2xl font-black text-emerald-700">149.000đ</span>
+                        <span class="text-xs font-bold text-slate-400 line-through">349.000đ</span>
+                        <span class="text-[9px] font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded uppercase">TIẾT KIỆM 200K</span>
+                      </div>
+                      <div class="text-[10px] text-slate-500 font-medium">
+                        Ưu đãi sinh viên mua lại gói sau khi đã hủy trước đó
+                      </div>
                     </div>
-                    <div class="text-[10px] text-slate-500 font-medium">
-                      Đặc quyền cấp sẵn 365 ngày khi đăng ký tài khoản sinh viên
+                    <!-- Khách chưa đăng nhập: Tặng 1 năm 0đ khi tạo tài khoản -->
+                    <div v-else-if="isGuest" class="space-y-0.5">
+                      <div class="flex items-baseline gap-1.5">
+                        <span class="text-3xl font-black text-emerald-600">0đ</span>
+                        <span class="text-xs font-bold text-slate-400 line-through">349.000đ</span>
+                        <span class="text-[9.5px] font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-md uppercase">MIỄN PHÍ 100%</span>
+                      </div>
+                      <div class="text-[10px] text-slate-500 font-medium">
+                        Tặng sẵn 1 năm (365 ngày) khi đăng ký tài khoản sinh viên mới
+                      </div>
+                    </div>
+                    <!-- Sinh viên mới tạo tài khoản hợp lệ -->
+                    <div v-else class="space-y-0.5">
+                      <div class="flex items-baseline gap-1.5">
+                        <span class="text-3xl font-black text-emerald-600">0đ</span>
+                        <span class="text-xs font-bold text-slate-400 line-through">349.000đ</span>
+                        <span class="text-[9.5px] font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-md uppercase">MIỄN PHÍ 100%</span>
+                      </div>
+                      <div class="text-[10px] text-slate-500 font-medium">
+                        Đặc quyền cấp sẵn 365 ngày khi đăng ký tài khoản sinh viên
+                      </div>
                     </div>
                   </div>
+                  <!-- Khách hàng thường -->
                   <div v-else>
                     <div class="text-2xl font-black text-blue-600">
                       349.000đ
@@ -197,7 +252,8 @@
                   </div>
                 </div>
 
-                <ul class="text-xs text-slate-600 space-y-2">
+                <!-- Quyền lợi cho Sinh Viên -->
+                <ul v-if="targetRole === 'student'" class="text-xs text-slate-600 space-y-2">
                   <li class="flex items-center gap-1.5 font-bold text-emerald-900">
                     <span class="text-emerald-600 font-black">✓</span>
                     <span>Giảm 30% toàn bộ vé xe suốt 365 ngày</span>
@@ -208,7 +264,27 @@
                   </li>
                   <li class="flex items-center gap-1.5 font-bold text-blue-900">
                     <span class="text-blue-600 font-black">✓</span>
-                    <span>Mã ưu đãi độc quyền: PRO30 hoặc SINHVIEN</span>
+                    <span>Mã ưu đãi độc quyền: SINHVIEN30</span>
+                  </li>
+                  <li class="flex items-center gap-1.5">
+                    <span class="text-emerald-600">✓</span>
+                    <span>Miễn phí 20kg hành lý & tích điểm 1.5x</span>
+                  </li>
+                </ul>
+
+                <!-- Quyền lợi cho Khách Hàng Thường -->
+                <ul v-else class="text-xs text-slate-600 space-y-2">
+                  <li class="flex items-center gap-1.5 font-bold text-slate-900">
+                    <span class="text-blue-600 font-black">✓</span>
+                    <span>Giảm 30% toàn bộ vé xe suốt 365 ngày</span>
+                  </li>
+                  <li class="flex items-center gap-1.5 font-bold text-blue-900">
+                    <span class="text-blue-600 font-black">✓</span>
+                    <span>Mã ưu đãi độc quyền: PRO30</span>
+                  </li>
+                  <li class="flex items-center gap-1.5 text-slate-700">
+                    <span class="text-emerald-600">✓</span>
+                    <span>Ưu tiên hỗ trợ giữ chỗ</span>
                   </li>
                   <li class="flex items-center gap-1.5">
                     <span class="text-emerald-600">✓</span>
@@ -219,16 +295,25 @@
 
               <button
                 type="button"
+                @click.stop="isGuest ? handleMainActionClick() : selectPlan('PRO_30')"
                 class="mt-4 w-full py-2.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
                 :class="selectedPlan === 'PRO_30' ? 'bg-emerald-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'"
               >
-                <span>{{ targetRole === 'student' ? '✓ Gói Sinh Viên Có Sẵn (0đ)' : (selectedPlan === 'PRO_30' ? 'Đã Chọn Gói Này' : 'Chọn Gói PRO') }}</span>
+                <span>
+                  {{ isActivePlan('PRO_30') 
+                      ? '✓ Gói Bạn Đang Dùng' 
+                      : (isGuest && targetRole === 'student' 
+                          ? 'Đăng Ký Nhận 0đ ➔' 
+                          : (isStudentRebuyPro 
+                              ? (selectedPlan === 'PRO_30' ? 'Đã Chọn Gói Này' : 'Mua Lại Gói PRO (149.000đ)') 
+                              : (selectedPlan === 'PRO_30' ? 'Đã Chọn Gói Này' : (targetRole === 'student' ? 'Kích Hoạt Gói PRO 0đ' : 'Chọn Gói PRO')))) }}
+                </span>
               </button>
             </div>
 
             <!-- GÓI 3: GÓI ULTRA (GIẢM 40% - KHUYÊN DÙNG NHẤT) -->
             <div 
-              @click="selectedPlan = 'ULTRA_40'"
+              @click="selectPlan('ULTRA_40')"
               class="rounded-2xl border-2 p-4 flex flex-col justify-between transition cursor-pointer relative bg-gradient-to-b from-amber-50/40 via-white to-red-50/30"
               :class="selectedPlan === 'ULTRA_40' ? 'border-[#dc2626] shadow-lg ring-3 ring-red-600/30' : 'border-amber-300 hover:border-red-500'"
             >
@@ -252,8 +337,12 @@
                 </div>
 
                 <div class="py-2 border-y border-amber-200/60">
-                  <div class="text-2xl font-black text-red-600">
-                    {{ targetRole === 'student' ? '239.000đ' : '599.000đ' }}
+                  <div class="flex items-baseline gap-1.5">
+                    <span class="text-2xl font-black text-red-600">
+                      {{ targetRole === 'student' ? '239.000đ' : '599.000đ' }}
+                    </span>
+                    <span v-if="targetRole === 'student'" class="text-xs font-bold text-slate-400 line-through">599.000đ</span>
+                    <span v-if="targetRole === 'student'" class="text-[9px] font-black text-amber-800 bg-amber-100 px-1 py-0.2 rounded uppercase">Tiết kiệm 360K</span>
                   </div>
                   <div class="text-[10px] text-slate-500">
                     Thời hạn: 1 năm (365 ngày)
@@ -280,12 +369,13 @@
                 </ul>
               </div>
 
+
               <button
                 type="button"
                 class="mt-4 w-full py-2.5 rounded-xl font-black text-xs transition cursor-pointer shadow-sm"
                 :class="selectedPlan === 'ULTRA_40' ? 'bg-[#dc2626] text-white hover:bg-red-700' : 'bg-amber-400 hover:bg-amber-500 text-slate-950'"
               >
-                {{ selectedPlan === 'ULTRA_40' ? 'Đã Chọn Gói Này' : 'Nâng Cấp Gói ULTRA 40%' }}
+                <span>{{ isActivePlan('ULTRA_40') ? '✓ Gói Bạn Đang Dùng' : (selectedPlan === 'ULTRA_40' ? 'Đã Chọn Gói Này' : 'Nâng Cấp Gói ULTRA 40%') }}</span>
               </button>
             </div>
 
@@ -318,10 +408,10 @@
                 </div>
               </div>
 
-              <!-- Trạng thái tự động lắng nghe thanh toán (Live Radar) -->
-              <div class="mt-3 flex items-center gap-2 text-xs font-mono font-bold text-amber-800 bg-amber-50 border border-amber-300 px-3 py-1.5 rounded-xl">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-                <span>Tự động nhận diện thanh toán: {{ formattedPaymentTime }}</span>
+              <!-- Thời gian hiệu lực mã QR -->
+              <div class="mt-3 flex items-center justify-center gap-2 text-xs font-mono font-bold text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl">
+                <span>⏱️ Mã QR hết hạn sau:</span>
+                <span class="text-red-600 font-black">{{ formattedPaymentTime }}</span>
               </div>
             </div>
 
@@ -398,11 +488,11 @@
                 </div>
               </div>
 
-              <!-- Hộp hiển thị tự động nhận diện -->
-              <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-900 flex items-center gap-2.5">
-                <span class="text-lg">🤖</span>
-                <span class="font-semibold leading-relaxed">
-                  Bạn chỉ cần quét mã và chuyển khoản trên App ngân hàng. Hệ thống đang tự động nhận diện và chuyển ngay sang màn hình nhận mã ưu đãi!
+              <!-- Hộp thông báo tự động kích hoạt -->
+              <div class="p-3 bg-emerald-50 border border-emerald-300 rounded-2xl text-xs text-emerald-950 flex items-center gap-2.5 shadow-2xs">
+                <span class="text-xl shrink-0">⚡</span>
+                <span class="font-medium leading-relaxed">
+                  Hệ thống <strong>tự động nhận diện thanh toán</strong> qua MBBank 24/7. Ngay khi bạn quét mã và chuyển tiền thành công, màn hình sẽ tự động chuyển sang trang kích hoạt và cấp mã ưu đãi cho bạn!
                 </span>
               </div>
 
@@ -456,23 +546,34 @@
             </div>
 
             <!-- HỘP MÃ ƯU ĐÃI HIỆN LÊN TRƯỚC MẶT -->
-            <div class="p-3.5 bg-white rounded-2xl border-2 border-dashed border-red-500 flex items-center justify-between gap-3 shadow-inner">
+            <div class="p-4 bg-white rounded-2xl border-2 border-dashed border-red-500 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-inner">
               <div class="text-left">
-                <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">MÃ ƯU ĐÃI ĐỘC QUYỀN:</span>
-                <span class="font-mono font-black text-xl text-red-600 tracking-wider block">
+                <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">MÃ ƯU ĐÃI ĐỘC QUYỀN CỦA BẠN:</span>
+                <span class="font-mono font-black text-2xl text-red-600 tracking-wider block">
                   {{ activatedPlanData?.voucher_code }}
                 </span>
-                <span class="text-[10.5px] text-emerald-700 font-bold block">
+                <span class="text-[11px] text-emerald-700 font-bold block mt-0.5">
                   Giảm {{ activatedPlanData?.discount_percent }}% tất cả chuyến xe suốt 1 năm!
                 </span>
               </div>
-              <button
-                type="button"
-                @click="copyText(activatedPlanData?.voucher_code, 'Mã ưu đãi')"
-                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black shadow-xs transition active:scale-95 cursor-pointer shrink-0"
-              >
-                Sao chép
-              </button>
+              <div class="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  @click="saveVoucherToWallet(activatedPlanData?.voucher_code)"
+                  class="px-4 py-2.5 rounded-xl text-xs font-black shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+                  :class="isVoucherSaved(activatedPlanData?.voucher_code) ? 'bg-emerald-600 text-white' : 'bg-red-600 hover:bg-red-700 text-white'"
+                >
+                  <span>{{ isVoucherSaved(activatedPlanData?.voucher_code) ? '✓ Đã Lưu Vào Ví' : '🎟️ Lưu Mã Vào Ví' }}</span>
+                </button>
+                <button
+                  type="button"
+                  @click="copyText(activatedPlanData?.voucher_code, 'Mã ưu đãi')"
+                  class="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer"
+                  title="Sao chép mã"
+                >
+                  📋
+                </button>
+              </div>
             </div>
           </div>
 
@@ -525,24 +626,24 @@
               v-if="modalStep === 'select_plan'"
               type="button"
               @click="handleMainActionClick"
-              class="px-6 py-2.5 rounded-xl text-white font-black text-xs shadow-md transition cursor-pointer flex items-center gap-2"
-              :class="isFreeStudentPro ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-[#dc2626] hover:bg-red-700'"
+              class="px-6 py-2.5 rounded-xl text-white font-black text-xs shadow-md transition cursor-pointer flex items-center gap-2 active:scale-95"
+              :class="isGuest ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:opacity-95' : (currentPlanInfo ? 'bg-red-600 hover:bg-red-700' : (isFreeStudentPro ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-[#dc2626] hover:bg-red-700'))"
             >
-              <span v-if="isFreeStudentPro">🎉 XEM MÃ ƯU ĐÃI PRO30 (CÓ SẴN 0Đ) ➔</span>
-              <span v-else>{{ selectedPlan.includes('ULTRA') ? 'NÂNG CẤP GÓI ULTRA (VIETQR MBBANK) ➔' : 'THANH TOÁN VIETQR NGAY ➔' }}</span>
+              <span v-if="isGuest">🔑 ĐĂNG KÝ / ĐĂNG NHẬP ĐỂ NHẬN ƯU ĐÃI ➔</span>
+              <span v-else-if="currentPlanInfo">⚠️ HỦY GÓI ĐANG DÙNG ĐỂ MUA GÓI MỚI</span>
+              <span v-else-if="isFreeStudentPro">🎉 KÍCH HOẠT GÓI SINH VIÊN PRO (0Đ) ➔</span>
+              <span v-else-if="selectedPlan === 'PRO_30' && isStudentRebuyPro">THANH TOÁN MUA LẠI GÓI PRO (149.000đ) ➔</span>
+              <span v-else>{{ selectedPlan.includes('ULTRA') ? `NÂNG CẤP GÓI ULTRA (${currentPriceFormatted}) ➔` : `THANH TOÁN VIETQR (${currentPriceFormatted}) ➔` }}</span>
             </button>
 
-            <!-- Ở bước thanh toán: hệ thống tự động quét, nút bấm cho phép kiểm tra ngay lập tức -->
-            <button
+            <!-- Ở bước thanh toán: Đang tự động nhận diện chuyển khoản -->
+            <div
               v-else-if="modalStep === 'payment'"
-              type="button"
-              @click="checkPaymentNow"
-              :disabled="isCheckingPayment"
-              class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              class="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold flex items-center gap-2"
             >
-              <span v-if="isCheckingPayment" class="animate-spin text-sm">⏳</span>
-              <span>{{ isCheckingPayment ? 'HỆ THỐNG ĐANG QUÉT...' : '⚡ KIỂM TRA THANH TOÁN NGAY ➔' }}</span>
-            </button>
+              <span class="animate-spin text-sm">⏳</span>
+              <span>Chờ nhận diện chuyển khoản MBBank...</span>
+            </div>
           </div>
         </div>
 
@@ -560,9 +661,10 @@ const props = defineProps({
   isOpen: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'open-auth']);
 const page = usePage();
 const authUser = computed(() => page.props.auth?.user || null);
+const isGuest = computed(() => !authUser.value);
 
 const isStudentUser = computed(() => {
   if (!authUser.value) return false;
@@ -573,15 +675,28 @@ const isStudentUser = computed(() => {
   );
 });
 
-const targetRole = ref(isStudentUser.value ? 'student' : 'standard');
+const isCancelledUser = computed(() => {
+  if (!authUser.value) return false;
+  const plan = String(authUser.value.membership_plan || '').toUpperCase();
+  return plan === 'CANCELLED';
+});
+
+// Sinh viên mua lại sau khi đã hủy gói trước đó
+const isStudentRebuyPro = computed(() => {
+  return isStudentUser.value && isCancelledUser.value;
+});
+
+const targetRole = ref('student');
 const selectedPlan = ref('ULTRA_40');
 const modalStep = ref('select_plan'); // 'select_plan' | 'payment' | 'success'
 const isCheckingPayment = ref(false);
+const isCancelling = ref(false);
 const copyToast = ref('');
+const savedVoucherCodes = ref([]);
 const paymentSecondsLeft = ref(600); // 10 phút
 let paymentTimer = null;
 let pollingInterval = null;
-let autoSimulationTimer = null;
+let waitingSeconds = 0;
 
 const activatedPlanData = ref(null);
 
@@ -591,17 +706,39 @@ const onKeyDown = (e) => {
   }
 };
 
+const selectPlan = (planCode) => {
+  if (currentPlanInfo.value) {
+    alert(`Bạn đang sử dụng "${currentPlanInfo.value.name}".\nTheo quy định, bạn cần bấm "Hủy Gói Đang Dùng" trước khi được mua gói khác!`);
+    return;
+  }
+  selectedPlan.value = planCode;
+};
+
+const isActivePlan = (code) => {
+  if (!currentPlanInfo.value) return false;
+  const plan = String(authUser.value?.membership_plan || '').toUpperCase();
+  if (plan === 'CANCELLED' || plan === 'STANDARD' || plan === 'THUONG' || !plan) return false;
+  if (code.includes('ULTRA') && plan.includes('ULTRA')) return true;
+  if (code.includes('PRO') && plan.includes('PRO')) return true;
+  if (code.includes('ECO') && plan.includes('ECO')) return true;
+  return false;
+};
+
 watch(() => props.isOpen, (open) => {
   if (open) {
     document.addEventListener('keydown', onKeyDown);
     modalStep.value = 'select_plan';
-    targetRole.value = isStudentUser.value ? 'student' : 'standard';
-    // Mặc định sinh viên chọn Gói PRO hoặc ULTRA
-    selectedPlan.value = isStudentUser.value ? 'ULTRA_40' : 'ULTRA_40';
+    targetRole.value = 'student';
+    // Mặc định chọn Gói ULTRA
+    selectedPlan.value = 'ULTRA_40';
   } else {
     document.removeEventListener('keydown', onKeyDown);
     stopAllTimers();
   }
+});
+
+onMounted(() => {
+  initSavedVouchers();
 });
 
 onUnmounted(() => {
@@ -611,14 +748,14 @@ onUnmounted(() => {
 
 const stopAllTimers = () => {
   if (paymentTimer) clearInterval(paymentTimer);
-  if (pollingInterval) clearInterval(pollingInterval);
-  if (autoSimulationTimer) clearTimeout(autoSimulationTimer);
   paymentTimer = null;
+  if (pollingInterval) clearInterval(pollingInterval);
   pollingInterval = null;
-  autoSimulationTimer = null;
+  waitingSeconds = 0;
 };
 
 const currentPlanDetails = computed(() => {
+  const isStudent = targetRole.value === 'student';
   const configs = {
     'ECO_20': {
       name: 'Gói ECO (Giảm 20%)',
@@ -629,23 +766,23 @@ const currentPlanDetails = computed(() => {
       standard_price: 199000,
     },
     'PRO_30': {
-      name: 'Gói Sinh Viên PRO (Giảm 30%)',
+      name: isStudent ? 'Gói Sinh Viên PRO (Giảm 30%)' : 'Gói PRO (Giảm 30%)',
       code: 'PRO',
-      voucher_code: 'PRO30',
+      voucher_code: isStudent ? 'SINHVIEN30' : 'PRO30',
       discount_percent: 30,
-      student_price: 0,
+      student_price: isStudentRebuyPro.value ? 149000 : 0,
       standard_price: 349000,
     },
     'PRO_25': {
-      name: 'Gói Sinh Viên PRO (Giảm 30%)',
+      name: isStudent ? 'Gói Sinh Viên PRO (Giảm 30%)' : 'Gói PRO (Giảm 30%)',
       code: 'PRO',
-      voucher_code: 'PRO30',
+      voucher_code: isStudent ? 'SINHVIEN30' : 'PRO30',
       discount_percent: 30,
-      student_price: 0,
+      student_price: isStudentRebuyPro.value ? 149000 : 0,
       standard_price: 349000,
     },
     'ULTRA_40': {
-      name: 'Gói ULTRA (Giảm 40%)',
+      name: isStudent ? 'Gói Sinh Viên ULTRA (Giảm 40%)' : 'Gói ULTRA (Giảm 40%)',
       code: 'ULTRA',
       voucher_code: 'ULTRA40',
       discount_percent: 40,
@@ -657,7 +794,13 @@ const currentPlanDetails = computed(() => {
 });
 
 const isFreeStudentPro = computed(() => {
-  return targetRole.value === 'student' && (selectedPlan.value === 'PRO_30' || selectedPlan.value === 'PRO' || selectedPlan.value === 'PRO_25');
+  if (isGuest.value) return false;
+  if (isCancelledUser.value) return false;
+  const plan = String(authUser.value?.membership_plan || '').toUpperCase();
+  if (plan === 'CANCELLED') return false;
+  return targetRole.value === 'student' && 
+    (selectedPlan.value === 'PRO_30' || selectedPlan.value === 'PRO' || selectedPlan.value === 'PRO_25') &&
+    !isActivePlan('PRO_30');
 });
 
 const currentPrice = computed(() => {
@@ -687,6 +830,28 @@ const formattedPaymentTime = computed(() => {
   return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 });
 
+const startPaymentPolling = () => {
+  waitingSeconds = 0;
+  if (pollingInterval) clearInterval(pollingInterval);
+
+  pollingInterval = setInterval(async () => {
+    waitingSeconds += 2;
+    try {
+      const res = await axios.get('/api/membership/check-payment', {
+        params: {
+          plan: selectedPlan.value,
+          waiting_seconds: waitingSeconds
+        }
+      });
+      if (res.data && res.data.paid) {
+        handlePaymentSuccess(res.data);
+      }
+    } catch (err) {
+      // Polling quietly in background
+    }
+  }, 2000);
+};
+
 const startPaymentTimer = () => {
   stopAllTimers();
   paymentSecondsLeft.value = 600;
@@ -698,15 +863,7 @@ const startPaymentTimer = () => {
     }
   }, 1000);
 
-  // Bắt đầu tự động Polling kiểm tra nhận tiền MBBank mỗi 2.5 giây
-  pollingInterval = setInterval(async () => {
-    await checkPaymentStatusSilently();
-  }, 2500);
-
-  // Tự động kích hoạt thành công sau 6 giây nếu người dùng chuyển tiền trên App ngân hàng
-  autoSimulationTimer = setTimeout(async () => {
-    await checkPaymentNow();
-  }, 6500);
+  startPaymentPolling();
 };
 
 const copyText = (text, label) => {
@@ -717,18 +874,48 @@ const copyText = (text, label) => {
   }, 2500);
 };
 
+const handleCancelCurrentPlan = async () => {
+  const planName = currentPlanInfo.value?.name || 'gói đang sử dụng';
+  if (!confirm(`Bạn đang sử dụng "${planName}".\nBạn có chắc chắn muốn hủy gói này để có thể chọn mua gói khác không?`)) {
+    return;
+  }
+  isCancelling.value = true;
+  try {
+    const res = await axios.post('/api/membership/cancel');
+    if (res.data && res.data.success) {
+      alert(res.data.message || 'Đã hủy gói thành công! Bây giờ bạn có thể chọn mua gói mới.');
+      router.reload({ only: ['auth'] });
+    } else {
+      alert(res.data?.message || 'Không thể hủy gói. Vui lòng thử lại.');
+    }
+  } catch (err) {
+    alert('Lỗi hệ thống khi hủy gói. Vui lòng thử lại.');
+  } finally {
+    isCancelling.value = false;
+  }
+};
+
 const handleMainActionClick = () => {
+  if (isGuest.value) {
+    emit('open-auth');
+    close();
+    return;
+  }
+  if (currentPlanInfo.value) {
+    handleCancelCurrentPlan();
+    return;
+  }
   if (isFreeStudentPro.value) {
-    // Sinh viên đã có sẵn Gói Sinh Viên PRO 0đ -> kích hoạt và chuyển ngay sang bước hiển thị mã ưu đãi!
+    // Sinh viên mới kích hoạt gói 0đ
     handlePaymentSuccess({
       paid: true,
       plan: 'PRO',
       plan_name: 'Gói Sinh Viên PRO (Giảm 30%)',
-      voucher_code: 'PRO30',
+      voucher_code: 'SINHVIEN30',
       discount_percent: 30,
       registered_at: authUser.value?.membership_registered_at || authUser.value?.student_registered_at || 'Từ ngày đăng ký',
       expires_at: authUser.value?.membership_expires_at || authUser.value?.student_discount_expires_at || '365 ngày',
-      days_remaining: authUser.value?.student_days_remaining ?? 365,
+      days_remaining: 365,
     });
     return;
   }
@@ -737,60 +924,73 @@ const handleMainActionClick = () => {
 
 const goToPaymentStep = () => {
   if (!authUser.value) {
-    alert('Vui lòng đăng nhập để nâng cấp gói hội viên!');
-    router.visit('/login');
+    emit('open-auth');
+    close();
     return;
   }
   modalStep.value = 'payment';
   startPaymentTimer();
 };
 
-const checkPaymentStatusSilently = async () => {
-  try {
-    const res = await axios.get('/api/membership/check-payment', {
-      params: { plan: selectedPlan.value }
-    });
-    if (res.data && res.data.paid) {
-      handlePaymentSuccess(res.data);
-    }
-  } catch (err) {
-    // Silent polling
-  }
-};
-
-const checkPaymentNow = async () => {
+const confirmPaymentNow = async () => {
   isCheckingPayment.value = true;
   try {
     const res = await axios.get('/api/membership/check-payment', {
-      params: { plan: selectedPlan.value }
+      params: { plan: selectedPlan.value, confirm: 1 }
     });
     if (res.data && res.data.paid) {
       handlePaymentSuccess(res.data);
     } else {
-      alert('Hệ thống chưa nhận được khoản chuyển. Vui lòng quét mã và thử lại sau ít giây.');
+      alert(res.data?.message || 'Hệ thống chưa nhận được khoản chuyển từ MBBank. Vui lòng quét mã trên App ngân hàng và thử lại sau.');
     }
   } catch (err) {
-    // Fallback simulation nếu api offline
-    const isUltra = selectedPlan.value.includes('ULTRA');
-    handlePaymentSuccess({
-      paid: true,
-      plan: isUltra ? 'ULTRA' : 'PRO',
-      plan_name: isUltra ? 'Gói ULTRA (Giảm 40%)' : 'Gói PRO (Giảm 30%)',
-      voucher_code: isUltra ? 'ULTRA40' : 'PRO30',
-      discount_percent: isUltra ? 40 : 30,
-      registered_at: 'Hôm nay',
-      expires_at: 'Sau 365 ngày',
-      days_remaining: 365,
-    });
+    alert('Không thể kết nối đến máy chủ xác nhận. Vui lòng thử lại.');
   } finally {
     isCheckingPayment.value = false;
   }
+};
+
+const initSavedVouchers = () => {
+  try {
+    const list = JSON.parse(localStorage.getItem('bushub_saved_vouchers') || localStorage.getItem('saved_vouchers') || '[]');
+    savedVoucherCodes.value = list;
+  } catch (e) {
+    savedVoucherCodes.value = [];
+  }
+};
+
+const isVoucherSaved = (code) => {
+  if (!code) return false;
+  return savedVoucherCodes.value.includes(code);
+};
+
+const saveVoucherToWallet = (code) => {
+  if (!code) return;
+  try {
+    let list = JSON.parse(localStorage.getItem('bushub_saved_vouchers') || '[]');
+    if (!list.includes(code)) {
+      list.push(code);
+      localStorage.setItem('bushub_saved_vouchers', JSON.stringify(list));
+    }
+    let listLegacy = JSON.parse(localStorage.getItem('saved_vouchers') || '[]');
+    if (!listLegacy.includes(code)) {
+      listLegacy.push(code);
+      localStorage.setItem('saved_vouchers', JSON.stringify(listLegacy));
+    }
+    savedVoucherCodes.value = [...list];
+    copyToast.value = `Đã lưu mã ${code} vào ví thành công!`;
+    setTimeout(() => { copyToast.value = ''; }, 2500);
+  } catch (e) {}
 };
 
 const handlePaymentSuccess = (data) => {
   stopAllTimers();
   activatedPlanData.value = data;
   modalStep.value = 'success';
+
+  if (data?.voucher_code) {
+    saveVoucherToWallet(data.voucher_code);
+  }
 
   // Tự động tải lại thông tin auth trên Inertia để Navbar và Dropdown đổi khung ngay tức thì
   router.reload({ only: ['auth'] });
@@ -804,19 +1004,20 @@ const goToBooking = () => {
 const currentPlanInfo = computed(() => {
   if (!authUser.value) return null;
   const user = authUser.value;
-  const isStudent = Boolean(user.is_student || String(user.email || '').includes('.edu.vn'));
-  if (!isStudent && !user.membership_plan) return null;
+  const plan = String(user.membership_plan || '').toUpperCase();
+  const daysLeft = user.student_days_remaining ?? 0;
 
-  const daysLeft = user.student_days_remaining ?? (isStudent ? 365 : 0);
-  if (daysLeft <= 0 && !user.membership_plan) return null;
+  if (!plan || plan === 'STANDARD' || plan === 'THUONG' || plan === 'CANCELLED') {
+    return null;
+  }
 
-  const planName = String(user.membership_plan || '').includes('ULTRA')
+  const planName = plan.includes('ULTRA')
     ? 'Gói ULTRA (Giảm 40%)' 
-    : (String(user.membership_plan || '').includes('PRO') 
-        ? 'Gói PRO (Giảm 30%)' 
-        : (user.membership_plan === 'ECO_20' 
+    : (plan.includes('PRO') 
+        ? (user.is_student ? 'Gói Sinh Viên PRO (Giảm 30%)' : 'Gói PRO (Giảm 30%)') 
+        : (plan.includes('ECO') 
             ? 'Gói ECO (Giảm 20%)' 
-            : 'Gói Sinh Viên Mặc Định PRO (Giảm 30%)'));
+            : 'Gói Hội Viên'));
 
   const regDate = user.student_registered_at || user.membership_registered_at || 'Từ ngày đăng ký';
   const expDate = user.membership_expires_at || user.student_discount_expires_at || '1 năm';

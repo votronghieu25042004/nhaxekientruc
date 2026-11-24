@@ -41,6 +41,10 @@ class User extends Authenticatable {
      */
     public function getStudentDaysRemainingAttribute(): int
     {
+        $plan = strtoupper((string)($this->membership_plan ?? ''));
+        if ($plan === 'CANCELLED' || $plan === 'STANDARD' || $plan === 'THUONG' || empty($plan)) {
+            return 0;
+        }
         $expireDate = $this->membership_expires_at ?? $this->student_discount_expires_at;
         if (!$expireDate) return 0;
         $diff = now()->diffInDays($expireDate, false);
@@ -60,6 +64,10 @@ class User extends Authenticatable {
      */
     public function getIsMembershipActiveAttribute(): bool
     {
+        $plan = strtoupper((string)($this->membership_plan ?? ''));
+        if ($plan === 'CANCELLED' || $plan === 'STANDARD' || $plan === 'THUONG' || empty($plan)) {
+            return false;
+        }
         $expireDate = $this->membership_expires_at ?? $this->student_discount_expires_at;
         if (!$expireDate) return false;
         return now()->lt($expireDate);
@@ -71,11 +79,17 @@ class User extends Authenticatable {
     public function getMembershipBadgeAttribute(): string
     {
         $plan = strtoupper((string)($this->membership_plan ?? ''));
+        if ($plan === 'CANCELLED' || $plan === 'STANDARD' || $plan === 'THUONG' || empty($plan)) {
+            return 'Hành Khách Thường';
+        }
         if (str_contains($plan, 'ULTRA')) {
             return 'Hội Viên Ultra VIP (-40%)';
         }
-        if (str_contains($plan, 'PRO') || $this->is_student) {
+        if (str_contains($plan, 'PRO')) {
             return $this->is_student ? 'Sinh Viên Pro (-30%)' : 'Hội Viên Pro (-30%)';
+        }
+        if (str_contains($plan, 'ECO')) {
+            return 'Hội Viên Eco (-20%)';
         }
         return 'Hành Khách Thường';
     }

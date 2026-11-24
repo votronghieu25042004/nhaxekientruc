@@ -34,7 +34,9 @@
             :class="tempLang === lang.code ? 'border-red-500 bg-red-50/50 shadow-2xs' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'"
           >
             <div class="flex items-center gap-3">
-              <span class="text-2xl">{{ lang.flag }}</span>
+              <div class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center font-black text-xs font-mono text-slate-800 border border-slate-200 shrink-0 shadow-2xs group-hover:border-red-300">
+                {{ lang.short }}
+              </div>
               <div>
                 <span class="text-sm font-bold text-slate-900 block group-hover:text-red-700">{{ lang.label }}</span>
                 <span class="text-xs text-slate-500 font-medium">{{ lang.native }}</span>

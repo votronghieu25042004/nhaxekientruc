@@ -108,28 +108,17 @@ class AuthController extends Controller
             }
         }
 
-        if (!$user && (str_contains($cleanEmail, '.edu.vn') || str_contains($cleanEmail, 'sinhvien'))) {
-            $rawPrefix = explode('@', $cleanEmail)[0];
-            $cleanName = preg_replace('/[0-9_]+/', ' ', $rawPrefix);
-            $cleanName = trim($cleanName) ? ucwords(trim($cleanName)) : ucfirst($rawPrefix);
-
-            $user = User::create([
-                'name' => $cleanName,
-                'email' => $cleanEmail,
-                'phone' => null,
-                'role' => 'customer',
-                'password' => Hash::make($password),
-                'reward_points' => 0,
-                'loyalty_tier' => 'BRONZE',
-                'email_verified_at' => now(),
-                'is_student' => true,
-                'student_registered_at' => now(),
-                'student_discount_expires_at' => now()->addYear(),
-                'membership_plan' => 'STUDENT_DEFAULT',
-                'membership_discount_percent' => 30,
-                'membership_expires_at' => now()->addYear(),
+        if (!$user) {
+            if ($request->wantsJson() && !$request->header('X-Inertia')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tài khoản không tồn tại hoặc đã bị xóa khỏi hệ thống. Vui lòng kiểm tra lại thông tin!',
+                    'errors' => ['email' => ['Tài khoản không tồn tại hoặc đã bị xóa khỏi hệ thống. Vui lòng kiểm tra lại thông tin!']]
+                ], 422);
+            }
+            return back()->withErrors([
+                'email' => 'Tài khoản không tồn tại hoặc đã bị xóa khỏi hệ thống. Vui lòng kiểm tra lại thông tin!',
             ]);
-            $isValidPassword = true;
         }
 
         if ($user && $isValidPassword) {
@@ -1441,11 +1430,14 @@ class AuthController extends Controller
                 \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $userId)->delete();
             } catch (\Throwable $e) {}
 
+            \Illuminate\Support\Facades\DB::table('membership_subscriptions')->where('user_id', $userId)->delete();
+
             // 6. Xóa vĩnh viễn User khỏi database
             $user->delete();
+            \Illuminate\Support\Facades\DB::table('users')->where('id', $userId)->delete();
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error("[CUSTOMER_DELETE_ACCOUNT_ERR] " . $e->getMessage());
-            try { $user->delete(); } catch (\Throwable $ex) {}
+            try { \Illuminate\Support\Facades\DB::table('users')->where('id', $userId)->delete(); } catch (\Throwable $ex) {}
         }
 
         // Đăng xuất và dọn sạch session
