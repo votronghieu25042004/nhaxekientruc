@@ -112,6 +112,150 @@
             </div>
           </div>
 
+          <!-- ==================================================================== -->
+          <!-- 🎯 AI SMART SEAT MATCHER: GỢI Ý CHỖ NGỒI THEO THỂ TRẠNG & THÓI QUEN -->
+          <!-- ==================================================================== -->
+          <div class="rounded-3xl border-2 border-amber-400/80 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-amber-500/15 p-4 sm:p-5 shadow-lg shadow-amber-500/10 space-y-4">
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center text-xl shadow-md shadow-amber-500/30 shrink-0">
+                  🎯
+                </div>
+                <div>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] uppercase tracking-wider">AI RECOMMENDATION</span>
+                    <h3 class="font-black text-sm sm:text-base text-slate-900 tracking-tight">AI Chọn Giường Theo Thể Trạng & Thói Quen</h3>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">Nói hoặc tick chọn tình trạng của bạn để AI tự động phát sáng vị trí giường êm nhất</p>
+                </div>
+              </div>
+
+              <!-- Nút đóng/mở nhanh bộ lọc AI -->
+              <button
+                type="button"
+                @click="isAiSeatMatcherOpen = !isAiSeatMatcherOpen"
+                class="self-start sm:self-auto px-3 py-1.5 rounded-xl border border-amber-300 bg-white/80 hover:bg-white text-amber-900 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <span>{{ isAiSeatMatcherOpen ? 'Thu gọn' : 'Mở trợ lý AI' }}</span>
+                <i class="fa-solid text-[10px]" :class="isAiSeatMatcherOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+              </button>
+            </div>
+
+            <!-- Khung tương tác AI khi mở -->
+            <div v-show="isAiSeatMatcherOpen" class="space-y-3.5 pt-1 border-t border-amber-200/60">
+              
+              <!-- 1. Thanh Nhập Câu Lệnh Tự Nhiên & Nút Micro Thu Âm -->
+              <div class="flex items-center gap-2">
+                <div class="relative flex-1">
+                  <input
+                    type="text"
+                    v-model="aiCustomPrompt"
+                    @keyup.enter="handleAiPromptSubmit"
+                    placeholder="Nhập nhu cầu (vd: Say xe nặng, Đi 2 người, Người già, Cao 1m8...)"
+                    class="w-full pl-3.5 pr-10 py-2.5 rounded-2xl bg-white border border-amber-300 text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-inner"
+                  />
+                  <button
+                    type="button"
+                    @click="startVoiceRecognition"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-xl flex items-center justify-center transition cursor-pointer"
+                    :class="isListeningVoice ? 'bg-red-500 text-white animate-pulse shadow-md' : 'bg-amber-100 hover:bg-amber-200 text-amber-800'"
+                    :title="isListeningVoice ? 'Đang lắng nghe bạn nói...' : 'Bấm để nói bằng giọng nói'"
+                  >
+                    <i class="fa-solid fa-microphone text-xs"></i>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  @click="handleAiPromptSubmit"
+                  class="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-black text-xs transition shadow-md shadow-amber-500/25 active:scale-95 cursor-pointer shrink-0 flex items-center gap-1"
+                >
+                  <i class="fa-solid fa-wand-magic-sparkles text-[11px]"></i>
+                  <span class="hidden sm:inline">AI Chọn Giúp</span>
+                </button>
+              </div>
+
+              <!-- 2. Danh Sách 5 Thẻ Nhanh (Preset Tags) -->
+              <div class="flex items-center gap-2 flex-wrap">
+                <button
+                  v-for="p in AI_PRESETS"
+                  :key="p.id"
+                  type="button"
+                  @click="selectAiPreset(p.id)"
+                  class="px-3 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer active:scale-95"
+                  :class="activeAiSeatMode === p.id 
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-500 shadow-md shadow-amber-500/30 scale-105' 
+                    : 'bg-white hover:bg-amber-50 text-slate-700 border-amber-200/90 shadow-2xs'"
+                >
+                  <span class="text-base">{{ p.icon }}</span>
+                  <div class="text-left">
+                    <span class="block font-black leading-tight">{{ p.label }}</span>
+                    <span class="text-[9.5px] opacity-80 block leading-tight font-normal">{{ p.sublabel }}</span>
+                  </div>
+                </button>
+              </div>
+
+              <!-- 3. Hộp Giải Thích Lý Do AI Khuyên Chọn & Nút 1-Click Áp Dụng -->
+              <div v-if="aiRecommendation" class="p-3.5 rounded-2xl bg-white/95 border-2 border-amber-400 shadow-md space-y-2.5 animate-in fade-in slide-in-from-top-1">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex items-start gap-2.5">
+                    <span class="text-2xl mt-0.5">🤖</span>
+                    <div>
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-black text-xs text-amber-900 uppercase tracking-wide">AI KHUYÊN BẠN NÊN CHỌN:</span>
+                        <div class="flex items-center gap-1">
+                          <span 
+                            v-for="sNum in aiRecommendation.seats" 
+                            :key="sNum"
+                            class="px-2 py-0.5 rounded-lg bg-red-600 text-white font-mono font-black text-xs shadow-xs"
+                          >
+                            {{ sNum }}
+                          </span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">{{ aiRecommendation.score }}</span>
+                      </div>
+                      <p class="text-xs text-slate-700 mt-1 leading-relaxed">
+                        {{ aiRecommendation.reason }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="button" 
+                    @click="clearAiRecommendation" 
+                    class="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 text-xs font-bold flex items-center justify-center cursor-pointer shrink-0"
+                    title="Hủy bộ lọc AI"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 flex-wrap">
+                  <button
+                    type="button"
+                    @click="openVirtualSeatPreview(aiRecommendation)"
+                    class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer flex items-center gap-1.5 active:scale-95 border border-slate-200"
+                  >
+                    <span>🛏️</span>
+                    <span>Xem Kích Thước & Tiện Ích Giường</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    @click="applyAiRecommendedSeats"
+                    class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-md shadow-emerald-500/25 transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <i class="fa-solid fa-circle-check text-xs"></i>
+                    <span>Tự Động Chọn Ghế Này Ngay ➔</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
           <!-- Bus Frame Container (Khoang Xe Limousine Sang Trọng) -->
           <div class="border-2 border-slate-200/90 rounded-3xl p-5 sm:p-6 bg-slate-50/70 space-y-5 shadow-inner">
             
@@ -183,9 +327,19 @@
                           ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                           : isSeatSelected(seat.seat_number)
                             ? 'bg-gradient-to-br from-red-600 via-rose-600 to-red-700 text-white border-red-600 shadow-md shadow-red-500/30 scale-[1.03] ring-2 ring-red-400/80 z-10'
-                            : 'bg-white border-slate-200 text-slate-700 hover:border-red-400 hover:shadow-md hover:-translate-y-0.5 active:scale-95'
+                            : isAiRecommended(seat.seat_number)
+                              ? 'bg-amber-50/95 border-amber-500 ring-4 ring-amber-400 text-slate-900 shadow-lg shadow-amber-400/40 scale-[1.03] animate-pulse z-10'
+                              : 'bg-white border-slate-200 text-slate-700 hover:border-red-400 hover:shadow-md hover:-translate-y-0.5 active:scale-95'
                       ]"
                     >
+                      <!-- Badge AI Khuyên Chọn -->
+                      <span 
+                        v-if="isAiRecommended(seat.seat_number) && !isSeatSelected(seat.seat_number)" 
+                        class="absolute -top-2.5 px-2 py-0.2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-[8px] uppercase tracking-wider shadow-sm z-20 animate-bounce"
+                      >
+                        ⭐ AI Khuyên
+                      </span>
+
                       <!-- Gối tựa đầu mô phỏng giường nằm -->
                       <div 
                         class="w-7 h-1.5 rounded-full transition"
@@ -198,8 +352,8 @@
                       </div>
 
                       <!-- Nhãn trạng thái / Giá -->
-                      <div class="text-[9.5px] font-bold leading-tight" :class="isSeatSelected(seat.seat_number) ? 'text-white/95' : (seat.status === 'booked' ? 'text-slate-400 font-normal' : 'text-emerald-700')">
-                        {{ seat.status === 'booked' ? 'Đã bán' : (isSeatSelected(seat.seat_number) ? '✓ Đã chọn' : (seat.price ? formatPrice(seat.price) + 'đ' : 'Trống')) }}
+                      <div class="text-[9.5px] font-bold leading-tight" :class="isSeatSelected(seat.seat_number) ? 'text-white/95' : (seat.status === 'booked' ? 'text-slate-400 font-normal' : (isAiRecommended(seat.seat_number) ? 'text-amber-800 font-black' : 'text-emerald-700'))">
+                        {{ seat.status === 'booked' ? 'Đã bán' : (isSeatSelected(seat.seat_number) ? '✓ Đã chọn' : (isAiRecommended(seat.seat_number) ? 'Khuyên chọn' : (seat.price ? formatPrice(seat.price) + 'đ' : 'Trống'))) }}
                       </div>
                     </button>
                   </template>
@@ -242,9 +396,19 @@
                           ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                           : isSeatSelected(row.left.seat_number)
                             ? 'bg-gradient-to-br from-red-600 via-rose-600 to-red-700 text-white border-red-600 shadow-md shadow-red-500/30 scale-[1.03] ring-2 ring-red-400/80 z-10'
-                            : 'bg-white border-slate-200 text-slate-700 hover:border-red-400 hover:shadow-md hover:-translate-y-0.5 active:scale-95'
+                            : isAiRecommended(row.left.seat_number)
+                              ? 'bg-amber-50/95 border-amber-500 ring-4 ring-amber-400 text-slate-900 shadow-lg shadow-amber-400/40 scale-[1.03] animate-pulse z-10'
+                              : 'bg-white border-slate-200 text-slate-700 hover:border-red-400 hover:shadow-md hover:-translate-y-0.5 active:scale-95'
                       ]"
                     >
+                      <!-- Badge AI Khuyên Chọn -->
+                      <span 
+                        v-if="isAiRecommended(row.left.seat_number) && !isSeatSelected(row.left.seat_number)" 
+                        class="absolute -top-2.5 px-2 py-0.2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-[8px] uppercase tracking-wider shadow-sm z-20 animate-bounce"
+                      >
+                        ⭐ AI Khuyên
+                      </span>
+
                       <div 
                         class="w-7 h-1.5 rounded-full transition"
                         :class="isSeatSelected(row.left.seat_number) ? 'bg-white/40' : (row.left.status === 'booked' ? 'bg-slate-200' : 'bg-slate-200 group-hover:bg-red-200')"
@@ -252,8 +416,8 @@
                       <div class="font-black text-sm sm:text-base leading-none" :class="isSeatSelected(row.left.seat_number) ? 'text-white' : (row.left.status === 'booked' ? 'text-slate-400' : 'text-slate-900')">
                         {{ row.left.seat_number }}
                       </div>
-                      <div class="text-[9.5px] font-bold leading-tight" :class="isSeatSelected(row.left.seat_number) ? 'text-white/95' : (row.left.status === 'booked' ? 'text-slate-400 font-normal' : 'text-blue-700')">
-                        {{ row.left.status === 'booked' ? 'Đã bán' : (isSeatSelected(row.left.seat_number) ? '✓ Đã chọn' : (row.left.price ? formatPrice(row.left.price) + 'đ' : 'Trống')) }}
+                      <div class="text-[9.5px] font-bold leading-tight" :class="isSeatSelected(row.left.seat_number) ? 'text-white/95' : (row.left.status === 'booked' ? 'text-slate-400 font-normal' : (isAiRecommended(row.left.seat_number) ? 'text-amber-800 font-black' : 'text-blue-700'))">
+                        {{ row.left.status === 'booked' ? 'Đã bán' : (isSeatSelected(row.left.seat_number) ? '✓ Đã chọn' : (isAiRecommended(row.left.seat_number) ? 'Khuyên chọn' : (row.left.price ? formatPrice(row.left.price) + 'đ' : 'Trống'))) }}
                       </div>
                     </button>
 
@@ -275,9 +439,19 @@
                           ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                           : isSeatSelected(row.right.seat_number)
                             ? 'bg-gradient-to-br from-red-600 via-rose-600 to-red-700 text-white border-red-600 shadow-md shadow-red-500/30 scale-[1.03] ring-2 ring-red-400/80 z-10'
-                            : 'bg-white border-slate-200 text-slate-700 hover:border-red-400 hover:shadow-md hover:-translate-y-0.5 active:scale-95'
+                            : isAiRecommended(row.right.seat_number)
+                              ? 'bg-amber-50/95 border-amber-500 ring-4 ring-amber-400 text-slate-900 shadow-lg shadow-amber-400/40 scale-[1.03] animate-pulse z-10'
+                              : 'bg-white border-slate-200 text-slate-700 hover:border-red-400 hover:shadow-md hover:-translate-y-0.5 active:scale-95'
                       ]"
                     >
+                      <!-- Badge AI Khuyên Chọn -->
+                      <span 
+                        v-if="isAiRecommended(row.right.seat_number) && !isSeatSelected(row.right.seat_number)" 
+                        class="absolute -top-2.5 px-2 py-0.2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-[8px] uppercase tracking-wider shadow-sm z-20 animate-bounce"
+                      >
+                        ⭐ AI Khuyên
+                      </span>
+
                       <div 
                         class="w-7 h-1.5 rounded-full transition"
                         :class="isSeatSelected(row.right.seat_number) ? 'bg-white/40' : (row.right.status === 'booked' ? 'bg-slate-200' : 'bg-slate-200 group-hover:bg-red-200')"
@@ -285,8 +459,8 @@
                       <div class="font-black text-sm sm:text-base leading-none" :class="isSeatSelected(row.right.seat_number) ? 'text-white' : (row.right.status === 'booked' ? 'text-slate-400' : 'text-slate-900')">
                         {{ row.right.seat_number }}
                       </div>
-                      <div class="text-[9.5px] font-bold leading-tight" :class="isSeatSelected(row.right.seat_number) ? 'text-white/95' : (row.right.status === 'booked' ? 'text-slate-400 font-normal' : 'text-blue-700')">
-                        {{ row.right.status === 'booked' ? 'Đã bán' : (isSeatSelected(row.right.seat_number) ? '✓ Đã chọn' : (row.right.price ? formatPrice(row.right.price) + 'đ' : 'Trống')) }}
+                      <div class="text-[9.5px] font-bold leading-tight" :class="isSeatSelected(row.right.seat_number) ? 'text-white/95' : (row.right.status === 'booked' ? 'text-slate-400 font-normal' : (isAiRecommended(row.right.seat_number) ? 'Khuyên chọn' : 'text-blue-700'))">
+                        {{ row.right.status === 'booked' ? 'Đã bán' : (isSeatSelected(row.right.seat_number) ? '✓ Đã chọn' : (isAiRecommended(row.right.seat_number) ? 'Khuyên chọn' : (row.right.price ? formatPrice(row.right.price) + 'đ' : 'Trống'))) }}
                       </div>
                     </button>
                   </template>
@@ -299,7 +473,7 @@
 
           <!-- Chú Thích Ghế Ngồi (Seat Legend) -->
           <div class="border-t border-slate-100 pt-4 space-y-3">
-            <div class="grid grid-cols-3 gap-3 text-xs text-slate-600 font-bold text-center">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-slate-600 font-bold text-center">
               <div class="flex items-center justify-center space-x-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
                 <div class="w-4 h-4 rounded-md border-2 border-slate-300 bg-white shadow-2xs"></div>
                 <span>Còn trống</span>
@@ -311,6 +485,10 @@
               <div class="flex items-center justify-center space-x-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
                 <div class="w-4 h-4 rounded-md bg-slate-200 border border-slate-300 text-[9px] text-slate-400 font-bold flex items-center justify-center">✕</div>
                 <span class="text-slate-400">Đã bán</span>
+              </div>
+              <div class="flex items-center justify-center space-x-2 p-2 rounded-xl bg-amber-50 border border-amber-300">
+                <div class="w-4 h-4 rounded-md bg-amber-100 border-2 border-amber-500 shadow-xs ring-2 ring-amber-300"></div>
+                <span class="text-amber-800 font-black">⭐ AI Khuyên</span>
               </div>
             </div>
 
@@ -1462,6 +1640,128 @@
 
     <Footer />
   </div>
+
+  <!-- MODAL VIRTUAL SEAT PREVIEW (MÔ PHỎNG CHI TIẾT GIƯỜNG NẰM & THÔNG SỐ AI) -->
+  <div 
+    v-if="showVirtualSeatModal"
+    class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+    @click.self="showVirtualSeatModal = false"
+  >
+    <div class="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-red-950 text-white p-5 flex items-start justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-2xl shadow-inner">
+            🛏️
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Xe Limousine VIP 34 Phòng</span>
+              <span class="px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-mono font-bold">Chuẩn Châu Âu</span>
+            </div>
+            <h3 class="text-lg font-black tracking-tight mt-0.5">
+              Chi Tiết Khoang Giường {{ previewingSeat?.seat_number ? previewingSeat.seat_number : (previewingSeat?.seats ? previewingSeat.seats.join(', ') : 'VIP') }}
+            </h3>
+          </div>
+        </div>
+        <button 
+          type="button" 
+          @click="showVirtualSeatModal = false"
+          class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- Body with scroll -->
+      <div class="p-5 space-y-4 overflow-y-auto">
+        <!-- Mô phỏng không gian khoang giường -->
+        <div class="rounded-2xl p-4 bg-gradient-to-br from-amber-50/80 via-orange-50/40 to-slate-50 border border-amber-200/80 space-y-2.5">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-black text-amber-900 uppercase tracking-wide flex items-center gap-1.5">
+              <span>⭐ Phân Tích Thể Trạng Thích Hợp</span>
+            </span>
+            <span class="font-mono font-black text-xs text-red-600 bg-red-100 px-2.5 py-0.5 rounded-lg">
+              {{ previewingSeat?.score || '98% Điểm Hài Lòng' }}
+            </span>
+          </div>
+          <p class="text-xs text-slate-700 leading-relaxed font-medium">
+            {{ previewingSeat?.reason || 'Khoang giường thiết kế công thái học (Ergonomic), giảm tối đa áp lực cột sống cho chuyến đi dài Đà Nẵng ↔ Huế / Đông Hà / Quy Nhơn.' }}
+          </p>
+        </div>
+
+        <!-- Thông số kích thước & công nghệ -->
+        <div class="space-y-2">
+          <h4 class="text-xs font-black text-slate-800 uppercase tracking-wider">📐 Thông Số Kỹ Thuật Khoang Giường</h4>
+          <div class="grid grid-cols-2 gap-2.5 text-xs">
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+              <div class="text-[11px] text-slate-500 font-bold flex items-center gap-1">
+                <span>📏 Kích thước lọt lòng:</span>
+              </div>
+              <div class="font-black text-slate-900 text-sm font-mono">185cm × 68cm</div>
+              <div class="text-[10px] text-slate-500">Người cao đến 1m85 nằm duỗi thẳng chân thoải mái</div>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+              <div class="text-[11px] text-slate-500 font-bold flex items-center gap-1">
+                <span>🌀 Giảm chấn khí nén:</span>
+              </div>
+              <div class="font-black text-emerald-600 text-sm font-mono">98% Êm Ái</div>
+              <div class="text-[10px] text-slate-500">Hệ thống bầu hơi đa điểm triệt tiêu dao động cua đèo</div>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+              <div class="text-[11px] text-slate-500 font-bold flex items-center gap-1">
+                <span>🔌 Nguồn điện & Cổng sạc:</span>
+              </div>
+              <div class="font-black text-slate-900 text-sm font-mono">Type-C PD & USB 20W</div>
+              <div class="text-[10px] text-slate-500">Sạc nhanh điện thoại, iPad, laptop không lo hết pin</div>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+              <div class="text-[11px] text-slate-500 font-bold flex items-center gap-1">
+                <span>🎪 Độ riêng tư & Cách âm:</span>
+              </div>
+              <div class="font-black text-slate-900 text-sm font-mono">Rèm Che 100% UV</div>
+              <div class="text-[10px] text-slate-500">Rèm kéo kín đáo ngăn ánh sáng đèn đường ban đêm</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Các tiện ích khác đi kèm -->
+        <div class="p-3 rounded-2xl bg-blue-50/60 border border-blue-200/70 space-y-2">
+          <h4 class="text-xs font-black text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+            <span>🎁 Tiện Ích Miễn Phí Tại Chỗ</span>
+          </h4>
+          <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-700 font-medium">
+            <span class="flex items-center gap-1.5"><span>💧</span> Nước suối & khăn lạnh</span>
+            <span class="flex items-center gap-1.5"><span>📶</span> Wifi 5G tốc độ cao</span>
+            <span class="flex items-center gap-1.5"><span>❄️</span> Cửa gió máy lạnh độc lập</span>
+            <span class="flex items-center gap-1.5"><span>💡</span> Đèn đọc sách ấm 3000K</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+        <button
+          type="button"
+          @click="showVirtualSeatModal = false"
+          class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 transition cursor-pointer"
+        >
+          Đóng
+        </button>
+        <button
+          type="button"
+          @click="applyAiRecommendedSeats(); showVirtualSeatModal = false;"
+          class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs shadow-md shadow-red-500/25 transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+        >
+          <span>✓ Chọn Giường Này & Tiếp Tục</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <AiChatModal />
   <AuthModal v-model="showAuthModal" />
 </template>
@@ -1495,6 +1795,225 @@ const selectedSeats = ref([]);
 const selectedPickup = ref(props.pickupStops?.[0] || null);
 const selectedDropoff = ref(props.dropoffStops?.[props.dropoffStops.length - 1] || null);
 const paymentChoice = ref('DEPOSIT');
+
+// ==================== 🎯 AI SMART SEAT MATCHER & VOICE ASSISTANT ====================
+const isAiSeatMatcherOpen = ref(true);
+const activeAiSeatMode = ref(''); // 'say_xe', 'ngu_say', 'cap_doi', 'nguoi_gia', 'chan_dai'
+const aiCustomPrompt = ref('');
+const isListeningVoice = ref(false);
+const aiRecommendation = ref(null);
+const showVirtualSeatModal = ref(false);
+const previewingSeat = ref(null);
+
+const AI_PRESETS = [
+  {
+    id: 'say_xe',
+    icon: '🤢',
+    label: 'Say Xe / Chóng Mặt',
+    sublabel: 'Trọng tâm xe, ít lắc',
+    seats: ['A02', 'A05'],
+    floor: 'f1',
+    reason: 'Vị trí trọng tâm xe, cách xa bánh xe, ít rung lắc nhất khi xe ôm cua đèo dốc hoặc phanh gấp. Gần cửa gió điều hòa dịu nhẹ, giảm 80% cảm giác say xe.',
+    score: '98% Giảm Say Xe',
+    specs: { size: '185cm x 68cm', shockproof: '99% Êm ái', privacy: 'Rèm che riêng tư', charger: 'Type-C sạc nhanh' }
+  },
+  {
+    id: 'ngu_say',
+    icon: '😴',
+    label: 'Ngủ Say / Yên Tĩnh',
+    sublabel: 'Tầng 2, tránh người qua lại',
+    seats: ['B04', 'B07'],
+    floor: 'f2',
+    reason: 'Khoang tầng 2 sát cửa sổ cách biệt hoàn toàn luồng di chuyển lên xuống của khách. Rèm che riêng tư 100%, đèn đọc sách dịu mắt giúp ngủ sâu suốt đêm.',
+    score: '99% Yên Tĩnh',
+    specs: { size: '185cm x 68cm', shockproof: '95% Êm ái', privacy: 'Riêng tư 100%', charger: 'USB + Type-C' }
+  },
+  {
+    id: 'cap_doi',
+    icon: '👩‍❤️‍👨',
+    label: 'Cặp Đôi / Đi 2 Người',
+    sublabel: '2 giường liền kề cùng tầng',
+    seats: [],
+    floor: 'f1',
+    reason: 'Hai giường liền kề cạnh nhau còn trống, cùng một tầng, thuận tiện trò chuyện, chia sẻ hành lý và chăm sóc nhau suốt hành trình.',
+    score: '100% Liền Kề',
+    specs: { size: '185cm x 68cm x 2', shockproof: '96% Êm ái', privacy: 'Cặp đôi liền vách', charger: '2 Cổng sạc riêng' }
+  },
+  {
+    id: 'nguoi_gia',
+    icon: '👴',
+    label: 'Người Lớn Tuổi / Trẻ Em',
+    sublabel: 'Tầng 1, sát cửa buồng lái',
+    seats: ['A01', 'A03'],
+    floor: 'f1',
+    reason: 'Tầng 1 hoàn toàn không phải leo cầu thang. Sát cửa lên xuống và buồng lái bác tài, thuận tiện lơ xe hỗ trợ mang vác hành lý và di chuyển khi dừng nghỉ.',
+    score: '96% An Toàn & Tiện Lợi',
+    specs: { size: '185cm x 68cm', shockproof: '98% Êm ái', privacy: 'Gần cửa ra vào', charger: 'Type-C tiện với' }
+  },
+  {
+    id: 'chan_dai',
+    icon: '🦵',
+    label: 'Cao > 1m75 (Chân Dài)',
+    sublabel: 'Khoang đầu/cuối vách rộng',
+    seats: ['A01', 'A03', 'A16'],
+    floor: 'f1',
+    reason: 'Chiều dài lọt lòng giường 1m85, không có vách chặn chân gò bó, người cao từ 1m75 đến 1m85 duỗi thẳng chân thoải mái suốt đêm.',
+    score: '95% Thoáng Chân',
+    specs: { size: '190cm x 68cm', shockproof: '96% Êm ái', privacy: 'Khoang thoáng', charger: 'Type-C' }
+  }
+];
+
+const findBestCoupleSeats = () => {
+  const allF1 = [];
+  (props.floor1Rows || []).forEach(r => {
+    if (r.left && r.left.status !== 'booked') allF1.push(r.left.seat_number);
+    if (r.middle && r.middle.status !== 'booked') allF1.push(r.middle.seat_number);
+    if (r.right && r.right.status !== 'booked') allF1.push(r.right.seat_number);
+  });
+  
+  for (let i = 0; i < allF1.length - 1; i++) {
+    const s1 = allF1[i];
+    const s2 = allF1[i + 1];
+    const n1 = parseInt(s1.replace(/\D/g, ''));
+    const n2 = parseInt(s2.replace(/\D/g, ''));
+    if (Math.abs(n1 - n2) === 1) {
+      return [s1, s2];
+    }
+  }
+
+  const allF2 = [];
+  (props.floor2Rows || []).forEach(r => {
+    if (r.left && r.left.status !== 'booked') allF2.push(r.left.seat_number);
+    if (r.right && r.right.status !== 'booked') allF2.push(r.right.seat_number);
+  });
+  for (let i = 0; i < allF2.length - 1; i++) {
+    const s1 = allF2[i];
+    const s2 = allF2[i + 1];
+    const n1 = parseInt(s1.replace(/\D/g, ''));
+    const n2 = parseInt(s2.replace(/\D/g, ''));
+    if (Math.abs(n1 - n2) === 1) {
+      return [s1, s2];
+    }
+  }
+  return ['A01', 'A02'];
+};
+
+const selectAiPreset = (presetId) => {
+  if (activeAiSeatMode.value === presetId) {
+    clearAiRecommendation();
+    return;
+  }
+  activeAiSeatMode.value = presetId;
+  const p = AI_PRESETS.find(item => item.id === presetId);
+  if (!p) return;
+
+  let recommendedSeats = [...p.seats];
+  if (presetId === 'cap_doi') {
+    recommendedSeats = findBestCoupleSeats();
+  }
+
+  aiRecommendation.value = {
+    ...p,
+    seats: recommendedSeats,
+  };
+
+  if (p.floor) {
+    activeMobileFloor.value = p.floor;
+  }
+};
+
+const clearAiRecommendation = () => {
+  activeAiSeatMode.value = '';
+  aiRecommendation.value = null;
+  aiCustomPrompt.value = '';
+};
+
+const isAiRecommended = (seatNum) => {
+  return aiRecommendation.value?.seats?.includes(seatNum) || false;
+};
+
+const applyAiRecommendedSeats = () => {
+  if (!aiRecommendation.value?.seats) return;
+  const targetNums = aiRecommendation.value.seats;
+  const allSeats = [];
+  (props.floor1Rows || []).forEach(r => {
+    if (r.left) allSeats.push(r.left);
+    if (r.middle) allSeats.push(r.middle);
+    if (r.right) allSeats.push(r.right);
+  });
+  (props.floor2Rows || []).forEach(r => {
+    if (r.left) allSeats.push(r.left);
+    if (r.right) allSeats.push(r.right);
+  });
+
+  selectedSeats.value = [];
+  targetNums.forEach(num => {
+    const seatObj = allSeats.find(s => s.seat_number === num && s.status !== 'booked');
+    if (seatObj) {
+      selectedSeats.value.push(seatObj);
+    }
+  });
+};
+
+const handleAiPromptSubmit = () => {
+  const query = (aiCustomPrompt.value || '').toLowerCase().trim();
+  if (!query) return;
+
+  if (query.includes('say') || query.includes('chóng mặt') || query.includes('nôn') || query.includes('đỡ lắc') || query.includes('êm')) {
+    selectAiPreset('say_xe');
+  } else if (query.includes('ngủ') || query.includes('yên tĩnh') || query.includes('riêng tư') || query.includes('kín')) {
+    selectAiPreset('ngu_say');
+  } else if (query.includes('đôi') || query.includes('người yêu') || query.includes('bạn gái') || query.includes('2 người') || query.includes('cặp')) {
+    selectAiPreset('cap_doi');
+  } else if (query.includes('già') || query.includes('bà') || query.includes('ông') || query.includes('mẹ') || query.includes('bé') || query.includes('trẻ em') || query.includes('đau lưng')) {
+    selectAiPreset('nguoi_gia');
+  } else if (query.includes('cao') || query.includes('dài') || query.includes('m7') || query.includes('m8') || query.includes('chân')) {
+    selectAiPreset('chan_dai');
+  } else {
+    selectAiPreset('say_xe');
+  }
+};
+
+const startVoiceRecognition = () => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert('Trình duyệt của bạn chưa hỗ trợ nhận diện giọng nói Web Speech. Bạn hãy gõ câu hỏi vào ô nhé!');
+    return;
+  }
+
+  try {
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'vi-VN';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    isListeningVoice.value = true;
+
+    recognition.onresult = (event) => {
+      isListeningVoice.value = false;
+      const transcript = event.results[0][0].transcript;
+      aiCustomPrompt.value = transcript;
+      handleAiPromptSubmit();
+    };
+
+    recognition.onerror = () => {
+      isListeningVoice.value = false;
+    };
+
+    recognition.onend = () => {
+      isListeningVoice.value = false;
+    };
+
+    recognition.start();
+  } catch (err) {
+    isListeningVoice.value = false;
+  }
+};
+
+const openVirtualSeatPreview = (seat) => {
+  previewingSeat.value = seat;
+  showVirtualSeatModal.value = true;
+};
 
 // Kiểm tra tài khoản đã có SĐT và Gmail thật từ trước chưa
 const userHasRealPhone = computed(() => {
