@@ -306,6 +306,21 @@
                   </span>
                 </div>
 
+                <!-- Tiện nghi Tầng 1 -->
+                <div class="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200/60 text-left space-y-1">
+                  <div class="text-[10px] font-black text-emerald-900 uppercase flex items-center justify-between">
+                    <span>✨ Tiện Nghi Giường Tầng 1 (Dưới)</span>
+                    <span class="text-[9px] font-bold text-emerald-700 bg-white px-1.5 py-0.2 rounded border border-emerald-200">Giảm xóc 98%</span>
+                  </div>
+                  <div class="flex flex-wrap gap-1 text-[10px] text-slate-700 font-medium">
+                    <span class="bg-white/90 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-1">🎁 Tặng 1 chai nước</span>
+                    <span class="bg-white/90 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-1">❄️ Khăn lạnh</span>
+                    <span class="bg-white/90 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-1">🔌 Sạc Type-C & USB</span>
+                    <span class="bg-white/90 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-1">📺 TV LED</span>
+                    <span class="bg-white/90 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-1 text-emerald-800 font-bold">🌀 Giảm xóc êm nhất</span>
+                  </div>
+                </div>
+
                 <div class="grid grid-cols-3 gap-2 text-[11px] font-bold text-slate-500 pb-1.5 border-b border-slate-100 select-none">
                   <span>🪟 Cửa sổ</span>
                   <span>🚶 Dãy giữa</span>
@@ -373,6 +388,22 @@
                   <span class="px-2.5 py-0.5 rounded-lg bg-blue-100 text-blue-800 font-mono font-black text-xs">
                     {{ formatPrice(trip.floor2_price || (trip.fare ? trip.fare - 10000 : 130000)) }}đ
                   </span>
+                </div>
+
+                <!-- Tiện nghi Tầng 2 -->
+                <div class="p-2 rounded-xl bg-blue-50/70 border border-blue-200/60 text-left space-y-1">
+                  <div class="text-[10px] font-black text-blue-900 uppercase flex items-center justify-between">
+                    <span>✨ Tiện Nghi Giường Tầng 2 (Trên)</span>
+                    <span class="text-[9px] font-bold text-blue-700 bg-white px-1.5 py-0.2 rounded border border-blue-200">Riêng tư 100%</span>
+                  </div>
+                  <div class="flex flex-wrap gap-1 text-[10px] text-slate-700 font-medium">
+                    <span class="bg-white/90 px-1.5 py-0.5 rounded border border-blue-100 flex items-center gap-1">🎁 Tặng 1 chai nước</span>
+                    <span class="bg-white/90 px-1.5 py-0.5 rounded border border-blue-100 flex items-center gap-1">❄️ Khăn lạnh</span>
+                    <span class="bg-white/90 px-1.5 py-0.5 rounded border border-blue-100 flex items-center gap-1">🔌 Sạc USB</span>
+                    <span class="bg-white/90 px-1.5 py-0.5 rounded border border-blue-100 flex items-center gap-1">📺 TV LED</span>
+                    <span class="bg-white/90 px-1.5 py-0.5 rounded border border-blue-100 flex items-center gap-1 text-blue-800 font-black">🎪 Rèm che riêng tư 100%</span>
+                    <span class="bg-white/90 px-1.5 py-0.5 rounded border border-blue-100 flex items-center gap-1">🪟 Cửa sổ ngắm cảnh</span>
+                  </div>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2 text-[11px] font-bold text-slate-500 pb-1.5 border-b border-slate-100 select-none">
@@ -2253,6 +2284,59 @@ const timerSeconds = ref(0);
 
 onMounted(() => {
   initSavedVouchers();
+
+  // Đọc tham số ghế từ AI Chatbox truyền sang (?seats=A02,A05)
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const seatsParam = urlParams.get('seats') || urlParams.get('auto_seats');
+    const reasonParam = urlParams.get('reason') || '';
+
+    if (seatsParam) {
+      const seatNums = seatsParam.split(',').map(s => s.trim().toUpperCase());
+      const allSeats = [];
+      (props.floor1Rows || []).forEach(r => {
+        if (r.left) allSeats.push(r.left);
+        if (r.middle) allSeats.push(r.middle);
+        if (r.right) allSeats.push(r.right);
+      });
+      (props.floor2Rows || []).forEach(r => {
+        if (r.left) allSeats.push(r.left);
+        if (r.right) allSeats.push(r.right);
+      });
+
+      const matched = allSeats.filter(s => seatNums.includes(s.seat_number) && s.status !== 'booked');
+      if (matched.length > 0) {
+        selectedSeats.value = matched;
+        
+        let reasonTitle = 'AI Chatbox Đã Tự Động Chọn Ghế Giúp Bạn';
+        let reasonDesc = 'Vị trí giường tối ưu theo thể trạng và nhu cầu bạn vừa trao đổi với Trợ Lý AI trong Chatbox.';
+        if (reasonParam === 'say_xe') {
+          reasonTitle = 'AI Chọn Ghế Chống Say Xe Tối Đa';
+          reasonDesc = 'Vị trí trọng tâm xe Tầng 1 (ít dao động đèo dốc, gần gió điều hòa dịu nhẹ, giảm 80% cảm giác say xe).';
+        } else if (reasonParam === 'ngu_say') {
+          reasonTitle = 'AI Chọn Ghế Riêng Tư & Yên Tĩnh';
+          reasonDesc = 'Khoang Tầng 2 cạnh cửa sổ có rèm che riêng tư 100%, cách biệt luồng người qua lại để ngủ suốt chuyến.';
+        } else if (reasonParam === 'cap_doi') {
+          reasonTitle = 'AI Chọn Cặp Giường Liền Kề 2 Người';
+          reasonDesc = '2 giường nằm cạnh nhau còn trống đẹp nhất trên cùng một tầng để thuận tiện chăm sóc nhau.';
+        }
+
+        aiRecommendation.value = {
+          id: 'chatbox_ai',
+          icon: '🤖',
+          label: reasonTitle,
+          seats: matched.map(s => s.seat_number),
+          reason: reasonDesc,
+          score: '98% Phù Hợp Thể Trạng'
+        };
+
+        if (matched.some(s => s.floor === 2)) {
+          activeMobileFloor.value = 'f2';
+        }
+      }
+    }
+  }
+
   const interval = setInterval(() => {
     if (timerSeconds.value > 0) {
       timerSeconds.value--;
@@ -2268,10 +2352,6 @@ const isSeatSelected = (seatNum) => {
 };
 
 const toggleSeat = (seat) => {
-  if (!props.user) {
-    showAuthModal.value = true;
-    return;
-  }
   const idx = selectedSeats.value.findIndex(s => s.seat_number === seat.seat_number);
   if (idx > -1) {
     selectedSeats.value.splice(idx, 1);

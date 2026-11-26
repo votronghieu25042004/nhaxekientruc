@@ -94,6 +94,69 @@ class AiAssistantController extends Controller
             ];
         }
 
+        // ==================== 1.5. ĐẶT VÉ KÈM THỂ TRẠNG: SAY XE, 2 NGƯỜI, RIÊNG TƯ, NGƯỜI GIÀ, CHÂN DÀI ====================
+        $isSayXeQ = (bool) preg_match('/(say|chóng mặt|nôn|lắc|say xe|đỡ lắc|êm ái|ít rung|mệt)/u', $lower);
+        $isRiengTuQ = (bool) preg_match('/(riêng tư|rèm|kín|không gian riêng|không làm phiền|tránh người|ngủ say)/u', $lower);
+        $hasPassengerCountQ = (bool) preg_match('/(2 người|hai người|2 vé|hai vé|2 bạn|hai bạn|cặp đôi|người yêu|vợ chồng|2 ghế|hai ghế|3 người|ba người|4 người)/u', $lower);
+        $isElderlyQ = (bool) preg_match('/(già|lớn tuổi|ông|bà|mẹ|trẻ em|bé|đau lưng|leo cầu thang)/u', $lower);
+        $isTallQ = (bool) preg_match('/(cao|chân dài|1m7|1m8|1m9|m8|m75)/u', $lower);
+
+        if (($isSayXeQ || $isRiengTuQ || $hasPassengerCountQ || $isElderlyQ || $isTallQ) && !empty($matchingTrips)) {
+            $firstTrip = $matchingTrips[0];
+            $destName = $firstTrip['destination'] ?? 'Quảng Trị';
+            $recSeats = $firstTrip['recommended_seats'] ?? ['A02', 'A05'];
+            $seatsStr = implode(', ', $recSeats);
+
+            $reply = "Dạ em đã tìm thấy các chuyến xe **{$firstTrip['route_name']}** phù hợp nhất cho bạn và hệ thống AI đã tự động phân tích thể trạng để chọn chỗ ngồi tối ưu:\n\n";
+
+            // Nếu khách vừa say xe vừa muốn riêng tư (Tradeoff phân tích chuyên sâu đúng yêu cầu)
+            if ($isSayXeQ && $isRiengTuQ) {
+                $reply .= "⚖️ **PHÂN TÍCH TÂM LÝ & THỂ TRẠNG (SAY XE vs RIÊNG TƯ):**\n" .
+                          "• 🤢 **Tầng 1 (Dãy giữa {$seatsStr}):** Nằm ngay trọng tâm xe, cách xa trục bánh, triệt tiêu 98% dao động khi xe ôm cua đèo dốc hoặc phanh gấp. Đây là vị trí vàng giúp giảm 80% cảm giác say xe và nôn nao. Tuy nhiên Tầng 1 thiết kế lối đi thông thoáng, lưu thông gió điều hòa tốt nên không làm rèm kín.\n" .
+                          "• 🎪 **Tầng 2 (Dãy B):** Có rèm che riêng tư 100% chống nhìn trộm và chống nắng, nhưng vì nằm trên cao nên theo lực ly tâm, tầng 2 sẽ lắc lư hơn tầng 1 khi ôm cua.\n" .
+                          "👉 **Lời khuyên chân thành từ Nhà xe:** Với chuyến đi đường dài, **sức khỏe và sự tỉnh táo chống say xe là quan trọng nhất**. Em khuyên bạn nên **ƯU TIÊN CHỌN TẦNG 1** để có giấc ngủ êm ái, không bị mệt mỏi! Nếu bạn vẫn muốn riêng tư tuyệt đối, bạn vẫn có thể chọn Tầng 2 nhé.\n\n";
+            } elseif ($isSayXeQ) {
+                $reply .= "🤢 **TƯ VẤN CHỐNG SAY XE:**\n" .
+                          "Em đã tự động chọn vị trí vàng **giường {$seatsStr} (Tầng 1 - Dãy giữa)** cho bạn. Đây là khu vực trọng tâm xe, cách xa bánh xe, ít rung lắc nhất khi chạy đèo dốc, gần cửa gió điều hòa dịu nhẹ giúp giảm 80% cảm giác say xe.\n\n";
+            } elseif ($isRiengTuQ) {
+                $reply .= "😴 **TƯ VẤN KHÔNG GIAN RIÊNG TƯ:**\n" .
+                          "Em đã chọn giường **{$seatsStr} (Tầng 2 - Cạnh cửa sổ)**. Tầng 2 có rèm kéo riêng tư 100% chống tia UV và chống nhìn trộm, cách biệt hoàn toàn luồng người đi lại lên xuống xe, kèm đèn đọc sách 3000K dịu mắt để bạn ngủ sâu suốt đêm.\n\n";
+            }
+
+            if ($hasPassengerCountQ) {
+                $reply .= "👩‍❤️‍👨 **SẮP XẾP CHỖ CHO 2 NGƯỜI:**\n" .
+                          "• Hệ thống đã tự động quét sơ đồ và chọn cặp giường **[{$seatsStr}]** còn trống đẹp nhất trên cùng một tầng để hai bạn nằm cạnh nhau, thuận tiện trò chuyện và chăm sóc nhau suốt hành trình.\n" .
+                          "• *(Trường hợp các cặp giường liền vách nhau bị kín, hệ thống sẽ tự động ghép 2 giường so le qua lối đi hoặc gần nhau nhất để hai bạn vẫn ở cạnh nhau)*.\n\n";
+            }
+
+            if ($isElderlyQ) {
+                $reply .= "👴 **TIỆN NGHI CHO NGƯỜI LỚN TUỔI / TRẺ EM:**\n" .
+                          "Giường Tầng 1 sát cửa [{$seatsStr}] hoàn toàn không phải leo trèo cầu thang, thuận tiện khi lên xuống xe lúc dừng trạm nghỉ ngơi.\n\n";
+            }
+
+            if ($isTallQ) {
+                $reply .= "🦵 **THOẢI MÁI CHO KHÁCH CAO > 1m75:**\n" .
+                          "Giường [{$seatsStr}] có khoảng lọt lòng 185cm - 190cm, không bị gò vách chân, giúp bạn duỗi thẳng chân thoải mái.\n\n";
+            }
+
+            $reply .= "🎁 **TIỆN NGHI TẶNG KÈM TẠI CHỖ:**\n" .
+                      "• Mỗi giường đều được tặng 1 chai nước suối tinh khiết, khăn lạnh tiệt trùng.\n" .
+                      "• Ổ cắm sạc điện thoại Type-C PD & USB 20W sạc nhanh tại giường, TV LED giải trí, Wifi 5G tốc độ cao miễn phí.\n\n" .
+                      "👉 **Bạn chỉ cần bấm trực tiếp vào thẻ chuyến xe bên dưới**, hệ thống sẽ tự động chuyển sang sơ đồ và đánh dấu sẵn các ghế này vào giỏ vé cho bạn ngay lập tức nhé!";
+
+            return [
+                'reply' => $reply,
+                'suggestions' => [
+                    "Đặt chuyến {$firstTrip['time_str']} đi {$destName}",
+                    "Chính sách cọc 30%",
+                    "Xem tiện nghi xe",
+                    "Đổi chuyến giờ khác"
+                ],
+                'trips' => $matchingTrips,
+                'source' => 'ai-seat-matcher'
+            ];
+        }
+
         // ==================== 2. HỎI ĐĂNG NHẬP ADMIN / TRANG QUẢN TRỊ ====================
         if (preg_match('/(đăng nhập vào admin|đăng nhập admin|link admin|vào admin|vào trang quản trị|trang quản trị|cách vào admin|quản trị viên|admin login|link dashboard|bảng điều khiển admin|trang admin|tài khoản admin)/u', $lower)) {
             return [
@@ -819,6 +882,7 @@ class AiAssistantController extends Controller
                 . "QUAN TRỌNG VỀ ĐỊA LÝ: Nhà xe Kiến Trúc KHÔNG có tuyến xe chạy trực tiếp giữa các tỉnh trung gian (ví dụ: Quảng Trị đi Huế, Huế đi Quảng Bình, Quy Nhơn đi Buôn Ma Thuột... KHÔNG CÓ tuyến trực tiếp). Nếu khách hỏi các tuyến này, phải trả lời rõ ràng là nhà xe chưa có tuyến trực tiếp giữa hai tỉnh này, toàn bộ tuyến đều xuất phát từ hoặc về Đà Nẵng, đồng thời gợi ý khách đi xe khách nội tỉnh dọc QL1A hoặc đi chặng trung chuyển về Đà Nẵng. "
                 . "BẢO MẬT ADMIN: Khi khách hỏi 'bạn có cách nào đăng nhập vào admin không' hoặc xin link/cách vào admin, bạn phải trả lời là bạn không có quyền hạn can thiệp, không cung cấp tài khoản hay cấp quyền vào trang quản trị (chỉ dành cho ban quản lý và kỹ thuật nội bộ của nhà xe). "
                 . "CHÍNH SÁCH: Cọc 30% giữ chỗ 100%, 70% còn lại thanh toán cho bác tài khi lên xe. Ưu đãi sinh viên giảm 30% mã PRO30. Hủy vé tự phục vụ hoàn 100% trong 2h hoặc trước 24h tại mục 'Quản Lý Vé'. Hành lý miễn phí 20kg, nhận gửi xe máy có bọc xốp. "
+                . "AI TƯ VẤN CHỖ NGỒI THEO THỂ TRẠNG: Khi khách hàng chia sẻ về tình trạng say xe, đi 2 người, cần riêng tư, người già, chân dài: 1) Nếu khách say xe VÀ muốn riêng tư: Phải phân tích sâu sắc rằng Tầng 1 không có rèm nhưng nằm trọng tâm xe, giảm xóc bóng hơi 98% triệt tiêu dao động đèo dốc; Tầng 2 có rèm riêng tư 100% nhưng trên cao lắc hơn. Luôn khuyên khách ưu tiên chọn Tầng 1 vì sức khỏe chống say xe quan trọng hơn! 2) Nếu đi 2 người: Thông báo đã tìm 2 giường cạnh nhau còn trống đẹp nhất, hoặc nếu hết thì giải thích đã chọn 2 giường gần nhau nhất qua lối đi. 3) Hướng dẫn khách bấm trực tiếp vào thẻ chuyến xe bên dưới để tự động chọn ghế và chuyển sang màn hình đặt vé. "
                 . "KHẢ NĂNG TOÀN DIỆN: Trả lời thông minh mọi câu hỏi của khách hàng, từ lịch trình, du lịch, quán ăn ngon tại Đà Nẵng, thơ ca, kiến thức tổng quát, giao tiếp vui vẻ. Không từ chối hay trả lời mẫu rập khuôn.";
 
             // Xây dựng contents đa lượt (Multi-turn conversation history)
@@ -941,7 +1005,7 @@ class AiAssistantController extends Controller
             }
         }
 
-        $queryBuilder = Trip::with(['route', 'bus'])
+        $queryBuilder = Trip::with(['route', 'bus', 'bookings.bookingSeats'])
             ->whereIn('status', ['SCHEDULED', 'OPEN_FOR_SALE', 'READY', 'BOARDING'])
             ->where('departure_time', '>=', Carbon::now());
 
@@ -954,8 +1018,175 @@ class AiAssistantController extends Controller
 
         $trips = $queryBuilder->orderBy('departure_time', 'asc')->take(4)->get();
 
-        return $trips->map(function($t) {
+        // Phân tích thể trạng & nhu cầu khách hàng qua câu hỏi tự nhiên
+        $isSayXe = (bool) preg_match('/(say|chóng mặt|nôn|lắc|say xe|đỡ lắc|êm ái|ít rung|mệt)/u', $lower);
+        $isRiengTu = (bool) preg_match('/(riêng tư|rèm|kín|không gian riêng|không làm phiền|tránh người|ngủ say)/u', $lower);
+        $isElderly = (bool) preg_match('/(già|lớn tuổi|ông|bà|mẹ|trẻ em|bé|đau lưng|leo cầu thang)/u', $lower);
+        $isTall = (bool) preg_match('/(cao|chân dài|1m7|1m8|1m9|m8|m75)/u', $lower);
+        $numPassengers = 1;
+        if (preg_match('/(2 người|hai người|2 vé|hai vé|2 bạn|hai bạn|cặp đôi|người yêu|vợ chồng|2 ghế|hai ghế|2 chỗ|hai chỗ)/u', $lower)) {
+            $numPassengers = 2;
+        } elseif (preg_match('/(3 người|ba người|3 vé|3 ghế)/u', $lower)) {
+            $numPassengers = 3;
+        } elseif (preg_match('/(4 người|bốn người|4 vé|4 ghế)/u', $lower)) {
+            $numPassengers = 4;
+        }
+
+        $f1Seats = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10','A11','A12','A13','A14','A15','A16','A17','A18'];
+        $f2Seats = ['B01','B02','B03','B04','B05','B06','B07','B08','B09','B10','B11','B12'];
+
+        $f1Pairs = [
+            ['A01', 'A02'], ['A02', 'A03'],
+            ['A04', 'A05'], ['A05', 'A06'],
+            ['A07', 'A08'], ['A08', 'A09'],
+            ['A10', 'A11'], ['A11', 'A12'],
+            ['A13', 'A14'], ['A14', 'A15'],
+            ['A16', 'A17'], ['A17', 'A18'],
+        ];
+        $f2Pairs = [
+            ['B01', 'B02'], ['B03', 'B04'], ['B05', 'B06'],
+            ['B07', 'B08'], ['B09', 'B10'], ['B11', 'B12'],
+        ];
+
+        return $trips->map(function($t) use ($isSayXe, $isRiengTu, $isElderly, $isTall, $numPassengers, $f1Seats, $f2Seats, $f1Pairs, $f2Pairs) {
             $depTime = Carbon::parse($t->departure_time);
+            
+            // Quét danh sách ghế đã được đặt trên chuyến này
+            $occupied = $t->bookings
+                ? $t->bookings->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])->flatMap->bookingSeats->pluck('seat_number')->all()
+                : [];
+
+            $availF1 = array_values(array_diff($f1Seats, $occupied));
+            $availF2 = array_values(array_diff($f2Seats, $occupied));
+
+            $chosenSeats = [];
+            $reasonTag = 'ai_match';
+            $seatAdvice = '';
+            $score = '98% Phù Hợp';
+
+            if ($isSayXe && $isRiengTu) {
+                $reasonTag = 'say_xe';
+                $score = '99% Y Khoa Khuyên';
+                if ($numPassengers >= 2) {
+                    $pair = null;
+                    foreach ($f1Pairs as $p) {
+                        if (in_array($p[0], $availF1) && in_array($p[1], $availF1)) {
+                            $pair = $p; break;
+                        }
+                    }
+                    if ($pair) {
+                        $chosenSeats = $pair;
+                        $seatAdvice = "Ưu tiên Tầng 1 chống say xe: AI chọn cặp giường liền kề {$pair[0]}, {$pair[1]} êm ái nhất (Tầng 1 không rèm nhưng giảm 80% say xe; Tầng 2 có rèm nhưng lắc hơn).";
+                    } else {
+                        $chosenSeats = array_slice($availF1, 0, 2);
+                        if (count($chosenSeats) < 2) {
+                            $chosenSeats = array_merge($chosenSeats, array_slice($availF2, 0, 2 - count($chosenSeats)));
+                        }
+                        $seatAdvice = "Ưu tiên Tầng 1 chống say xe: Cặp giường sát vách đã kín, AI chọn 2 giường gần nhau nhất qua lối đi.";
+                    }
+                } else {
+                    $targetF1 = ['A02', 'A05', 'A08', 'A11'];
+                    $pick = null;
+                    foreach ($targetF1 as $s) {
+                        if (in_array($s, $availF1)) { $pick = $s; break; }
+                    }
+                    $chosenSeats = [$pick ?: ($availF1[0] ?? ($availF2[0] ?? 'A02'))];
+                    $seatAdvice = "Ưu tiên Tầng 1 ({$chosenSeats[0]}) chống say xe: Trọng tâm xe ít lắc nhất khi ôm cua. (Tầng 2 có rèm riêng tư nhưng lắc hơn).";
+                }
+            } elseif ($isSayXe) {
+                $reasonTag = 'say_xe';
+                $score = '98% Giảm Say Xe';
+                if ($numPassengers >= 2) {
+                    $pair = null;
+                    foreach ($f1Pairs as $p) {
+                        if (in_array($p[0], $availF1) && in_array($p[1], $availF1)) {
+                            $pair = $p; break;
+                        }
+                    }
+                    $chosenSeats = $pair ?: array_slice($availF1, 0, 2);
+                    $seatAdvice = "Tầng 1 - Dãy giữa: Vị trí trọng tâm xe êm ái nhất, cách xa bánh xe, giảm 80% cảm giác say xe cho 2 bạn.";
+                } else {
+                    $targetF1 = ['A02', 'A05', 'A08', 'A11'];
+                    $pick = null;
+                    foreach ($targetF1 as $s) {
+                        if (in_array($s, $availF1)) { $pick = $s; break; }
+                    }
+                    $chosenSeats = [$pick ?: ($availF1[0] ?? 'A02')];
+                    $seatAdvice = "Tầng 1 - Dãy giữa ({$chosenSeats[0]}): Vị trí trọng tâm xe ít rung lắc nhất, gió điều hòa dịu nhẹ, giảm 80% say xe.";
+                }
+            } elseif ($isRiengTu) {
+                $reasonTag = 'ngu_say';
+                $score = '99% Riêng Tư';
+                if ($numPassengers >= 2) {
+                    $pair = null;
+                    foreach ($f2Pairs as $p) {
+                        if (in_array($p[0], $availF2) && in_array($p[1], $availF2)) {
+                            $pair = $p; break;
+                        }
+                    }
+                    $chosenSeats = $pair ?: array_slice($availF2, 0, 2);
+                    $seatAdvice = "Tầng 2 - Sát cửa sổ: Rèm che riêng tư 100%, cách biệt luồng người qua lại, yên tĩnh tuyệt đối cho 2 bạn.";
+                } else {
+                    $targetF2 = ['B04', 'B07', 'B02', 'B05'];
+                    $pick = null;
+                    foreach ($targetF2 as $s) {
+                        if (in_array($s, $availF2)) { $pick = $s; break; }
+                    }
+                    $chosenSeats = [$pick ?: ($availF2[0] ?? 'B04')];
+                    $seatAdvice = "Tầng 2 - Cạnh cửa sổ ({$chosenSeats[0]}): Rèm che kín 100% chống nhìn trộm, đèn đọc sách, yên tĩnh ngủ suốt chuyến.";
+                }
+            } elseif ($numPassengers >= 2) {
+                $reasonTag = 'cap_doi';
+                $score = '100% Liền Kề';
+                $pair = null;
+                foreach ($f1Pairs as $p) {
+                    if (in_array($p[0], $availF1) && in_array($p[1], $availF1)) {
+                        $pair = $p; break;
+                    }
+                }
+                if (!$pair) {
+                    foreach ($f2Pairs as $p) {
+                        if (in_array($p[0], $availF2) && in_array($p[1], $availF2)) {
+                            $pair = $p; break;
+                        }
+                    }
+                }
+                if ($pair) {
+                    $chosenSeats = $pair;
+                    $seatAdvice = "2 giường liền kề cùng một tầng còn trống đẹp nhất, thuận tiện trò chuyện và chăm sóc nhau.";
+                } else {
+                    $chosenSeats = array_slice($availF1, 0, 2);
+                    if (count($chosenSeats) < 2) {
+                        $chosenSeats = array_merge($chosenSeats, array_slice($availF2, 0, 2 - count($chosenSeats)));
+                    }
+                    $seatAdvice = "Cặp giường sát vách đã kín, AI tự động chọn 2 giường gần nhau nhất qua lối đi.";
+                }
+            } elseif ($isElderly) {
+                $reasonTag = 'nguoi_gia';
+                $score = '98% An Toàn';
+                $pick = in_array('A01', $availF1) ? 'A01' : (in_array('A03', $availF1) ? 'A03' : ($availF1[0] ?? 'A01'));
+                $chosenSeats = [$pick];
+                $seatAdvice = "Tầng 1 gần cửa & buồng lái: Không phải leo cầu thang, lơ xe và bác tài dễ hỗ trợ lên xuống.";
+            } elseif ($isTall) {
+                $reasonTag = 'chan_dai';
+                $score = '96% Thoáng Chân';
+                $target = ['A01', 'A03', 'A16'];
+                $pick = null;
+                foreach ($target as $s) {
+                    if (in_array($s, $availF1)) { $pick = $s; break; }
+                }
+                $chosenSeats = [$pick ?: ($availF1[0] ?? 'A01')];
+                $seatAdvice = "Khoang rộng rãi lọt lòng 185-190cm, vách chân thoáng không gò bó, duỗi thẳng chân thoải mái.";
+            } else {
+                $chosenSeats = [($availF1[0] ?? ($availF2[0] ?? 'A02'))];
+                $seatAdvice = "Vị trí giường êm ái, gần cửa gió điều hòa và cổng sạc Type-C siêu tốc.";
+            }
+
+            $isF2 = !empty($chosenSeats) && str_starts_with($chosenSeats[0], 'B');
+            $amenityHighlight = $isF2
+                ? "🎁 Nước suối, khăn lạnh, rèm che riêng tư 100%, sạc USB, TV LED"
+                : "🎁 Nước suối, khăn lạnh, sạc Type-C/USB 20W, TV LED, nệm bóng hơi 98% êm";
+
             return [
                 'id' => $t->id,
                 'origin' => $t->route->origin ?? 'Đà Nẵng',
@@ -971,7 +1202,11 @@ class AiAssistantController extends Controller
                 'deposit_price_formatted' => number_format($t->price * 0.3, 0, ',', '.') . 'đ',
                 'bus_type' => $t->bus->bus_type ?? 'Limousine VIP',
                 'license_plate' => $t->bus->license_plate ?? '43B-VIP',
-                'book_url' => "/trips/{$t->id}",
+                'recommended_seats' => $chosenSeats,
+                'ai_seat_advice' => $seatAdvice,
+                'ai_score' => $score,
+                'amenity_highlight' => $amenityHighlight,
+                'book_url' => "/trips/{$t->id}?seats=" . implode(',', $chosenSeats) . "&reason={$reasonTag}",
             ];
         })->toArray();
     }

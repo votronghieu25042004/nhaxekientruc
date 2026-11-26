@@ -371,18 +371,26 @@
                 <span class="text-emerald-600 font-mono font-black text-base">{{ formatCurrency(bus.total_revenue) }}</span>
               </div>
 
-              <div class="grid grid-cols-2 gap-2">
+              <div class="grid grid-cols-3 gap-1.5">
                 <button
                   @click="viewBusDetail(bus.id)"
-                  class="py-2 bg-rose-50 hover:bg-[#dc2626] hover:text-white text-red-600 font-bold text-xs rounded-xl border border-rose-200 transition flex items-center justify-center gap-1 cursor-pointer"
+                  class="py-2 bg-rose-50 hover:bg-[#dc2626] hover:text-white text-red-600 font-bold text-[11px] rounded-xl border border-rose-200 transition flex items-center justify-center gap-1 cursor-pointer"
                 >
-                  <span>🎯 Xem Khách</span>
+                  <span>🎯 Khách</span>
+                </button>
+
+                <button
+                  @click="openAmenitiesModal(bus)"
+                  class="py-2 bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-800 font-bold text-[11px] rounded-xl border border-amber-200 transition flex items-center justify-center gap-1 cursor-pointer"
+                  title="Cấu hình tiện nghi tầng 1 & tầng 2 cho phương tiện"
+                >
+                  <span>🛠️ Tiện Nghi</span>
                 </button>
 
                 <button
                   v-if="bus.status !== 'LIQUIDATED'"
                   @click="handleLiquidateBus(bus)"
-                  class="py-2 bg-purple-50 hover:bg-purple-800 hover:text-white text-purple-700 font-bold text-xs rounded-xl border border-purple-200 transition flex items-center justify-center gap-1 cursor-pointer"
+                  class="py-2 bg-purple-50 hover:bg-purple-800 hover:text-white text-purple-700 font-bold text-[11px] rounded-xl border border-purple-200 transition flex items-center justify-center gap-1 cursor-pointer"
                   title="Thanh lý xe (chỗ để bãi xe là miễn phí 0đ)"
                 >
                   <span>🏷️ Thanh Lý</span>
@@ -390,7 +398,7 @@
                 <button
                   v-else
                   @click="handleRestoreBus(bus)"
-                  class="py-2 bg-emerald-50 hover:bg-emerald-700 hover:text-white text-emerald-700 font-bold text-xs rounded-xl border border-emerald-200 transition flex items-center justify-center gap-1 cursor-pointer"
+                  class="py-2 bg-emerald-50 hover:bg-emerald-700 hover:text-white text-emerald-700 font-bold text-[11px] rounded-xl border border-emerald-200 transition flex items-center justify-center gap-1 cursor-pointer"
                   title="Khôi phục xe về hoạt động"
                 >
                   <span>↩ Phục Hồi</span>
@@ -500,6 +508,13 @@
                         🔍 Xem
                       </button>
                       <button
+                        @click="openAmenitiesModal(bus)"
+                        class="px-2.5 py-1 bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-800 font-bold text-xs rounded-lg border border-amber-200 transition cursor-pointer"
+                        title="Cấu hình tiện nghi tầng 1 & tầng 2"
+                      >
+                        🛠️ Tiện nghi
+                      </button>
+                      <button
                         v-if="bus.status !== 'LIQUIDATED'"
                         @click="handleLiquidateBus(bus)"
                         class="px-2.5 py-1 bg-purple-50 hover:bg-purple-800 hover:text-white text-purple-700 font-bold text-xs rounded-lg border border-purple-200 transition cursor-pointer"
@@ -572,6 +587,14 @@
                       <span>🔧</span>
                       <span>Bảo dưỡng kỹ thuật</span>
                     </span>
+                  </button>
+
+                  <button
+                    @click="openAmenitiesModal(selectedBusData)"
+                    class="px-3.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-full text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs transition"
+                    title="Cấu hình tiện nghi tầng 1 và tầng 2"
+                  >
+                    <span>🛠️ Tiện nghi T1 & T2</span>
                   </button>
                 </div>
                 <p class="text-xs text-slate-500 mt-0.5">
@@ -1028,6 +1051,118 @@
       </div>
     </div>
 
+    <!-- ==================== MODAL CẤU HÌNH TIỆN NGHI PHÂN TẦNG (TẦNG 1 & TẦNG 2) ==================== -->
+    <div
+      v-if="showAmenitiesModal"
+      class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+    >
+      <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">🛠️</span>
+              <h3 class="text-lg font-black text-slate-900">
+                Cấu Hình Tiện Nghi Xe: <span class="font-mono text-red-600">{{ editingAmenitiesBus?.license_plate }}</span>
+              </h3>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Phân bổ tiện ích chi tiết cho <b>Tầng 1 (Dưới)</b> và <b>Tầng 2 (Trên)</b> hiển thị cho khách hàng & AI khuyên chọn
+            </p>
+          </div>
+          <button
+            @click="showAmenitiesModal = false"
+            class="text-slate-400 hover:text-slate-600 text-xl font-black p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <form @submit.prevent="submitAmenities" class="space-y-4 py-4 overflow-y-auto flex-1 pr-1 text-xs">
+          <!-- TẦNG 1 -->
+          <div class="p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="font-black text-emerald-900 flex items-center gap-1.5 text-sm">
+                <span>🛡️ Tiện Nghi Tầng 1 (Dưới - Dãy A)</span>
+                <span class="text-[10px] bg-emerald-200/80 text-emerald-800 px-2 py-0.5 rounded-full font-bold">Êm, chống say xe</span>
+              </label>
+              <button
+                type="button"
+                @click="amenitiesForm.floor1_text = 'Tặng 1 chai nước suối\nKhăn lạnh tiệt trùng\nỔ cắm Type-C + USB 20W\nTV màn hình LED cá nhân\nNệm bóng hơi giảm xóc 98% (êm nhất, chống say xe)\nLối đi rộng thấp không cần leo trèo'"
+                class="text-[11px] text-emerald-700 hover:underline font-semibold cursor-pointer"
+              >
+                Gợi ý mẫu T1
+              </button>
+            </div>
+            <p class="text-[11px] text-emerald-700">Mỗi tiện nghi nhập trên một dòng:</p>
+            <textarea
+              v-model="amenitiesForm.floor1_text"
+              rows="4"
+              class="w-full bg-white border border-emerald-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              placeholder="VD: Tặng 1 chai nước suối&#10;Khăn lạnh tiệt trùng&#10;Nệm giảm xóc chống say xe..."
+            ></textarea>
+          </div>
+
+          <!-- TẦNG 2 -->
+          <div class="p-4 bg-purple-50/70 border border-purple-200/80 rounded-2xl space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="font-black text-purple-900 flex items-center gap-1.5 text-sm">
+                <span>✨ Tiện Nghi Tầng 2 (Trên - Dãy B)</span>
+                <span class="text-[10px] bg-purple-200/80 text-purple-800 px-2 py-0.5 rounded-full font-bold">Riêng tư, có rèm che</span>
+              </label>
+              <button
+                type="button"
+                @click="amenitiesForm.floor2_text = 'Tặng 1 chai nước suối\nKhăn lạnh tiệt trùng\nỔ cắm sạc điện thoại USB\nTV màn hình LED\nRèm che riêng tư 100% (chống nhìn trộm, chống UV)\nCửa sổ ngắm cảnh toàn cảnh\nĐèn đọc sách ấm 3000K'"
+                class="text-[11px] text-purple-700 hover:underline font-semibold cursor-pointer"
+              >
+                Gợi ý mẫu T2
+              </button>
+            </div>
+            <p class="text-[11px] text-purple-700">Mỗi tiện nghi nhập trên một dòng:</p>
+            <textarea
+              v-model="amenitiesForm.floor2_text"
+              rows="4"
+              class="w-full bg-white border border-purple-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              placeholder="VD: Tặng 1 chai nước suối&#10;Rèm che riêng tư 100%&#10;Cửa sổ ngắm cảnh..."
+            ></textarea>
+          </div>
+
+          <!-- TIỆN ÍCH CHUNG -->
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="font-black text-slate-800 flex items-center gap-1.5 text-sm">
+                <span>🌐 Tiện Nghi Chung Toàn Xe</span>
+              </label>
+            </div>
+            <textarea
+              v-model="amenitiesForm.general_text"
+              rows="2"
+              class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-2 focus:ring-red-500 focus:outline-none"
+              placeholder="VD: Wifi 5G tốc độ cao&#10;Điều hòa 2 chiều lọc khí Nano&#10;Chăn gối khử khuẩn..."
+            ></textarea>
+          </div>
+
+          <!-- Nút hành động -->
+          <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 shrink-0">
+            <button
+              type="button"
+              @click="showAmenitiesModal = false"
+              class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
+            >
+              Đóng
+            </button>
+            <button
+              type="submit"
+              :disabled="amenitiesForm.processing"
+              class="px-5 py-2.5 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white font-black rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <span>💾</span>
+              <span>LƯU CẤU HÌNH TIỆN NGHI</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <AiChatModal />
   </div>
 </template>
@@ -1153,6 +1288,64 @@ const resetToAll = () => {
 };
 
 const showCreateBusModal = ref(false);
+const showAmenitiesModal = ref(false);
+const editingAmenitiesBus = ref(null);
+
+const amenitiesForm = useForm({
+  floor1: [],
+  floor2: [],
+  general: [],
+  floor1_text: '',
+  floor2_text: '',
+  general_text: '',
+});
+
+const openAmenitiesModal = (bus) => {
+  if (!bus) return;
+  editingAmenitiesBus.value = bus;
+  const raw = bus.amenities || {};
+  const f1 = Array.isArray(raw.floor1) && raw.floor1.length > 0 
+    ? raw.floor1 
+    : ['Tặng 1 chai nước suối', 'Khăn lạnh tiệt trùng', 'Ổ cắm Type-C + USB 20W', 'TV màn hình LED', 'Nệm bóng hơi giảm xóc 98% (êm nhất, chống say xe)', 'Lối đi thông thoáng'];
+  const f2 = Array.isArray(raw.floor2) && raw.floor2.length > 0 
+    ? raw.floor2 
+    : ['Tặng 1 chai nước suối', 'Khăn lạnh tiệt trùng', 'Ổ cắm sạc điện thoại USB', 'TV màn hình LED', 'Rèm che riêng tư 100% (chống nhìn trộm, chống UV)', 'Cửa sổ ngắm cảnh toàn cảnh', 'Đèn đọc sách ấm 3000K'];
+  const gen = Array.isArray(raw.general) && raw.general.length > 0
+    ? raw.general
+    : ['Wifi 5G tốc độ cao', 'Nước uống đóng chai', 'Điều hòa 2 chiều', 'Chăn gối kháng khuẩn'];
+
+  amenitiesForm.floor1 = [...f1];
+  amenitiesForm.floor2 = [...f2];
+  amenitiesForm.general = [...gen];
+  amenitiesForm.floor1_text = f1.join('\n');
+  amenitiesForm.floor2_text = f2.join('\n');
+  amenitiesForm.general_text = gen.join('\n');
+  showAmenitiesModal.value = true;
+};
+
+const submitAmenities = () => {
+  if (!editingAmenitiesBus.value) return;
+  const f1 = amenitiesForm.floor1_text.split('\n').map(s => s.trim()).filter(Boolean);
+  const f2 = amenitiesForm.floor2_text.split('\n').map(s => s.trim()).filter(Boolean);
+  const gen = amenitiesForm.general_text.split('\n').map(s => s.trim()).filter(Boolean);
+
+  amenitiesForm.floor1 = f1;
+  amenitiesForm.floor2 = f2;
+  amenitiesForm.general = gen;
+
+  amenitiesForm.post(`/admin/buses/${editingAmenitiesBus.value.id}/amenities`, {
+    preserveScroll: true,
+    onSuccess: () => {
+      showAmenitiesModal.value = false;
+      if (selectedBusData.value && selectedBusData.value.id === editingAmenitiesBus.value.id) {
+        selectedBusData.value.amenities = { floor1: f1, floor2: f2, general: gen };
+      }
+      if (editingAmenitiesBus.value) {
+        editingAmenitiesBus.value.amenities = { floor1: f1, floor2: f2, general: gen };
+      }
+    }
+  });
+};
 
 const busForm = useForm({
   license_plate: '',

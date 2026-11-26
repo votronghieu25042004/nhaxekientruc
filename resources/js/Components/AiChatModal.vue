@@ -383,27 +383,54 @@
                           v-for="trip in msg.trips"
                           :key="trip.id"
                           @click="goToTrip(trip.book_url)"
-                          class="group cursor-pointer p-3 rounded-xl border border-red-200/80 hover:border-red-500 bg-white hover:bg-gradient-to-r hover:from-red-50/70 hover:to-amber-50/40 shadow-2xs hover:shadow-md transition-all duration-200 active:scale-[0.99]"
+                          class="group cursor-pointer p-3.5 rounded-2xl border-2 border-red-200/90 hover:border-red-500 bg-white hover:bg-gradient-to-r hover:from-red-50/70 hover:to-amber-50/40 shadow-xs hover:shadow-lg transition-all duration-200 active:scale-[0.99] space-y-2.5"
                         >
                           <div class="flex items-center justify-between gap-2">
-                            <div class="font-bold text-slate-900 group-hover:text-red-600 transition-colors flex items-center gap-1.5 text-xs">
+                            <div class="font-black text-slate-900 group-hover:text-red-600 transition-colors flex items-center gap-1.5 text-xs sm:text-sm">
                               <span>{{ trip.route_name }}</span>
-                              <span v-if="trip.is_today" class="px-1.5 py-0.5 rounded text-[9px] bg-red-600 text-white font-bold">Hôm nay</span>
-                              <span v-else-if="trip.is_tomorrow" class="px-1.5 py-0.5 rounded text-[9px] bg-amber-500 text-white font-bold">Ngày mai</span>
+                              <span v-if="trip.is_today" class="px-2 py-0.5 rounded-full text-[9px] bg-red-600 text-white font-bold">Hôm nay</span>
+                              <span v-else-if="trip.is_tomorrow" class="px-2 py-0.5 rounded-full text-[9px] bg-amber-500 text-white font-bold">Ngày mai</span>
                             </div>
                             <div class="text-right">
-                              <span class="font-extrabold text-red-600 text-xs">{{ trip.price_formatted }}</span>
-                              <span class="text-[9px] text-slate-400 block">Cọc 30%: {{ trip.deposit_price_formatted }}</span>
+                              <span class="font-black text-red-600 text-xs sm:text-sm">{{ trip.price_formatted }}</span>
+                              <span class="text-[9px] text-slate-400 block font-medium">Cọc 30%: {{ trip.deposit_price_formatted }}</span>
                             </div>
                           </div>
 
-                          <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600">
-                            <div class="flex items-center gap-1.5">
-                              <span class="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">⏰ {{ trip.time_str }} ({{ trip.date_str }})</span>
-                              <span class="text-slate-500 text-[10px] hidden sm:inline">• {{ trip.bus_type }}</span>
+                          <!-- Khối AI Gợi Ý Chỗ Ngồi & Thể Trạng Thông Minh -->
+                          <div v-if="trip.recommended_seats && trip.recommended_seats.length > 0" class="p-2.5 rounded-xl bg-gradient-to-br from-amber-50 via-orange-50/50 to-amber-50/20 border border-amber-300 space-y-1.5">
+                            <div class="flex items-center justify-between text-[11px] flex-wrap gap-1">
+                              <div class="flex items-center gap-1.5">
+                                <span class="font-black text-amber-900 uppercase text-[10.5px]">⭐ AI Khuyên Chọn:</span>
+                                <div class="flex items-center gap-1">
+                                  <span 
+                                    v-for="s in trip.recommended_seats" 
+                                    :key="s"
+                                    class="px-2 py-0.5 rounded-md bg-red-600 text-white font-mono font-black text-[11px] shadow-2xs"
+                                  >
+                                    {{ s }}
+                                  </span>
+                                </div>
+                              </div>
+                              <span class="text-[9.5px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.2 rounded-full">
+                                {{ trip.ai_score || 'Phù hợp 98%' }}
+                              </span>
                             </div>
-                            <span class="font-bold text-red-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-[11px]">
-                              <span>Chọn ghế & đặt vé</span>
+                            <p class="text-[11px] text-slate-700 leading-relaxed font-medium">
+                              {{ trip.ai_seat_advice }}
+                            </p>
+                            <div v-if="trip.amenity_highlight" class="text-[10px] text-slate-500 flex items-center gap-1 pt-0.5 border-t border-amber-200/50">
+                              <span>{{ trip.amenity_highlight }}</span>
+                            </div>
+                          </div>
+
+                          <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px] text-slate-600">
+                            <div class="flex items-center gap-1.5">
+                              <span class="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">⏰ {{ trip.time_str }} ({{ trip.date_str }})</span>
+                              <span class="text-slate-500 text-[10px] hidden sm:inline">• {{ trip.bus_type }} ({{ trip.license_plate }})</span>
+                            </div>
+                            <span class="font-black text-xs text-white bg-gradient-to-r from-red-600 to-rose-600 group-hover:from-red-700 group-hover:to-rose-700 px-3 py-1 rounded-xl shadow-xs transition-transform flex items-center gap-1.5">
+                              <span>{{ (trip.recommended_seats && trip.recommended_seats.length > 0) ? 'Tự Động Chọn Ghế Này Ngay' : 'Chọn ghế & đặt vé' }}</span>
                               <span>➔</span>
                             </span>
                           </div>
@@ -448,13 +475,33 @@
 
               <!-- THANH NHẬP CHAT BÊN DƯỚI -->
               <div class="p-3 border-t border-slate-100 bg-white">
+                <!-- Thông báo khi đang lắng nghe giọng nói -->
+                <div v-if="isListeningVoice" class="mb-2 p-2 rounded-xl bg-red-50 border border-red-200 flex items-center justify-between animate-pulse text-xs text-red-700 font-bold">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping"></span>
+                    <span>🎙️ Đang lắng nghe giọng nói tiếng Việt... (Hãy nói yêu cầu của bạn)</span>
+                  </div>
+                  <button type="button" @click="isListeningVoice = false" class="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer">✕ Hủy</button>
+                </div>
+
                 <form @submit.prevent="sendMessage" class="flex items-center gap-2">
                   <input
                     type="text"
                     v-model="inputQuery"
-                    placeholder="Nhập câu hỏi (VD: Có xe đi Quảng Trị lúc mấy giờ? Chính sách cọc 30%...)"
+                    placeholder="Nhập hoặc bấm Micro để nói (VD: Tôi bị say xe đi 2 người ra Quảng Trị...)"
                     class="flex-1 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-red-500 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition"
                   />
+                  <!-- Nút Micro Voice AI -->
+                  <button
+                    type="button"
+                    @click="startVoiceRecognition"
+                    :class="isListeningVoice ? 'bg-red-600 text-white ring-4 ring-red-300 animate-pulse' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'"
+                    class="p-2.5 rounded-xl transition cursor-pointer flex-shrink-0 flex items-center justify-center border border-slate-200"
+                    :title="isListeningVoice ? 'Đang lắng nghe...' : 'Bấm để nói bằng giọng nói (Voice AI)'"
+                  >
+                    <span class="text-sm">🎙️</span>
+                  </button>
+
                   <button
                     type="submit"
                     :disabled="!inputQuery.trim() || isAiTyping"
@@ -489,6 +536,7 @@ const showMobileHistory = ref(false);
 const activeView = ref('chat');
 const inputQuery = ref('');
 const isAiTyping = ref(false);
+const isListeningVoice = ref(false);
 const chatContainer = ref(null);
 
 const currentSessionId = ref(1);
@@ -715,6 +763,44 @@ const goToTrip = (url) => {
 const sendPrompt = (text) => {
   inputQuery.value = text;
   sendMessage();
+};
+
+const startVoiceRecognition = () => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert('Trình duyệt của bạn chưa hỗ trợ nhận diện giọng nói Web Speech API. Bạn vui lòng nhập câu hỏi bằng bàn phím nhé!');
+    return;
+  }
+
+  try {
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'vi-VN';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    isListeningVoice.value = true;
+
+    recognition.onresult = (event) => {
+      isListeningVoice.value = false;
+      const transcript = event.results[0][0].transcript;
+      if (transcript && transcript.trim()) {
+        inputQuery.value = transcript.trim();
+        sendMessage();
+      }
+    };
+
+    recognition.onerror = () => {
+      isListeningVoice.value = false;
+    };
+
+    recognition.onend = () => {
+      isListeningVoice.value = false;
+    };
+
+    recognition.start();
+  } catch (err) {
+    isListeningVoice.value = false;
+  }
 };
 
 const sendMessage = async () => {

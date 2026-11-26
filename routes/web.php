@@ -166,6 +166,7 @@ Route::prefix('admin')->group(function () {
     Route::get('buses', [AdminController::class, 'buses'])->name('admin.buses');
     Route::post('buses', [AdminController::class, 'storeBus'])->name('admin.buses.store');
     Route::post('buses/{id}/toggle-status', [AdminController::class, 'toggleBusStatus'])->name('admin.buses.toggleStatus');
+    Route::post('buses/{id}/amenities', [AdminController::class, 'updateBusAmenities'])->name('admin.buses.amenities');
     Route::post('buses/{id}/liquidate', [AdminController::class, 'liquidateBus'])->name('admin.buses.liquidate');
     Route::delete('buses/{id}', [AdminController::class, 'deleteBus'])->name('admin.buses.delete');
 
