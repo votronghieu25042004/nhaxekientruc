@@ -27,7 +27,7 @@ Route::post('register/send-otp', [AuthController::class, 'sendRegisterOtp'])->na
 Route::get('register/send-otp', fn() => redirect('/register'));
 Route::post('register/verify-otp', [AuthController::class, 'verifyRegisterOtp'])->name('register.verifyOtp');
 Route::get('register/verify-otp', fn() => redirect('/register'));
-Route::post('auth/google-login', [AuthController::class, 'googleLogin'])->name('auth.googleLogin');
+Route::match(['get', 'post'], 'auth/google-login', [AuthController::class, 'googleLogin'])->name('auth.googleLogin');
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
 // 1.1 Fast Login & Role Switcher

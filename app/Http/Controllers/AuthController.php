@@ -976,6 +976,15 @@ class AuthController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
 
+        if ($request->wantsJson() && !$request->header('X-Inertia')) {
+            return response()->json([
+                'success' => true,
+                'message' => "Đăng nhập Google thành công với tài khoản {$user->email}!",
+                'user' => $user,
+                'redirect' => '/',
+            ]);
+        }
+
         return redirect()->intended('/')->with('success', "Đăng nhập Google thành công với tài khoản {$user->email}!");
     }
 

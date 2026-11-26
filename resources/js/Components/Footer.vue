@@ -31,7 +31,7 @@
           <div class="space-y-1.5" :class="dark ? 'text-slate-400' : 'text-slate-600'">
             <div>🏢 <strong :class="dark ? 'text-slate-200' : 'text-slate-800'">Trụ sở chính:</strong> 292 Đinh Bộ Lĩnh, Phường 26, Bình Thạnh, TP. Hồ Chí Minh</div>
             <div>🏢 <strong :class="dark ? 'text-slate-200' : 'text-slate-800'">Chi nhánh Đà Nẵng:</strong> 159 Tôn Đức Thắng, Hòa Minh, Liên Chiểu, Đà Nẵng</div>
-            <div>📞 <strong :class="dark ? 'text-slate-200' : 'text-slate-800'">Tổng đài hỗ trợ 24/7:</strong> <span class="text-red-500 font-black text-sm">1900 6067</span> • <strong :class="dark ? 'text-slate-200' : 'text-slate-800'">Email:</strong> hotro@nhaxekientruc.vn</div>
+            <div>📞 <strong :class="dark ? 'text-slate-200' : 'text-slate-800'">Hotline / Zalo:</strong> <a href="tel:0906123931" class="text-red-500 font-black text-sm hover:underline">0906 123 931</a> • <a href="https://zalo.me/0906123931" target="_blank" class="text-emerald-500 font-bold hover:underline">💬 Zalo Hỗ Trợ</a> • <strong :class="dark ? 'text-slate-200' : 'text-slate-800'">Email:</strong> hotro@nhaxekientruc.vn</div>
           </div>
         </div>
 
