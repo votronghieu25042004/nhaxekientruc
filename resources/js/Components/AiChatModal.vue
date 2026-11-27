@@ -370,17 +370,46 @@
             </div>
 
             <!-- Banner Đang Đàm Thoại 2 Chiều Rảnh Tay (Voice Call) -->
-            <div v-if="isCallModeActive" class="bg-gradient-to-r from-red-600 to-rose-600 text-white px-3.5 py-2 text-xs font-bold flex items-center justify-between shadow-xs select-none">
+            <div v-if="isCallModeActive" class="bg-gradient-to-r from-red-600 to-rose-600 text-white px-3.5 py-2 text-xs font-bold flex flex-wrap items-center justify-between gap-2 shadow-xs select-none">
               <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
-                <span>📞 Đang đàm thoại trực tiếp với Bé Kiến Trúc (Nói và nghe liên tục rảnh tay)</span>
+                <span v-if="isSpeaking">🔊 Bé Kiến Trúc đang nói... (Micro tạm khóa chống vọng loa)</span>
+                <span v-else-if="isEchoCoolingDown">⏳ Đang nghỉ 1.2s triệt tiêu âm vang loa ngoài...</span>
+                <span v-else-if="isListeningVoice">🎙️ Bé Kiến Trúc đang lắng nghe... (Hãy nói yêu cầu)</span>
+                <span v-else>📞 Đang đàm thoại rảnh tay 2 chiều</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  v-if="!isListeningVoice && !isSpeaking && !isEchoCoolingDown"
+                  type="button"
+                  @click="triggerManualMic"
+                  class="text-[11px] bg-amber-400 hover:bg-amber-300 text-red-950 px-2.5 py-0.5 rounded-lg font-black transition cursor-pointer shadow-xs"
+                  title="Bấm để nói ngay không cần chờ"
+                >
+                  🎙️ Bấm để nói
+                </button>
+                <button
+                  type="button"
+                  @click="toggleCallMode"
+                  class="text-[11px] bg-white text-red-700 px-2.5 py-0.5 rounded-lg font-black hover:bg-red-50 cursor-pointer shadow-2xs"
+                >
+                  ⏹️ Dừng cuộc gọi
+                </button>
+              </div>
+            </div>
+
+            <!-- Cảnh báo chống vọng loa thông minh (Acoustic Echo Notice) -->
+            <div v-if="autoListenBlockedReason" class="mx-3.5 mt-2.5 p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold flex items-center justify-between shadow-xs animate-in fade-in">
+              <div class="flex items-start gap-2">
+                <span class="text-sm shrink-0">🛡️</span>
+                <span class="leading-relaxed">{{ autoListenBlockedReason }}</span>
               </div>
               <button
                 type="button"
-                @click="toggleCallMode"
-                class="text-[11px] bg-white text-red-700 px-2.5 py-0.5 rounded-lg font-black hover:bg-red-50 cursor-pointer shadow-2xs"
+                @click="autoListenBlockedReason = ''"
+                class="text-amber-700 hover:text-amber-900 text-xs font-black cursor-pointer px-1.5 py-0.5 rounded hover:bg-amber-100 shrink-0"
               >
-                ⏹️ Kết thúc cuộc gọi
+                ✕
               </button>
             </div>
 
@@ -854,7 +883,16 @@
                     <span class="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping"></span>
                     <span>🎙️ Đang lắng nghe giọng nói tiếng Việt... (Hãy nói yêu cầu của bạn)</span>
                   </div>
-                  <button type="button" @click="isListeningVoice = false" class="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer">✕ Hủy</button>
+                  <button type="button" @click="cancelListening" class="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer">✕ Hủy</button>
+                </div>
+
+                <!-- Đang chờ chống vọng loa -->
+                <div v-else-if="isEchoCoolingDown" class="mb-2 p-2 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between text-xs text-amber-800 font-bold animate-in fade-in">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span>⏳ Đang nghỉ 1.2s triệt tiêu âm vang loa ngoài trước khi mở Micro...</span>
+                  </div>
+                  <button type="button" @click="triggerManualMic" class="text-red-700 hover:text-red-900 text-[11px] font-bold underline cursor-pointer">Nói ngay</button>
                 </div>
 
                 <form @submit.prevent="sendMessage" class="flex items-center gap-2">
@@ -867,12 +905,12 @@
                   <!-- Nút Micro Voice AI -->
                   <button
                     type="button"
-                    @click="startVoiceRecognition"
+                    @click="triggerManualMic"
                     :class="isListeningVoice ? 'bg-red-600 text-white ring-4 ring-red-300 animate-pulse' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'"
                     class="p-2.5 rounded-xl transition cursor-pointer flex-shrink-0 flex items-center justify-center border border-slate-200"
-                    :title="isListeningVoice ? 'Đang lắng nghe...' : 'Bấm để nói bằng giọng nói (Voice AI)'"
+                    :title="isListeningVoice ? 'Đang lắng nghe... (Bấm để hủy)' : 'Bấm để nói bằng giọng nói (Voice AI)'"
                   >
-                    <span class="text-sm">🎙️</span>
+                    <span class="text-sm">{{ isListeningVoice ? '🔴' : '🎙️' }}</span>
                   </button>
 
                   <button
@@ -903,7 +941,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import AuthModal from '@/Components/AuthModal.vue';
 
@@ -926,15 +964,24 @@ const isSendingEmail = ref(false);
 const selectedBusFilter = ref('ALL');
 
 const showAuthModal = ref(false);
-const showGoogleChooser = ref(false);
 const isTtsEnabled = ref(true); // Voice Text-to-Speech active by default
 const isSpeaking = ref(false);
 const speakingMsgIdx = ref(null);
 
 // ==========================================
-// ĐÀM THOẠI 2 CHIỀU & ĐẶT VÉ TOÀN TRÌNH
+// ĐÀM THOẠI 2 CHIỀU & CHỐNG VỌNG TIẾNG LOA (ACOUSTIC ECHO CANCELLATION)
 // ==========================================
 const isCallModeActive = ref(false);
+const lastAiSpokenCleanText = ref('');
+const lastTtsEndTime = ref(0);
+const isEchoCoolingDown = ref(false);
+const autoListenBlockedReason = ref('');
+let echoCooldownTimer = null;
+let activeRecognition = null;
+let echoLoopCount = 0;
+let lastEchoDetectTime = 0;
+let isCurrentSessionAuto = false;
+
 const currentBookingState = ref({});
 const quickCustomerName = ref('Trần Minh Tuấn');
 const quickCustomerPhone = ref('0905123456');
@@ -983,14 +1030,145 @@ const submitQuickOtp = () => {
   sendMessage();
 };
 
+// ==========================================
+// THUẬT TOÁN NHẬN DIỆN VÀ TRIỆT TIÊU TIẾNG VỌNG TỪ LOA NGOÀI
+// ==========================================
+const normalizeTextForComparison = (text) => {
+  if (!text) return '';
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const isAcousticEcho = (userTranscript, isAuto = false) => {
+  if (!userTranscript) return true;
+  const transcript = userTranscript.trim();
+  const normUser = normalizeTextForComparison(transcript);
+  const userWords = normUser.split(' ').filter(Boolean);
+  const timeSinceTtsEnd = Date.now() - lastTtsEndTime.value;
+
+  // Ngoại lệ: Nếu người dùng đang cung cấp thông tin thực sự (SĐT, số ghế, mã OTP, số tiền)
+  const containsSpecificEntity = /\d{4,}/.test(transcript) || /\b[A-Da-d]\d{2}\b/.test(transcript);
+  if (containsSpecificEntity) {
+    if (!lastAiSpokenCleanText.value) return false;
+    const normAi = normalizeTextForComparison(lastAiSpokenCleanText.value);
+    if (!normAi.includes(normUser)) {
+      return false; // Dữ liệu riêng biệt do khách đọc -> chấp nhận ngay
+    }
+  }
+
+  // 1. Nếu mở Micro tự động ngay sau khi AI đọc dứt câu:
+  if (isAuto) {
+    // Âm thanh ngắn (< 3 từ) xuất hiện trong vòng 2.5s sau khi AI dứt câu (thường là đuôi câu: "nhé", "ạ", "ơi")
+    if (timeSinceTtsEnd < 2500 && userWords.length <= 2) {
+      if (!lastAiSpokenCleanText.value) return true;
+      const normAi = normalizeTextForComparison(lastAiSpokenCleanText.value);
+      if (normAi.includes(normUser)) {
+        console.warn('[EchoFilter] Bỏ qua từ đệm/tiếng vang loa ngoài:', transcript);
+        return true;
+      }
+      if (userWords.length === 1 && normUser.length < 4) {
+        console.warn('[EchoFilter] Bỏ qua âm tiết đơn thu từ loa:', transcript);
+        return true;
+      }
+    }
+  }
+
+  // 2. So sánh đối chiếu nội dung với câu văn AI vừa phát âm:
+  if (lastAiSpokenCleanText.value) {
+    const normAi = normalizeTextForComparison(lastAiSpokenCleanText.value);
+
+    // a. Toàn bộ câu thu được nằm trong câu AI vừa nói (hoặc ngược lại)
+    if (normUser.length >= 4 && (normAi.includes(normUser) || normUser.includes(normAi))) {
+      console.warn('[EchoFilter] Micro thu lại đúng tiếng loa AI vừa đọc:', transcript);
+      return true;
+    }
+
+    // b. Kiểm tra tỷ lệ trùng từ (Token Overlap)
+    if (userWords.length >= 3) {
+      const aiWords = new Set(normAi.split(' ').filter(Boolean));
+      let matchCount = 0;
+      for (const w of userWords) {
+        if (aiWords.has(w)) matchCount++;
+      }
+      const overlapRatio = matchCount / userWords.length;
+      if (overlapRatio >= 0.55 && timeSinceTtsEnd < 8000) {
+        console.warn(`[EchoFilter] Trùng lặp từ ${Math.round(overlapRatio * 100)}% với câu của AI:`, transcript);
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
+const handleEchoDetected = (transcript) => {
+  const now = Date.now();
+  if (now - lastEchoDetectTime < 10000) {
+    echoLoopCount++;
+  } else {
+    echoLoopCount = 1;
+  }
+  lastEchoDetectTime = now;
+
+  console.warn(`[EchoFilter] Phát hiện tiếng vọng loa ngoài (${echoLoopCount}/2): "${transcript}"`);
+
+  // Cầu chì an toàn: Nếu phát hiện 2 lần vọng liên tiếp trong 10 giây -> Tự động dừng đàm thoại rảnh tay để chống lặp
+  if (echoLoopCount >= 2) {
+    isCallModeActive.value = false;
+    isListeningVoice.value = false;
+    isEchoCoolingDown.value = false;
+    if (echoCooldownTimer) clearTimeout(echoCooldownTimer);
+    if (activeRecognition) {
+      try { activeRecognition.abort(); } catch (e) {}
+      activeRecognition = null;
+    }
+    autoListenBlockedReason.value = '⚠️ Loa ngoài thiết bị phát tiếng vọng lớn vào Micro! Bé Kiến Trúc đã tự động tạm ngắt chế độ đàm thoại rảnh tay để chống lặp. Anh/chị hãy bấm nút Micro (🎙️) khi muốn nói tiếp nhé!';
+    return true;
+  } else {
+    autoListenBlockedReason.value = `🛡️ Đã lọc tiếng vang từ loa: "${transcript.length > 30 ? transcript.slice(0, 30) + '...' : transcript}"`;
+    setTimeout(() => {
+      if (autoListenBlockedReason.value.startsWith('🛡️')) {
+        autoListenBlockedReason.value = '';
+      }
+    }, 3500);
+    return false;
+  }
+};
+
+const cancelListening = () => {
+  isListeningVoice.value = false;
+  isEchoCoolingDown.value = false;
+  if (echoCooldownTimer) clearTimeout(echoCooldownTimer);
+  if (activeRecognition) {
+    try { activeRecognition.abort(); } catch (e) {}
+    activeRecognition = null;
+  }
+};
+
+const triggerManualMic = () => {
+  if (isListeningVoice.value) {
+    cancelListening();
+  } else {
+    stopSpeech();
+    startVoiceRecognition(false /* isAuto = false */);
+  }
+};
+
 const toggleCallMode = () => {
   isCallModeActive.value = !isCallModeActive.value;
   if (isCallModeActive.value) {
     isTtsEnabled.value = true;
-    startVoiceRecognition();
+    autoListenBlockedReason.value = '';
+    echoLoopCount = 0;
+    triggerManualMic();
   } else {
+    cancelListening();
     stopSpeech();
-    isListeningVoice.value = false;
   }
 };
 
@@ -1014,6 +1192,16 @@ const cleanTextForSpeech = (text) => {
 
 const speakText = (rawText, msgIdx = null) => {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+  // 1. Ngắt ngay bất kỳ phiên Micro nào đang chạy để không bao giờ thu tiếng AI
+  if (activeRecognition) {
+    try { activeRecognition.abort(); } catch (e) {}
+    activeRecognition = null;
+  }
+  isListeningVoice.value = false;
+  if (echoCooldownTimer) clearTimeout(echoCooldownTimer);
+  isEchoCoolingDown.value = false;
+
   window.speechSynthesis.cancel();
   
   if (!rawText) {
@@ -1024,6 +1212,9 @@ const speakText = (rawText, msgIdx = null) => {
 
   const clean = cleanTextForSpeech(rawText);
   if (!clean) return;
+
+  // Ghi nhớ câu văn vừa đọc để đối chiếu chống vọng loa (Acoustic Echo Profile)
+  lastAiSpokenCleanText.value = clean;
 
   const utterance = new SpeechSynthesisUtterance(clean);
   utterance.lang = 'vi-VN';
@@ -1036,18 +1227,29 @@ const speakText = (rawText, msgIdx = null) => {
   utterance.onend = () => {
     isSpeaking.value = false;
     speakingMsgIdx.value = null;
-    // Nếu chế độ đàm thoại 2 chiều đang bật và cửa sổ đang mở -> tự động lắng nghe tiếp
+    lastTtsEndTime.value = Date.now();
+
+    // Nếu chế độ đàm thoại 2 chiều đang bật và cửa sổ đang mở -> nghỉ 1.2s triệt tiêu âm vang loa rồi mới mở Micro
     if (isCallModeActive.value && isOpen.value) {
-      setTimeout(() => {
-        if (isCallModeActive.value && !isSpeaking.value && !isAiTyping.value) {
-          startVoiceRecognition();
+      isEchoCoolingDown.value = true;
+      if (echoCooldownTimer) clearTimeout(echoCooldownTimer);
+
+      echoCooldownTimer = setTimeout(() => {
+        isEchoCoolingDown.value = false;
+        // Kiểm tra chặt chẽ: AI không còn nói dở, không đang gõ, và loa đã tắt hẳn
+        const isStillSynthesizing = typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.speaking;
+        if (isCallModeActive.value && !isSpeaking.value && !isAiTyping.value && !isStillSynthesizing) {
+          startVoiceRecognition(true /* isAuto */);
         }
-      }, 500);
+      }, 1200); // Khoảng đệm 1.2 giây triệt tiêu hoàn toàn âm vang loa ngoài laptop/phone
     }
   };
+
   utterance.onerror = () => {
     isSpeaking.value = false;
     speakingMsgIdx.value = null;
+    lastTtsEndTime.value = Date.now();
+    isEchoCoolingDown.value = false;
   };
 
   window.speechSynthesis.speak(utterance);
@@ -1059,6 +1261,8 @@ const stopSpeech = () => {
   }
   isSpeaking.value = false;
   speakingMsgIdx.value = null;
+  if (echoCooldownTimer) clearTimeout(echoCooldownTimer);
+  isEchoCoolingDown.value = false;
 };
 
 const toggleSpeakMsg = (msg, idx) => {
@@ -1227,7 +1431,16 @@ const openModal = () => {
 
 const closeModal = () => {
   isOpen.value = false;
+  stopSpeech();
+  cancelListening();
+  isCallModeActive.value = false;
 };
+
+onUnmounted(() => {
+  stopSpeech();
+  cancelListening();
+  if (countdownInterval) clearInterval(countdownInterval);
+});
 
 const toggleMaximize = () => {
   isMaximized.value = !isMaximized.value;
@@ -1341,41 +1554,90 @@ const sendPrompt = (text) => {
   sendMessage();
 };
 
-const startVoiceRecognition = () => {
+const startVoiceRecognition = (isAuto = false) => {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    alert('Trình duyệt của bạn chưa hỗ trợ nhận diện giọng nói Web Speech API. Bạn vui lòng nhập câu hỏi bằng bàn phím nhé!');
+    if (!isAuto) {
+      alert('Trình duyệt của bạn chưa hỗ trợ nhận diện giọng nói Web Speech API. Bạn vui lòng nhập câu hỏi bằng bàn phím nhé!');
+    }
     return;
+  }
+
+  // Nếu AI vẫn đang phát âm:
+  const isAiCurrentlyTalking = isSpeaking.value || (typeof window !== 'undefined' && window.speechSynthesis?.speaking);
+  if (isAiCurrentlyTalking) {
+    if (isAuto) {
+      // Nếu là tự động mở lại mic mà AI chưa dứt tiếng -> HỦY BỎ NGAY để tránh thu ngược
+      console.warn('[EchoFilter] Bỏ qua tự động bật Mic vì AI vẫn đang phát âm');
+      return;
+    } else {
+      // Nếu người dùng chủ động bấm nút Mic trên màn hình -> Ngắt tiếng AI ngay để ưu tiên người dùng
+      stopSpeech();
+    }
+  }
+
+  // Dọn dẹp phiên Micro cũ nếu đang chạy
+  if (activeRecognition) {
+    try { activeRecognition.abort(); } catch (e) {}
+    activeRecognition = null;
   }
 
   try {
     const recognition = new SpeechRecognition();
+    activeRecognition = recognition;
+    isCurrentSessionAuto = isAuto;
     recognition.lang = 'vi-VN';
     recognition.continuous = false;
     recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
-    isListeningVoice.value = true;
+    recognition.onstart = () => {
+      isListeningVoice.value = true;
+    };
 
     recognition.onresult = (event) => {
       isListeningVoice.value = false;
-      const transcript = event.results[0][0].transcript;
-      if (transcript && transcript.trim()) {
-        inputQuery.value = transcript.trim();
-        sendMessage();
+      const transcript = event.results?.[0]?.[0]?.transcript?.trim();
+      if (!transcript) return;
+
+      // ========== BỘ LỌC CHỐNG TIẾNG VỌNG LOA NGOÀI (ACOUSTIC ECHO CHECK) ==========
+      if (isAcousticEcho(transcript, isCurrentSessionAuto)) {
+        const loopTripped = handleEchoDetected(transcript);
+        // Nếu chưa bị ngắt an toàn và đang ở chế độ đàm thoại -> chờ 1.5s rồi mở lại sạch sẽ
+        if (!loopTripped && isCallModeActive.value && isOpen.value) {
+          if (echoCooldownTimer) clearTimeout(echoCooldownTimer);
+          echoCooldownTimer = setTimeout(() => {
+            if (isCallModeActive.value && !isSpeaking.value && !isAiTyping.value) {
+              startVoiceRecognition(true);
+            }
+          }, 1500);
+        }
+        return;
       }
+
+      // Khách hàng nói câu hợp lệ -> Reset bộ đếm lặp
+      echoLoopCount = 0;
+      autoListenBlockedReason.value = '';
+      inputQuery.value = transcript;
+      sendMessage();
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (e) => {
       isListeningVoice.value = false;
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        isCallModeActive.value = false;
+      }
     };
 
     recognition.onend = () => {
       isListeningVoice.value = false;
+      activeRecognition = null;
     };
 
     recognition.start();
   } catch (err) {
     isListeningVoice.value = false;
+    activeRecognition = null;
   }
 };
 
@@ -1469,8 +1731,6 @@ const sendMessage = async () => {
     if (action) {
       if (action.type === 'open_login' || action.type === 'open_register') {
         setTimeout(() => { showAuthModal.value = true; }, 700);
-      } else if (action.type === 'open_google') {
-        setTimeout(() => { showGoogleChooser.value = true; }, 700);
       }
     }
 
@@ -1493,8 +1753,6 @@ const sendMessage = async () => {
     if (fallbackAction) {
       if (fallbackAction.type === 'open_login' || fallbackAction.type === 'open_register') {
         setTimeout(() => { showAuthModal.value = true; }, 700);
-      } else if (fallbackAction.type === 'open_google') {
-        setTimeout(() => { showGoogleChooser.value = true; }, 700);
       }
     }
 
