@@ -850,7 +850,7 @@
                   <button type="button" @click="triggerManualMic" class="text-red-700 hover:text-red-900 text-[11px] font-bold underline cursor-pointer">Nói ngay</button>
                 </div>
 
-                <form @submit.prevent="sendMessage" class="flex items-center gap-2">
+                <form @submit.prevent="sendMessage(false)" class="flex items-center gap-2">
                   <input
                     type="text"
                     v-model="inputQuery"
@@ -1241,7 +1241,6 @@ const stopSpeech = () => {
 
 const speakOptimisticFiller = (phrase) => {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  if (!isTtsEnabled.value) return;
 
   if (activeRecognition) {
     try { activeRecognition.abort(); } catch (e) {}
@@ -1557,7 +1556,7 @@ const goToTrip = (url) => {
 
 const sendPrompt = (text) => {
   inputQuery.value = text;
-  sendMessage();
+  sendMessage(false);
 };
 
 const startVoiceRecognition = (isAuto = false) => {
@@ -1625,7 +1624,7 @@ const startVoiceRecognition = (isAuto = false) => {
       echoLoopCount = 0;
       autoListenBlockedReason.value = '';
       inputQuery.value = transcript;
-      sendMessage();
+      sendMessage(true);
     };
 
     recognition.onerror = (e) => {
@@ -1661,12 +1660,15 @@ const detectFallbackAction = (q) => {
   return null;
 };
 
-const sendMessage = async () => {
+const sendMessage = async (isVoiceTurn = false) => {
   const query = inputQuery.value.trim();
   if (!query) return;
 
   const currentSession = chatSessions.value.find(x => x.id === currentSessionId.value);
   if (!currentSession) return;
+
+  // Khách hàng dùng voice thì AI mới nói lại; còn nhắn tin thì AI chỉ nhắn tin hỗ trợ bình thường
+  const shouldSpeakResponse = Boolean(isVoiceTurn || interactionMode.value === 'voice');
 
   const userTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   currentSession.messages.push({
@@ -1682,7 +1684,7 @@ const sendMessage = async () => {
 
   // -------------------------------------------------------------
   // LUỒNG PHẢN HỒI 2 NHỊP (OPTIMISTIC FILLER & BÉ KIẾN TRÚC TRA SỔ)
-  // Phát ngay câu đệm tự nhiên và hiệu ứng cúi xuống xem sổ để khách không cảm thấy chờ lâu
+  // Chỉ phát âm thanh câu đệm nếu khách hàng dùng voice
   // -------------------------------------------------------------
   const lowerQuery = query.toLowerCase();
   const isComplexInquiry = /(say xe|say tàu|chóng mặt|tiền đình|chọn ghế|tìm ghế|ghế nào|ghế êm|giường êm|người già|trẻ em|em bé|còn vé|còn chuyến|hôm nay còn|hủy vé|hủy giúp)/i.test(lowerQuery);
@@ -1697,7 +1699,7 @@ const sendMessage = async () => {
     }
     optimisticFillerText.value = filler;
 
-    if (isTtsEnabled.value) {
+    if (shouldSpeakResponse) {
       speakOptimisticFiller(filler);
     }
   } else {
@@ -1762,8 +1764,8 @@ const sendMessage = async () => {
       }
     }
 
-    // Bé Kiến Trúc DAU nói lại cho khách hàng (Voice TTS)
-    if (isTtsEnabled.value) {
+    // Bé Kiến Trúc DAU nói lại cho khách hàng (Chỉ khi khách dùng voice)
+    if (shouldSpeakResponse) {
       speakText(reply, currentSession.messages.length - 1);
     }
   } catch (err) {
@@ -1784,7 +1786,7 @@ const sendMessage = async () => {
       }
     }
 
-    if (isTtsEnabled.value) {
+    if (shouldSpeakResponse) {
       speakText(fallback, currentSession.messages.length - 1);
     }
   } finally {
