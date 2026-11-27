@@ -193,13 +193,17 @@ class AiAssistantController extends Controller
     {
         $user = Auth::user();
         $tripId = $request->input('trip_id');
-        $seats = (array) $request->input('seats', []);
-        $customerName = trim((string) $request->input('customer_name', ''));
-        $customerPhone = trim((string) $request->input('customer_phone', ''));
-
+        $rawSeats = $request->input('seats') ?: $request->input('seat_numbers', []);
+        if (is_string($rawSeats)) {
+            $seats = array_filter(array_map('trim', explode(',', $rawSeats)));
+        } else {
+            $seats = (array) $rawSeats;
+        }
         if (empty($seats)) {
             $seats = ['A01'];
         }
+        $customerName = trim((string) ($request->input('customer_name') ?: $request->input('name', '')));
+        $customerPhone = trim((string) ($request->input('customer_phone') ?: $request->input('phone', '')));
 
         $trip = Trip::with(['route.stops', 'bus'])->find($tripId);
         if (!$trip) {
@@ -2715,12 +2719,22 @@ class AiAssistantController extends Controller
     /**
      * Định dạng danh sách chuyến xe cho client
      */
-    public function formatTripsForClient($trips, array $overrideSeats = [], string $overrideAdvice = ''): array
+    public function formatTripsForClient($trips, array $overrideSeats = [], string $overrideAdvice = '', int $passengerCount = 1): array
     {
         $f1Seats = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10','A11','A12','A13','A14','A15','A16','A17','A18'];
         $f2Seats = ['B01','B02','B03','B04','B05','B06','B07','B08','B09','B10','B11','B12'];
 
-        return $trips->map(function($t) use ($f1Seats, $f2Seats, $overrideSeats, $overrideAdvice) {
+        $f1Pairs = [
+            ['A04', 'A05'], ['A05', 'A06'], ['A07', 'A08'], ['A08', 'A09'],
+            ['A01', 'A02'], ['A02', 'A03'], ['A10', 'A11'], ['A11', 'A12'],
+            ['A13', 'A14'], ['A14', 'A15'], ['A16', 'A17'], ['A17', 'A18'],
+        ];
+        $f2Pairs = [
+            ['B03', 'B04'], ['B05', 'B06'], ['B01', 'B02'], ['B07', 'B08'],
+            ['B09', 'B10'], ['B11', 'B12'],
+        ];
+
+        return $trips->map(function($t) use ($f1Seats, $f2Seats, $f1Pairs, $f2Pairs, $overrideSeats, $overrideAdvice, $passengerCount) {
             $depTime = Carbon::parse($t->departure_time);
             $occupied = $t->bookings
                 ? $t->bookings->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])->flatMap->bookingSeats->pluck('seat_number')->all()
@@ -2729,18 +2743,44 @@ class AiAssistantController extends Controller
             $availF1 = array_values(array_diff($f1Seats, $occupied));
             $availF2 = array_values(array_diff($f2Seats, $occupied));
 
-            $chosenSeats = !empty($overrideSeats) 
-                ? $overrideSeats 
-                : [($availF1[0] ?? ($availF2[0] ?? 'A02'))];
+            if (!empty($overrideSeats) && count($overrideSeats) >= $passengerCount) {
+                $chosenSeats = $overrideSeats;
+            } elseif ($passengerCount >= 2) {
+                // Tự động tìm cặp giường liền kề trên chuyến này
+                $pair = null;
+                foreach ($f1Pairs as $p) {
+                    if (in_array($p[0], $availF1) && in_array($p[1], $availF1)) {
+                        $pair = $p; break;
+                    }
+                }
+                if (!$pair) {
+                    foreach ($f2Pairs as $p) {
+                        if (in_array($p[0], $availF2) && in_array($p[1], $availF2)) {
+                            $pair = $p; break;
+                        }
+                    }
+                }
+                $chosenSeats = $pair ?: array_slice($availF1, 0, 2);
+                if (count($chosenSeats) < 2) {
+                    $chosenSeats = array_merge($chosenSeats, array_slice($availF2, 0, 2 - count($chosenSeats)));
+                }
+            } else {
+                $chosenSeats = !empty($overrideSeats) ? $overrideSeats : [($availF1[0] ?? ($availF2[0] ?? 'A02'))];
+            }
 
+            $seatStr = implode(', ', $chosenSeats);
             $isF2 = !empty($chosenSeats) && str_starts_with($chosenSeats[0], 'B');
             $amenityHighlight = $isF2
                 ? "🎁 Nước suối, khăn lạnh, rèm che riêng tư 100%, sạc USB, TV LED"
                 : "🎁 Nước suối, khăn lạnh, sạc Type-C/USB 20W, TV LED, nệm bóng hơi 98% êm";
 
-            $seatAdvice = !empty($overrideAdvice)
-                ? $overrideAdvice
-                : "Vị trí giường êm ái, gần cửa gió điều hòa và cổng sạc Type-C.";
+            if (!empty($overrideAdvice)) {
+                $seatAdvice = $overrideAdvice;
+            } elseif ($passengerCount >= 2) {
+                $seatAdvice = "Cặp giường liền kề [{$seatStr}] tầng 1: Hai người nằm cạnh nhau thuận tiện trò chuyện, chăm sóc nhau và xe chạy rất êm.";
+            } else {
+                $seatAdvice = "Vị trí giường êm ái ({$chosenSeats[0]}), tầng 1 giảm xóc và gần cửa gió điều hòa.";
+            }
 
             return [
                 'id' => $t->id,
@@ -2760,7 +2800,7 @@ class AiAssistantController extends Controller
                 'recommended_seats' => $chosenSeats,
                 'vacant_seats' => array_slice($availF1, 0, 8),
                 'ai_seat_advice' => $seatAdvice,
-                'ai_score' => '99% Mở Bán',
+                'ai_score' => $passengerCount >= 2 ? '100% Cặp Liền Kề' : '99% Mở Bán',
                 'amenity_highlight' => $amenityHighlight,
                 'book_url' => "/trips/{$t->id}?seats=" . implode(',', $chosenSeats),
             ];
@@ -2966,17 +3006,25 @@ class AiAssistantController extends Controller
 
         // 2. Ngày đi (Date)
         $date = $now->format('Y-m-d');
-        if (preg_match('/(ngay mai|sang mai|chieu mai|toi mai|\bmai\b|28)/i', $unaccented)) {
-            $date = Carbon::tomorrow()->format('Y-m-d');
-        } elseif (preg_match('/(ngay kia|\bmot\b|ngay mot|29)/i', $unaccented)) {
-            $date = $now->copy()->addDays(2)->format('Y-m-d');
-        } elseif (preg_match('/(cuoi tuan|thu 7|thu bay|chu nhat)/i', $unaccented)) {
-            $date = $now->copy()->next(Carbon::SATURDAY)->format('Y-m-d');
-        } elseif (preg_match('/ngay (\d{1,2})(?:\/(\d{1,2}))?/i', $unaccented, $mDate)) {
+        if (preg_match('/ngay (\d{1,2})(?:\/(\d{1,2}))?(?:\/(\d{4}))?/i', $unaccented, $mDate)) {
             $d = (int)$mDate[1];
             $m = !empty($mDate[2]) ? (int)$mDate[2] : $now->month;
-            $y = $now->year;
-            $date = Carbon::create($y, $m, $d)->format('Y-m-d');
+            $y = !empty($mDate[3]) ? (int)$mDate[3] : $now->year;
+            try {
+                $date = Carbon::create($y, $m, $d)->format('Y-m-d');
+            } catch (\Throwable $e) {
+                $date = $now->format('Y-m-d');
+            }
+        } elseif (preg_match('/(\d{4})-(\d{2})-(\d{2})/', $unaccented, $mIso)) {
+            $date = $mIso[0];
+        } elseif (preg_match('/(ngay mot|ngay kia|\bki\b)/i', $unaccented)) {
+            $date = $now->copy()->addDays(2)->format('Y-m-d');
+        } elseif (preg_match('/(ngay mai|sang mai|chieu mai|toi mai|\bmai\b)/i', $unaccented)) {
+            $date = Carbon::tomorrow()->format('Y-m-d');
+        } elseif (preg_match('/(cuoi tuan|thu 7|thu bay|chu nhat)/i', $unaccented)) {
+            $date = $now->copy()->next(Carbon::SATURDAY)->format('Y-m-d');
+        } elseif (preg_match('/(tuan sau)/i', $unaccented)) {
+            $date = $now->copy()->addDays(7)->format('Y-m-d');
         }
 
         // 3. Khung giờ (Time Period)
@@ -3010,8 +3058,9 @@ class AiAssistantController extends Controller
             $passengerCount = max(1, (int)$mCount[1]);
         }
 
-        // 5. Thể trạng say xe / đau đầu / người già / trẻ nhỏ (Motion Sickness)
-        $hasMotionSickness = (bool) preg_match('/(say xe|say tau|chong mat|non nao|buon non|\boi mua\b|tien dinh|chong say|it rung|triet tieu rung|hay say|\bsay\b|nguoi gia|lon tuoi|ong ba|ba me gia|chan yeu|tre con|tre em|em be|con nho)/i', $unaccented);
+        // 5. Thể trạng say xe / đau đầu / người già / trẻ nhỏ (Motion Sickness & Conditions)
+        $hasMotionSickness = (bool) preg_match('/(say xe|say tau|chong mat|non nao|buon non|\boi mua\b|tien dinh|chong say|it rung|triet tieu rung|hay say|\bsay\b)/i', $unaccented);
+        $hasBaby = (bool) preg_match('/(tre con|tre em|em be|con nho|so sinh|be nho|pha sua|mang theo con)/i', $unaccented);
 
         // 6. Xử lý mâu thuẫn (Contradiction: ví dụ "đặt 1 vé cho 2 người")
         $isContradiction = (bool) preg_match('/(1 ve|mot ve)\s+(cho|danh cho)\s+(2|hai)\s+(nguoi|ban|ve)/i', $unaccented)
@@ -3032,6 +3081,7 @@ class AiAssistantController extends Controller
             'specific_time' => $specificTime,
             'passenger_count' => $passengerCount,
             'has_motion_sickness' => $hasMotionSickness,
+            'has_baby' => $hasBaby,
             'is_contradiction' => $isContradiction,
             'contradiction_clarification' => $contradictionClarification,
         ];
@@ -3083,7 +3133,7 @@ class AiAssistantController extends Controller
                 . "  \"specific_time\": \"HH:MM hoặc null\",\n"
                 . "  \"passenger_count\": 1,\n"
                 . "  \"has_motion_sickness\": true/false,\n"
-                . "  \"is_contradiction\": true/false,\n"
+                . "  \"is_contradiction\": true/false, // CHỈ đặt là true KHI KHÁCH NÓI MÂU THUẪN RÕ RÀNG (ví dụ: 'đặt 1 vé cho 2 người', 'đi 1 mình nhưng muốn 2 vé'). Nếu khách đặt 2 vé cho 2 người thì hợp lý hoàn toàn (false).\n"
                 . "  \"contradiction_clarification\": \"Dạ em hiểu mình cần đặt 2 giường cho 2 người đi cùng nhau đúng không ạ?\" hoặc null\n"
                 . "}";
 
@@ -3118,9 +3168,12 @@ class AiAssistantController extends Controller
                             if (!empty($parsed['passenger_count']) && $parsed['passenger_count'] > 1) $ruleIntent['passenger_count'] = (int)$parsed['passenger_count'];
                             if (!empty($parsed['has_motion_sickness'])) $ruleIntent['has_motion_sickness'] = true;
                             if (!empty($parsed['is_contradiction'])) {
-                                $ruleIntent['is_contradiction'] = true;
-                                $ruleIntent['passenger_count'] = 2;
-                                $ruleIntent['contradiction_clarification'] = $parsed['contradiction_clarification'] ?? "Dạ em hiểu mình cần đặt 2 giường cho 2 người đi cùng nhau đúng không ạ?";
+                                $isNormal2Pax = (bool) preg_match('/(\b2\s*v[eé]\b|\bhai\s*v[eé]\b)/ui', $message) && (bool) preg_match('/(\b2\s*ng[uư][oờ]i\b|\bhai\s*ng[uư][oờ]i\b)/ui', $message);
+                                if (!$isNormal2Pax) {
+                                    $ruleIntent['is_contradiction'] = true;
+                                    $ruleIntent['passenger_count'] = 2;
+                                    $ruleIntent['contradiction_clarification'] = $parsed['contradiction_clarification'] ?? "Dạ em hiểu mình cần đặt 2 giường cho 2 người đi cùng nhau đúng không ạ?";
+                                }
                             }
                             return $ruleIntent;
                         }
@@ -3153,6 +3206,20 @@ class AiAssistantController extends Controller
             || (bool) preg_match('/(người già|lớn tuổi|ông bà|ba mẹ già|chân yếu|khó đi lại|\bbà\b|bà của tôi|bà tôi|ông tôi|ông của tôi|cụ)/ui', $lower);
         $isSeatInquiry = (bool) preg_match('/(ghe nao|chon ghe|tu van ghe|ghe trong|so do ghe|vi tri nao|chon giup ghe|dat \d+ ve|chot ghe|dat ve|dat xe|tim ve|tim xe|co ve|co chuyen|co xe|chuyen xe|tuyen xe)/i', $unaccented)
             || (bool) preg_match('/(ghế nào|chọn ghế|tư vấn ghế|ghế trống|sơ đồ ghế|vị trí nào|chọn giúp ghế|đặt \d+ vé|chốt ghế|đặt vé|đặt xe|tìm vé|tìm xe|có vé|có chuyến|có xe|chuyến xe|tuyến xe)/ui', $lower);
+
+        // Trường hợp hỏi về xe máy, gửi xe máy, gửi hàng hóa bưu phẩm
+        if (preg_match('/(xe may|gui xe|cho xe may|thue xe may|van chuyen xe|hang hoa|gui hang|gui do|chuyen phat)/i', $unaccented)
+            || preg_match('/(xe máy|gửi xe|chở xe máy|thuê xe máy|vận chuyển xe|hàng hóa|gửi hàng|gửi đồ|chuyển phát)/ui', $lower)) {
+            return [
+                'reply' => "Dạ Nhà xe Kiến Trúc có nhận vận chuyển xe máy (cả xe ga và xe số) cùng hành lý cồng kềnh, bưu phẩm dưới hầm hàng xe Limousine giường nằm ạ! 🛵📦 Xe máy của bạn sẽ được nhân viên bao bọc chăn nệm chống trầy xước 100% và rút xăng an toàn trước khi lên xe. Bạn cần gửi xe máy trên tuyến nào để em báo giá cước và giữ chỗ hầm hàng cho xe nhé! 😊",
+                'suggestions' => ['Gửi xe máy Đà Nẵng đi Huế', 'Gửi xe máy đi Quảng Trị', 'Gửi xe máy đi Quy Nhơn', 'Hotline gửi hàng 1900 6868'],
+                'trips' => [],
+                'source' => 'cargo-motorbike-inquiry'
+            ];
+        }
+
+        $isBaby = (bool) preg_match('/(tre con|tre em|em be|con nho|so sinh|be nho|pha sua|mang theo con)/i', $unaccented)
+            || (bool) preg_match('/(trẻ con|trẻ em|em bé|con nhỏ|sơ sinh|bé nhỏ|pha sữa|mang theo con)/ui', $lower);
 
         if (!$isSayXe && !$isPairOrFamily && !$isElderly && !$isSeatInquiry) {
             return null;
@@ -3220,6 +3287,14 @@ class AiAssistantController extends Controller
 
         $trips = $tripsQuery->orderBy('departure_time', 'asc')->get();
 
+        $f1Pairs = [
+            ['A04', 'A05'], ['A05', 'A06'], ['A07', 'A08'], ['A08', 'A09'],
+            ['A01', 'A02'], ['A02', 'A03'], ['A10', 'A11'], ['A11', 'A12'],
+        ];
+        $f2Pairs = [
+            ['B03', 'B04'], ['B05', 'B06'], ['B01', 'B02'], ['B07', 'B08']
+        ];
+
         // -------------------------------------------------------------------------
         // YÊU CẦU 3: NẾU TRUY VẤN THEO ĐÚNG DESTINATION + DATE + TIME_PERIOD TRẢ VỀ RỖNG:
         // TUYỆT ĐỐI KHÔNG HIỂN THỊ TUYẾN ĐƯỜNG KHÁC (NHƯ TUYẾN HUẾ)!
@@ -3252,28 +3327,70 @@ class AiAssistantController extends Controller
             if ($otherTripsSameDay->isNotEmpty()) {
                 $hoursList = $otherTripsSameDay->map(fn($t) => Carbon::parse($t->departure_time)->format('H:i'))->implode(', ');
                 $bestOther = $otherTripsSameDay->first();
+                $depOtherTime = Carbon::parse($bestOther->departure_time)->format('H:i');
                 $enrichedSeats = $this->getAvailableSeats($bestOther);
-                $antiMotionSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['is_anti_motion_sickness']);
-                if (empty($antiMotionSeats)) {
-                    $antiMotionSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1);
+                $availF1 = array_keys(array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1));
+                $availF2 = array_keys(array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 2));
+
+                $chosenPair = [];
+                $advice = '';
+
+                if ($numPassengers >= 2) {
+                    $pair = null;
+                    foreach ($f1Pairs as $p) {
+                        if (in_array($p[0], $availF1) && in_array($p[1], $availF1)) {
+                            $pair = $p; break;
+                        }
+                    }
+                    if (!$pair) {
+                        foreach ($f2Pairs as $p) {
+                            if (in_array($p[0], $availF2) && in_array($p[1], $availF2)) {
+                                $pair = $p; break;
+                            }
+                        }
+                    }
+                    $chosenPair = $pair ?: array_slice($availF1, 0, 2);
+                    if (count($chosenPair) < 2) {
+                        $chosenPair = array_merge($chosenPair, array_slice($availF2, 0, 2 - count($chosenPair)));
+                    }
+                    $seatStr = implode(', ', $chosenPair);
+
+                    if ($isBaby) {
+                        $advice = "Cặp giường liền kề tầng 1 [{$seatStr}]: Hai giường cạnh nhau giúp bố mẹ dễ chăm sóc bé, tầng dưới thấp an toàn không sợ ngã và xe chạy cực êm.";
+                    } elseif ($isSayXe) {
+                        $advice = "Cặp giường liền kề tầng 1 giữa xe [{$seatStr}]: Triệt tiêu 98% rung lắc đèo dốc chống say xe, hai bạn nằm cạnh nhau tiện chăm sóc.";
+                    } else {
+                        $advice = "Cặp giường liền kề cùng tầng 1 [{$seatStr}]: Vị trí êm ái nằm cạnh nhau, thuận tiện trò chuyện và hỗ trợ nhau suốt hành trình.";
+                    }
+                } else {
+                    $antiMotion = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1 && $s['is_anti_motion_sickness']);
+                    $matchedKeys = array_keys($antiMotion);
+                    $seat1 = $matchedKeys[0] ?? ($availF1[0] ?? 'A03');
+                    $chosenPair = [$seat1];
+                    $seatStr = $seat1;
+                    $advice = $isSayXe 
+                        ? "Ghế tầng 1 giữa xe ({$seatStr}): Vị trí trọng tâm xe triệt tiêu rung lắc, giảm chấn 98% chống say xe tối ưu."
+                        : "Ghế tầng 1 êm ái ({$seatStr}), gần cửa gió điều hòa và cổng sạc Type-C.";
                 }
-                $matchedKeys = array_keys($antiMotionSeats);
-                $seat1 = $matchedKeys[0] ?? 'A03';
-                $seat2 = $matchedKeys[1] ?? 'A04';
-                $chosenPair = ($numPassengers >= 2) ? [$seat1, $seat2] : [$seat1];
-                $seatStr = implode(', ', $chosenPair);
 
                 $reply = "{$contradictionPrefix}Dạ tuyến **{$origin} ⇄ {$destination}** vào {$timeLabel} {$dateLabel} hiện chưa có chuyến (hoặc đã hết vé) ạ. Tuy nhiên, trong ngày hôm đó tuyến này vẫn còn các chuyến khởi hành lúc: **{$hoursList}**.\n\n";
-                if ($isSayXe) {
-                    $reply .= "Em đã ưu tiên chọn sẵn cặp giường [{$seatStr}] tầng 1 ngay tâm giữa xe giảm xóc 98% chống say xe cho bạn trên chuyến sớm nhất. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để giữ chỗ nhé! 😊";
+
+                if ($numPassengers >= 2 && $isBaby) {
+                    $reply .= "Vì đoàn mình có {$numPassengers} người đi cùng trẻ nhỏ, em đã ưu tiên chọn sẵn cặp giường [{$seatStr}] liền kề ở tầng 1 trên chuyến lúc {$depOtherTime} để gia đình nằm sát nhau tiện chăm sóc bé, tầng dưới thấp an toàn và xe chạy rất êm. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% giữ chỗ nhé! 😊";
+                } elseif ($numPassengers >= 2 && $isSayXe) {
+                    $reply .= "Vì đoàn mình có {$numPassengers} người và có bạn bị say xe, em đã ưu tiên chọn sẵn cặp giường [{$seatStr}] liền kề ở tầng 1 ngay tâm giữa xe giảm xóc 98% chống say xe trên chuyến lúc {$depOtherTime}. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% giữ chỗ nhé! 😊";
+                } elseif ($numPassengers >= 2) {
+                    $reply .= "Với yêu cầu đặt {$numPassengers} vé nằm cạnh nhau, em đã chọn sẵn cặp giường [{$seatStr}] liền kề ở tầng 1 trên chuyến lúc {$depOtherTime} để hai bạn nằm cạnh nhau rất tiện trò chuyện và chăm sóc nhau. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% nhé! 😊";
+                } elseif ($isSayXe) {
+                    $reply .= "Em đã ưu tiên chọn sẵn ghế [{$seatStr}] tầng 1 ngay tâm giữa xe giảm xóc 98% chống say xe cho bạn trên chuyến sớm nhất ({$depOtherTime}). Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% giữ chỗ nhé! 😊";
                 } else {
-                    $reply .= "Em gửi bạn thông tin chuyến xe gần nhất bên dưới. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để giữ chỗ nhé! 😊";
+                    $reply .= "Em đã chọn sẵn vị trí ghế [{$seatStr}] tầng 1 êm ái trên chuyến {$depOtherTime}. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để giữ chỗ nhé! 😊";
                 }
 
                 return [
                     'reply' => $reply,
                     'suggestions' => ["Chốt ghế {$seatStr} cho tôi", "Xem chuyến khác"],
-                    'trips' => $this->formatTripsForClient(collect([$bestOther]), $chosenPair, "Ghế tầng 1 giữa xe êm ái chống say xe"),
+                    'trips' => $this->formatTripsForClient(collect([$bestOther]), $chosenPair, $advice, $numPassengers),
                     'source' => 'seat-physics-honest-other-hours'
                 ];
             }
@@ -3294,11 +3411,73 @@ class AiAssistantController extends Controller
 
             if ($nextTrips->isNotEmpty()) {
                 $nextHours = $nextTrips->map(fn($t) => Carbon::parse($t->departure_time)->format('H:i'))->implode(', ');
-                $reply = "{$contradictionPrefix}Dạ ngày {$dateLabel} tuyến đi **{$destination}** đã hết chuyến rồi ạ. Hiện tại nhà xe có các chuyến khởi hành vào ngày tiếp theo (" . $nextDate->format('d/m') . ") lúc **{$nextHours}**. Em gửi thông tin chuyến xe bên dưới để mình tham khảo nhé! 😊";
+                $bestNext = $nextTrips->first();
+                $depBestTime = Carbon::parse($bestNext->departure_time)->format('H:i');
+
+                // Chọn ghế tối ưu cho chuyến kế tiếp
+                $enrichedSeats = $this->getAvailableSeats($bestNext);
+                $availF1 = array_keys(array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1));
+                $availF2 = array_keys(array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 2));
+
+                $chosenPair = [];
+                $advice = '';
+
+                if ($numPassengers >= 2) {
+                    $pair = null;
+                    foreach ($f1Pairs as $p) {
+                        if (in_array($p[0], $availF1) && in_array($p[1], $availF1)) {
+                            $pair = $p; break;
+                        }
+                    }
+                    if (!$pair) {
+                        foreach ($f2Pairs as $p) {
+                            if (in_array($p[0], $availF2) && in_array($p[1], $availF2)) {
+                                $pair = $p; break;
+                            }
+                        }
+                    }
+                    $chosenPair = $pair ?: array_slice($availF1, 0, 2);
+                    if (count($chosenPair) < 2) {
+                        $chosenPair = array_merge($chosenPair, array_slice($availF2, 0, 2 - count($chosenPair)));
+                    }
+                    $seatStr = implode(', ', $chosenPair);
+
+                    if ($isBaby) {
+                        $advice = "Cặp giường liền kề tầng 1 [{$seatStr}]: Hai giường cạnh nhau giúp bố mẹ dễ chăm sóc bé, tầng dưới thấp an toàn không sợ ngã và xe chạy cực êm.";
+                    } elseif ($isSayXe) {
+                        $advice = "Cặp giường liền kề tầng 1 giữa xe [{$seatStr}]: Triệt tiêu 98% rung lắc đèo dốc chống say xe, hai bạn nằm cạnh nhau tiện chăm sóc.";
+                    } else {
+                        $advice = "Cặp giường liền kề cùng tầng 1 [{$seatStr}]: Vị trí êm ái nằm cạnh nhau, thuận tiện trò chuyện và hỗ trợ nhau suốt hành trình.";
+                    }
+                } else {
+                    $antiMotion = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1 && $s['is_anti_motion_sickness']);
+                    $matchedKeys = array_keys($antiMotion);
+                    $seat1 = $matchedKeys[0] ?? ($availF1[0] ?? 'A03');
+                    $chosenPair = [$seat1];
+                    $seatStr = $seat1;
+                    $advice = $isSayXe 
+                        ? "Ghế tầng 1 giữa xe ({$seatStr}): Vị trí trọng tâm xe triệt tiêu rung lắc, giảm chấn 98% chống say xe tối ưu."
+                        : "Ghế tầng 1 êm ái ({$seatStr}), gần cửa gió điều hòa và cổng sạc Type-C.";
+                }
+
+                $reply = "{$contradictionPrefix}Dạ ngày {$dateLabel} tuyến đi **{$destination}** đã hết chuyến rồi ạ. Hiện tại nhà xe có các chuyến khởi hành vào ngày tiếp theo (" . $nextDate->format('d/m') . ") lúc **{$nextHours}**.\n\n";
+
+                if ($numPassengers >= 2 && $isBaby) {
+                    $reply .= "Vì đoàn mình có {$numPassengers} người đi cùng trẻ nhỏ, em đã ưu tiên chọn sẵn cặp giường [{$seatStr}] liền kề ở tầng 1 trên chuyến lúc {$depBestTime} để gia đình nằm sát nhau tiện chăm sóc bé, tầng dưới thấp an toàn và xe chạy rất êm. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% giữ chỗ nhé! 😊";
+                } elseif ($numPassengers >= 2 && $isSayXe) {
+                    $reply .= "Vì đoàn mình có {$numPassengers} người và có bạn bị say xe, em đã ưu tiên chọn sẵn cặp giường [{$seatStr}] liền kề ở tầng 1 ngay tâm giữa xe giảm xóc 98% chống say xe trên chuyến lúc {$depBestTime}. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% giữ chỗ nhé! 😊";
+                } elseif ($numPassengers >= 2) {
+                    $reply .= "Với yêu cầu đặt {$numPassengers} vé nằm cạnh nhau, em đã chọn sẵn cặp giường [{$seatStr}] liền kề ở tầng 1 trên chuyến lúc {$depBestTime} để hai bạn nằm cạnh nhau rất tiện trò chuyện và chăm sóc nhau. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% nhé! 😊";
+                } elseif ($isSayXe) {
+                    $reply .= "Em đã ưu tiên chọn sẵn ghế [{$seatStr}] tầng 1 ngay tâm giữa xe giảm xóc 98% chống say xe cho bạn trên chuyến sớm nhất ({$depBestTime}). Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% nhé! 😊";
+                } else {
+                    $reply .= "Em đã chọn sẵn vị trí ghế [{$seatStr}] tầng 1 êm ái trên chuyến {$depBestTime}. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để giữ chỗ nhé! 😊";
+                }
+
                 return [
                     'reply' => $reply,
-                    'suggestions' => ["Đặt chuyến ngày " . $nextDate->format('d/m'), "Hotline 1900 6868"],
-                    'trips' => $this->formatTripsForClient($nextTrips->take(2)),
+                    'suggestions' => ["Chốt ghế {$seatStr} chuyến {$depBestTime}", "Đặt chuyến ngày " . $nextDate->format('d/m'), "Hotline 1900 6868"],
+                    'trips' => $this->formatTripsForClient($nextTrips->take(2), $chosenPair, $advice, $numPassengers),
                     'source' => 'seat-physics-honest-next-day'
                 ];
             }
@@ -3322,54 +3501,82 @@ class AiAssistantController extends Controller
         $dateLabel = $depTime->isTomorrow() ? " ngày mai" : ($depTime->isToday() ? " hôm nay" : " ngày " . $depTime->format('d/m'));
 
         $enrichedSeats = $this->getAvailableSeats($targetTrip);
+        $availF1 = array_keys(array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1));
+        $availF2 = array_keys(array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 2));
 
-        // Lọc ghế theo thể trạng
-        if ($isSayXe) {
-            $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1 && $s['is_anti_motion_sickness']);
-            if (empty($matchedSeats)) {
-                $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1);
+        $chosenPair = [];
+        $advice = '';
+
+        if ($numPassengers >= 2) {
+            $pair = null;
+            foreach ($f1Pairs as $p) {
+                if (in_array($p[0], $availF1) && in_array($p[1], $availF1)) {
+                    $pair = $p; break;
+                }
             }
-        } elseif ($isElderly) {
-            $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1 && $s['is_elderly_friendly']);
-            if (empty($matchedSeats)) {
-                $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1);
+            if (!$pair) {
+                foreach ($f2Pairs as $p) {
+                    if (in_array($p[0], $availF2) && in_array($p[1], $availF2)) {
+                        $pair = $p; break;
+                    }
+                }
+            }
+            $chosenPair = $pair ?: array_slice($availF1, 0, 2);
+            if (count($chosenPair) < 2) {
+                $chosenPair = array_merge($chosenPair, array_slice($availF2, 0, 2 - count($chosenPair)));
+            }
+            $seatStr = implode(', ', $chosenPair);
+            $destStr = " đi **{$destination}**";
+
+            if ($isBaby) {
+                $reply = "{$contradictionPrefix}Dạ em đã lưu ý đoàn mình có {$numPassengers} người đi cùng trẻ nhỏ{$destStr}{$dateLabel} ạ! 🚌 Em ưu tiên chọn ngay cặp ghế **{$seatStr}** liền kề ở tầng 1 để gia đình nằm sát nhau tiện chăm sóc bé, tầng dưới thấp an toàn không sợ ngã và xe chạy cực êm. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% giữ chỗ nhé! 😊";
+                $advice = "Cặp giường liền kề tầng 1 [{$seatStr}]: Nằm cạnh nhau tiện chăm sóc bé, tầng dưới an toàn và êm ái.";
+            } elseif ($isSayXe) {
+                $reply = "{$contradictionPrefix}Dạ em đã lưu ý đoàn mình có {$numPassengers} người và có bạn bị say xe{$destStr}{$dateLabel} ạ! 🚌 Em ưu tiên chọn ngay cặp ghế **{$seatStr}** liền kề ở tầng 1 ngay tâm giữa xe – vị trí êm nhất triệt tiêu hơn 90% rung lắc đèo dốc để chống say xe tối đa và hai bạn ngồi cạnh nhau rất tiện chăm sóc. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% giữ chỗ nhé! 😊";
+                $advice = "Cặp giường liền kề tầng 1 giữa xe, giảm chấn 98% chống say xe tối ưu cho bạn đồng hành.";
+            } else {
+                $reply = "{$contradictionPrefix}Dạ với đoàn {$numPassengers} người{$destStr}{$dateLabel}, chuyến {$depTimeFormatted} đang trống cặp ghế **{$seatStr}** nằm cạnh nhau ở tầng 1 rất êm ái. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% nhé! 😊";
+                $advice = "Cặp giường liền kề cùng tầng 1, thuận tiện chăm sóc lẫn nhau.";
             }
         } else {
-            $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1);
-        }
+            if ($isSayXe) {
+                $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1 && $s['is_anti_motion_sickness']);
+                if (empty($matchedSeats)) {
+                    $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1);
+                }
+            } elseif ($isElderly) {
+                $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1 && $s['is_elderly_friendly']);
+                if (empty($matchedSeats)) {
+                    $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1);
+                }
+            } else {
+                $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['floor'] === 1);
+            }
+            if (empty($matchedSeats)) {
+                $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available']);
+            }
+            $matchedKeys = array_keys($matchedSeats);
+            $seat1 = $matchedKeys[0] ?? 'A03';
+            $chosenPair = [$seat1];
+            $seatStr = $seat1;
+            $destStr = " đi **{$destination}**";
 
-        if (empty($matchedSeats)) {
-            $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available']);
-        }
-
-        $matchedKeys = array_keys($matchedSeats);
-        $seat1 = $matchedKeys[0] ?? 'A03';
-        $seat2 = $matchedKeys[1] ?? 'A04';
-        $chosenPair = ($numPassengers >= 2) ? [$seat1, $seat2] : [$seat1];
-        $seatStr = implode(', ', $chosenPair);
-        $destStr = " đi **{$destination}**";
-
-        if ($isSayXe && $numPassengers >= 2) {
-            $reply = "{$contradictionPrefix}Dạ em đã lưu ý đoàn mình có {$numPassengers} người và có bạn bị say xe{$destStr}{$dateLabel} ạ! 🚌 Em ưu tiên chọn ngay cặp ghế **{$seatStr}** liền kề ở tầng 1 ngay tâm giữa xe – vị trí êm nhất triệt tiêu hơn 90% rung lắc đèo dốc để chống say xe tối đa và hai bạn ngồi cạnh nhau rất tiện chăm sóc. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% giữ chỗ nhé! 😊";
-            $advice = "Cặp giường liền kề tầng 1 giữa xe, giảm chấn 98% chống say xe tối ưu cho bạn đồng hành.";
-        } elseif ($isSayXe) {
-            $reply = "{$contradictionPrefix}Dạ em đã ghi nhận bạn bị say xe{$destStr}{$dateLabel} ạ! 🚌 Với người say xe, em ưu tiên chọn ngay ghế **{$seatStr}** ở tầng 1 ngay tâm giữa xe – vị trí êm nhất triệt tiêu hơn 90% rung lắc đèo dốc để chống say xe tối đa. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% giữ chỗ nhé! 😊";
-            $advice = "Tầng 1 ngay tâm giữa xe, giảm xóc 98%, chống say xe tối đa.";
-        } elseif ($isElderly) {
-            $reply = "{$contradictionPrefix}Dạ với người lớn tuổi{$destStr}{$dateLabel}, em đã chọn sẵn ghế **{$seatStr}** ở tầng 1 gần cửa để lên xuống thuận tiện nhất ạ. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% nhé! 😊";
-            $advice = "Tầng 1 sát cửa lên xuống, bước thấp không phải leo trèo, gần bác tài hỗ trợ.";
-        } elseif ($numPassengers >= 2) {
-            $reply = "{$contradictionPrefix}Dạ với đoàn {$numPassengers} người{$destStr}{$dateLabel}, chuyến {$depTimeFormatted} đang trống cặp ghế **{$seatStr}** nằm cạnh nhau ở tầng 1 rất êm ái. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% nhé! 😊";
-            $advice = "Cặp giường liền kề cùng tầng 1, thuận tiện chăm sóc lẫn nhau.";
-        } else {
-            $reply = "{$contradictionPrefix}Dạ chuyến {$depTimeFormatted}{$destStr}{$dateLabel} đang trống ghế **{$seatStr}** ở tầng 1 rất êm ái. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% nhé! 😊";
-            $advice = "Tầng 1 êm ái, di chuyển thuận tiện.";
+            if ($isSayXe) {
+                $reply = "{$contradictionPrefix}Dạ em đã ghi nhận bạn bị say xe{$destStr}{$dateLabel} ạ! 🚌 Với người say xe, em ưu tiên chọn ngay ghế **{$seatStr}** ở tầng 1 ngay tâm giữa xe – vị trí êm nhất triệt tiêu hơn 90% rung lắc đèo dốc để chống say xe tối đa. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% giữ chỗ nhé! 😊";
+                $advice = "Tầng 1 ngay tâm giữa xe, giảm xóc 98%, chống say xe tối đa.";
+            } elseif ($isElderly) {
+                $reply = "{$contradictionPrefix}Dạ với người lớn tuổi{$destStr}{$dateLabel}, em đã chọn sẵn ghế **{$seatStr}** ở tầng 1 gần cửa để lên xuống thuận tiện nhất ạ. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% nhé! 😊";
+                $advice = "Tầng 1 sát cửa lên xuống, bước thấp không phải leo trèo, gần bác tài hỗ trợ.";
+            } else {
+                $reply = "{$contradictionPrefix}Dạ chuyến {$depTimeFormatted}{$destStr}{$dateLabel} đang trống ghế **{$seatStr}** ở tầng 1 rất êm ái. Bạn bấm trực tiếp vào mã ghế [{$seatStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ để nhận mã QR cọc 30% nhé! 😊";
+                $advice = "Tầng 1 êm ái, di chuyển thuận tiện.";
+            }
         }
 
         return [
             'reply' => $reply,
-            'suggestions' => ["Chốt ghế {$seatStr} cho tôi", "Lấy ghế {$seat1}", "Xem sơ đồ ghế"],
-            'trips' => $this->formatTripsForClient(collect([$targetTrip]), $chosenPair, $advice),
+            'suggestions' => ["Chốt ghế {$seatStr} cho tôi", "Lấy ghế {$chosenPair[0]}", "Xem sơ đồ ghế"],
+            'trips' => $this->formatTripsForClient(collect([$targetTrip]), $chosenPair, $advice, $numPassengers),
             'source' => 'seat-physics-reasoning-good'
         ];
     }

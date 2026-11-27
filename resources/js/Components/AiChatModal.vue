@@ -658,25 +658,47 @@
                               v-model="consultationForm.destination"
                               class="w-full bg-white border border-red-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-red-500"
                             >
-                              <option value="Huế">Đà Nẵng ⇄ Thừa Thiên Huế (150.000đ)</option>
                               <option value="Quảng Trị">Đà Nẵng ⇄ Quảng Trị (200.000đ)</option>
+                              <option value="Huế">Đà Nẵng ⇄ Thừa Thiên Huế (150.000đ)</option>
                               <option value="Quảng Bình">Đà Nẵng ⇄ Quảng Bình (280.000đ)</option>
                               <option value="Quy Nhơn">Đà Nẵng ⇄ Quy Nhơn (360.000đ)</option>
                               <option value="Buôn Ma Thuột">Đà Nẵng ⇄ Buôn Ma Thuột (420.000đ)</option>
+                              <option value="Hà Nội">Đà Nẵng ⇄ Hà Nội (450.000đ)</option>
+                              <option value="Nam Định">Đà Nẵng ⇄ Nam Định (420.000đ)</option>
+                              <option value="Hội An">Đà Nẵng ⇄ Hội An (80.000đ)</option>
+                              <option value="custom">✍️ Điểm đến khác (tự nhập)...</option>
                             </select>
+                            <input
+                              v-if="consultationForm.destination === 'custom'"
+                              v-model="consultationForm.customDestination"
+                              type="text"
+                              placeholder="Nhập tỉnh/thành điểm đến bạn muốn..."
+                              class="mt-1.5 w-full bg-white border border-red-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-red-500"
+                            />
                           </div>
 
                           <!-- Ngày đi & Khung giờ -->
                           <div class="grid grid-cols-2 gap-2">
                             <div>
-                              <label class="block text-[11px] font-bold text-slate-700 mb-1">📅 Ngày đi:</label>
+                              <div class="flex items-center justify-between mb-1">
+                                <label class="text-[11px] font-bold text-slate-700">📅 Ngày đi:</label>
+                              </div>
                               <select
                                 v-model="consultationForm.date"
                                 class="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-red-500"
                               >
                                 <option value="Hôm nay">Hôm nay</option>
                                 <option value="Ngày mai">Ngày mai</option>
+                                <option value="Ngày mốt">Ngày mốt</option>
+                                <option value="Cuối tuần">Cuối tuần này</option>
+                                <option value="custom">📅 Chọn ngày bất kỳ...</option>
                               </select>
+                              <input
+                                v-if="consultationForm.date === 'custom'"
+                                v-model="consultationForm.customDate"
+                                type="date"
+                                class="mt-1.5 w-full bg-white border border-red-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-red-500"
+                              />
                             </div>
                             <div>
                               <label class="block text-[11px] font-bold text-slate-700 mb-1">⏰ Khung giờ:</label>
@@ -684,9 +706,10 @@
                                 v-model="consultationForm.timePeriod"
                                 class="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-red-500"
                               >
-                                <option value="Sáng">Sáng (06:00 - 11:30)</option>
+                                <option value="Sáng">Sáng (05:00 - 11:30)</option>
                                 <option value="Chiều">Chiều (12:00 - 17:30)</option>
                                 <option value="Tối">Tối / Đêm (18:00 - 23:30)</option>
+                                <option value="Bất kỳ">Cả ngày (Giờ nào cũng được)</option>
                               </select>
                             </div>
                           </div>
@@ -694,18 +717,27 @@
                           <!-- Số lượng vé -->
                           <div>
                             <label class="block text-[11px] font-bold text-slate-700 mb-1">🎫 Số lượng vé:</label>
-                            <div class="grid grid-cols-4 gap-1.5">
+                            <div class="grid grid-cols-5 gap-1.5">
                               <button
-                                v-for="cnt in [1, 2, 3, 4]"
+                                v-for="cnt in [1, 2, 3, 4, 5]"
                                 :key="cnt"
                                 type="button"
                                 @click="consultationForm.seatCount = cnt"
                                 :class="consultationForm.seatCount === cnt ? 'bg-red-600 text-white font-black border-red-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 font-semibold'"
                                 class="py-1.5 rounded-lg border text-center transition cursor-pointer text-xs"
                               >
-                                {{ cnt }} vé
+                                {{ cnt === 5 ? '5+ vé' : cnt + ' vé' }}
                               </button>
                             </div>
+                            <input
+                              v-if="consultationForm.seatCount === 5"
+                              v-model="consultationForm.customSeatCount"
+                              type="number"
+                              min="5"
+                              max="30"
+                              placeholder="Nhập số lượng vé (VD: 6, 8, 10...)"
+                              class="mt-1.5 w-full bg-white border border-red-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-red-500"
+                            />
                           </div>
 
                           <!-- Nhu cầu & Thể trạng đặc biệt -->
@@ -720,15 +752,6 @@
                               >
                                 <span>🤢</span>
                                 <span>Dễ say xe (Tầng dưới giữa)</span>
-                              </button>
-                              <button
-                                type="button"
-                                @click="consultationForm.nguoiGia = !consultationForm.nguoiGia"
-                                :class="consultationForm.nguoiGia ? 'bg-amber-500 text-white border-amber-500 font-black' : 'bg-white text-slate-700 border-slate-200 font-medium'"
-                                class="px-2.5 py-1 rounded-full border text-[11px] transition cursor-pointer flex items-center gap-1"
-                              >
-                                <span>👵</span>
-                                <span>Đi cùng người già / bà</span>
                               </button>
                               <button
                                 type="button"
@@ -750,6 +773,15 @@
                               </button>
                               <button
                                 type="button"
+                                @click="consultationForm.nguoiGia = !consultationForm.nguoiGia"
+                                :class="consultationForm.nguoiGia ? 'bg-amber-500 text-white border-amber-500 font-black' : 'bg-white text-slate-700 border-slate-200 font-medium'"
+                                class="px-2.5 py-1 rounded-full border text-[11px] transition cursor-pointer flex items-center gap-1"
+                              >
+                                <span>👵</span>
+                                <span>Đi cùng người già / bà</span>
+                              </button>
+                              <button
+                                type="button"
                                 @click="consultationForm.caoLon = !consultationForm.caoLon"
                                 :class="consultationForm.caoLon ? 'bg-amber-500 text-white border-amber-500 font-black' : 'bg-white text-slate-700 border-slate-200 font-medium'"
                                 class="px-2.5 py-1 rounded-full border text-[11px] transition cursor-pointer flex items-center gap-1"
@@ -757,6 +789,26 @@
                                 <span>📏</span>
                                 <span>Cao > 1m75 (Giường rộng)</span>
                               </button>
+                              <button
+                                type="button"
+                                @click="consultationForm.riengTu = !consultationForm.riengTu"
+                                :class="consultationForm.riengTu ? 'bg-amber-500 text-white border-amber-500 font-black' : 'bg-white text-slate-700 border-slate-200 font-medium'"
+                                class="px-2.5 py-1 rounded-full border text-[11px] transition cursor-pointer flex items-center gap-1"
+                              >
+                                <span>🤫</span>
+                                <span>Riêng tư / Yên tĩnh</span>
+                              </button>
+                            </div>
+
+                            <!-- Ô NHẬP TỰ DO NHU CẦU / THỂ TRẠNG KHÁC -->
+                            <div class="mt-2 pt-2 border-t border-red-200/60">
+                              <label class="block text-[11px] font-bold text-slate-700 mb-1">✍️ Hoặc nhập nhu cầu / thể trạng khác của bạn:</label>
+                              <input
+                                v-model="consultationForm.customNote"
+                                type="text"
+                                placeholder="VD: Gửi kèm xe máy, say xe nặng cần nằm giữa, đau lưng, có thú cưng..."
+                                class="w-full bg-white border border-slate-300 focus:border-red-500 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none transition focus:ring-2 focus:ring-red-200"
+                              />
                             </div>
                           </div>
                         </div>
@@ -1205,15 +1257,20 @@ const bookingCountdown = ref(300);
 let countdownInterval = null;
 
 const consultationForm = ref({
-  destination: 'Huế',
+  destination: 'Quảng Trị',
+  customDestination: '',
   date: 'Hôm nay',
+  customDate: '',
   timePeriod: 'Sáng',
-  seatCount: 1,
+  seatCount: 2,
+  customSeatCount: '',
   sayXe: false,
-  nguoiGia: false,
   treEm: false,
-  capDoi: false,
+  capDoi: true,
+  nguoiGia: false,
   caoLon: false,
+  riengTu: false,
+  customNote: '',
 });
 
 const isBookingInstant = ref(false);
@@ -1836,16 +1893,42 @@ const goToTrip = (url) => {
 
 const submitConsultationForm = () => {
   const parts = [];
-  parts.push(`Tôi muốn đặt ${consultationForm.value.seatCount} vé đi ${consultationForm.value.destination}`);
-  parts.push(`vào ${consultationForm.value.date.toLowerCase()}`);
-  parts.push(`khung giờ ${consultationForm.value.timePeriod.toLowerCase()}`);
+  const finalDest = (consultationForm.value.destination === 'custom' && consultationForm.value.customDestination.trim())
+    ? consultationForm.value.customDestination.trim()
+    : consultationForm.value.destination;
+
+  const count = consultationForm.value.seatCount === 5 
+    ? (parseInt(consultationForm.value.customSeatCount) || 5)
+    : consultationForm.value.seatCount;
+
+  parts.push(`Tôi muốn đặt ${count} vé đi ${finalDest}`);
+
+  // Xử lý ngày đi linh hoạt
+  if (consultationForm.value.date === 'custom' && consultationForm.value.customDate) {
+    const partsDate = consultationForm.value.customDate.split('-');
+    if (partsDate.length === 3) {
+      parts.push(`vào ngày ${partsDate[2]}/${partsDate[1]}/${partsDate[0]}`);
+    } else {
+      parts.push(`vào ngày ${consultationForm.value.customDate}`);
+    }
+  } else {
+    parts.push(`vào ${consultationForm.value.date.toLowerCase()}`);
+  }
+
+  if (consultationForm.value.timePeriod !== 'Bất kỳ') {
+    parts.push(`khung giờ ${consultationForm.value.timePeriod.toLowerCase()}`);
+  }
 
   const conditions = [];
   if (consultationForm.value.sayXe) conditions.push('tôi bị say xe cần chỗ êm');
-  if (consultationForm.value.nguoiGia) conditions.push('đi cùng người già / bà cần tầng dưới');
   if (consultationForm.value.treEm) conditions.push('đi cùng trẻ em');
-  if (consultationForm.value.capDoi) conditions.push('2 người muốn nằm cạnh nhau');
+  if (consultationForm.value.capDoi || count >= 2) conditions.push('các giường nằm cạnh nhau');
+  if (consultationForm.value.nguoiGia) conditions.push('đi cùng người già / bà cần tầng dưới');
   if (consultationForm.value.caoLon) conditions.push('người cao lớn cần giường rộng');
+  if (consultationForm.value.riengTu) conditions.push('cần yên tĩnh riêng tư');
+  if (consultationForm.value.customNote && consultationForm.value.customNote.trim()) {
+    conditions.push(consultationForm.value.customNote.trim());
+  }
 
   if (conditions.length > 0) {
     parts.push(`nhu cầu: ${conditions.join(', ')}`);
@@ -1902,9 +1985,12 @@ const executeInstantBook = async (trip, seats, name, phone, email) => {
       },
       body: JSON.stringify({
         trip_id: trip.id,
+        seats: seats,
         seat_numbers: seats,
         name: name,
         phone: phone,
+        customer_name: name,
+        customer_phone: phone,
         email: email
       })
     });
