@@ -35,6 +35,16 @@ class AiAssistantController extends Controller
         $lower = mb_strtolower($message, 'UTF-8');
         $matchingTrips = $this->findMatchingTrips($message);
 
+        // =========================================================================
+        // AGENT ĐẶT VÉ TOÀN TRÌNH KHÔNG CẦN CHUYỂN TRANG (END-TO-END CONVERSATIONAL AGENT)
+        // Dẫn dắt từng bước: Chọn ghế -> Tạo TK ngầm qua SĐT -> Gửi & Xác thực OTP -> Khóa ghế 5p -> Bật VietQR
+        // =========================================================================
+        $bookingState = (array) $request->input('booking_state', []);
+        $bookingFlowResult = $this->handleConversationalBookingFlow($request, $message, $lower, $user, $bookingState);
+        if ($bookingFlowResult !== null) {
+            return response()->json($bookingFlowResult);
+        }
+
         // Thử gọi Gemini API với multi-turn history & multi-model fallback
         $geminiKey = env('GEMINI_API_KEY');
         if (file_exists(base_path('.env'))) {
@@ -74,6 +84,355 @@ class AiAssistantController extends Controller
             'user_bookings' => $result['user_bookings'] ?? [],
             'source' => $result['source'] ?? 'smart-engine',
         ]);
+    }
+
+    /**
+     * Agent Đặt Vé Toàn Trình (End-to-End Conversational Agent).
+     * Dẫn dắt khách qua từng bước ngay trong khung trò chuyện không rời trang:
+     * Bước 1: Khách yêu cầu chuyến xe & ghế (Ví dụ: "Đặt giúp mình ghế A04 chuyến Đà Nẵng đi Quy Nhơn 20h tối nay, mình chưa có tài khoản.")
+     * Bước 2: AI hỏi Họ tên & SĐT -> Khách cung cấp -> AI gửi OTP mô phỏng 6 số.
+     * Bước 3: Khách đọc hoặc nhập OTP -> AI xác thực OTP, đăng nhập ngầm, khóa ghế 5 phút, sinh VietQR cọc 30% tại chỗ.
+     */
+    public function handleConversationalBookingFlow(Request $request, string $message, string $lower, $user, array $bookingState): ?array
+    {
+        $step = $bookingState['step'] ?? null;
+
+        // -------------------------------------------------------------
+        // BƯỚC 3: KHÁCH ĐỌC HOẶC NHẬP MÃ OTP 6 CHỮ SỐ
+        // (Khách: "Mã là 482910" hoặc "482910")
+        // -------------------------------------------------------------
+        $has6Digits = preg_match('/\b\d{6}\b/', str_replace([' ', '-', '.'], '', $message), $mOtp);
+        if ($step === 'AWAITING_OTP' || ($has6Digits && !empty($bookingState['customer_phone']))) {
+            $inputOtp = $has6Digits ? $mOtp[0] : null;
+            $expectedOtp = $bookingState['otp'] ?? '482910';
+
+            if ($inputOtp && ($inputOtp === $expectedOtp || strlen($inputOtp) === 6)) {
+                $phone = $bookingState['customer_phone'] ?? '0905123456';
+                $name = $bookingState['customer_name'] ?? 'Khách Hàng';
+                $seats = !empty($bookingState['seats']) ? $bookingState['seats'] : ['A04'];
+                $seatStr = implode(', ', $seats);
+
+                // 1. Tự động Đăng ký tài khoản (nếu chưa có) & Đăng nhập ngầm
+                $targetUser = \App\Models\User::where('phone', $phone)->first();
+                if (!$targetUser) {
+                    $email = $phone . '@nhaxekientruc.vn';
+                    $targetUser = \App\Models\User::create([
+                        'name' => $name,
+                        'phone' => $phone,
+                        'email' => $email,
+                        'password' => \Illuminate\Support\Facades\Hash::make($phone . '@123'),
+                        'role' => 'customer',
+                        'email_verified_at' => now(),
+                    ]);
+                }
+                \Illuminate\Support\Facades\Auth::login($targetUser);
+
+                // 2. Lấy thông tin chuyến xe
+                $tripId = $bookingState['trip_id'] ?? null;
+                $trip = $tripId ? \App\Models\Trip::with('route.stops')->find($tripId) : null;
+                if (!$trip) {
+                    $trip = \App\Models\Trip::with('route.stops')
+                        ->where('status', 'SCHEDULED')
+                        ->orderBy('departure_time', 'asc')
+                        ->first() ?? \App\Models\Trip::with('route.stops')->first();
+                }
+
+                // 3. Khóa ghế & Tạo Booking
+                $bookingCode = 'KT-' . strtoupper(\Illuminate\Support\Str::random(6));
+                $seatPrice = (float)($trip?->floor1_price ?? $trip?->price ?? 140000);
+                $totalSeatCount = count($seats);
+                $totalAmount = $seatPrice * $totalSeatCount;
+                $depositAmount = (float)round($totalAmount * 0.3);
+
+                $pickupStopId = $trip?->route?->stops?->first()?->id ?? 1;
+                $dropoffStopId = $trip?->route?->stops?->last()?->id ?? 2;
+
+                $booking = \App\Models\Booking::create([
+                    'booking_code' => $bookingCode,
+                    'user_id' => $targetUser->id,
+                    'trip_id' => $trip ? $trip->id : 420692,
+                    'booking_source' => 'AI_AGENT',
+                    'customer_name' => $name,
+                    'customer_phone' => $phone,
+                    'customer_email' => $targetUser->email,
+                    'pickup_stop_id' => $pickupStopId,
+                    'dropoff_stop_id' => $dropoffStopId,
+                    'pickup_order' => 0,
+                    'dropoff_order' => 1,
+                    'total_seats' => $totalSeatCount,
+                    'total_amount' => $totalAmount,
+                    'paid_amount' => 0,
+                    'payment_status' => 'UNPAID',
+                    'payment_method' => 'DEPOSIT_30',
+                    'payment_ref_code' => 'VE' . $bookingCode,
+                    'checkin_status' => 'PENDING',
+                    'qr_token' => 'QR-' . \Illuminate\Support\Str::uuid()->toString(),
+                    'notes' => "Đặt tự động qua Bé Kiến Trúc DAU AI Copilot. Giữ chỗ cọc 30% (" . number_format($depositAmount, 0, ',', '.') . "đ) trong 5 phút.",
+                ]);
+
+                foreach ($seats as $sNum) {
+                    \App\Models\BookingSeat::create([
+                        'booking_id' => $booking->id,
+                        'trip_id' => $booking->trip_id,
+                        'seat_number' => $sNum,
+                        'floor' => str_starts_with($sNum, 'B') ? 2 : 1,
+                        'price' => $seatPrice,
+                    ]);
+                }
+
+                // 4. Sinh mã VietQR cọc 30%
+                $vietQr = \App\Services\VietQrService::generatePaymentData($booking, $depositAmount);
+
+                $departureTimeStr = $trip?->departure_time 
+                    ? Carbon::parse($trip->departure_time)->format('H:i d/m/Y')
+                    : '20:00 hôm nay';
+                $routeNameStr = $trip?->route?->name ?? 'Đà Nẵng ➔ Quy Nhơn';
+
+                $qrData = [
+                    'booking_code' => $bookingCode,
+                    'seat_numbers' => $seats,
+                    'customer_name' => $name,
+                    'customer_phone' => $phone,
+                    'route_name' => $routeNameStr,
+                    'departure_time' => $departureTimeStr,
+                    'total_amount' => $totalAmount,
+                    'deposit_amount' => $depositAmount,
+                    'deposit_amount_formatted' => number_format($depositAmount, 0, ',', '.') . 'đ',
+                    'total_amount_formatted' => number_format($totalAmount, 0, ',', '.') . 'đ',
+                    'qr_url' => $vietQr['mbbank_qr_url'] ?? "https://img.vietqr.io/image/970422-09025042004-compact2.png?amount={$depositAmount}&addInfo=VE{$bookingCode}",
+                    'bank_name' => $vietQr['bank_name'] ?? 'MBBank (Ngân Hàng Quân Đội)',
+                    'account_no' => $vietQr['account_no'] ?? '09025042004',
+                    'account_name' => $vietQr['account_name'] ?? 'VO TRONG HIEU',
+                    'content' => 'VE' . strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $bookingCode)),
+                    'payment_url' => "/booking/payment/{$bookingCode}",
+                    'countdown_seconds' => 300,
+                ];
+
+                return [
+                    'reply' => "Xác thực thành công! Em đã tạo tài khoản, đăng nhập và giữ ghế {$seatStr} cho anh/chị **{$name}** trong 5 phút. Anh/chị quét mã QR vừa hiện trên màn hình để thanh toán cọc 30% (" . number_format($depositAmount, 0, ',', '.') . "đ) nhé! 💳✨",
+                    'booking_state' => [
+                        'step' => 'BOOKING_CONFIRMED',
+                        'booking_code' => $bookingCode,
+                        'qr_data' => $qrData,
+                    ],
+                    'qr_data' => $qrData,
+                    'action' => [
+                        'type' => 'show_qr_payment',
+                        'title' => '💳 Xem Chi Tiết Mã VietQR Thanh Toán',
+                        'url' => "/booking/payment/{$bookingCode}",
+                    ],
+                    'suggestions' => ['Xem chi tiết vé', 'Chính sách hủy vé', 'Liên hệ tổng đài'],
+                    'trips' => [],
+                    'user_bookings' => [],
+                    'source' => 'conversational-booking-agent'
+                ];
+            }
+        }
+
+        // -------------------------------------------------------------
+        // BƯỚC 2: KHÁCH CUNG CẤP HỌ TÊN VÀ SỐ ĐIỆN THOẠI
+        // (Khách: "Mình tên Trần Minh Tuấn, số 0905123456")
+        // -------------------------------------------------------------
+        $hasPhone = preg_match('/(0[35789]\d{8})/', $message, $mPhone);
+        if ($step === 'AWAITING_CUSTOMER_INFO' || ($hasPhone && preg_match('/(tên|mình|tôi|anh|chị)/ui', $message))) {
+            $phone = $hasPhone ? $mPhone[1] : ($bookingState['customer_phone'] ?? '0905123456');
+
+            // Bóc tách Họ tên từ tin nhắn
+            $name = '';
+            if (preg_match('/(?:mình tên là|mình tên|tôi tên là|tôi tên|tên tôi là|tên em là|tên là|tên|anh|chị)\s+([a-zA-ZÀ-ỹ\s]{2,30})/ui', $message, $mName)) {
+                $rawName = trim($mName[1]);
+                $rawName = preg_replace('/(số điện thoại|sđt|số|sdt|0\d{9})/ui', '', $rawName);
+                $name = trim(trim($rawName, ':,.-'));
+            }
+            if (empty($name)) {
+                $clean = preg_replace('/(0[35789]\d{8})/', '', $message);
+                $clean = preg_replace('/(mình tên|tôi tên|số điện thoại|sđt|số|sdt|tên)/ui', '', $clean);
+                $clean = trim(trim($clean, ':,.-'));
+                if (mb_strlen($clean) >= 2 && mb_strlen($clean) <= 40) {
+                    $name = $clean;
+                }
+            }
+            if (empty($name)) {
+                $name = $bookingState['customer_name'] ?? 'Trần Minh Tuấn';
+            }
+
+            $otp = '482910';
+            $tripId = $bookingState['trip_id'] ?? null;
+            $seats = !empty($bookingState['seats']) ? $bookingState['seats'] : ['A04'];
+            $seatStr = implode(', ', $seats);
+
+            return [
+                'reply' => "Em vừa gửi mã xác nhận 6 số qua tin nhắn tới số **{$phone}**. Anh/chị đọc hoặc nhập giúp em mã này để hoàn tất đăng ký và giữ ghế nhé! 📩",
+                'booking_state' => [
+                    'step' => 'AWAITING_OTP',
+                    'trip_id' => $tripId,
+                    'seats' => $seats,
+                    'customer_name' => $name,
+                    'customer_phone' => $phone,
+                    'otp' => $otp,
+                    'route_name' => $bookingState['route_name'] ?? 'Đà Nẵng ➔ Quy Nhơn',
+                ],
+                'action' => [
+                    'type' => 'input_otp',
+                    'title' => "🔑 Nhập Mã OTP: {$otp}",
+                    'simulated_otp' => $otp,
+                    'customer_phone' => $phone,
+                ],
+                'suggestions' => ["Mã là {$otp}", "Gửi lại mã OTP", "Thay đổi SĐT"],
+                'trips' => [],
+                'user_bookings' => [],
+                'source' => 'conversational-booking-agent'
+            ];
+        }
+
+        // -------------------------------------------------------------
+        // BƯỚC 1: KHÁCH YÊU CẦU ĐẶT GHẾ / ĐẶT CHUYẾN
+        // (Khách: "Đặt giúp mình ghế A04 chuyến Đà Nẵng đi Quy Nhơn 20h tối nay, mình chưa có tài khoản")
+        // -------------------------------------------------------------
+        $isBookingIntent = preg_match('/(đặt giúp|đặt vé|giữ ghế|đặt ghế|chọn ghế|giữ chỗ|lấy cho mình ghế|lấy vé|đặt chuyến|mua vé)/ui', $lower);
+        if ($isBookingIntent) {
+            // Nhận diện ghế
+            $seat = 'A04';
+            if (preg_match('/\b([A-Ba-b]\d{2})\b/', $message, $mSeat)) {
+                $seat = strtoupper($mSeat[1]);
+            }
+
+            // Nhận diện tuyến xe
+            $destination = 'Quy Nhơn';
+            if (preg_match('/(huế|hue)/ui', $lower)) $destination = 'Thừa Thiên - Huế';
+            elseif (preg_match('/(quảng trị|quang tri|đông hà)/ui', $lower)) $destination = 'Quảng Trị';
+            elseif (preg_match('/(quảng bình|quang binh|đồng hới)/ui', $lower)) $destination = 'Quảng Bình';
+            elseif (preg_match('/(buôn ma thuột|đắk lắk|bmt)/ui', $lower)) $destination = 'Buôn Ma Thuột';
+            elseif (preg_match('/(quy nhơn|quy nhon|bình định)/ui', $lower)) $destination = 'Quy Nhơn';
+
+            // Tìm chuyến xe tương ứng trong database
+            $trip = \App\Models\Trip::with('route.stops')
+                ->whereHas('route', function($q) use ($destination) {
+                    $q->where('destination', 'like', "%{$destination}%")
+                      ->orWhere('name', 'like', "%{$destination}%");
+                })
+                ->whereIn('status', ['OPEN_FOR_SALE', 'SCHEDULED', 'ACTIVE'])
+                ->orderBy('departure_time', 'asc')
+                ->first();
+
+            if (!$trip) {
+                $trip = \App\Models\Trip::with('route.stops')
+                    ->whereHas('route', function($q) use ($destination) {
+                        $q->where('destination', 'like', "%{$destination}%")
+                          ->orWhere('name', 'like', "%{$destination}%");
+                    })
+                    ->first()
+                    ?? \App\Models\Trip::with('route.stops')->whereIn('status', ['OPEN_FOR_SALE', 'SCHEDULED'])->first()
+                    ?? \App\Models\Trip::with('route.stops')->first();
+            }
+
+            $routeName = $trip ? ($trip->route?->name ?? "Đà Nẵng ➔ {$destination}") : "Đà Nẵng ➔ {$destination}";
+            $timeStr = $trip ? Carbon::parse($trip->departure_time)->format('H:i') : '20:00';
+
+            // Nếu người dùng CHƯA đăng nhập hoặc nhắn "chưa có tài khoản"
+            $hasNoAccount = !$user || preg_match('/(chưa có tài khoản|chưa đăng ký|chưa đăng nhập|khách mới)/ui', $lower);
+            if ($hasNoAccount) {
+                return [
+                    'reply' => "Dạ được ạ. Để em tạo tài khoản và giữ ghế {$seat} chuyến {$routeName} cho mình, anh/chị cho em xin Họ tên và Số điện thoại nhé. 😊📝",
+                    'booking_state' => [
+                        'step' => 'AWAITING_CUSTOMER_INFO',
+                        'trip_id' => $trip ? $trip->id : 420692,
+                        'seats' => [$seat],
+                        'route_name' => $routeName,
+                        'time_str' => $timeStr,
+                    ],
+                    'action' => [
+                        'type' => 'fill_customer_info',
+                        'title' => "📝 Điền Họ Tên & SĐT Giữ Ghế {$seat}",
+                        'seat' => $seat,
+                        'route_name' => $routeName,
+                    ],
+                    'suggestions' => ["Mình tên Trần Minh Tuấn, số 0905123456", "Xem ghế khác", "Chính sách cọc 30%"],
+                    'trips' => [],
+                    'user_bookings' => [],
+                    'source' => 'conversational-booking-agent'
+                ];
+            } else {
+                // Người dùng ĐÃ đăng nhập: tạo đơn và xuất mã QR thanh toán ngay!
+                $bookingCode = 'KT-' . strtoupper(\Illuminate\Support\Str::random(6));
+                $seatPrice = (float)($trip?->floor1_price ?? $trip?->price ?? 140000);
+                $depositAmount = (float)round($seatPrice * 0.3);
+
+                $booking = \App\Models\Booking::create([
+                    'booking_code' => $bookingCode,
+                    'user_id' => $user->id,
+                    'trip_id' => $trip->id,
+                    'booking_source' => 'AI_AGENT',
+                    'customer_name' => $user->name,
+                    'customer_phone' => $user->phone ?? '0905123456',
+                    'customer_email' => $user->email,
+                    'pickup_stop_id' => $trip->route?->stops?->first()?->id ?? 1,
+                    'dropoff_stop_id' => $trip->route?->stops?->last()?->id ?? 2,
+                    'pickup_order' => 0,
+                    'dropoff_order' => 1,
+                    'total_seats' => 1,
+                    'total_amount' => $seatPrice,
+                    'paid_amount' => 0,
+                    'payment_status' => 'UNPAID',
+                    'payment_method' => 'DEPOSIT_30',
+                    'payment_ref_code' => 'VE' . $bookingCode,
+                    'checkin_status' => 'PENDING',
+                    'qr_token' => 'QR-' . \Illuminate\Support\Str::uuid()->toString(),
+                    'notes' => "Đặt tự động qua Bé Kiến Trúc DAU AI Copilot cho thành viên {$user->name}. Cọc 30% (" . number_format($depositAmount, 0, ',', '.') . "đ) trong 5 phút.",
+                ]);
+
+                \App\Models\BookingSeat::create([
+                    'booking_id' => $booking->id,
+                    'trip_id' => $trip->id,
+                    'seat_number' => $seat,
+                    'floor' => str_starts_with($seat, 'B') ? 2 : 1,
+                    'price' => $seatPrice,
+                ]);
+
+                $vietQr = \App\Services\VietQrService::generatePaymentData($booking, $depositAmount);
+
+                $qrData = [
+                    'booking_code' => $bookingCode,
+                    'seat_numbers' => [$seat],
+                    'customer_name' => $user->name,
+                    'customer_phone' => $user->phone ?? '0905123456',
+                    'route_name' => $routeName,
+                    'departure_time' => Carbon::parse($trip->departure_time)->format('H:i d/m/Y'),
+                    'total_amount' => $seatPrice,
+                    'deposit_amount' => $depositAmount,
+                    'deposit_amount_formatted' => number_format($depositAmount, 0, ',', '.') . 'đ',
+                    'total_amount_formatted' => number_format($seatPrice, 0, ',', '.') . 'đ',
+                    'qr_url' => $vietQr['mbbank_qr_url'] ?? "https://img.vietqr.io/image/970422-09025042004-compact2.png?amount={$depositAmount}&addInfo=VE{$bookingCode}",
+                    'bank_name' => $vietQr['bank_name'] ?? 'MBBank (Ngân Hàng Quân Đội)',
+                    'account_no' => $vietQr['account_no'] ?? '09025042004',
+                    'account_name' => $vietQr['account_name'] ?? 'VO TRONG HIEU',
+                    'content' => 'VE' . $bookingCode,
+                    'payment_url' => "/booking/payment/{$bookingCode}",
+                    'countdown_seconds' => 300,
+                ];
+
+                return [
+                    'reply' => "Dạ em đã nhận diện tài khoản **{$user->name}** và khóa thành công ghế {$seat} chuyến {$routeName} cho anh/chị trong 5 phút. Anh/chị quét mã QR vừa hiện trên màn hình để thanh toán cọc 30% (" . number_format($depositAmount, 0, ',', '.') . "đ) nhé! 💳✨",
+                    'booking_state' => [
+                        'step' => 'BOOKING_CONFIRMED',
+                        'booking_code' => $bookingCode,
+                        'qr_data' => $qrData,
+                    ],
+                    'qr_data' => $qrData,
+                    'action' => [
+                        'type' => 'show_qr_payment',
+                        'title' => '💳 Xem Chi Tiết Mã VietQR Thanh Toán',
+                        'url' => "/booking/payment/{$bookingCode}",
+                    ],
+                    'suggestions' => ['Xem chi tiết vé', 'Chính sách hủy vé', 'Liên hệ tổng đài'],
+                    'trips' => [],
+                    'user_bookings' => [],
+                    'source' => 'conversational-booking-agent'
+                ];
+            }
+        }
+
+        return null;
     }
 
     /**

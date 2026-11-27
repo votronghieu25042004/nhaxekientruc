@@ -1,38 +1,49 @@
 <template>
   <div>
-    <!-- Nút Nổi Bé Mascot Kiến Trúc DAU (Góc Dưới Phải) -->
+    <!-- NHÂN VIÊN PHÒNG VÉ ẢO BÉ KIẾN TRÚC DAU (GÓC DƯỚI MÀN HÌNH) -->
     <div
       v-if="!isOpen"
-      class="fixed bottom-20 right-3 sm:bottom-6 sm:right-6 z-40 flex items-end gap-2.5 cursor-pointer group select-none"
+      class="fixed bottom-4 right-3 sm:bottom-6 sm:right-6 z-40 flex items-end gap-3 cursor-pointer group select-none"
       @click="openModal"
     >
       <!-- Bong bóng thoại thông minh chào đón -->
-      <div class="hidden sm:flex flex-col items-end max-w-[250px] bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl border-2 border-red-200 text-xs text-slate-800 group-hover:scale-105 transition-all duration-300 relative">
-        <div class="flex items-center gap-1.5 font-black text-red-600 text-[11px] mb-0.5">
-          <span>🏛️ BÉ KIẾN TRÚC DAU</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+      <div class="hidden sm:flex flex-col items-end max-w-[270px] bg-white/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-2xl border-2 border-red-300 text-xs text-slate-800 group-hover:scale-105 transition-all duration-300 relative">
+        <div class="flex items-center gap-1.5 font-black text-red-600 text-[11px] mb-1">
+          <span>🏛️ BÉ KIẾN TRÚC DAU (PHÒNG VÉ ẢO)</span>
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
         </div>
-        <p class="text-[11px] text-slate-700 leading-tight font-medium">
-          Nói hoặc nhắn với em để em tự động tìm xe, chọn ghế êm và hỗ trợ từ A-Z nhé! 🚌✨
+        <p class="text-[11.5px] text-slate-700 leading-snug font-semibold text-right">
+          "Chào anh/chị! Em là nhân viên phòng vé ảo trường ĐH Kiến Trúc. Bấm vào em hoặc nói chuyện để em tự động giữ ghế & hỗ trợ từ A-Z nhé! 🚌✨"
         </p>
+        <div class="flex items-center gap-1.5 mt-2">
+          <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-black">🎙️ Đàm thoại 2 chiều</span>
+          <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black">⚡ Tự động đặt vé</span>
+        </div>
+        <!-- Mũi tên chỉ vào mascot -->
+        <div class="absolute -right-2 bottom-6 w-3 h-3 bg-white border-r-2 border-b-2 border-red-300 rotate-[-45deg]"></div>
       </div>
 
-      <!-- Mascot 3D Nổi Bật Với Hào Quang Năng Lượng ĐH Kiến Trúc -->
-      <div class="relative flex items-center justify-center">
-        <!-- Vòng hào quang năng lượng đỏ cam -->
-        <div class="absolute inset-0 rounded-full bg-gradient-to-tr from-red-600 via-rose-500 to-amber-400 blur-md opacity-70 group-hover:opacity-100 transition animate-pulse"></div>
+      <!-- Mascot 3D Đứng Trực Tiếp Trên Bục Năng Lượng ĐH Kiến Trúc -->
+      <div class="relative flex flex-col items-center">
+        <!-- Vòng hào quang phát sáng năng lượng -->
+        <div class="absolute -inset-2 rounded-full bg-gradient-to-tr from-red-600 via-rose-500 to-amber-400 blur-lg opacity-60 group-hover:opacity-100 transition duration-500 animate-pulse"></div>
 
-        <button
-          class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-b from-white to-red-50 p-1 shadow-2xl border-2 border-red-500 relative flex items-center justify-center overflow-hidden hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer"
-          title="Bé Kiến Trúc DAU - AI Đồng Hành Trọn Chuyến"
-        >
+        <!-- Bục 3D phát sáng chân mascot -->
+        <div class="absolute -bottom-2 w-24 sm:w-28 h-5 sm:h-6 bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 rounded-full blur-xs opacity-80 shadow-2xl"></div>
+
+        <!-- Hình Mascot Bé Kiến Trúc Đứng To, Sống Động -->
+        <div class="relative w-24 sm:w-28 h-32 sm:h-40 transition-all duration-300 group-hover:scale-110 active:scale-95 group-hover:-translate-y-2">
           <img
             src="/images/mascot-dau.png"
             alt="Mascot Bé Kiến Trúc DAU"
-            class="w-full h-full object-contain drop-shadow-md group-hover:rotate-6 transition-transform duration-300"
+            class="w-full h-full object-contain drop-shadow-[0_12px_15px_rgba(185,28,28,0.4)]"
           />
-          <span class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full shadow-xs"></span>
-        </button>
+          <!-- Huy hiệu online -->
+          <span class="absolute top-1 right-1 flex h-3.5 w-3.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white"></span>
+          </span>
+        </div>
       </div>
     </div>
 
@@ -57,147 +68,216 @@
         >
           
           <!-- ============================================== -->
-          <!-- CỘT TRÁI: LỊCH SỬ TRÒ CHUYỆN (TÔNG MÀU ĐỎ ĐÔ SANG TRỌNG) -->
+          <!-- CỘT TRÁI: QUẦY NHÂN VIÊN ẢO & LỊCH SỬ CHAT -->
           <!-- ============================================== -->
           <aside
-            :class="showMobileHistory ? 'flex w-full h-full' : 'hidden sm:flex sm:w-64'"
-            class="bg-gradient-to-b from-[#4c0519] via-[#881337] to-[#7f1d1d] text-red-50 flex-col border-r border-red-800/80 flex-shrink-0"
+            :class="showMobileHistory ? 'flex w-full h-full' : 'hidden sm:flex sm:w-72'"
+            class="bg-gradient-to-b from-[#4c0519] via-[#881337] to-[#7f1d1d] text-red-50 flex-col border-r border-red-800/80 flex-shrink-0 select-none"
           >
-            <!-- Header Sidebar -->
-            <div class="p-3.5 border-b border-red-800/60 flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-xl bg-white text-red-700 flex items-center justify-center font-black text-xs shadow-xs">
-                  🚌
-                </div>
-                <span class="text-xs font-black text-white tracking-wide">Trợ Lý nhaxekientruc AI</span>
-              </div>
-              
-              <!-- Nút Tạo Đoạn Chat Mới (Chỉ hiện khi đã đăng nhập) -->
+            <!-- Tab Switcher: Quầy Nhân Viên Ảo vs Lịch Sử -->
+            <div class="p-2.5 border-b border-red-800/60 flex items-center gap-1.5 bg-black/20">
               <button
-                v-if="currentUser"
                 type="button"
-                @click="createNewChat"
-                class="p-1.5 rounded-lg bg-red-900/80 hover:bg-white hover:text-red-700 text-red-100 text-xs font-bold transition flex items-center gap-1 cursor-pointer border border-red-700/60"
-                title="Đoạn chat mới"
+                @click="sidebarTab = 'kiosk'"
+                class="flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer"
+                :class="sidebarTab === 'kiosk' ? 'bg-white text-red-800 shadow-sm' : 'text-red-200 hover:text-white hover:bg-white/10'"
               >
-                <span>+</span>
-                <span class="text-[11px]">Mới</span>
+                <span>🏛️</span>
+                <span>Nhân Viên Ảo</span>
+              </button>
+              <button
+                type="button"
+                @click="sidebarTab = 'history'"
+                class="flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer"
+                :class="sidebarTab === 'history' ? 'bg-white text-red-800 shadow-sm' : 'text-red-200 hover:text-white hover:bg-white/10'"
+              >
+                <span>📜</span>
+                <span>Lịch Sử</span>
               </button>
             </div>
 
-            <!-- NẾU CHƯA ĐĂNG NHẬP: THÔNG BÁO CHỈ LƯU LỊCH SỬ KHI ĐĂNG NHẬP (REQUIREMENT 4) -->
-            <div v-if="!currentUser" class="flex-1 p-4 flex flex-col items-center justify-center text-center space-y-3">
-              <div class="w-12 h-12 rounded-2xl bg-white/10 text-white flex items-center justify-center text-xl shadow-inner border border-white/20">
-                🔒
+            <!-- TAB 1: QUẦY NHÂN VIÊN ẢO (VIRTUAL STAFF KIOSK STANDEE) -->
+            <div v-if="sidebarTab === 'kiosk'" class="flex-1 flex flex-col p-3 overflow-y-auto custom-scrollbar justify-between space-y-3">
+              <!-- Khung Sân Khấu Kiosk Standee Bé Kiến Trúc DAU -->
+              <div class="bg-gradient-to-b from-red-950/80 to-red-900/40 rounded-2xl border-2 border-red-500/40 p-3 text-center relative overflow-hidden shadow-inner">
+                <div class="text-[10px] font-black tracking-widest text-amber-300 uppercase mb-1">
+                  ĐH Kiến Trúc Đà Nẵng
+                </div>
+                <div class="text-xs font-black text-white">
+                  Quầy Vé Ảo Bé Kiến Trúc
+                </div>
+
+                <!-- Mascot Đứng To Trên Sân Khấu Kiosk -->
+                <div class="relative my-2 h-44 sm:h-48 flex items-center justify-center">
+                  <div class="absolute inset-0 rounded-full bg-red-500/20 blur-xl animate-pulse"></div>
+                  <img
+                    src="/images/mascot-dau.png"
+                    alt="Bé Kiến Trúc DAU Standee"
+                    class="h-full w-auto object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)]"
+                    :class="(isSpeaking || isListeningVoice) ? 'animate-bounce [animation-duration:2s]' : ''"
+                  />
+                </div>
+
+                <!-- Cột Sóng Âm Thanh Equalizer (Khi Bé Đang Nói Hoặc Nghe) -->
+                <div class="flex items-center gap-1.5 justify-center py-1">
+                  <span class="w-1 bg-rose-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-5 animate-pulse' : 'h-1.5'"></span>
+                  <span class="w-1 bg-amber-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-7 animate-bounce' : 'h-2'"></span>
+                  <span class="w-1 bg-rose-300 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-9 animate-pulse' : 'h-3'"></span>
+                  <span class="w-1 bg-amber-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-7 animate-bounce' : 'h-2'"></span>
+                  <span class="w-1 bg-rose-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-5 animate-pulse' : 'h-1.5'"></span>
+                </div>
+
+                <!-- Trạng thái -->
+                <div class="mt-1 flex items-center justify-center gap-1.5 text-[10px] text-emerald-400 font-bold">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                  <span>Đang Trực Phòng Vé 24/7</span>
+                </div>
               </div>
-              <div class="text-xs font-black text-white">Lịch Sử Trò Chuyện</div>
-              <p class="text-[11px] text-red-200 leading-relaxed">
-                Đăng nhập tài khoản để lưu lại toàn bộ lịch sử các đoạn trò chuyện cùng Trợ Lý AI của bạn.
-              </p>
-              <a
-                href="/login"
-                class="px-4 py-2.5 rounded-xl bg-white hover:bg-red-50 text-red-700 font-black text-xs transition shadow-md cursor-pointer block w-full"
+
+              <!-- Nút Kích Hoạt Đàm Thoại 2 Chiều Rảnh Tay (Gọi Điện Thoại) -->
+              <button
+                type="button"
+                @click="toggleCallMode"
+                class="w-full py-2.5 px-3 rounded-xl font-black text-xs transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                :class="isCallModeActive ? 'bg-red-500 text-white animate-pulse' : 'bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-red-950'"
               >
-                Đăng Nhập Ngay
-              </a>
-              <div class="text-[10px] text-red-300">
-                (Khách vãng lai có thể hỏi đáp tự do nhưng không lưu lịch sử)
+                <span>{{ isCallModeActive ? '🔴' : '📞' }}</span>
+                <span>{{ isCallModeActive ? 'Đang Gọi (Bấm Dừng)' : 'Gọi Đàm Thoại 2 Chiều' }}</span>
+              </button>
+
+              <!-- Gợi Ý Câu Đặt Vé Mẫu Nhanh -->
+              <div class="space-y-1.5">
+                <div class="text-[10px] font-bold text-red-200/80 uppercase tracking-wider">
+                  Mẫu câu thử nghiệm:
+                </div>
+                <button
+                  type="button"
+                  @click="sendPrompt('Đặt giúp mình ghế A04 chuyến Đà Nẵng đi Quy Nhơn 20h tối nay, mình chưa có tài khoản')"
+                  class="w-full text-left p-2 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] text-red-100 font-medium transition cursor-pointer border border-white/10"
+                >
+                  👉 "Đặt ghế A04 đi Quy Nhơn 20h, chưa có tài khoản"
+                </button>
+                <button
+                  type="button"
+                  @click="sendPrompt('Tôi bị say xe đi Huế chọn giúp tôi ghế êm')"
+                  class="w-full text-left p-2 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] text-red-100 font-medium transition cursor-pointer border border-white/10"
+                >
+                  👉 "Tôi bị say xe đi Huế chọn giúp ghế"
+                </button>
+                <button
+                  type="button"
+                  @click="sendPrompt('Tôi muốn hủy vé và hoàn lại tiền cọc')"
+                  class="w-full text-left p-2 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] text-red-100 font-medium transition cursor-pointer border border-white/10"
+                >
+                  👉 "Tôi muốn hủy vé và hoàn tiền cọc"
+                </button>
               </div>
             </div>
 
-            <!-- NẾU ĐÃ ĐĂNG NHẬP: HIỂN THỊ LỊCH SỬ CHAT RIÊNG CỦA TỪNG USER -->
+            <!-- TAB 2: LỊCH SỬ TRÒ CHUYỆN & ADMIN -->
             <div v-else class="flex-1 flex flex-col overflow-hidden">
-              <!-- Nút Tạo Đoạn Chat Mới To Rõ -->
-              <div class="p-3">
-                <button
-                  type="button"
-                  @click="createNewChat"
-                  class="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-red-50 text-red-700 hover:text-red-800 text-xs font-black transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+              <!-- NẾU CHƯA ĐĂNG NHẬP: THÔNG BÁO CHỈ LƯU LỊCH SỬ KHI ĐĂNG NHẬP -->
+              <div v-if="!currentUser" class="flex-1 p-4 flex flex-col items-center justify-center text-center space-y-3">
+                <div class="w-12 h-12 rounded-2xl bg-white/10 text-white flex items-center justify-center text-xl shadow-inner border border-white/20">
+                  🔒
+                </div>
+                <div class="text-xs font-black text-white">Lịch Sử Trò Chuyện</div>
+                <p class="text-[11px] text-red-200 leading-relaxed">
+                  Đăng nhập tài khoản để lưu lại toàn bộ lịch sử các đoạn trò chuyện cùng Trợ Lý AI của bạn.
+                </p>
+                <a
+                  href="/login"
+                  class="px-4 py-2.5 rounded-xl bg-white hover:bg-red-50 text-red-700 font-black text-xs transition shadow-md cursor-pointer block w-full"
                 >
-                  <span>+</span>
-                  <span>Đoạn chat mới</span>
-                </button>
+                  Đăng Nhập Ngay
+                </a>
               </div>
 
-              <!-- Danh Sách Lịch Sử Trò Chuyện (Có Đổi Tên & Xóa) -->
-              <div class="flex-1 overflow-y-auto px-2 space-y-1.5 custom-scrollbar">
-                <div class="flex items-center justify-between px-2 py-1 text-[10px] font-bold text-red-200/70 uppercase tracking-wider">
-                  <span>Lịch sử trò chuyện</span>
+              <!-- NẾU ĐÃ ĐĂNG NHẬP: HIỂN THỊ LỊCH SỬ CHAT RIÊNG CỦA TỪNG USER -->
+              <div v-else class="flex-1 flex flex-col overflow-hidden">
+                <div class="p-3">
                   <button
-                    v-if="chatSessions.length > 1"
-                    @click="clearAllChats"
-                    class="text-[10px] text-red-300 hover:text-white hover:underline cursor-pointer lowercase"
+                    type="button"
+                    @click="createNewChat"
+                    class="w-full py-2 px-3 rounded-xl bg-white hover:bg-red-50 text-red-700 hover:text-red-800 text-xs font-black transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                   >
-                    xóa tất cả
+                    <span>+</span>
+                    <span>Đoạn chat mới</span>
                   </button>
                 </div>
 
-                <div
-                  v-for="session in chatSessions"
-                  :key="session.id"
-                  @click="switchChatSession(session.id)"
-                  class="group flex items-center justify-between p-2 rounded-xl text-xs font-semibold transition cursor-pointer"
-                  :class="currentSessionId === session.id ? 'bg-white/20 text-white font-bold border border-white/20' : 'text-red-200 hover:bg-white/10 hover:text-white'"
-                >
-                  <!-- Tiêu đề / Ô sửa tên -->
-                  <div class="flex items-center gap-2 truncate flex-1 mr-1">
-                    <svg class="w-3.5 h-3.5 flex-shrink-0 text-red-300 group-hover:text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                    
-                    <input
-                      v-if="editingSessionId === session.id"
-                      v-model="editingTitle"
-                      @blur="saveSessionTitle(session.id)"
-                      @keyup.enter="saveSessionTitle(session.id)"
-                      @click.stop
-                      type="text"
-                      class="bg-white text-slate-900 px-1.5 py-0.5 rounded text-xs w-full outline-none font-bold"
-                      autofocus
-                    />
-                    <span v-else class="truncate">{{ session.title }}</span>
-                  </div>
-
-                  <!-- Nút Hành Động: Đổi Tên & Xóa -->
-                  <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                    <!-- Đổi tên -->
-                    <button
-                      type="button"
-                      @click.stop="startRename(session)"
-                      class="p-1 rounded text-red-200 hover:text-white hover:bg-white/20 transition cursor-pointer"
-                      title="Đổi tên đoạn chat"
-                    >
-                      ✏️
-                    </button>
-                    <!-- Xóa -->
+                <div class="flex-1 overflow-y-auto px-2 space-y-1.5 custom-scrollbar">
+                  <div class="flex items-center justify-between px-2 py-1 text-[10px] font-bold text-red-200/70 uppercase tracking-wider">
+                    <span>Lịch sử trò chuyện</span>
                     <button
                       v-if="chatSessions.length > 1"
-                      type="button"
-                      @click.stop="deleteChatSession(session.id)"
-                      class="p-1 rounded text-red-200 hover:text-red-100 hover:bg-red-500/40 transition cursor-pointer"
-                      title="Xóa đoạn chat này"
+                      @click="clearAllChats"
+                      class="text-[10px] text-red-300 hover:text-white hover:underline cursor-pointer lowercase"
                     >
-                      🗑️
+                      xóa tất cả
                     </button>
+                  </div>
+
+                  <div
+                    v-for="session in chatSessions"
+                    :key="session.id"
+                    @click="switchChatSession(session.id)"
+                    class="group flex items-center justify-between p-2 rounded-xl text-xs font-semibold transition cursor-pointer"
+                    :class="currentSessionId === session.id ? 'bg-white/20 text-white font-bold border border-white/20' : 'text-red-200 hover:bg-white/10 hover:text-white'"
+                  >
+                    <div class="flex items-center gap-2 truncate flex-1 mr-1">
+                      <span class="text-xs">💬</span>
+                      <input
+                        v-if="editingSessionId === session.id"
+                        v-model="editingTitle"
+                        @blur="saveSessionTitle(session.id)"
+                        @keyup.enter="saveSessionTitle(session.id)"
+                        @click.stop
+                        type="text"
+                        class="bg-white text-slate-900 px-1.5 py-0.5 rounded text-xs w-full outline-none font-bold"
+                        autofocus
+                      />
+                      <span v-else class="truncate">{{ session.title }}</span>
+                    </div>
+
+                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button
+                        type="button"
+                        @click.stop="startRename(session)"
+                        class="p-1 rounded text-red-200 hover:text-white hover:bg-white/20 transition cursor-pointer"
+                        title="Đổi tên đoạn chat"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        v-if="chatSessions.length > 1"
+                        type="button"
+                        @click.stop="deleteChatSession(session.id)"
+                        class="p-1 rounded text-red-200 hover:text-red-100 hover:bg-red-500/40 transition cursor-pointer"
+                        title="Xóa đoạn chat này"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Footer Sidebar: Quyền Quản Trị Viên -->
-            <div v-if="isAdminUser" class="p-3 border-t border-red-800/80 bg-red-950/50">
-              <button
-                type="button"
-                @click="activeView = activeView === 'admin_email' ? 'chat' : 'admin_email'"
-                class="w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-between cursor-pointer"
-                :class="activeView === 'admin_email' ? 'bg-white text-red-700' : 'bg-red-900/80 hover:bg-red-800 text-amber-300 border border-red-700/60'"
-              >
-                <span class="flex items-center gap-1.5">
-                  <span>⚡</span>
-                  <span>Quản Trị: Gửi Gmail</span>
-                </span>
-                <span class="text-[10px] bg-amber-400/20 text-amber-300 px-1.5 py-0.5 rounded">Admin</span>
-              </button>
+              <!-- Footer Sidebar: Quyền Quản Trị Viên -->
+              <div v-if="isAdminUser" class="p-3 border-t border-red-800/80 bg-red-950/50">
+                <button
+                  type="button"
+                  @click="activeView = activeView === 'admin_email' ? 'chat' : 'admin_email'"
+                  class="w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-between cursor-pointer"
+                  :class="activeView === 'admin_email' ? 'bg-white text-red-700' : 'bg-red-900/80 hover:bg-red-800 text-amber-300 border border-red-700/60'"
+                >
+                  <span class="flex items-center gap-1.5">
+                    <span>⚡</span>
+                    <span>Quản Trị: Gửi Gmail</span>
+                  </span>
+                  <span class="text-[10px] bg-amber-400/20 text-amber-300 px-1.5 py-0.5 rounded">Admin</span>
+                </button>
+              </div>
             </div>
           </aside>
 
@@ -232,8 +312,19 @@
                 </div>
               </div>
 
-              <!-- Cụm Nút Điều Khiển: Loa Giọng Nói (TTS) / Phóng To / Lịch Sử / Đóng -->
+              <!-- Cụm Nút Điều Khiển: Đàm Thoại 2 Chiều / Loa Giọng Nói (TTS) / Phóng To / Lịch Sử / Đóng -->
               <div class="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                <!-- Nút Đàm Thoại 2 Chiều Rảnh Tay (Như Gọi Điện Thoại) -->
+                <button
+                  type="button"
+                  @click="toggleCallMode"
+                  class="px-2.5 py-1.5 rounded-xl border text-xs font-black transition flex items-center gap-1 cursor-pointer"
+                  :class="isCallModeActive ? 'bg-red-600 border-red-600 text-white animate-pulse' : 'bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 border-amber-300 text-amber-900'"
+                  :title="isCallModeActive ? 'Đang bật đàm thoại 2 chiều rảnh tay (Bấm để Dừng)' : 'Bật đàm thoại 2 chiều như gọi điện thoại'"
+                >
+                  <span>{{ isCallModeActive ? '🔴 Đang Gọi' : '📞 Gọi AI' }}</span>
+                </button>
+
                 <!-- Nút Bật/Tắt Giọng Nói AI (TTS) -->
                 <button
                   type="button"
@@ -276,6 +367,21 @@
                   ✕
                 </button>
               </div>
+            </div>
+
+            <!-- Banner Đang Đàm Thoại 2 Chiều Rảnh Tay (Voice Call) -->
+            <div v-if="isCallModeActive" class="bg-gradient-to-r from-red-600 to-rose-600 text-white px-3.5 py-2 text-xs font-bold flex items-center justify-between shadow-xs select-none">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
+                <span>📞 Đang đàm thoại trực tiếp với Bé Kiến Trúc (Nói và nghe liên tục rảnh tay)</span>
+              </div>
+              <button
+                type="button"
+                @click="toggleCallMode"
+                class="text-[11px] bg-white text-red-700 px-2.5 py-0.5 rounded-lg font-black hover:bg-red-50 cursor-pointer shadow-2xs"
+              >
+                ⏹️ Kết thúc cuộc gọi
+              </button>
             </div>
 
             <!-- NỘI DUNG 1: KHUNG GỬI GMAIL TỰ ĐỘNG (CHỈ ADMIN THẤY) -->
@@ -426,8 +532,167 @@
 
                       <div class="leading-relaxed" v-html="formatAiMessage(msg.content)"></div>
 
-                      <!-- Thẻ Hành Động Nhanh (Action CTA Card) do Bé Kiến Trúc Kích Hoạt -->
-                      <div v-if="msg.action" class="mt-2.5 p-2.5 bg-gradient-to-r from-red-50 via-rose-50/50 to-amber-50 border-2 border-red-300 rounded-2xl">
+                      <!-- 1. THẺ ĐIỀN HỌ TÊN & SĐT GIỮ GHẾ (BƯỚC 2) -->
+                      <div v-if="msg.action && msg.action.type === 'fill_customer_info'" class="mt-3 p-3.5 bg-gradient-to-br from-red-50 to-amber-50 border-2 border-red-400 rounded-2xl space-y-2.5 shadow-sm">
+                        <div class="flex items-center gap-2 font-black text-red-700 text-xs">
+                          <span>📝</span>
+                          <span>BÉ KIẾN TRÚC TỰ ĐỘNG GIỮ GHẾ & TẠO TÀI KHOẢN NGẦM</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600">
+                          Bạn có thể <strong>nói vào micro</strong> (VD: <em>"Mình tên Trần Minh Tuấn, số 0905123456"</em>) hoặc điền nhanh 2 ô bên dưới:
+                        </p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div>
+                            <label class="text-[10px] font-bold text-slate-700 block mb-0.5">Họ và Tên:</label>
+                            <input
+                              type="text"
+                              v-model="quickCustomerName"
+                              placeholder="Trần Minh Tuấn"
+                              class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-red-500 font-semibold text-slate-800"
+                            />
+                          </div>
+                          <div>
+                            <label class="text-[10px] font-bold text-slate-700 block mb-0.5">Số điện thoại:</label>
+                            <input
+                              type="tel"
+                              v-model="quickCustomerPhone"
+                              placeholder="0905123456"
+                              class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-red-500 font-semibold text-slate-800"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          @click="submitQuickCustomerInfo"
+                          class="w-full py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                        >
+                          <span>🚀 Gửi Thông Tin Cho Bé Kiến Trúc (Nhận Mã OTP)</span>
+                        </button>
+                      </div>
+
+                      <!-- 2. THẺ XÁC THỰC MÃ OTP 6 CHỮ SỐ (BƯỚC 3) -->
+                      <div v-if="msg.action && msg.action.type === 'input_otp'" class="mt-3 p-3.5 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-400 rounded-2xl space-y-2.5 shadow-sm">
+                        <div class="flex items-center justify-between font-black text-amber-900 text-xs">
+                          <span class="flex items-center gap-1.5">
+                            <span>🔑</span>
+                            <span>XÁC THỰC MÃ OTP (6 CHỮ SỐ)</span>
+                          </span>
+                          <span class="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">
+                            Đã gửi SMS
+                          </span>
+                        </div>
+                        <p class="text-[11px] text-slate-600">
+                          Bé Kiến Trúc vừa gửi mã 6 số tới số điện thoại của bạn. Bạn có thể <strong>nói</strong> (VD: <em>"Mã là {{ msg.action.simulated_otp || '482910' }}"</em>) hoặc bấm vào mã bên dưới để điền nhanh:
+                        </p>
+                        <div class="flex items-center gap-2">
+                          <button
+                            type="button"
+                            @click="quickOtpInput = msg.action.simulated_otp || '482910'; submitQuickOtp();"
+                            class="py-1 px-3 bg-amber-200/80 hover:bg-amber-300 text-amber-950 font-mono font-black text-xs rounded-lg border border-amber-400 transition cursor-pointer shadow-2xs"
+                          >
+                            ⚡ Mã SMS: {{ msg.action.simulated_otp || '482910' }} (Bấm điền nhanh)
+                          </button>
+                        </div>
+                        <div class="flex items-center gap-2 pt-1">
+                          <input
+                            type="text"
+                            maxlength="6"
+                            v-model="quickOtpInput"
+                            placeholder="Nhập 6 số..."
+                            class="flex-1 px-3 py-1.5 text-xs bg-white border border-amber-300 rounded-lg outline-none focus:border-red-500 font-mono font-black text-slate-800 tracking-wider text-center"
+                          />
+                          <button
+                            type="button"
+                            @click="submitQuickOtp"
+                            class="py-1.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-lg shadow-xs transition cursor-pointer"
+                          >
+                            Xác Thực & Giữ Ghế ➔
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- 3. THẺ THANH TOÁN VIETQR TẠI CHỖ (BƯỚC 4 - END-TO-END PAYMENT) -->
+                      <div v-if="msg.qr_data" class="mt-3 p-3.5 sm:p-4 bg-gradient-to-br from-red-50 via-rose-50/60 to-amber-50/50 border-2 border-red-500 rounded-2xl space-y-3 shadow-md">
+                        <div class="flex items-center justify-between gap-1 flex-wrap">
+                          <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                            <span class="font-black text-red-700 text-xs sm:text-sm">⚡ KHÓA GHẾ THÀNH CÔNG • QUÉT MÃ VIETQR</span>
+                          </div>
+                          <div class="flex items-center gap-1 bg-red-600 text-white font-mono text-[10px] sm:text-xs font-black px-2.5 py-1 rounded-full shadow-2xs">
+                            <span>⏱️ Giữ:</span>
+                            <span>{{ formatTimer(bookingCountdown) }}</span>
+                          </div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-3 items-center sm:items-start bg-white p-3 rounded-xl border border-red-200">
+                          <!-- QR Image -->
+                          <div class="w-36 h-36 flex-shrink-0 bg-white p-1 rounded-xl border border-slate-200 shadow-xs flex items-center justify-center">
+                            <img
+                              :src="msg.qr_data.qr_url"
+                              alt="VietQR Bé Kiến Trúc"
+                              class="w-full h-full object-contain cursor-pointer"
+                              @click="window.open(msg.qr_data.qr_url, '_blank')"
+                              title="Bấm để mở ảnh to"
+                            />
+                          </div>
+
+                          <!-- Thông tin thanh toán & nút sao chép -->
+                          <div class="flex-1 text-xs space-y-1.5 w-full">
+                            <div class="flex items-center justify-between pb-1 border-b border-slate-100 font-bold">
+                              <span class="text-slate-600">Mã vé:</span>
+                              <span class="font-black text-red-600 font-mono text-sm">{{ msg.qr_data.booking_code }}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                              <span class="text-slate-600">Tuyến & Ghế:</span>
+                              <span class="font-bold text-slate-800">{{ msg.qr_data.route_name }} (Ghế: <strong class="text-red-600">{{ msg.qr_data.seat_numbers.join(', ') }}</strong>)</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                              <span class="text-slate-600">Khách hàng:</span>
+                              <span class="font-semibold text-slate-700">{{ msg.qr_data.customer_name }} • {{ msg.qr_data.customer_phone }}</span>
+                            </div>
+                            <div class="flex items-center justify-between bg-amber-50 p-1.5 rounded-lg border border-amber-200 font-bold">
+                              <span class="text-amber-900">Tiền cọc giữ chỗ (30%):</span>
+                              <span class="text-red-600 text-sm font-black">{{ msg.qr_data.deposit_amount_formatted }}</span>
+                            </div>
+
+                            <div class="pt-1 space-y-1 text-[11px] text-slate-600">
+                              <div class="flex items-center justify-between">
+                                <span>Ngân hàng: <strong>{{ msg.qr_data.bank_name }}</strong></span>
+                              </div>
+                              <div class="flex items-center justify-between">
+                                <span>Số TK: <strong class="font-mono text-slate-900">{{ msg.qr_data.account_no }}</strong></span>
+                                <button
+                                  type="button"
+                                  @click="copyToClipboard(msg.qr_data.account_no, 'Đã copy Số tài khoản!')"
+                                  class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-bold text-slate-700 cursor-pointer"
+                                >
+                                  📋 Chép STK
+                                </button>
+                              </div>
+                              <div class="flex items-center justify-between">
+                                <span>Nội dung: <strong class="font-mono text-red-600 font-bold">{{ msg.qr_data.content }}</strong></span>
+                                <button
+                                  type="button"
+                                  @click="copyToClipboard(msg.qr_data.content, 'Đã copy Nội dung chuyển khoản!')"
+                                  class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-bold text-slate-700 cursor-pointer"
+                                >
+                                  📋 Chép Nội Dung
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <a
+                          :href="msg.qr_data.payment_url"
+                          class="w-full py-2.5 px-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition text-center"
+                        >
+                          <span>🚀 Xem Trang Thanh Toán Chi Tiết (Tải Vé PDF) ➔</span>
+                        </a>
+                      </div>
+
+                      <!-- 4. THẺ HÀNH ĐỘNG THÔNG THƯỜNG -->
+                      <div v-else-if="msg.action && !['fill_customer_info', 'input_otp', 'show_qr_payment'].includes(msg.action.type)" class="mt-2.5 p-2.5 bg-gradient-to-r from-red-50 via-rose-50/50 to-amber-50 border-2 border-red-300 rounded-2xl">
                         <button
                           type="button"
                           @click="handleAction(msg.action)"
@@ -654,6 +919,7 @@ const isOpen = ref(false);
 const isMaximized = ref(false);
 const showMobileHistory = ref(false);
 const activeView = ref('chat');
+const sidebarTab = ref('kiosk');
 const inputQuery = ref('');
 const isAiTyping = ref(false);
 const isListeningVoice = ref(false);
@@ -671,6 +937,69 @@ const showGoogleChooser = ref(false);
 const isTtsEnabled = ref(true); // Voice Text-to-Speech active by default
 const isSpeaking = ref(false);
 const speakingMsgIdx = ref(null);
+
+// ==========================================
+// ĐÀM THOẠI 2 CHIỀU & ĐẶT VÉ TOÀN TRÌNH
+// ==========================================
+const isCallModeActive = ref(false);
+const currentBookingState = ref({});
+const quickCustomerName = ref('Trần Minh Tuấn');
+const quickCustomerPhone = ref('0905123456');
+const quickOtpInput = ref('482910');
+const bookingCountdown = ref(300);
+let countdownInterval = null;
+
+const startCountdownTimer = () => {
+  bookingCountdown.value = 300;
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    if (bookingCountdown.value > 0) {
+      bookingCountdown.value--;
+    } else {
+      clearInterval(countdownInterval);
+    }
+  }, 1000);
+};
+
+const formatTimer = (seconds) => {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+};
+
+const copyToClipboard = (text, msg) => {
+  if (!text) return;
+  try {
+    navigator.clipboard.writeText(text);
+    alert(msg || 'Đã sao chép vào bộ nhớ tạm!');
+  } catch (e) {
+    alert('Đã sao chép: ' + text);
+  }
+};
+
+const submitQuickCustomerInfo = () => {
+  const name = quickCustomerName.value.trim() || 'Trần Minh Tuấn';
+  const phone = quickCustomerPhone.value.trim() || '0905123456';
+  inputQuery.value = `Mình tên ${name}, số ${phone}`;
+  sendMessage();
+};
+
+const submitQuickOtp = () => {
+  const otp = quickOtpInput.value.trim() || '482910';
+  inputQuery.value = `Mã là ${otp}`;
+  sendMessage();
+};
+
+const toggleCallMode = () => {
+  isCallModeActive.value = !isCallModeActive.value;
+  if (isCallModeActive.value) {
+    isTtsEnabled.value = true;
+    startVoiceRecognition();
+  } else {
+    stopSpeech();
+    isListeningVoice.value = false;
+  }
+};
 
 const toggleTts = () => {
   isTtsEnabled.value = !isTtsEnabled.value;
@@ -714,6 +1043,14 @@ const speakText = (rawText, msgIdx = null) => {
   utterance.onend = () => {
     isSpeaking.value = false;
     speakingMsgIdx.value = null;
+    // Nếu chế độ đàm thoại 2 chiều đang bật và cửa sổ đang mở -> tự động lắng nghe tiếp
+    if (isCallModeActive.value && isOpen.value) {
+      setTimeout(() => {
+        if (isCallModeActive.value && !isSpeaking.value && !isAiTyping.value) {
+          startVoiceRecognition();
+        }
+      }, 500);
+    }
   };
   utterance.onerror = () => {
     isSpeaking.value = false;
@@ -1100,7 +1437,8 @@ const sendMessage = async () => {
       },
       body: JSON.stringify({ 
         message: query,
-        history: recentHistory
+        history: recentHistory,
+        booking_state: currentBookingState.value
       })
     });
 
@@ -1111,12 +1449,24 @@ const sendMessage = async () => {
     const action = data.action || null;
     const user_bookings = data.user_bookings || [];
 
+    if (data.booking_state) {
+      currentBookingState.value = data.booking_state;
+    }
+    const qr_data = data.qr_data || (data.booking_state?.qr_data) || null;
+    if (qr_data) {
+      startCountdownTimer();
+    }
+    if (action && action.type === 'input_otp' && action.simulated_otp) {
+      quickOtpInput.value = action.simulated_otp;
+    }
+
     const newMsg = {
       role: 'assistant',
       content: reply,
       suggestions: suggestions,
       trips: trips,
       action: action,
+      qr_data: qr_data,
       user_bookings: user_bookings,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
     };
