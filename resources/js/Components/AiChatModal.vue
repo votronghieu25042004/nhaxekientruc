@@ -2337,6 +2337,14 @@ const generateSmartReply = (q) => {
     return '🚫 Nhà xe Kiến Trúc hỗ trợ hủy vé tự động 100% trong vòng 2 giờ đầu hoặc trước giờ xe chạy 24 giờ tại mục "Quản Lý Vé" trên website, hoàn tiền trực tiếp qua số tài khoản ngân hàng của bạn!';
   }
 
+  // Mã giảm giá / Ưu đãi
+  if (/(giảm giá|khuyến mãi|voucher|mã giảm|ưu đãi|ma giam|giam gia)/i.test(lower)) {
+    if (/(sinh viên|học sinh|pro30)/i.test(lower)) {
+      return '🎓 Nhà xe Kiến Trúc có chương trình giảm 30% cho Học sinh - Sinh viên với mã `PRO30` hoặc `SINHVIEN` khi đặt vé (kèm thẻ SV khi lên xe bạn nhé)!';
+    }
+    return '🎁 Nhà xe Kiến Trúc đang có mã `CHAOBAN` giảm 20.000đ khi đặt vé và chính sách hoàn tiền 5% tích điểm thành viên. (Nếu là Học sinh - Sinh viên, bạn dùng mã `PRO30` để được giảm 30% nhé!).';
+  }
+
   // Điểm đón / Văn phòng
   if (/(văn phòng|địa chỉ|ở đâu|đón ở đâu|bến xe)/i.test(lower)) {
     return '📍 Văn phòng chính Nhà xe Kiến Trúc tại: Số 566 Núi Thành, P. Hòa Cường Nam, Q. Hải Châu, TP. Đà Nẵng. Quầy vé số 14 - Bến xe Trung tâm Đà Nẵng. Có xe trung chuyển miễn phí bán kính 5km nội thành Đà Nẵng!';
