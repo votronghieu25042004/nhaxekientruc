@@ -2272,6 +2272,33 @@ class AdminController extends Controller
         return back()->with('success', "Đã cập nhật trạng thái xe [{$bus->license_plate}]!");
     }
 
+    public function updateBusAmenities(Request $request, $id)
+    {
+        $bus = Bus::findOrFail($id);
+        $floor1 = (array) $request->input('floor1', []);
+        $floor2 = (array) $request->input('floor2', []);
+        $general = (array) $request->input('general', []);
+
+        if (empty($floor1)) {
+            $floor1 = ['Tặng 1 chai nước suối', 'Khăn lạnh tiệt trùng', 'Ổ cắm Type-C + USB 20W', 'TV màn hình LED', 'Nệm bóng hơi giảm xóc 98% (êm nhất, chống say xe)', 'Lối đi thông thoáng'];
+        }
+        if (empty($floor2)) {
+            $floor2 = ['Tặng 1 chai nước suối', 'Khăn lạnh tiệt trùng', 'Ổ cắm sạc điện thoại USB', 'TV màn hình LED', 'Rèm che riêng tư 100% (chống nhìn trộm, chống UV)', 'Cửa sổ ngắm cảnh toàn cảnh', 'Đèn đọc sách ấm 3000K'];
+        }
+        if (empty($general)) {
+            $general = ['Wifi 5G tốc độ cao', 'Nước uống đóng chai', 'Điều hòa 2 chiều', 'Chăn gối kháng khuẩn'];
+        }
+
+        $bus->amenities = [
+            'general' => array_values(array_filter($general)),
+            'floor1' => array_values(array_filter($floor1)),
+            'floor2' => array_values(array_filter($floor2)),
+        ];
+        $bus->save();
+
+        return back()->with('success', "Đã cập nhật tiện nghi phương tiện [{$bus->license_plate}] thành công!");
+    }
+
     public function liquidateBus(Request $request, $id)
     {
         $bus = Bus::findOrFail($id);

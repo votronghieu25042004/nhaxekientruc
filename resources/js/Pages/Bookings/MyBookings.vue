@@ -518,12 +518,21 @@
           </div>
 
           <!-- Nút xem đầy đủ -->
-          <div class="pt-2 flex items-center justify-end gap-2">
+          <div class="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2">
+            <Link 
+              v-if="trackingBooking.trip_id"
+              :href="`/trips/${trackingBooking.trip_id}/live-tracking`"
+              class="w-full sm:w-1/2 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs text-center shadow-md transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>🗺️</span>
+              <span>Bản Đồ Xe Chạy Trực Tiếp</span>
+            </Link>
             <Link 
               :href="`/booking/${trackingBooking.booking_code}/detail`"
-              class="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs text-center shadow-md transition cursor-pointer"
+              :class="trackingBooking.trip_id ? 'w-full sm:w-1/2' : 'w-full'"
+              class="py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs text-center shadow-md transition cursor-pointer"
             >
-              Xem Chi Tiết Vé & QR Check-in ➔
+              Chi Tiết Vé & QR Check-in ➔
             </Link>
           </div>
         </div>

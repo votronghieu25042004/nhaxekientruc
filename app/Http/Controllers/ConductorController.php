@@ -51,13 +51,10 @@ class ConductorController extends Controller
             ->get();
 
         $user = Auth::user();
-        // Xác định quyền hiển thị menu chuyển đổi cổng & chọn tài khoản:
-        // - Mặc định luôn là TRUE (để Admin/Dev trải nghiệm, đổi cổng thông tin và chọn các acc để test).
-        // - Chỉ chuyển thành FALSE khi: tài khoản đăng nhập có role === 'conductor' VÀ được đánh dấu 'is_real_conductor_login' từ form /login VÀ không có cờ admin.
-        $isAdminViewing = true;
-        if ($user && in_array($user->role, ['conductor', 'staff']) && session('is_real_conductor_login') === true && !session('admin_mode') && !$request->has('admin_view')) {
-            $isAdminViewing = false;
-        }
+        // Xác định quyền hiển thị Admin Viewing Mode:
+        // - CHỈ hiển thị khi tài khoản đăng nhập có role === 'admin'.
+        // - Khi Lơ xe (conductor / staff) đăng nhập thật thì luôn ẩn thanh Admin Viewing Mode.
+        $isAdminViewing = ($user && $user->role === 'admin');
 
         // Lấy danh sách tài khoản Lơ xe và gắn kèm biển số xe được phân công thực tế từ trips (Loại bỏ trùng lặp tên)
         $conductorAccounts = \App\Models\User::where('role', 'conductor')

@@ -772,6 +772,120 @@ const laptopCoords = ref(null)
 const laptopAccuracy = ref(null)
 const locationStatusMessage = ref('Đang khởi tạo định vị GPS Laptop...')
 
+// ==================== IN-APP TURN-BY-TURN HUD NAVIGATION ====================
+const isNavigating = ref(false)
+const isMapFullscreen = ref(false)
+const showTurnStepsDrawer = ref(false)
+const currentManeuver = ref({
+    icon: 'fa-arrow-up',
+    instruction: 'Tiếp tục đi thẳng theo trục Quốc Lộ 1A / AH1',
+    distanceText: '18 km',
+    etaText: '22 phút',
+    roadName: 'Quốc Lộ 1A'
+})
+const turnByTurnSteps = ref([])
+
+const startInAppNavigation = () => {
+    isNavigating.value = true
+    if (leafletMap && busMarker) {
+        leafletMap.setView(busMarker.getLatLng(), 15, { animate: true })
+    }
+}
+
+const toggleMapFullscreen = () => {
+    isMapFullscreen.value = !isMapFullscreen.value
+    setTimeout(() => {
+        if (leafletMap) leafletMap.invalidateSize()
+    }, 250)
+}
+
+const fetchDriverRoadRoute = async (stopsList, latLngs) => {
+    if (!leafletMap || !latLngs || latLngs.length < 2) return
+
+    const osrmWaypoints = latLngs.map(c => `${c[1].toFixed(5)},${c[0].toFixed(5)}`).join(';')
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${osrmWaypoints}?overview=full&geometries=geojson&steps=true`
+
+    try {
+        const res = await fetch(osrmUrl)
+        const data = await res.json()
+        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+            const route = data.routes[0]
+            const geoPoints = route.geometry.coordinates.map(pt => [pt[1], pt[0]])
+
+            if (polylineLayer) {
+                try { leafletMap.removeLayer(polylineLayer) } catch (e) {}
+            }
+            polylineLayer = L.polyline(geoPoints, {
+                color: '#2563eb',
+                weight: 6,
+                opacity: 0.9,
+                smoothFactor: 1
+            }).addTo(leafletMap)
+
+            if (route.legs) {
+                const steps = []
+                route.legs.forEach((leg, legIdx) => {
+                    const fromName = stopsList[legIdx]?.stop_name || `Trạm ${legIdx + 1}`
+                    const toName = stopsList[legIdx + 1]?.stop_name || `Trạm ${legIdx + 2}`
+                    steps.push({
+                        isHeader: true,
+                        title: `Chặng ${legIdx + 1}: ${fromName} ➔ ${toName}`,
+                        distance: (leg.distance / 1000).toFixed(1) + ' km',
+                        duration: Math.round(leg.duration / 60) + ' phút'
+                    })
+                    if (leg.steps) {
+                        leg.steps.forEach(st => {
+                            if (st.maneuver && st.distance > 50) {
+                                let maneuverText = 'Đi thẳng'
+                                let icon = 'fa-arrow-up'
+                                const type = st.maneuver.type || ''
+                                const mod = st.maneuver.modifier || ''
+
+                                if (type.includes('turn')) {
+                                    if (mod.includes('right')) { maneuverText = 'Rẽ phải'; icon = 'fa-arrow-turn-right' }
+                                    else if (mod.includes('left')) { maneuverText = 'Rẽ trái'; icon = 'fa-arrow-turn-left' }
+                                } else if (type.includes('fork') || type.includes('ramp')) {
+                                    maneuverText = 'Chếch làn'
+                                    icon = 'fa-code-branch'
+                                } else if (type.includes('roundabout')) {
+                                    maneuverText = 'Vào bùng binh'
+                                    icon = 'fa-arrows-rotate'
+                                }
+
+                                steps.push({
+                                    icon,
+                                    instruction: `${maneuverText} ${st.name ? 'vào ' + st.name : 'theo trục QL1A'}`,
+                                    distance: st.distance >= 1000 ? (st.distance / 1000).toFixed(1) + ' km' : Math.round(st.distance) + ' m'
+                                })
+                            }
+                        })
+                    }
+                })
+                turnByTurnSteps.value = steps
+                const firstAction = steps.find(s => !s.isHeader)
+                if (firstAction) {
+                    currentManeuver.value = {
+                        icon: firstAction.icon,
+                        instruction: firstAction.instruction,
+                        distanceText: firstAction.distance,
+                        etaText: 'Đang theo lộ trình',
+                        roadName: 'Quốc Lộ 1A'
+                    }
+                }
+            }
+            return
+        }
+    } catch (e) {
+        console.warn('Lỗi tải OSRM:', e)
+    }
+
+    turnByTurnSteps.value = [
+        { icon: 'fa-arrow-up', instruction: 'Tiến về phía Quốc Lộ 1A từ bến xuất phát', distance: '1.2 km' },
+        { icon: 'fa-arrow-up', instruction: 'Chạy thẳng theo trục QL1A / Đường tránh', distance: '38.5 km' },
+        { icon: 'fa-arrow-turn-right', instruction: 'Rẽ phải vào Trạm dừng đón trả khách tiếp theo', distance: '800 m' }
+    ]
+}
+
 const updateMapTileLayer = () => {
     if (!leafletMap) return
     if (mapTileLayer) {
@@ -999,6 +1113,9 @@ const initLiveMap = () => {
             opacity: 0.85,
             smoothFactor: 1
         }).addTo(leafletMap)
+
+        // Tải đường bộ ôm sát QL1A theo thời gian thực
+        fetchDriverRoadRoute(stopsList, latLngs)
 
         stopsList.forEach((s, idx) => {
             const coords = latLngs[idx]
@@ -2470,16 +2587,104 @@ onUnmounted(() => {
                   <i class="fa-solid fa-crosshairs"></i>
                   <span class="hidden sm:inline">Căn Tâm</span>
                 </button>
+
+                <!-- Nút Bật/Tắt Dẫn Đường HUD In-App -->
+                <button
+                  type="button"
+                  @click="isNavigating = !isNavigating"
+                  class="px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 transition shadow-xs cursor-pointer"
+                  :class="isNavigating ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/40 ring-2 ring-blue-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'"
+                  title="Chỉ đường từng bước trực tiếp trong ứng dụng"
+                >
+                  <i class="fa-solid fa-diamond-turn-right text-amber-400"></i>
+                  <span>{{ isNavigating ? 'HUD Bật' : 'Dẫn Đường' }}</span>
+                </button>
+
+                <!-- Nút Toàn Màn Hình -->
+                <button
+                  type="button"
+                  @click="toggleMapFullscreen"
+                  class="p-1.5 px-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                  :title="isMapFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'"
+                >
+                  <i class="fa-solid" :class="isMapFullscreen ? 'fa-compress' : 'fa-expand'"></i>
+                </button>
               </div>
             </div>
 
-            <!-- Leaflet Container Với Kích Thước Co Giãn Thông Minh Chống Trắng Màn Hình -->
-            <div 
-              ref="mapContainer" 
-              id="driver-leaflet-map" 
-              class="w-full relative z-0 h-[280px] sm:h-[440px] min-h-[280px]" 
-              style="width: 100%; display: block;"
-            ></div>
+            <!-- VÙNG BẢN ĐỒ VÀ OVERLAY DẪN ĐƯỜNG TRỰC TIẾP (IN-APP NAVIGATION) -->
+            <div class="relative w-full" :class="{ 'fixed inset-0 z-[9999] p-4 bg-slate-950/95 flex flex-col justify-center': isMapFullscreen }">
+              
+              <!-- FLOATING IN-APP TURN-BY-TURN HUD (COCKPIT BÁC TÀI) -->
+              <div v-if="isNavigating" class="absolute top-2 left-2 right-2 z-[900] pointer-events-auto bg-slate-900/95 backdrop-blur-md text-white p-3 rounded-2xl shadow-2xl border border-blue-500/40 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-xl shrink-0 shadow-md shadow-blue-500/30 text-white">
+                    <i class="fa-solid" :class="currentManeuver.icon || 'fa-arrow-up'"></i>
+                  </div>
+                  <div class="text-left min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-300 font-black text-[9px] uppercase tracking-wider">CHỈ ĐƯỜNG TRỰC TIẾP</span>
+                      <span class="text-xs font-mono font-bold text-amber-300">Cách: {{ currentManeuver.distanceText }}</span>
+                    </div>
+                    <h4 class="font-black text-sm text-white leading-tight mt-0.5 truncate">
+                      {{ currentManeuver.instruction }}
+                    </h4>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button 
+                    type="button" 
+                    @click="showTurnStepsDrawer = !showTurnStepsDrawer" 
+                    class="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition flex items-center gap-1 cursor-pointer"
+                    title="Xem chi tiết các ngã rẽ"
+                  >
+                    <i class="fa-solid fa-list-ul"></i>
+                    <span class="hidden sm:inline">Lộ trình rẽ</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    @click="isNavigating = false" 
+                    class="w-7 h-7 rounded-xl bg-red-600/80 hover:bg-red-600 text-xs text-white font-bold flex items-center justify-center transition cursor-pointer"
+                    title="Tắt HUD dẫn đường"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              <!-- POPUP DRAWER CHI TIẾT CÁC BƯỚC RẼ -->
+              <div v-if="showTurnStepsDrawer && isNavigating" class="absolute top-20 left-2 right-2 max-h-60 overflow-y-auto z-[900] pointer-events-auto bg-slate-900/98 backdrop-blur-md rounded-2xl p-3 text-white border border-slate-700 shadow-2xl space-y-2 text-xs">
+                <div class="flex items-center justify-between pb-1.5 border-b border-slate-800">
+                  <span class="font-black text-amber-300 uppercase tracking-wide">CHI TIẾT CHỈ ĐƯỜNG TỪNG CHẶNG TRÊN QL1A</span>
+                  <button type="button" @click="showTurnStepsDrawer = false" class="text-slate-400 hover:text-white cursor-pointer">✕</button>
+                </div>
+                <div v-for="(st, sIdx) in turnByTurnSteps" :key="sIdx" class="py-1 border-b border-slate-800/50 flex items-start gap-2.5">
+                  <template v-if="st.isHeader">
+                    <div class="font-black text-blue-400 py-1 text-[11px] uppercase tracking-wide w-full flex items-center justify-between">
+                      <span>{{ st.title }}</span>
+                      <span class="text-slate-400 font-mono text-[10px]">{{ st.distance }} • {{ st.duration }}</span>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <i class="fa-solid text-blue-400 mt-1 shrink-0" :class="st.icon || 'fa-arrow-up'"></i>
+                    <div class="flex-1">
+                      <span class="font-bold text-slate-200 block">{{ st.instruction }}</span>
+                      <span class="text-[10px] text-slate-400 font-mono">{{ st.distance }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Leaflet Container Với Kích Thước Co Giãn Thông Minh Chống Trắng Màn Hình -->
+              <div 
+                ref="mapContainer" 
+                id="driver-leaflet-map" 
+                class="w-full relative z-0" 
+                :class="isMapFullscreen ? 'h-full min-h-[500px] rounded-2xl' : 'h-[280px] sm:h-[440px] min-h-[280px]'"
+                style="width: 100%; display: block;"
+              ></div>
+            </div>
 
             <!-- Map Floating Bottom Info -->
             <div class="p-2.5 border-t text-[11px] font-mono font-bold flex items-center justify-between z-10" :class="isDarkMode ? 'bg-slate-950/90 border-slate-800 text-slate-300' : 'bg-slate-100/95 border-slate-200 text-slate-700'">
@@ -2541,17 +2746,26 @@ onUnmounted(() => {
                   </div>
                 </div>
 
-                <!-- NÚT CHỈ ĐƯỜNG GOOGLE MAPS CHO BÁC TÀI -->
-                <div class="pt-3 flex items-center justify-center">
+                <!-- NÚT CHỈ ĐƯỜNG TRỰC TIẾP TRONG APP CHO BÁC TÀI -->
+                <div class="pt-3 flex flex-col items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    @click="startInAppNavigation"
+                    class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-lg shadow-blue-500/30 transition active:scale-95 cursor-pointer"
+                  >
+                    <i class="fa-solid fa-location-arrow -rotate-45 text-sm animate-pulse"></i>
+                    <span>Bật Chỉ Đường Trực Tiếp (HUD Bác Tài)</span>
+                    <span class="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-mono">In-App</span>
+                  </button>
+
                   <a
                     :href="`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(nextStop?.stop_name || nextStop?.address || 'Bến xe Trung tâm Đà Nẵng')}`"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-500/25 transition active:scale-95 cursor-pointer"
+                    class="text-[11px] font-bold text-slate-400 hover:text-blue-500 hover:underline flex items-center gap-1 transition cursor-pointer"
                   >
-                    <span>🗺️</span>
-                    <span>Mở Chỉ Đường Trạm Tiếp Theo (Google Maps)</span>
-                    <span>➔</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                    <span>Dự phòng: Mở ứng dụng Google Maps ngoài</span>
                   </a>
                 </div>
               </div>

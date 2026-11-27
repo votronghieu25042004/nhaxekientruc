@@ -30,13 +30,10 @@ class DriverController extends Controller
         \App\Services\TripScheduleService::ensureUpcomingTripsExist(3);
         Trip::syncRealTimeStatuses();
         $user = Auth::user();
-        // Xác định quyền hiển thị menu chuyển đổi cổng & chọn tài khoản:
-        // - Mặc định luôn là TRUE (để Admin/Dev trải nghiệm, đổi cổng thông tin và chọn các acc để test).
-        // - Chỉ chuyển thành FALSE khi: tài khoản đăng nhập có role === 'driver' VÀ được đánh dấu 'is_real_driver_login' từ form /login VÀ không có cờ admin.
-        $isAdminViewing = true;
-        if ($user && $user->role === 'driver' && session('is_real_driver_login') === true && !session('admin_mode') && !$request->has('admin_view')) {
-            $isAdminViewing = false;
-        }
+        // Xác định quyền hiển thị Admin Viewing Mode:
+        // - CHỈ hiển thị khi tài khoản đăng nhập có role === 'admin'.
+        // - Khi Bác tài (driver) đăng nhập thật thì luôn ẩn thanh Admin Viewing Mode.
+        $isAdminViewing = ($user && $user->role === 'admin');
 
         $today = Carbon::today();
         $tomorrow = Carbon::tomorrow();
@@ -548,6 +545,7 @@ class DriverController extends Controller
         ];
 
         return Inertia::render('Driver/Index', [
+            'isAdminViewing' => $isAdminViewing,
             'drivers' => $driversWithStats,
             'currentDriver' => $currentDriver,
             'selectedTrip' => $selectedTrip,

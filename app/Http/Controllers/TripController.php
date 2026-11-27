@@ -581,6 +581,23 @@ class TripController extends Controller
                 'license_plate' => $trip->bus ? $trip->bus->license_plate : '43B-012.34',
                 'rating' => 4.6,
                 'amenities' => ['WIFI 5G', 'Nước đóng chai', 'Chăn/mền', 'Ổ sạc Type-C', 'Gối nằm'],
+                'floor1_amenities' => ($trip->bus?->amenities['floor1'] ?? [
+                    'Tặng 1 chai nước suối',
+                    'Khăn lạnh tiệt trùng',
+                    'Ổ cắm sạc Type-C + USB 20W',
+                    'TV màn hình LED giải trí',
+                    'Nệm bóng hơi giảm xóc 98% (êm nhất, chống say xe)',
+                    'Lối đi rộng rãi'
+                ]),
+                'floor2_amenities' => ($trip->bus?->amenities['floor2'] ?? [
+                    'Tặng 1 chai nước suối',
+                    'Khăn lạnh tiệt trùng',
+                    'Ổ cắm sạc điện thoại USB',
+                    'TV màn hình LED giải trí',
+                    'Rèm che riêng tư 100% (chống nhìn trộm, chống UV)',
+                    'Cửa sổ ngắm cảnh toàn cảnh',
+                    'Đèn đọc sách ấm 3000K'
+                ]),
                 'driver' => $trip->driver,
                 'status' => $trip->status,
             ],
@@ -588,6 +605,23 @@ class TripController extends Controller
             'dropoffStops' => $dropoffStopsList,
             'floor1Rows' => $floor1Rows,
             'floor2Rows' => $floor2Rows,
+            'floor1_amenities' => ($trip->bus?->amenities['floor1'] ?? [
+                'Tặng 1 chai nước suối',
+                'Khăn lạnh tiệt trùng',
+                'Ổ cắm sạc Type-C + USB 20W',
+                'TV màn hình LED giải trí',
+                'Nệm bóng hơi giảm xóc 98% (êm nhất, chống say xe)',
+                'Lối đi rộng rãi'
+            ]),
+            'floor2_amenities' => ($trip->bus?->amenities['floor2'] ?? [
+                'Tặng 1 chai nước suối',
+                'Khăn lạnh tiệt trùng',
+                'Ổ cắm sạc điện thoại USB',
+                'TV màn hình LED giải trí',
+                'Rèm che riêng tư 100% (chống nhìn trộm, chống UV)',
+                'Cửa sổ ngắm cảnh toàn cảnh',
+                'Đèn đọc sách ấm 3000K'
+            ]),
             'occupiedSeats' => $occupiedSeats,
             'cancellationSchedule' => $cancellationSchedule,
             'user' => $user,
@@ -1625,19 +1659,26 @@ class TripController extends Controller
     {
         $trip = Trip::with(['route.stops', 'bus', 'driver', 'conductor'])->findOrFail($id);
 
-        return response()->json([
-            'trip_id'       => $trip->id,
-            'status'        => $trip->status,
-            'current_lat'   => $trip->current_lat ?? 16.0544,
-            'current_lng'   => $trip->current_lng ?? 108.2022,
-            'current_speed' => $trip->current_speed_kmh ?? 0,
-            'gps_updated_at'=> $trip->gps_updated_at?->toIso8601String(),
-            'current_stop_order' => $trip->current_stop_order ?? 0,
-            'delay_minutes' => $trip->delay_minutes ?? 0,
-            'stops'         => $trip->route?->stops->sortBy('stop_order')->values(),
-            'driver_name'   => $trip->driver?->name,
-            'conductor_name'=> $trip->conductor?->name,
-            'bus_plate'     => $trip->bus?->license_plate,
+        if ($request->wantsJson() && !$request->header('X-Inertia')) {
+            return response()->json([
+                'trip_id'       => $trip->id,
+                'status'        => $trip->status,
+                'current_lat'   => $trip->current_lat ?? 16.0544,
+                'current_lng'   => $trip->current_lng ?? 108.2022,
+                'current_speed' => $trip->current_speed_kmh ?? 0,
+                'gps_updated_at'=> $trip->gps_updated_at?->toIso8601String(),
+                'current_stop_order' => $trip->current_stop_order ?? 0,
+                'delay_minutes' => $trip->delay_minutes ?? 0,
+                'stops'         => $trip->route?->stops->sortBy('stop_order')->values(),
+                'driver_name'   => $trip->driver?->name,
+                'conductor_name'=> $trip->conductor?->name,
+                'bus_plate'     => $trip->bus?->license_plate,
+            ]);
+        }
+
+        return Inertia::render('Trips/LiveTracking', [
+            'trip' => $trip,
+            'stops' => $trip->route?->stops->sortBy('stop_order')->values() ?? [],
         ]);
     }
 

@@ -27,7 +27,7 @@ Route::post('register/send-otp', [AuthController::class, 'sendRegisterOtp'])->na
 Route::get('register/send-otp', fn() => redirect('/register'));
 Route::post('register/verify-otp', [AuthController::class, 'verifyRegisterOtp'])->name('register.verifyOtp');
 Route::get('register/verify-otp', fn() => redirect('/register'));
-Route::post('auth/google-login', [AuthController::class, 'googleLogin'])->name('auth.googleLogin');
+Route::match(['get', 'post'], 'auth/google-login', [AuthController::class, 'googleLogin'])->name('auth.googleLogin');
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
 // 1.1 Fast Login & Role Switcher
@@ -166,6 +166,7 @@ Route::prefix('admin')->group(function () {
     Route::get('buses', [AdminController::class, 'buses'])->name('admin.buses');
     Route::post('buses', [AdminController::class, 'storeBus'])->name('admin.buses.store');
     Route::post('buses/{id}/toggle-status', [AdminController::class, 'toggleBusStatus'])->name('admin.buses.toggleStatus');
+    Route::post('buses/{id}/amenities', [AdminController::class, 'updateBusAmenities'])->name('admin.buses.amenities');
     Route::post('buses/{id}/liquidate', [AdminController::class, 'liquidateBus'])->name('admin.buses.liquidate');
     Route::delete('buses/{id}', [AdminController::class, 'deleteBus'])->name('admin.buses.delete');
 

@@ -925,45 +925,53 @@ class AuthController extends Controller
 
     public function googleLogin(Request $request)
     {
-        $email = $request->input('email', 'tronghieuvo99@gmail.com');
-        $name = $request->input('name', 'Võ Trọng Hiếu');
+        $email = trim($request->input('email', ''));
+        $name = trim($request->input('name', ''));
 
-        $user = User::where('email', $email)->first();
-        if ($user) {
-            if ($user->status === 'LOCKED') {
-                return redirect()->route('login')->withErrors([
-                    'email' => '⛔ Tài khoản Google (' . $email . ') của bạn đã bị KHÓA. Xin vui lòng liên hệ nhà xe nhaxekientruc qua Hotline: 1900 6067 hoặc SĐT: 0905 123 456 để được hỗ trợ mở khóa!'
-                ]);
+        if (empty($email)) {
+            $msg = 'Vui lòng cung cấp email tài khoản Google!';
+            if ($request->wantsJson() || $request->ajax() || $request->header('X-Inertia')) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
             }
-            if ($user->status === 'DELETED') {
-                return redirect()->route('login')->withErrors([
-                    'email' => '⛔ Tài khoản Google (' . $email . ') của bạn đã bị XÓA khỏi hệ thống. Xin vui lòng liên hệ nhà xe nhaxekientruc qua Hotline: 1900 6067 để được giải quyết!'
-                ]);
-            }
+            return back()->withErrors(['email' => $msg]);
         }
 
-        $isStudentGoogle = str_contains(strtolower($email), '.edu.vn') || str_contains(strtolower($email), 'sinhvien');
+        $user = User::where('email', $email)->first();
 
+        // 1. Nếu tài khoản chưa đăng ký: Báo lỗi và yêu cầu đăng ký trước
         if (!$user) {
-            $user = User::create([
-                'name' => $name,
-                'email' => $email,
-                'phone' => '0905' . mt_rand(100000, 999999),
-                'role' => 'customer',
-                'status' => 'ACTIVE',
-                'password' => Hash::make('123456'),
-                'reward_points' => 6058,
-                'loyalty_tier' => 'DIAMOND',
-                'email_verified_at' => now(),
-                'is_student' => $isStudentGoogle,
-                'student_registered_at' => $isStudentGoogle ? now() : null,
-                'student_discount_expires_at' => $isStudentGoogle ? now()->addYear() : null,
-                'student_first_trip_used' => false,
-                'membership_plan' => $isStudentGoogle ? 'STUDENT_DEFAULT' : null,
-                'membership_discount_percent' => $isStudentGoogle ? 30 : null,
-                'membership_expires_at' => $isStudentGoogle ? now()->addYear() : null,
-            ]);
-        } elseif ($isStudentGoogle && empty($user->student_discount_expires_at)) {
+            $msg = "Tài khoản Google ({$email}) chưa được đăng ký trên hệ thống! Vui lòng đăng ký tài khoản trước khi đăng nhập.";
+            if ($request->wantsJson() || $request->ajax() || $request->header('X-Inertia')) {
+                return response()->json([
+                    'success' => false,
+                    'requires_registration' => true,
+                    'email' => $email,
+                    'name' => $name,
+                    'message' => $msg,
+                ], 422);
+            }
+            return back()->withErrors(['email' => $msg]);
+        }
+
+        // 2. Kiểm tra trạng thái khóa / xóa
+        if ($user->status === 'LOCKED') {
+            $msg = '⛔ Tài khoản Google (' . $email . ') của bạn đã bị KHÓA. Xin vui lòng liên hệ nhà xe nhaxekientruc qua Hotline: 1900 6067 hoặc SĐT: 0905 123 456 để được hỗ trợ mở khóa!';
+            if ($request->wantsJson() || $request->ajax() || $request->header('X-Inertia')) {
+                return response()->json(['success' => false, 'message' => $msg], 403);
+            }
+            return redirect()->route('login')->withErrors(['email' => $msg]);
+        }
+        if ($user->status === 'DELETED') {
+            $msg = '⛔ Tài khoản Google (' . $email . ') của bạn đã bị XÓA khỏi hệ thống. Xin vui lòng liên hệ nhà xe nhaxekientruc qua Hotline: 1900 6067 để được giải quyết!';
+            if ($request->wantsJson() || $request->ajax() || $request->header('X-Inertia')) {
+                return response()->json(['success' => false, 'message' => $msg], 403);
+            }
+            return redirect()->route('login')->withErrors(['email' => $msg]);
+        }
+
+        // 3. Khách hàng sinh viên
+        $isStudentGoogle = str_contains(strtolower($email), '.edu.vn') || str_contains(strtolower($email), 'sinhvien');
+        if ($isStudentGoogle && empty($user->student_discount_expires_at)) {
             $user->is_student = true;
             $user->student_registered_at = $user->student_registered_at ?? now();
             $user->student_discount_expires_at = now()->addYear();
@@ -975,6 +983,15 @@ class AuthController extends Controller
 
         Auth::login($user, true);
         $request->session()->regenerate();
+
+        if ($request->wantsJson() || $request->ajax() || $request->header('X-Inertia')) {
+            return response()->json([
+                'success' => true,
+                'message' => "Đăng nhập Google thành công với tài khoản {$user->email}!",
+                'user' => $user,
+                'redirect' => '/',
+            ]);
+        }
 
         return redirect()->intended('/')->with('success', "Đăng nhập Google thành công với tài khoản {$user->email}!");
     }

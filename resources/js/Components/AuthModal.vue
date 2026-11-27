@@ -40,8 +40,9 @@
           <span class="leading-relaxed">{{ errorMessage }}</span>
         </div>
 
+
         <!-- FORM ĐĂNG NHẬP MẬT KHẨU -->
-        <form @submit.prevent="handlePasswordLogin" class="mt-4 space-y-4">
+        <form @submit.prevent="handlePasswordLogin" class="space-y-4">
           <!-- Tài khoản (Email hoặc SĐT) -->
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
@@ -127,7 +128,7 @@
         <!-- CHUYỂN SANG ĐĂNG KÝ (XÁC THỰC OTP) -->
         <div class="mt-4 pt-3.5 border-t border-slate-100 text-center space-y-2">
           <p class="text-xs text-slate-500 font-medium">
-            Chưa có tài khoản nhaxekientruc?
+            Bạn chưa có tài khoản?
           </p>
           <button
             type="button"
@@ -135,12 +136,45 @@
             class="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:border-red-500 hover:bg-red-50/50 text-slate-700 hover:text-red-700 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
           >
             <span>📝</span>
-            <span>Đăng ký tài khoản mới (Xác thực OTP) ➔</span>
+            <span>Đăng ký ngay (Xác thực OTP) ➔</span>
           </button>
+        </div>
+
+        <!-- HỘP HỖ TRỢ KHI GẶP KHÓ KHĂN (CHUẨN ẢNH 1) -->
+        <div class="mt-3.5 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl text-center text-xs text-slate-600">
+          <span>Bạn có gặp khó khăn khi tạo tài khoản? Vui lòng gọi tới số </span>
+          <a href="tel:0906123931" class="font-bold text-red-600 hover:underline">📞 0906 123 931</a>
+          <span class="text-[11px] text-slate-400"> (Giờ hành chính)</span>
+        </div>
+
+        <!-- CỤM HỖ TRỢ ZALO & SỐ ĐIỆN THOẠI (CHUẨN ẢNH 2) -->
+        <div class="mt-2.5 space-y-1.5">
+          <a
+            href="https://zalo.me/0906123931"
+            target="_blank"
+            class="p-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl flex items-center justify-between text-xs font-bold text-emerald-900 transition"
+          >
+            <div class="flex items-center gap-2">
+              <span class="text-base">💬</span>
+              <span>Hỗ trợ qua Zalo</span>
+            </div>
+            <span class="text-emerald-700 text-sm">›</span>
+          </a>
+          <a
+            href="tel:0906123931"
+            class="p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-between text-xs font-bold text-slate-800 transition"
+          >
+            <div class="flex items-center gap-2">
+              <span class="text-base">📞</span>
+              <span>Liên hệ Nhà xe: 0906 123 931</span>
+            </div>
+            <span class="text-slate-400 text-sm">›</span>
+          </a>
         </div>
 
       </div>
     </div>
+
   </Teleport>
 </template>
 
