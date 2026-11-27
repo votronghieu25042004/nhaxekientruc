@@ -262,6 +262,8 @@ Route::prefix('admin')->group(function () {
 // AI Chatbot Assistant & Auto Notification
 Route::post('ai/chat', [AiAssistantController::class, 'chat'])->name('ai.chat');
 Route::post('api/ai/chat', [AiAssistantController::class, 'chat']);
+Route::post('api/ai/instant-book', [AiAssistantController::class, 'instantBook'])->name('ai.instant-book');
+Route::post('api/ai/confirm-payment', [AiAssistantController::class, 'confirmPayment'])->name('ai.confirm-payment');
 Route::post('ai/auto-notify', [AiAssistantController::class, 'autoNotify'])->name('ai.autoNotify');
 Route::post('api/ai/auto-notify', [AiAssistantController::class, 'autoNotify']);
 Route::post('ai/custom-notify', [AiAssistantController::class, 'customNotify'])->name('ai.customNotify');

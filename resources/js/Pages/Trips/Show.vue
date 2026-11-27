@@ -124,10 +124,9 @@
                 </div>
                 <div>
                   <div class="flex items-center gap-2 flex-wrap">
-                    <span class="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] uppercase tracking-wider">AI RECOMMENDATION</span>
-                    <h3 class="font-black text-sm sm:text-base text-slate-900 tracking-tight">AI Chọn Giường Theo Thể Trạng & Thói Quen</h3>
+                    <h3 class="font-black text-sm sm:text-base text-slate-900 tracking-tight">AI Chọn Ghế Giúp Bạn</h3>
                   </div>
-                  <p class="text-xs text-slate-500 mt-0.5">Nói hoặc tick chọn tình trạng của bạn để AI tự động phát sáng vị trí giường êm nhất</p>
+                  <p class="text-xs text-slate-500 mt-0.5">Vui lòng điền thông tin bạn cần để AI chọn ghế</p>
                 </div>
               </div>
 
@@ -152,7 +151,7 @@
                     type="text"
                     v-model="aiCustomPrompt"
                     @keyup.enter="handleAiPromptSubmit"
-                    placeholder="Nhập nhu cầu (vd: Say xe nặng, Đi 2 người, Người già, Cao 1m8...)"
+                    placeholder="Vui lòng điền thông tin bạn cần (vd: Say xe tầng 1, đi 2 người, người lớn tuổi...)"
                     class="w-full pl-3.5 pr-10 py-2.5 rounded-2xl bg-white border border-amber-300 text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-inner"
                   />
                   <button
@@ -173,26 +172,6 @@
                 >
                   <i class="fa-solid fa-wand-magic-sparkles text-[11px]"></i>
                   <span class="hidden sm:inline">AI Chọn Giúp</span>
-                </button>
-              </div>
-
-              <!-- 2. Danh Sách 5 Thẻ Nhanh (Preset Tags) -->
-              <div class="flex items-center gap-2 flex-wrap">
-                <button
-                  v-for="p in AI_PRESETS"
-                  :key="p.id"
-                  type="button"
-                  @click="selectAiPreset(p.id)"
-                  class="px-3 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer active:scale-95"
-                  :class="activeAiSeatMode === p.id 
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-500 shadow-md shadow-amber-500/30 scale-105' 
-                    : 'bg-white hover:bg-amber-50 text-slate-700 border-amber-200/90 shadow-2xs'"
-                >
-                  <span class="text-base">{{ p.icon }}</span>
-                  <div class="text-left">
-                    <span class="block font-black leading-tight">{{ p.label }}</span>
-                    <span class="text-[9.5px] opacity-80 block leading-tight font-normal">{{ p.sublabel }}</span>
-                  </div>
                 </button>
               </div>
 

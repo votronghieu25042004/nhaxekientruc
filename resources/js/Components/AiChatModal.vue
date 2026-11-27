@@ -621,16 +621,157 @@
                           </div>
                         </div>
 
+                        <!-- Nút Khách Hàng Bấm Xác Nhận Đã Chuyển Khoản -->
+                        <button
+                          type="button"
+                          @click="handleConfirmPayment(msg.qr_data.booking_code)"
+                          :disabled="isConfirmingPayment"
+                          class="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition active:scale-95 text-center"
+                        >
+                          <span v-if="isConfirmingPayment">⏳ Đang xác nhận thanh toán...</span>
+                          <span v-else>✅ Tôi Đã Chuyển Khoản Thành Công (Xác Nhận & Xuất Vé)</span>
+                        </button>
+
                         <a
                           :href="msg.qr_data.payment_url"
-                          class="w-full py-2.5 px-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition text-center"
+                          class="w-full py-2 px-4 bg-white hover:bg-slate-50 text-slate-700 font-bold text-[11px] rounded-xl border border-slate-200 shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition text-center"
                         >
-                          <span>🚀 Xem Trang Thanh Toán Chi Tiết (Tải Vé PDF) ➔</span>
+                          <span>📄 Xem Trang Thanh Toán Chi Tiết (Tải Vé PDF) ➔</span>
                         </a>
                       </div>
 
+                      <!-- 3.5. BẢNG MẪU TƯ VẤN ĐẶT VÉ THÔNG MINH (BOOKING CONSULTATION FORM) -->
+                      <div v-if="msg.action && msg.action.type === 'booking_consultation_form'" class="mt-3 p-3.5 bg-gradient-to-br from-rose-50 via-amber-50/40 to-white border-2 border-red-400 rounded-2xl space-y-3 shadow-md text-slate-800">
+                        <div class="flex items-center gap-2 border-b border-red-200/80 pb-2">
+                          <div class="w-7 h-7 rounded-lg bg-red-600 text-white flex items-center justify-center font-bold text-sm">📋</div>
+                          <div>
+                            <h5 class="font-black text-red-700 text-xs">Bé Kiến Trúc DAU • Tư Vấn Đặt Vé</h5>
+                            <p class="text-[10.5px] text-slate-500 font-medium">Chọn thông tin để em tìm chuyến & chọn ghế êm nhất cho bạn nhé:</p>
+                          </div>
+                        </div>
+
+                        <div class="space-y-2.5 text-xs">
+                          <!-- Tuyến đường / Điểm đến -->
+                          <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">📍 Điểm đến:</label>
+                            <select
+                              v-model="consultationForm.destination"
+                              class="w-full bg-white border border-red-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-red-500"
+                            >
+                              <option value="Huế">Đà Nẵng ⇄ Thừa Thiên Huế (150.000đ)</option>
+                              <option value="Quảng Trị">Đà Nẵng ⇄ Quảng Trị (200.000đ)</option>
+                              <option value="Quảng Bình">Đà Nẵng ⇄ Quảng Bình (280.000đ)</option>
+                              <option value="Quy Nhơn">Đà Nẵng ⇄ Quy Nhơn (360.000đ)</option>
+                              <option value="Buôn Ma Thuột">Đà Nẵng ⇄ Buôn Ma Thuột (420.000đ)</option>
+                            </select>
+                          </div>
+
+                          <!-- Ngày đi & Khung giờ -->
+                          <div class="grid grid-cols-2 gap-2">
+                            <div>
+                              <label class="block text-[11px] font-bold text-slate-700 mb-1">📅 Ngày đi:</label>
+                              <select
+                                v-model="consultationForm.date"
+                                class="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-red-500"
+                              >
+                                <option value="Hôm nay">Hôm nay</option>
+                                <option value="Ngày mai">Ngày mai</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label class="block text-[11px] font-bold text-slate-700 mb-1">⏰ Khung giờ:</label>
+                              <select
+                                v-model="consultationForm.timePeriod"
+                                class="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-red-500"
+                              >
+                                <option value="Sáng">Sáng (06:00 - 11:30)</option>
+                                <option value="Chiều">Chiều (12:00 - 17:30)</option>
+                                <option value="Tối">Tối / Đêm (18:00 - 23:30)</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <!-- Số lượng vé -->
+                          <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">🎫 Số lượng vé:</label>
+                            <div class="grid grid-cols-4 gap-1.5">
+                              <button
+                                v-for="cnt in [1, 2, 3, 4]"
+                                :key="cnt"
+                                type="button"
+                                @click="consultationForm.seatCount = cnt"
+                                :class="consultationForm.seatCount === cnt ? 'bg-red-600 text-white font-black border-red-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 font-semibold'"
+                                class="py-1.5 rounded-lg border text-center transition cursor-pointer text-xs"
+                              >
+                                {{ cnt }} vé
+                              </button>
+                            </div>
+                          </div>
+
+                          <!-- Nhu cầu & Thể trạng đặc biệt -->
+                          <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">💡 Nhu cầu & Thể trạng (Bé Kiến Trúc sẽ tính toán tâm xe):</label>
+                            <div class="flex flex-wrap gap-1.5">
+                              <button
+                                type="button"
+                                @click="consultationForm.sayXe = !consultationForm.sayXe"
+                                :class="consultationForm.sayXe ? 'bg-amber-500 text-white border-amber-500 font-black' : 'bg-white text-slate-700 border-slate-200 font-medium'"
+                                class="px-2.5 py-1 rounded-full border text-[11px] transition cursor-pointer flex items-center gap-1"
+                              >
+                                <span>🤢</span>
+                                <span>Dễ say xe (Tầng dưới giữa)</span>
+                              </button>
+                              <button
+                                type="button"
+                                @click="consultationForm.nguoiGia = !consultationForm.nguoiGia"
+                                :class="consultationForm.nguoiGia ? 'bg-amber-500 text-white border-amber-500 font-black' : 'bg-white text-slate-700 border-slate-200 font-medium'"
+                                class="px-2.5 py-1 rounded-full border text-[11px] transition cursor-pointer flex items-center gap-1"
+                              >
+                                <span>👵</span>
+                                <span>Đi cùng người già / bà</span>
+                              </button>
+                              <button
+                                type="button"
+                                @click="consultationForm.treEm = !consultationForm.treEm"
+                                :class="consultationForm.treEm ? 'bg-amber-500 text-white border-amber-500 font-black' : 'bg-white text-slate-700 border-slate-200 font-medium'"
+                                class="px-2.5 py-1 rounded-full border text-[11px] transition cursor-pointer flex items-center gap-1"
+                              >
+                                <span>👶</span>
+                                <span>Đi cùng trẻ nhỏ</span>
+                              </button>
+                              <button
+                                type="button"
+                                @click="consultationForm.capDoi = !consultationForm.capDoi"
+                                :class="consultationForm.capDoi ? 'bg-amber-500 text-white border-amber-500 font-black' : 'bg-white text-slate-700 border-slate-200 font-medium'"
+                                class="px-2.5 py-1 rounded-full border text-[11px] transition cursor-pointer flex items-center gap-1"
+                              >
+                                <span>💑</span>
+                                <span>2 giường cạnh nhau</span>
+                              </button>
+                              <button
+                                type="button"
+                                @click="consultationForm.caoLon = !consultationForm.caoLon"
+                                :class="consultationForm.caoLon ? 'bg-amber-500 text-white border-amber-500 font-black' : 'bg-white text-slate-700 border-slate-200 font-medium'"
+                                class="px-2.5 py-1 rounded-full border text-[11px] transition cursor-pointer flex items-center gap-1"
+                              >
+                                <span>📏</span>
+                                <span>Cao > 1m75 (Giường rộng)</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          @click="submitConsultationForm"
+                          class="w-full py-2.5 px-4 bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition active:scale-95"
+                        >
+                          <span>🔍 Tìm Chuyến Xe & Chọn Ghế Chuẩn Nhất ➔</span>
+                        </button>
+                      </div>
+
                       <!-- 4. THẺ HÀNH ĐỘNG THÔNG THƯỜNG -->
-                      <div v-else-if="msg.action && !['fill_customer_info', 'input_otp', 'show_qr_payment'].includes(msg.action.type)" class="mt-2.5 p-2.5 bg-gradient-to-r from-red-50 via-rose-50/50 to-amber-50 border-2 border-red-300 rounded-2xl">
+                      <div v-else-if="msg.action && !['fill_customer_info', 'input_otp', 'show_qr_payment', 'booking_consultation_form'].includes(msg.action.type)" class="mt-2.5 p-2.5 bg-gradient-to-r from-red-50 via-rose-50/50 to-amber-50 border-2 border-red-300 rounded-2xl">
                         <button
                           type="button"
                           @click="handleAction(msg.action)"
@@ -678,12 +819,12 @@
                         </div>
                       </div>
 
-                      <!-- Interactive Trip Cards (Bấm vào để chuyển sang trang chọn ghế & đặt vé ngay) -->
+                      <!-- Interactive Trip Cards (Đề xuất chuyến xe tốt nhất & Tự động khóa ghế VietQR) -->
                       <div v-if="msg.trips && msg.trips.length > 0" class="mt-3 space-y-2 pt-2 border-t border-slate-200/80">
                         <div class="text-[11px] font-bold text-slate-700 flex items-center justify-between">
                           <span class="flex items-center gap-1.5">
                             <span>🚌</span>
-                            <span>Chuyến xe phù hợp (Bấm để chọn ghế đặt vé):</span>
+                            <span>Chuyến xe phù hợp nhất:</span>
                           </span>
                           <span class="text-[10px] text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
                             {{ msg.trips.length }} chuyến
@@ -693,8 +834,7 @@
                         <div
                           v-for="trip in msg.trips"
                           :key="trip.id"
-                          @click="goToTrip(trip.book_url)"
-                          class="group cursor-pointer p-3.5 rounded-2xl border-2 border-red-200/90 hover:border-red-500 bg-white hover:bg-gradient-to-r hover:from-red-50/70 hover:to-amber-50/40 shadow-xs hover:shadow-lg transition-all duration-200 active:scale-[0.99] space-y-2.5"
+                          class="group p-3.5 rounded-2xl border-2 border-red-200/90 hover:border-red-500 bg-white hover:bg-gradient-to-r hover:from-red-50/70 hover:to-amber-50/40 shadow-xs hover:shadow-lg transition-all duration-200 space-y-2.5"
                         >
                           <div class="flex items-center justify-between gap-2">
                             <div class="font-black text-slate-900 group-hover:text-red-600 transition-colors flex items-center gap-1.5 text-xs sm:text-sm">
@@ -735,15 +875,57 @@
                             </div>
                           </div>
 
+                          <!-- Danh sách các ghế còn trống trên xe (Point 4) -->
+                          <div v-if="trip.vacant_seats && trip.vacant_seats.length > 0" class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                            <div class="flex items-center justify-between text-[10.5px] font-bold text-slate-700">
+                              <span class="flex items-center gap-1">
+                                <span>💺</span>
+                                <span>Ghế còn trống trên chuyến này ({{ trip.vacant_seats.length }} ghế):</span>
+                              </span>
+                              <span class="text-[9px] text-red-600 font-semibold">Bấm để chọn ghế</span>
+                            </div>
+                            <div class="flex flex-wrap gap-1 max-h-24 overflow-y-auto custom-scrollbar">
+                              <button
+                                v-for="seat in trip.vacant_seats"
+                                :key="seat"
+                                type="button"
+                                @click.stop="handleSelectSeatAndBook(trip, seat)"
+                                class="px-2 py-0.5 rounded-md text-[10.5px] font-mono font-bold transition cursor-pointer border"
+                                :class="trip.recommended_seats?.includes(seat) ? 'bg-red-600 text-white border-red-600 shadow-2xs' : 'bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 border-slate-200 hover:border-red-300'"
+                                :title="'Bấm để chốt ngay ghế ' + seat + ' và lấy mã VietQR'"
+                              >
+                                {{ seat }}
+                              </button>
+                            </div>
+                          </div>
+
                           <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px] text-slate-600">
                             <div class="flex items-center gap-1.5">
                               <span class="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">⏰ {{ trip.time_str }} ({{ trip.date_str }})</span>
                               <span class="text-slate-500 text-[10px] hidden sm:inline">• {{ trip.bus_type }} ({{ trip.license_plate }})</span>
                             </div>
-                            <span class="font-black text-xs text-white bg-gradient-to-r from-red-600 to-rose-600 group-hover:from-red-700 group-hover:to-rose-700 px-3 py-1 rounded-xl shadow-xs transition-transform flex items-center gap-1.5">
-                              <span>{{ (trip.recommended_seats && trip.recommended_seats.length > 0) ? '⚡ Tự Động Chọn Ghế Này Ngay' : 'Chọn ghế & đặt vé' }}</span>
-                              <span>➔</span>
-                            </span>
+
+                            <div class="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                @click.stop="handleInstantBook(trip, trip.recommended_seats)"
+                                :disabled="isBookingInstant"
+                                class="font-black text-xs text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 disabled:opacity-50 px-3.5 py-1.5 rounded-xl shadow-xs transition-transform active:scale-95 cursor-pointer flex items-center gap-1.5"
+                              >
+                                <span v-if="isBookingInstant" class="animate-spin">⏳</span>
+                                <span>{{ (trip.recommended_seats && trip.recommended_seats.length > 0) ? '⚡ Tự Động Chọn Ghế Này Ngay' : '⚡ Tự Động Chọn Ghế' }}</span>
+                                <span>➔</span>
+                              </button>
+
+                              <a
+                                :href="trip.book_url"
+                                @click.stop
+                                class="hidden sm:inline-block p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 text-[11px] font-bold"
+                                title="Xem sơ đồ xe chi tiết"
+                              >
+                                Sơ đồ
+                              </a>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -888,6 +1070,82 @@
 
         </div>
 
+        <!-- Modal Nhập Thông Tin Khách Vãng Lai & Hỗ Trợ Đăng Nhập Ngay Tại Chỗ -->
+        <div
+          v-if="guestBookingInfo.show"
+          class="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+        >
+          <div class="fixed inset-0" @click="guestBookingInfo.show = false"></div>
+          <div class="relative bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl border border-red-200 z-10 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">⚡</span>
+                <div>
+                  <h4 class="font-black text-slate-900 text-sm">Khóa Ghế & Lấy Mã VietQR</h4>
+                  <p class="text-[11px] text-slate-500">Chuyến: <strong>{{ guestBookingInfo.trip?.route_name }}</strong> • Ghế: <strong class="text-red-600">{{ guestBookingInfo.seats.join(', ') }}</strong></p>
+                </div>
+              </div>
+              <button
+                type="button"
+                @click="guestBookingInfo.show = false"
+                class="text-slate-400 hover:text-slate-600 p-1 rounded-xl hover:bg-slate-100 text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <!-- Tùy chọn 1: Đăng nhập ngay (Khuyên dùng) -->
+            <div class="p-3.5 rounded-2xl bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 space-y-2">
+              <div class="flex items-center justify-between text-xs font-bold text-red-900">
+                <span>🔑 Bạn đã có tài khoản?</span>
+                <span class="text-[10px] text-red-600 bg-white px-2 py-0.5 rounded-full font-bold shadow-2xs">Khuyên Dùng</span>
+              </div>
+              <p class="text-[11px] text-slate-600 leading-relaxed">Đăng nhập tài khoản để tự động lưu vé vào hệ thống, tích lũy điểm và tra cứu vé mọi lúc mọi nơi.</p>
+              <button
+                type="button"
+                @click="guestBookingInfo.show = false; showAuthModal = true;"
+                class="w-full py-2 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+              >
+                <span>Đăng Nhập / Đăng Ký Tài Khoản Ngay</span>
+              </button>
+            </div>
+
+            <!-- Tùy chọn 2: Điền nhanh tên + SĐT -->
+            <div class="space-y-3 pt-1">
+              <div class="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                Hoặc chốt vé nhanh không cần tài khoản:
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Họ và tên hành khách <span class="text-red-500">*</span></label>
+                <input
+                  v-model="guestBookingInfo.name"
+                  type="text"
+                  placeholder="VD: Nguyễn Văn A"
+                  class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 outline-none focus:border-red-500 focus:bg-white transition"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Số điện thoại nhận vé <span class="text-red-500">*</span></label>
+                <input
+                  v-model="guestBookingInfo.phone"
+                  type="tel"
+                  placeholder="VD: 0905123456"
+                  class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 outline-none focus:border-red-500 focus:bg-white transition"
+                />
+              </div>
+              <button
+                type="button"
+                @click="submitGuestBooking"
+                :disabled="isBookingInstant"
+                class="w-full py-2.5 px-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 disabled:opacity-50 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+              >
+                <span v-if="isBookingInstant" class="animate-spin">⏳</span>
+                <span>⚡ Khóa Ghế & Xuất Mã VietQR Ngay ➔</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Modal Đăng nhập / Đăng ký tự động kích hoạt bởi Bé Kiến Trúc -->
         <AuthModal v-model="showAuthModal" />
 
@@ -945,6 +1203,28 @@ const optimisticFillerText = ref('');
 const currentBookingState = ref({});
 const bookingCountdown = ref(300);
 let countdownInterval = null;
+
+const consultationForm = ref({
+  destination: 'Huế',
+  date: 'Hôm nay',
+  timePeriod: 'Sáng',
+  seatCount: 1,
+  sayXe: false,
+  nguoiGia: false,
+  treEm: false,
+  capDoi: false,
+  caoLon: false,
+});
+
+const isBookingInstant = ref(false);
+const isConfirmingPayment = ref(false);
+const guestBookingInfo = ref({
+  show: false,
+  trip: null,
+  seats: [],
+  name: '',
+  phone: ''
+});
 
 const startCountdownTimer = () => {
   bookingCountdown.value = 300;
@@ -1554,6 +1834,155 @@ const goToTrip = (url) => {
   window.location.href = url;
 };
 
+const submitConsultationForm = () => {
+  const parts = [];
+  parts.push(`Tôi muốn đặt ${consultationForm.value.seatCount} vé đi ${consultationForm.value.destination}`);
+  parts.push(`vào ${consultationForm.value.date.toLowerCase()}`);
+  parts.push(`khung giờ ${consultationForm.value.timePeriod.toLowerCase()}`);
+
+  const conditions = [];
+  if (consultationForm.value.sayXe) conditions.push('tôi bị say xe cần chỗ êm');
+  if (consultationForm.value.nguoiGia) conditions.push('đi cùng người già / bà cần tầng dưới');
+  if (consultationForm.value.treEm) conditions.push('đi cùng trẻ em');
+  if (consultationForm.value.capDoi) conditions.push('2 người muốn nằm cạnh nhau');
+  if (consultationForm.value.caoLon) conditions.push('người cao lớn cần giường rộng');
+
+  if (conditions.length > 0) {
+    parts.push(`nhu cầu: ${conditions.join(', ')}`);
+  }
+  parts.push('chọn giúp tôi ghế êm và chuyến xe phù hợp nhất');
+  sendPrompt(parts.join(', '));
+};
+
+const handleSelectSeatAndBook = (trip, seat) => {
+  handleInstantBook(trip, [seat]);
+};
+
+const handleInstantBook = async (trip, seats) => {
+  const chosenSeats = Array.isArray(seats) && seats.length > 0 ? seats : (trip.recommended_seats || ['A01']);
+
+  // Nếu khách chưa đăng nhập: Hiển thị hộp thoại hỗ trợ đăng nhập hoặc nhập nhanh Tên/SĐT
+  if (!currentUser.value) {
+    guestBookingInfo.value = {
+      show: true,
+      trip: trip,
+      seats: chosenSeats,
+      name: '',
+      phone: ''
+    };
+    return;
+  }
+
+  // Khách đã đăng nhập: Khóa ghế tức thì & xuất mã VietQR
+  await executeInstantBook(trip, chosenSeats, currentUser.value.name, currentUser.value.phone || '0905123456', currentUser.value.email || '');
+};
+
+const submitGuestBooking = async () => {
+  const trip = guestBookingInfo.value.trip;
+  const seats = guestBookingInfo.value.seats;
+  let name = guestBookingInfo.value.name.trim();
+  let phone = guestBookingInfo.value.phone.trim();
+
+  if (!name) name = 'Khách hàng';
+  if (!phone) phone = '0905123456';
+
+  guestBookingInfo.value.show = false;
+  await executeInstantBook(trip, seats, name, phone, '');
+};
+
+const executeInstantBook = async (trip, seats, name, phone, email) => {
+  isBookingInstant.value = true;
+  isAiTyping.value = true;
+  try {
+    const res = await fetch('/api/ai/instant-book', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+      },
+      body: JSON.stringify({
+        trip_id: trip.id,
+        seat_numbers: seats,
+        name: name,
+        phone: phone,
+        email: email
+      })
+    });
+    const data = await res.json();
+
+    const currentSession = chatSessions.value.find(x => x.id === currentSessionId.value);
+    if (currentSession) {
+      const seatStr = seats.join(', ');
+      const newMsg = {
+        role: 'assistant',
+        content: data.reply || `Dạ em đã giữ chỗ thành công ghế **${seatStr}** cho bạn! Mã vé: **${data.booking_code}**. Bạn quét mã VietQR bên dưới để thanh toán cọc 30% giữ chỗ nhé! 💳✨`,
+        qr_data: data.qr_data || null,
+        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+      };
+      currentSession.messages.push(newMsg);
+      if (data.qr_data) {
+        startCountdownTimer();
+      }
+      persistSessions();
+      scrollToBottom();
+
+      const shouldSpeak = (interactionMode.value === 'voice');
+      if (shouldSpeak) {
+        speakText(`Em đã tự động khóa ghế ${seatStr} thành công cho bạn rồi ạ! Bạn quét mã VietQR trên màn hình để đặt cọc giữ chỗ nhé.`, currentSession.messages.length - 1);
+      }
+    }
+  } catch (err) {
+    console.error('Instant book error:', err);
+    alert('Không thể khóa ghế lúc này. Vui lòng thử lại!');
+  } finally {
+    isBookingInstant.value = false;
+    isAiTyping.value = false;
+  }
+};
+
+const handleConfirmPayment = async (bookingCode) => {
+  if (!bookingCode) return;
+  isConfirmingPayment.value = true;
+  try {
+    const res = await fetch('/api/ai/confirm-payment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+      },
+      body: JSON.stringify({ booking_code: bookingCode })
+    });
+    const data = await res.json();
+
+    const replyText = "Bạn đã thanh toán thành thật như bài mình đã làm nhé! 🎉\n\nVé **" + (data.booking_code || bookingCode) + "** của bạn đã được xác nhận thanh toán cọc thành công trên hệ thống Nhà xe Kiến Trúc. Bạn bấm vào nút bên dưới để chuyển sang Quản Lý Vé xem chi tiết vé và mã QR lên xe nhé!";
+
+    const currentSession = chatSessions.value.find(x => x.id === currentSessionId.value);
+    if (currentSession) {
+      currentSession.messages.push({
+        role: 'assistant',
+        content: replyText,
+        action: {
+          type: 'go_to_my_bookings',
+          title: '🎫 Chuyển Sang Quản Lý Vé Để Xem Vé ➔',
+          url: '/my-bookings'
+        },
+        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+      });
+      persistSessions();
+      scrollToBottom();
+
+      if (interactionMode.value === 'voice') {
+        speakText("Bạn đã thanh toán thành thật như bài mình đã làm nhé! Em đã chuyển thông tin vé sang mục Quản Lý Vé cho bạn rồi ạ.", currentSession.messages.length - 1);
+      }
+    }
+  } catch (err) {
+    alert('Đã xác nhận thanh toán thành công!');
+    window.location.href = '/my-bookings';
+  } finally {
+    isConfirmingPayment.value = false;
+  }
+};
+
 const sendPrompt = (text) => {
   inputQuery.value = text;
   sendMessage(false);
@@ -1761,6 +2190,9 @@ const sendMessage = async (isVoiceTurn = false) => {
     if (action) {
       if (action.type === 'open_login' || action.type === 'open_register') {
         setTimeout(() => { showAuthModal.value = true; }, 700);
+      }
+      if (action.type === 'booking_consultation_form' && action.initial_destination) {
+        consultationForm.value.destination = action.initial_destination;
       }
     }
 

@@ -26,4 +26,6 @@ Route::get('/drivers', [BusApiController::class, 'getDrivers']);
 
 // 6. Trợ lý AI & Thông báo tự động
 Route::post('/ai/chat', [AiAssistantController::class, 'chat']);
+Route::post('/ai/instant-book', [AiAssistantController::class, 'instantBook']);
+Route::post('/ai/confirm-payment', [AiAssistantController::class, 'confirmPayment']);
 Route::post('/ai/auto-notify', [AiAssistantController::class, 'autoNotify']);
