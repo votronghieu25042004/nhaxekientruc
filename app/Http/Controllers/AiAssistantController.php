@@ -15,6 +15,27 @@ use Illuminate\Support\Facades\Log;
 class AiAssistantController extends Controller
 {
     /**
+     * Chuyển đổi chuỗi tiếng Việt có dấu thành không dấu để nhận diện ý định chuẩn xác 100%.
+     */
+    public static function stripVN(string $str): string
+    {
+        $str = mb_strtolower($str, 'UTF-8');
+        $unicode = [
+            'a' => 'á|à|ả|ã|ạ|ă|ắ|ặ|ằ|ẳ|ẵ|â|ấ|ầ|ẩ|ẫ|ậ',
+            'd' => 'đ',
+            'e' => 'é|è|ẻ|ẽ|ẹ|ê|ế|ề|ể|ễ|ệ',
+            'i' => 'í|ì|ỉ|ĩ|ị',
+            'o' => 'ó|ò|ỏ|õ|ọ|ô|ố|ồ|ổ|ỗ|ộ|ơ|ớ|ờ|ở|ỡ|ợ',
+            'u' => 'ú|ù|ủ|ũ|ụ|ư|ứ|ừ|ử|ữ|ự',
+            'y' => 'ý|ỳ|ỷ|ỹ|ỵ',
+        ];
+        foreach ($unicode as $nonAccent => $accent) {
+            $str = preg_replace("/($accent)/ui", $nonAccent, $str);
+        }
+        return trim($str);
+    }
+
+    /**
      * Endpoint API nhận tin nhắn chat từ khách hàng và phản hồi thông minh.
      */
     public function chat(Request $request)
@@ -36,10 +57,39 @@ class AiAssistantController extends Controller
 
         $context = $this->buildBusHubContext();
         $lower = mb_strtolower($message, 'UTF-8');
+        $unaccented = self::stripVN($message);
         $matchingTrips = $this->findMatchingTrips($message);
 
         // =========================================================================
-        // 0. XÁC NHẬN THANH TOÁN KHI KHÁCH BÁO ĐÃ CHUYỂN KHOẢN / ĐÃ THANH TOÁN
+        // 0.0. XỬ LÝ PHÀN NÀN (KHI KHÁCH BỰC MÌNH "SAO NGU VẬY", "DỐT VẬY")
+        // Trả lời ngắn gọn, chân thành, trực tiếp hỏi nhu cầu thay vì xả bài văn dài
+        // =========================================================================
+        $isComplaining = (bool) preg_match('/(sao ngu|sao nguu|ngu vay|nguu vay|ngu the|nguu the|dot vay|dot the|sao dot|kem vay|kem the|cha hieu|khong hieu|tra loi vo van|tra loi sai|sao do vay|nguu nhu|ngu nhu)/i', $unaccented);
+        if ($isComplaining) {
+            $nameStr = $user ? " bạn **{$user->name}**" : " bạn";
+            return response()->json([
+                'reply' => "Dạ em thành thật xin lỗi{$nameStr} vì phản hồi trước đó chưa đúng ý mình ạ! 🙏 Bạn đang cần tìm chuyến xe đi đâu hoặc muốn đặt vé thế nào, bạn nói với em để em hỗ trợ chốt vé ngay nhé!",
+                'suggestions' => ['Tôi muốn đặt xe', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Chính sách cọc 30%'],
+            ]);
+        }
+
+        // =========================================================================
+        // 0.1. CHÀO HỎI NHANH (GREETING) - CẢ CÓ DẤU & KHÔNG DẤU
+        // Khi khách nói "xin chào", "xin chao ban", "chào bạn", "hello", "hi", "alo"...
+        // =========================================================================
+        $isGreeting = (bool) preg_match('/^(xin\s*chao|chao|hello|hi|hey|alo)\b/i', $unaccented)
+            || in_array($unaccented, ['xin chao', 'xin chao ban', 'chao', 'chao ban', 'chao em', 'chao anh', 'chao chi', 'hello', 'hi', 'alo']);
+
+        if ($isGreeting && !preg_match('/(dat|ve|xe|chuyen|ghe|huy|gia|tien|tien dinh|say)/i', $unaccented)) {
+            $nameStr = $user ? " bạn **{$user->name}**" : " bạn";
+            return response()->json([
+                'reply' => "Dạ em chào{$nameStr} ạ! Em là **Bé Kiến Trúc DAU** - Nhà xe Kiến Trúc Đà Nẵng. Em có thể hỗ trợ gì cho chuyến đi hôm nay của mình ạ? 😊",
+                'suggestions' => ['Tôi muốn đặt xe', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Chính sách cọc 30%'],
+            ]);
+        }
+
+        // =========================================================================
+        // 0.2. XÁC NHẬN THANH TOÁN KHI KHÁCH BÁO ĐÃ CHUYỂN KHOẢN / ĐÃ THANH TOÁN
         // Khi khách gõ hoặc nói "Tôi đã chuyển khoản thành công", "đã thanh toán rồi"...
         // =========================================================================
         $paymentConfirmResult = $this->handlePaymentConfirmationInquiry($request, $message, $lower, $user, $history);
@@ -539,28 +589,40 @@ class AiAssistantController extends Controller
      */
     public function handleConsultationFormInquiry(string $message, string $lower, $user): ?array
     {
-        $isBookingHelp = (bool) preg_match('/(hỗ trợ đặt vé|đặt vé giúp|tư vấn đặt vé|chọn ghế giúp|tìm vé giúp|đặt vé)/ui', $lower);
+        $unaccented = self::stripVN($message);
+        $isBookingHelp = (bool) preg_match('/(ho tro dat|dat ve|dat xe|muon dat|mua ve|tim ve|tim xe|bat xe|book xe|tu van dat|chon ghe giup|lay ve|muon di|cho toi dat)/i', $unaccented)
+            || (bool) preg_match('/(hỗ trợ đặt|đặt vé|đặt xe|muốn đặt|mua vé|tìm vé|tìm xe|bắt xe|book xe|tư vấn đặt|chọn ghế giúp|lấy vé|muốn đi|cho tôi đặt)/ui', $lower);
+
         if (!$isBookingHelp) {
             return null;
         }
 
         // Nếu câu hỏi đã có sẵn đầy đủ: có điểm đến + ngày giờ + tình trạng say xe/người già -> nhường cho handleSeatPhysicsInquiry
-        $hasDetailedCondition = (bool) preg_match('/(say|chóng mặt|già|lớn tuổi|bà|ông|em bé|trẻ|ngủ say|cặp đôi|2 người|chân dài|1m7|1m8)/ui', $lower);
-        $hasTimeOrDate = (bool) preg_match('/(sáng mai|chiều mai|tối mai|hôm nay|ngày mai|\d{1,2}h)/ui', $lower);
-        
+        $hasDetailedCondition = (bool) preg_match('/(say|chong mat|gia|lon tuoi|ba|ong|em be|tre|ngu say|cap doi|2 nguoi|chan dai|1m7|1m8)/i', $unaccented);
+        $hasTimeOrDate = (bool) preg_match('/(sang mai|chieu mai|toi mai|hom nay|ngay mai|\d{1,2}h)/i', $unaccented);
+
         if ($hasDetailedCondition && $hasTimeOrDate) {
             return null;
         }
 
         $dest = null;
-        if (preg_match('/(quảng trị|quang tri|quản trị|quan tri|đông hà)/ui', $lower)) $dest = 'Quảng Trị (Đông Hà)';
-        elseif (preg_match('/(huế|hue|thừa thiên)/ui', $lower)) $dest = 'Thừa Thiên - Huế';
-        elseif (preg_match('/(quảng bình|quang binh|đồng hới)/ui', $lower)) $dest = 'Quảng Bình (Đồng Hới)';
-        elseif (preg_match('/(quy nhơn|quy nhon|bình định)/ui', $lower)) $dest = 'Quy Nhơn (Bình Định)';
-        elseif (preg_match('/(buôn ma thuột|buon ma thuot|đắk lắk|bmt)/ui', $lower)) $dest = 'Buôn Ma Thuột (Đắk Lắk)';
-        elseif (preg_match('/(hà nội|ha noi)/ui', $lower)) $dest = 'Hà Nội';
-        elseif (preg_match('/(nam định|nam dinh)/ui', $lower)) $dest = 'Nam Định';
-        elseif (preg_match('/(hội an|hoi an)/ui', $lower)) $dest = 'Hội An';
+        $destForm = 'Huế';
+        if (preg_match('/(quang tri|quan tri|dong ha)/i', $unaccented)) {
+            $dest = 'Quảng Trị (Đông Hà)';
+            $destForm = 'Quảng Trị';
+        } elseif (preg_match('/(hue|thua thien)/i', $unaccented)) {
+            $dest = 'Thừa Thiên - Huế';
+            $destForm = 'Huế';
+        } elseif (preg_match('/(quang binh|dong hoi)/i', $unaccented)) {
+            $dest = 'Quảng Bình (Đồng Hới)';
+            $destForm = 'Quảng Bình';
+        } elseif (preg_match('/(quy nhon|binh dinh)/i', $unaccented)) {
+            $dest = 'Quy Nhơn (Bình Định)';
+            $destForm = 'Quy Nhơn';
+        } elseif (preg_match('/(buon ma thuot|dak lak|bmt)/i', $unaccented)) {
+            $dest = 'Buôn Ma Thuột (Đắk Lắk)';
+            $destForm = 'Buôn Ma Thuột';
+        }
 
         $destText = $dest ? " đi **{$dest}**" : "";
 
@@ -568,7 +630,8 @@ class AiAssistantController extends Controller
             'reply' => "Dạ vâng, để em lựa chọn chuyến xe và vị trí ghế êm ái, phù hợp nhất theo thể trạng của mình{$destText}, anh/chị điền nhanh thông tin vào khung bên dưới giúp em nhé ạ! 👇",
             'action' => [
                 'type' => 'booking_consultation_form',
-                'destination' => $dest ?? 'Thừa Thiên - Huế',
+                'initial_destination' => $destForm,
+                'destination' => $destForm,
                 'title' => '📋 Khung Tư Vấn & Chọn Ghế Thông Minh'
             ],
             'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%'],
@@ -990,28 +1053,23 @@ class AiAssistantController extends Controller
      */
     public function generateSmartKnowledgeReply(string $rawMessage, string $lower, array $context, $user = null, array $matchingTrips = []): array
     {
-        // ==================== 1. XỬ LÝ PHÀN NÀN / ĐÁNH GIÁ CHẤT LƯỢNG / "SAO DỐT VẬY" ====================
-        if (preg_match('/(sao dốt|sao ngu|dốt vậy|dốt thế|dốt quá|ngu vậy|ngu quá|kém vậy|kém thế|trả lời chả liên quan|không liên quan|trả lời vớ vẩn|trả lời sai|chẳng hiểu gì|không hiểu gì|gemini pro xịn|sao dở vậy)/u', $lower)) {
-            $nameStr = $user ? " bạn **{$user->name}**" : "";
+        $unaccented = self::stripVN($rawMessage);
+
+        // ==================== 1. XỬ LÝ PHÀN NÀN / "SAO NGU VẬY" / "DỐT VẬY" ====================
+        if (preg_match('/(sao dot|sao ngu|sao nguu|ngu vay|nguu vay|ngu the|nguu the|dot vay|dot the|sao dot|kem vay|kem the|cha hieu|khong hieu|tra loi vo van|tra loi sai|sao do vay|nguu nhu|ngu nhu)/i', $unaccented)) {
+            $nameStr = $user ? " bạn **{$user->name}**" : " bạn";
             return [
-                'reply' => "Dạ em thành thật xin lỗi{$nameStr} vì phản hồi trước đó chưa đúng trọng tâm khiến bạn phiền lòng ạ! 🙏\n\n" .
-                           "Hệ thống Trợ lý AI của Nhà xe Kiến Trúc vừa được nâng cấp toàn diện thuật toán phân tích ngữ cảnh câu hỏi. Em có thể giải đáp chính xác và chi tiết cho bạn về:\n" .
-                           "• 🛣️ **Tra cứu chuyến xe & Đặt vé trực tiếp:** Tìm các chuyến xe đang mở bán theo ngày, giờ xuất bến, giá vé và bấm vào thẻ chuyến để chuyển thẳng sang trang chọn ghế đặt vé.\n" .
-                           "• 🔐 **Đăng nhập Quản trị viên (Admin):** Khẳng định rõ quyền hạn bảo mật và từ chối cung cấp quyền admin ra ngoài.\n" .
-                           "• 👤 **Nhận diện tài khoản:** Xem hạng thành viên, điểm tích lũy và tra cứu vé xe cá nhân.\n" .
-                           "• 💳 **Chính sách đặt cọc 30% & Mã giảm giá Sinh viên 30% (`PRO30`).**\n\n" .
-                           "Bạn đang cần kiểm tra thông tin chuyến xe nào, bạn cứ nhắn lại để em hiển thị và hỗ trợ bạn đặt vé ngay nhé!",
-                'suggestions' => ['Có xe từ Quảng Trị đi Huế không?', 'Cách đăng nhập vào admin', 'Bạn nhớ tôi không', 'Xem bảng giá vé các tuyến']
+                'reply' => "Dạ em thành thật xin lỗi{$nameStr} vì phản hồi trước đó chưa đúng ý mình ạ! 🙏 Bạn đang cần tìm chuyến xe đi đâu hoặc muốn đặt vé thế nào, bạn nói với em để em hỗ trợ chốt vé ngay nhé!",
+                'suggestions' => ['Tôi muốn đặt xe', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Chính sách cọc 30%']
             ];
         }
 
-        // ==================== 1.2. CHÀO HỎI NHANH / THỬ MICRO & GIỌNG NÓI ====================
-        // A. Chào hỏi tự nhiên, ngắn gọn (1 câu trả lời liền, không in bài luận dài)
-        if (preg_match('/^(xin chào|chào bạn|chào em|chào anh|chào chị|chào ad|chào nhà xe|chào buổi sáng|chào buổi tối|hello|hi|hey)\b/ui', $lower) || in_array($lower, ['xin chào', 'chào bạn', 'chào em', 'hello', 'hi', 'chào'])) {
+        // ==================== 1.2. CHÀO HỎI NHANH ====================
+        if (preg_match('/^(xin\s*chao|chao|hello|hi|hey|alo)\b/i', $unaccented) || in_array($unaccented, ['xin chao', 'xin chao ban', 'chao', 'chao ban', 'chao em', 'chao anh', 'chao chi', 'hello', 'hi', 'alo'])) {
             $nameStr = $user ? " bạn **{$user->name}**" : " bạn";
             return [
-                'reply' => "Dạ em chào{$nameStr} ạ! Em là **Bé Kiến Trúc (DAU)**. Em có thể hỗ trợ gì cho chuyến đi của mình hôm nay ạ? 😊",
-                'suggestions' => ['Tôi muốn đặt vé đi Quảng Trị', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%', 'Mã giảm giá PRO30']
+                'reply' => "Dạ em chào{$nameStr} ạ! Em là **Bé Kiến Trúc (DAU)**. Em có thể hỗ trợ gì cho chuyến đi hôm nay của mình ạ? 😊",
+                'suggestions' => ['Tôi muốn đặt xe', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Chính sách cọc 30%']
             ];
         }
 
@@ -1656,17 +1714,10 @@ class AiAssistantController extends Controller
             ];
         }
 
-        // Mặc định câu trả lời tự nhiên, lịch sự và giải đáp theo đúng câu hỏi
+        // Mặc định câu trả lời tự nhiên, ngắn gọn, lịch sự (không xả bài văn hay gạch đầu dòng)
         return [
-            'reply' => "Dạ em là Trợ lý trực tuyến của **Nhà xe Kiến Trúc Đà Nẵng** đây ạ! 😊\n\n" .
-                       "Em đã ghi nhận câu hỏi: *\"{$rawMessage}\"* của{$greetingUser}.\n\n" .
-                       "Để giải đáp nhanh và chuẩn xác nhất cho bạn, em có thể hỗ trợ ngay các mục sau:\n" .
-                       "• 🚌 **Tra cứu tuyến xe:** Đà Nẵng đi Huế, Quảng Trị, Quảng Bình, Quy Nhơn, Buôn Ma Thuột.\n" .
-                       "• 💳 **Chính sách đặt cọc 30%:** Giữ chỗ 100%, số tiền còn lại gửi bác tài khi lên xe.\n" .
-                       "• 🎓 **Mã ưu đãi sinh viên 30% (`PRO30`).**\n" .
-                       "• 🔐 **Hướng dẫn đăng nhập Quản trị viên (Admin) tại `/login`.**\n\n" .
-                       "Bạn muốn em tư vấn chi tiết hơn về mục nào trên đây ạ?",
-            'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
+            'reply' => "Dạ em có thể giúp bạn tìm chuyến xe, chọn ghế êm chống say xe hoặc đặt vé nhanh. Bạn muốn đặt xe đi đâu hoặc cần em hỗ trợ gì ạ? 😊",
+            'suggestions' => ['Tôi muốn đặt xe', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Chính sách cọc 30%']
         ];
     }
 

@@ -2086,6 +2086,14 @@ const detectFallbackAction = (q) => {
   if (/(hủy vé|hủy chuyến|trả vé|hoàn tiền)/i.test(lower)) {
     return { type: 'go_to_my_bookings', title: '🎫 Mở Quản Lý Vé & Hủy Vé Tự Động' };
   }
+  if (/(đặt vé|dat ve|đặt xe|dat xe|muốn đặt|muon dat|mua vé|mua ve|tìm xe|tim xe|bắt xe|bat xe|book xe|tư vấn)/i.test(lower)) {
+    return {
+      type: 'booking_consultation_form',
+      initial_destination: 'Huế',
+      destination: 'Huế',
+      title: '📋 Khung Tư Vấn & Chọn Ghế Thông Minh'
+    };
+  }
   return null;
 };
 
@@ -2233,9 +2241,14 @@ const sendMessage = async (isVoiceTurn = false) => {
 const generateSmartReply = (q) => {
   const lower = q.toLowerCase();
 
-  // 0. Phàn nàn / Đánh giá / "Sao dốt vậy"
-  if (/(sao dốt|sao ngu|dốt vậy|dốt thế|kém vậy|chả liên quan|không liên quan|vớ vẩn|trả lời sai|chẳng hiểu gì|không hiểu gì|gemini pro)/i.test(lower)) {
-    return 'Dạ em thành thật xin lỗi bạn vì câu trả lời trước đó chưa đúng trọng tâm khiến bạn phiền lòng ạ! 🙏 Em vừa được cập nhật thuật toán phân tích ngữ cảnh mới. Em có thể giải đáp chính xác về: tra cứu tuyến xe (kể cả tuyến có chạy trực tiếp hay không), hướng dẫn đăng nhập admin tại /login, chính sách cọc 30% và mã giảm giá sinh viên PRO30. Bạn đang cần hỗ trợ thông tin nào ạ?';
+  // 0. Phàn nàn / Đánh giá / "Sao ngu vậy", "nguu", "dốt vậy"
+  if (/(sao dốt|sao ngu|sao nguu|ngu vậy|nguu vậy|ngu the|nguu the|ngu quá|nguu quá|dốt vậy|dốt thế|kém vậy|chả liên quan|không liên quan|vớ vẩn|trả lời sai|chẳng hiểu gì|không hiểu gì|nguu như|ngu như)/i.test(lower)) {
+    return 'Dạ em thành thật xin lỗi bạn vì phản hồi trước đó chưa đúng ý mình ạ! 🙏 Bạn đang cần tìm chuyến xe đi đâu hoặc muốn đặt vé thế nào, bạn nói với em để em hỗ trợ chốt vé ngay nhé!';
+  }
+
+  // 0.1. Nhu cầu Đặt vé / Đặt xe
+  if (/(đặt vé|dat ve|đặt xe|dat xe|muốn đặt|muon dat|mua vé|mua ve|tìm xe|tim xe|bắt xe|bat xe|book xe|tư vấn đặt)/i.test(lower)) {
+    return 'Dạ vâng, để em lựa chọn chuyến xe và vị trí ghế êm ái, phù hợp nhất theo thể trạng của mình, anh/chị điền nhanh thông tin vào khung bên dưới giúp em nhé ạ! 👇';
   }
 
   // 0.5. Thử mic / Giọng nói / "Bạn có nghe tôi nói không" / Danh tính
@@ -2289,9 +2302,9 @@ const generateSmartReply = (q) => {
   }
 
   // Chào hỏi
-  const greetingWords = ['hi', 'hello', 'hey', 'alo', 'xin chào', 'chào', 'chào bạn', 'chào em', 'chào ad', 'chào bot'];
-  if (greetingWords.some(w => lower.startsWith(w))) {
-    return 'Dạ em chào bạn ạ! Em là **Bé Kiến Trúc (DAU)**. Em có thể hỗ trợ gì cho chuyến đi của mình hôm nay ạ? 😊';
+  const greetingWords = ['hi', 'hello', 'hey', 'alo', 'xin chào', 'xin chao', 'chào', 'chao', 'chào bạn', 'chao ban', 'chào em', 'chao em', 'chào anh', 'chao anh', 'chào chị', 'chao chi', 'chào ad', 'chào bot'];
+  if (greetingWords.some(w => lower.startsWith(w) || lower === w)) {
+    return 'Dạ em chào bạn ạ! Em là **Bé Kiến Trúc DAU** - Nhà xe Kiến Trúc Đà Nẵng. Em có thể hỗ trợ gì cho chuyến đi hôm nay của mình ạ? 😊';
   }
 
   // Tuyến cụ thể
@@ -2329,7 +2342,7 @@ const generateSmartReply = (q) => {
     return '📍 Văn phòng chính Nhà xe Kiến Trúc tại: Số 566 Núi Thành, P. Hòa Cường Nam, Q. Hải Châu, TP. Đà Nẵng. Quầy vé số 14 - Bến xe Trung tâm Đà Nẵng. Có xe trung chuyển miễn phí bán kính 5km nội thành Đà Nẵng!';
   }
 
-  return 'Dạ em là Trợ lý trực tuyến của Nhà xe Kiến Trúc Đà Nẵng! 😊 Em có thể giải đáp cho bạn về lịch trình chuyến xe (Huế, Quảng Trị, Quảng Bình, Quy Nhơn, Buôn Ma Thuột), chính sách cọc 30% giữ chỗ, ưu đãi sinh viên PRO30 hoặc hướng dẫn đăng nhập admin nhé!';
+  return 'Dạ em có thể giúp bạn tìm chuyến xe, chọn ghế êm chống say xe hoặc đặt vé nhanh. Bạn muốn đặt xe đi đâu hoặc cần em hỗ trợ gì ạ? 😊';
 };
 
 const triggerAutoEmail = async (isAll) => {
