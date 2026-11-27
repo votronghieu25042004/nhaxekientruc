@@ -23,25 +23,22 @@
         <div class="absolute -right-2 bottom-6 w-3 h-3 bg-white border-r-2 border-b-2 border-red-300 rotate-[-45deg]"></div>
       </div>
 
-      <!-- Mascot 3D Đứng Trực Tiếp Trên Bục Năng Lượng ĐH Kiến Trúc -->
+      <!-- Mascot 3D Lơ Lửng Trực Tiếp Không Đóng Khung Ảnh -->
       <div class="relative flex flex-col items-center">
-        <!-- Vòng hào quang phát sáng năng lượng -->
-        <div class="absolute -inset-2 rounded-full bg-gradient-to-tr from-red-600 via-rose-500 to-amber-400 blur-lg opacity-60 group-hover:opacity-100 transition duration-500 animate-pulse"></div>
+        <!-- Vòng năng lượng tỏa sáng dưới chân -->
+        <div class="absolute -bottom-1 w-24 sm:w-28 h-6 bg-gradient-to-r from-red-600 via-rose-500 to-amber-400 rounded-full blur-md opacity-80 group-hover:opacity-100 transition duration-500 animate-pulse"></div>
 
-        <!-- Bục 3D phát sáng chân mascot -->
-        <div class="absolute -bottom-2 w-24 sm:w-28 h-5 sm:h-6 bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 rounded-full blur-xs opacity-80 shadow-2xl"></div>
-
-        <!-- Hình Mascot Bé Kiến Trúc Đứng To, Sống Động -->
-        <div class="relative w-24 sm:w-28 h-32 sm:h-40 transition-all duration-300 group-hover:scale-110 active:scale-95 group-hover:-translate-y-2">
+        <!-- Hình Mascot Bé Kiến Trúc Trong Suốt Lơ Lửng Tự Nhiên -->
+        <div class="relative w-24 sm:w-28 h-32 sm:h-40 transition-all duration-300 group-hover:scale-110 active:scale-95 group-hover:-translate-y-2 animate-mascot-float">
           <img
-            src="/images/mascot-dau.png"
+            src="/images/mascot-transparent.png"
             alt="Mascot Bé Kiến Trúc DAU"
-            class="w-full h-full object-contain drop-shadow-[0_12px_15px_rgba(185,28,28,0.4)]"
+            class="w-full h-full object-contain drop-shadow-[0_15px_20px_rgba(225,29,72,0.45)]"
           />
           <!-- Huy hiệu online -->
           <span class="absolute top-1 right-1 flex h-3.5 w-3.5">
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white"></span>
+            <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white shadow-xs"></span>
           </span>
         </div>
       </div>
@@ -98,28 +95,37 @@
 
             <!-- TAB 1: QUẦY NHÂN VIÊN ẢO (VIRTUAL STAFF KIOSK STANDEE) -->
             <div v-if="sidebarTab === 'kiosk'" class="flex-1 flex flex-col p-3 overflow-y-auto custom-scrollbar justify-between space-y-3">
-              <!-- Khung Sân Khấu Kiosk Standee Bé Kiến Trúc DAU -->
-              <div class="bg-gradient-to-b from-red-950/80 to-red-900/40 rounded-2xl border-2 border-red-500/40 p-3 text-center relative overflow-hidden shadow-inner">
-                <div class="text-[10px] font-black tracking-widest text-amber-300 uppercase mb-1">
-                  ĐH Kiến Trúc Đà Nẵng
-                </div>
-                <div class="text-xs font-black text-white">
-                  Quầy Vé Ảo Bé Kiến Trúc
+              <!-- Khung Sân Khấu Kiosk Standee Bé Kiến Trúc DAU (Hologram Cyber Stage) -->
+              <div class="relative rounded-3xl p-3.5 text-center overflow-hidden bg-gradient-to-b from-black/50 via-red-950/40 to-black/70 border border-rose-500/40 shadow-2xl backdrop-blur-md">
+                <!-- Vòng hào quang không gian -->
+                <div class="absolute -top-10 -left-10 w-28 h-28 rounded-full bg-rose-600/30 blur-2xl"></div>
+                <div class="absolute -bottom-10 -right-10 w-28 h-28 rounded-full bg-amber-500/20 blur-2xl"></div>
+
+                <div class="relative z-10 flex items-center justify-between pb-1.5 border-b border-rose-500/20">
+                  <span class="text-[9px] font-black tracking-widest text-amber-300 uppercase">ĐH KIẾN TRÚC ĐÀ NẴNG</span>
+                  <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[9px] font-black text-emerald-300 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span>AI LIVE</span>
+                  </span>
                 </div>
 
-                <!-- Mascot Đứng To Trên Sân Khấu Kiosk -->
-                <div class="relative my-2 h-44 sm:h-48 flex items-center justify-center">
-                  <div class="absolute inset-0 rounded-full bg-red-500/20 blur-xl animate-pulse"></div>
+                <!-- Linh vật 3D Bé Kiến Trúc Lơ Lửng Trên Bục Năng Lượng Hologram -->
+                <div class="relative my-2.5 h-44 sm:h-48 flex flex-col items-center justify-center">
+                  <!-- Đĩa phát sáng Hologram 3D ở chân Bé Kiến Trúc -->
+                  <div class="absolute bottom-1 w-32 h-7 rounded-[100%] bg-gradient-to-r from-red-600 via-rose-500 to-amber-400 blur-[3px] opacity-70 animate-pulse"></div>
+                  <div class="absolute bottom-3 w-20 h-3 rounded-[100%] bg-white/40 blur-xs"></div>
+
+                  <!-- Bé Kiến Trúc trong suốt bay lơ lửng -->
                   <img
-                    src="/images/mascot-dau.png"
-                    alt="Bé Kiến Trúc DAU Standee"
-                    class="h-full w-auto object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.6)]"
-                    :class="(isSpeaking || isListeningVoice) ? 'animate-bounce [animation-duration:2s]' : ''"
+                    src="/images/mascot-transparent.png"
+                    alt="Bé Kiến Trúc DAU Hologram"
+                    class="h-full w-auto object-contain drop-shadow-[0_15px_25px_rgba(244,63,94,0.45)] transition-transform duration-500 animate-mascot-float"
+                    :class="isSpeaking ? 'scale-105' : ''"
                   />
                 </div>
 
-                <!-- Cột Sóng Âm Thanh Equalizer (Khi Bé Đang Nói Hoặc Nghe) -->
-                <div class="flex items-center gap-1.5 justify-center py-1">
+                <!-- Cột Sóng Âm Thanh Equalizer Thông Minh -->
+                <div class="flex items-center gap-1.5 justify-center py-1.5 bg-black/40 rounded-xl border border-rose-500/20">
                   <span class="w-1 bg-rose-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-5 animate-pulse' : 'h-1.5'"></span>
                   <span class="w-1 bg-amber-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-7 animate-bounce' : 'h-2'"></span>
                   <span class="w-1 bg-rose-300 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-9 animate-pulse' : 'h-3'"></span>
@@ -127,10 +133,11 @@
                   <span class="w-1 bg-rose-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-5 animate-pulse' : 'h-1.5'"></span>
                 </div>
 
-                <!-- Trạng thái -->
-                <div class="mt-1 flex items-center justify-center gap-1.5 text-[10px] text-emerald-400 font-bold">
-                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                  <span>Đang Trực Phòng Vé 24/7</span>
+                <!-- Trạng thái đàm thoại thông minh -->
+                <div class="mt-1.5 text-[10px] font-black">
+                  <span v-if="isSpeaking" class="text-amber-300 animate-pulse">🔊 Bé Kiến Trúc đang nói...</span>
+                  <span v-else-if="isListeningVoice" class="text-emerald-300 animate-pulse">🎙️ Đang nghe giọng bạn...</span>
+                  <span v-else class="text-emerald-400">🏛️ Trực Phòng Vé Ảo 24/7</span>
                 </div>
               </div>
 
@@ -289,11 +296,11 @@
             <!-- HEADER KHUNG CHAT BÉ KIẾN TRÚC DAU (CÓ NÚT GIỌNG NÓI / PHÓNG TO / ĐÓNG) -->
             <div class="p-3 sm:p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 select-none">
               <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden border-2 border-red-500 bg-red-50 flex items-center justify-center flex-shrink-0 shadow-sm">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden border-2 border-rose-500 bg-gradient-to-tr from-rose-950 via-red-900 to-amber-900 p-0.5 flex items-center justify-center flex-shrink-0 shadow-md">
                   <img
-                    src="/images/mascot-avatar.png"
+                    src="/images/mascot-transparent.png"
                     alt="Bé Kiến Trúc DAU"
-                    class="w-full h-full object-cover"
+                    class="w-full h-full object-contain drop-shadow-sm"
                   />
                 </div>
                 <div class="min-w-0">
@@ -561,16 +568,16 @@
 
                       <div class="leading-relaxed" v-html="formatAiMessage(msg.content)"></div>
 
-                      <!-- 1. THẺ ĐIỀN HỌ TÊN & SĐT GIỮ GHẾ (BƯỚC 2) -->
+                      <!-- 1. THẺ ĐIỀN HỌ TÊN, SĐT & GMAIL GIỮ GHẾ (BƯỚC 2) -->
                       <div v-if="msg.action && msg.action.type === 'fill_customer_info'" class="mt-3 p-3.5 bg-gradient-to-br from-red-50 to-amber-50 border-2 border-red-400 rounded-2xl space-y-2.5 shadow-sm">
                         <div class="flex items-center gap-2 font-black text-red-700 text-xs">
                           <span>📝</span>
                           <span>BÉ KIẾN TRÚC TỰ ĐỘNG GIỮ GHẾ & TẠO TÀI KHOẢN NGẦM</span>
                         </div>
                         <p class="text-[11px] text-slate-600">
-                          Bạn có thể <strong>nói vào micro</strong> (VD: <em>"Mình tên Trần Minh Tuấn, số 0905123456"</em>) hoặc điền nhanh 2 ô bên dưới:
+                          Bạn có thể <strong>nói vào micro</strong> (VD: <em>"Mình tên Trần Minh Tuấn, số 0905123456, email tuantran@gmail.com"</em>) hoặc điền nhanh 3 ô bên dưới:
                         </p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                           <div>
                             <label class="text-[10px] font-bold text-slate-700 block mb-0.5">Họ và Tên:</label>
                             <input
@@ -586,6 +593,15 @@
                               type="tel"
                               v-model="quickCustomerPhone"
                               placeholder="0905123456"
+                              class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-red-500 font-semibold text-slate-800"
+                            />
+                          </div>
+                          <div>
+                            <label class="text-[10px] font-bold text-slate-700 block mb-0.5">Email (Gmail):</label>
+                            <input
+                              type="email"
+                              v-model="quickCustomerEmail"
+                              placeholder="tuantran@gmail.com"
                               class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-red-500 font-semibold text-slate-800"
                             />
                           </div>
@@ -985,6 +1001,7 @@ let isCurrentSessionAuto = false;
 const currentBookingState = ref({});
 const quickCustomerName = ref('Trần Minh Tuấn');
 const quickCustomerPhone = ref('0905123456');
+const quickCustomerEmail = ref('tuantran@gmail.com');
 const quickOtpInput = ref('482910');
 const bookingCountdown = ref(300);
 let countdownInterval = null;
@@ -1020,7 +1037,8 @@ const copyToClipboard = (text, msg) => {
 const submitQuickCustomerInfo = () => {
   const name = quickCustomerName.value.trim() || 'Trần Minh Tuấn';
   const phone = quickCustomerPhone.value.trim() || '0905123456';
-  inputQuery.value = `Mình tên ${name}, số ${phone}`;
+  const email = quickCustomerEmail.value.trim() || 'tuantran@gmail.com';
+  inputQuery.value = `Mình tên ${name}, số ${phone}, email ${email}`;
   sendMessage();
 };
 
@@ -1051,7 +1069,17 @@ const isAcousticEcho = (userTranscript, isAuto = false) => {
   const userWords = normUser.split(' ').filter(Boolean);
   const timeSinceTtsEnd = Date.now() - lastTtsEndTime.value;
 
-  // Ngoại lệ: Nếu người dùng đang cung cấp thông tin thực sự (SĐT, số ghế, mã OTP, số tiền)
+  // Ngoại lệ 1: Câu chào hỏi hoặc yêu cầu tra cứu vé, điểm đến rõ ràng của người dùng
+  const isIntentUser = /(chao|xin chao|dat ve|quang tri|hue|quy nhon|da nang|buon ma thuot|ve xe|chuyen|ghe|cho toi|con ve|co ve|hom nay|ngay mai|ten|email|gmail)/.test(normUser);
+  if (isIntentUser) {
+    if (!lastAiSpokenCleanText.value) return false;
+    const normAi = normalizeTextForComparison(lastAiSpokenCleanText.value);
+    if (!normAi.includes(normUser) || normUser.length > 15) {
+      return false; // Rõ ràng là câu nói của người dùng -> chấp nhận ngay!
+    }
+  }
+
+  // Ngoại lệ 2: Nếu người dùng đang cung cấp thông tin thực sự (SĐT, số ghế, mã OTP, số tiền)
   const containsSpecificEntity = /\d{4,}/.test(transcript) || /\b[A-Da-d]\d{2}\b/.test(transcript);
   if (containsSpecificEntity) {
     if (!lastAiSpokenCleanText.value) return false;
@@ -1229,7 +1257,7 @@ const speakText = (rawText, msgIdx = null) => {
     speakingMsgIdx.value = null;
     lastTtsEndTime.value = Date.now();
 
-    // Nếu chế độ đàm thoại 2 chiều đang bật và cửa sổ đang mở -> nghỉ 1.2s triệt tiêu âm vang loa rồi mới mở Micro
+    // Nếu chế độ đàm thoại 2 chiều đang bật và cửa sổ đang mở -> nghỉ 450ms ngắn gọn rồi mở Micro đàm thoại liên tục
     if (isCallModeActive.value && isOpen.value) {
       isEchoCoolingDown.value = true;
       if (echoCooldownTimer) clearTimeout(echoCooldownTimer);
@@ -1241,7 +1269,7 @@ const speakText = (rawText, msgIdx = null) => {
         if (isCallModeActive.value && !isSpeaking.value && !isAiTyping.value && !isStillSynthesizing) {
           startVoiceRecognition(true /* isAuto */);
         }
-      }, 1200); // Khoảng đệm 1.2 giây triệt tiêu hoàn toàn âm vang loa ngoài laptop/phone
+      }, 450); // Khoảng đệm 450ms mượt mà giúp đàm thoại liên tục không bị ngắt quãng
     }
   };
 
@@ -1825,14 +1853,17 @@ const generateSmartReply = (q) => {
   }
 
   // Chào hỏi
-  const greetingWords = ['hi', 'hello', 'hey', 'alo', 'xin chào', 'chào', 'chào bạn', 'chào ad', 'chào bot'];
+  const greetingWords = ['hi', 'hello', 'hey', 'alo', 'xin chào', 'chào', 'chào bạn', 'chào em', 'chào ad', 'chào bot'];
   if (greetingWords.some(w => lower.startsWith(w))) {
-    return 'Dạ em chào bạn! Em là Trợ lý AI của Nhà xe Kiến Trúc Đà Nẵng. Em có thể hỗ trợ gì cho bạn hôm nay ạ? Bạn cần tra cứu lịch trình chuyến xe, xem giá vé hay chính sách đặt cọc 30% giữ chỗ ạ? 😊';
+    return 'Dạ em chào bạn ạ! Em là **Bé Kiến Trúc (DAU)**. Em có thể hỗ trợ gì cho chuyến đi của mình hôm nay ạ? 😊';
   }
 
   // Tuyến cụ thể
   if (hasQuangTri) {
-    return '🚌 Tuyến Đà Nẵng ⇄ Quảng Trị (Đông Hà): Cự ly 165km (~3.5 giờ). Giá vé 200.000đ/vé (Cọc 30% chỉ 60.000đ | SV mã PRO30 chỉ 140.000đ). Giờ xuất bến: 07:00, 07:15, 08:30, 09:00, 11:00, 15:30, 18:00, 20:00.';
+    if (lower.includes('hôm nay') || lower.includes('còn vé')) {
+      return 'Dạ hôm nay (ngày 27/11) vé xe đi Quảng Trị bên em đều đã khởi hành và hết vé rồi ạ. 🚌\n\nHiện tại bên em chỉ còn chuyến vào ngày mai (ngày 28/11) với 2 chuyến lúc 07:15 sáng và 11:00 trưa thôi ạ. Anh/chị có muốn em hỗ trợ kiểm tra giữ chỗ chuyến ngày mai không ạ? 😊';
+    }
+    return '🚌 Tuyến Đà Nẵng ⇄ Quảng Trị (Đông Hà): Cự ly 165km (~3.5 giờ). Giá vé 160.000đ - 200.000đ/vé (Cọc 30% chỉ 48.000đ - 60.000đ | SV mã PRO30 chỉ 112.000đ). Giờ xuất bến hàng ngày: 07:15 sáng và 11:00 trưa.';
   }
   if (hasHue) {
     return '🚌 Tuyến Đà Nẵng ⇄ Thừa Thiên Huế: Cự ly 100km (~2 giờ). Giá vé 150.000đ/vé (Cọc 30% chỉ 45.000đ | SV mã PRO30 chỉ 105.000đ). Giờ xuất bến liên tục: 06:00, 06:30, 08:00, 08:30, 09:30, 11:00, 14:00, 14:30.';
@@ -1905,5 +1936,18 @@ const triggerAutoEmail = async (isAll) => {
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
+}
+
+@keyframes ai-mascot-float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+
+.animate-mascot-float {
+  animation: ai-mascot-float 3.5s ease-in-out infinite;
 }
 </style>
