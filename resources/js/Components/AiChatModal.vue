@@ -897,12 +897,6 @@
         <!-- Modal Đăng nhập / Đăng ký tự động kích hoạt bởi Bé Kiến Trúc -->
         <AuthModal v-model="showAuthModal" />
 
-        <!-- Modal Google Chooser tự động kích hoạt bởi Bé Kiến Trúc -->
-        <GoogleAccountChooserModal
-          :visible="showGoogleChooser"
-          @close="showGoogleChooser = false"
-          @switchToRegister="showAuthModal = true"
-        />
       </div>
     </Teleport>
   </div>
@@ -912,7 +906,6 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import AuthModal from '@/Components/AuthModal.vue';
-import GoogleAccountChooserModal from '@/Components/GoogleAccountChooserModal.vue';
 
 const page = usePage();
 const isOpen = ref(false);
