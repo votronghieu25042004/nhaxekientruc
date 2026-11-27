@@ -1897,9 +1897,19 @@ const submitConsultationForm = () => {
     ? consultationForm.value.customDestination.trim()
     : consultationForm.value.destination;
 
-  const count = consultationForm.value.seatCount === 5 
+  let count = consultationForm.value.seatCount === 5 
     ? (parseInt(consultationForm.value.customSeatCount) || 5)
     : consultationForm.value.seatCount;
+
+  // Tự động đồng bộ số vé nếu trong ô ghi chú tự do có nhắc đến số người (VD: "tôi đi 3 người", "3 vé", "3 bạn")
+  if (consultationForm.value.customNote && consultationForm.value.customNote.trim()) {
+    const noteMatch = consultationForm.value.customNote.match(/(\d+)\s*(người|vé|khách|chỗ|bạn)/i);
+    if (noteMatch && parseInt(noteMatch[1])) {
+      count = parseInt(noteMatch[1]);
+      consultationForm.value.seatCount = count > 5 ? 5 : count;
+      if (count > 5) consultationForm.value.customSeatCount = count;
+    }
+  }
 
   parts.push(`Tôi muốn đặt ${count} vé đi ${finalDest}`);
 
@@ -1981,6 +1991,7 @@ const executeInstantBook = async (trip, seats, name, phone, email) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
       },
       body: JSON.stringify({
@@ -1994,7 +2005,20 @@ const executeInstantBook = async (trip, seats, name, phone, email) => {
         email: email
       })
     });
-    const data = await res.json();
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      console.error('Non-JSON response from /api/ai/instant-book:', parseErr);
+      alert('Không thể kết nối dịch vụ giữ chỗ lúc này. Vui lòng thử lại sau giây lát!');
+      return;
+    }
+
+    if (!res.ok || data.success === false) {
+      alert(data.message || 'Không thể khóa ghế lúc này. Vui lòng thử lại!');
+      return;
+    }
 
     const currentSession = chatSessions.value.find(x => x.id === currentSessionId.value);
     if (currentSession) {
