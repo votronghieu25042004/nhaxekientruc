@@ -70,6 +70,8 @@ class AiAssistantController extends Controller
             'reply' => $result['reply'],
             'suggestions' => $result['suggestions'] ?? ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên'],
             'trips' => $matchingTrips,
+            'action' => $result['action'] ?? null,
+            'user_bookings' => $result['user_bookings'] ?? [],
             'source' => $result['source'] ?? 'smart-engine',
         ]);
     }
@@ -116,6 +118,24 @@ class AiAssistantController extends Controller
                 'reply' => "Dạ không có chi ạ! Rất vui được hỗ trợ{$nameStr}! 😊\n\n" .
                            "Nếu bạn cần tìm thêm chuyến xe, thay đổi ghế ngồi hoặc cần hỗ trợ về thủ tục cọc vé, bạn cứ nhắn cho em bất kỳ lúc nào nhé. Chúc bạn một ngày thật vui vẻ và có chuyến đi thượng lộ bình an cùng Nhà xe Kiến Trúc Đà Nẵng! 🚌✨",
                 'suggestions' => ['Xem bảng giá vé các tuyến', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên']
+            ];
+        }
+
+        // ==================== 1.4. ĐĂNG NHẬP / TẠO TÀI KHOẢN / ĐĂNG NHẬP GOOGLE TỰ ĐỘNG ====================
+        if (preg_match('/(đăng nhập|đăng ký|tạo tài khoản|mở đăng nhập|vào tài khoản|google login|đăng nhập google|đăng nhập cho tôi|tạo tài khoản cho tôi|chưa có tài khoản|muốn đăng ký)/u', $lower) && !str_contains($lower, 'admin')) {
+            $isGoogle = str_contains($lower, 'google');
+            $nameStr = $user ? " bạn **{$user->name}**" : "";
+            return [
+                'reply' => "Dạ em là **Bé Kiến Trúc DAU**! Em mở ngay cửa sổ **" . ($isGoogle ? "Đăng Nhập Google" : "Đăng Nhập & Tạo Tài Khoản") . "** cho{$nameStr} ngay đây nhé! 😊🏛️\n\n" .
+                           "• 🌐 **Đăng nhập 1 chạm Google:** Chọn tài khoản Google có sẵn cực kỳ nhanh và bảo mật.\n" .
+                           "• 🎓 **Ưu đãi sinh viên:** Nhận ngay mã **`PRO30`** (giảm 30% suốt 365 ngày) khi dùng email sinh viên.\n" .
+                           "• 🎫 **Lưu lịch sử vé:** Xem vé đã đặt và tích lũy điểm thưởng đổi vé miễn phí.\n\n" .
+                           "Cửa sổ đã được mở sẵn trên màn hình, bạn chỉ việc chọn tài khoản hoặc nhập thông tin để đăng nhập nha!",
+                'suggestions' => ['Tôi muốn đặt vé', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên'],
+                'action' => [
+                    'type' => $isGoogle ? 'open_google' : 'open_login',
+                    'title' => $isGoogle ? '🌐 Mở Đăng Nhập Google Ngay ➔' : '🔑 Mở Đăng Nhập & Tạo Tài Khoản ➔'
+                ]
             ];
         }
 
@@ -570,20 +590,52 @@ class AiAssistantController extends Controller
 
         // ==================== 13. CHÍNH SÁCH HỦY VÉ & HOÀN TIỀN TỰ PHỤC VỤ ====================
         if (preg_match('/(hủy vé|hoàn tiền|đổi vé|dời vé|trả vé|chính sách hủy|hủy chuyến|đổi chuyến)/u', $lower)) {
+            $userBookings = [];
+            $bookingListText = "";
+            if ($user) {
+                try {
+                    $userBookings = \App\Models\Booking::with(['trip.route'])
+                        ->where('user_id', $user->id)
+                        ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
+                        ->orderBy('created_at', 'desc')
+                        ->take(3)
+                        ->get()
+                        ->map(function($b) {
+                            return [
+                                'code' => $b->booking_code,
+                                'route' => ($b->trip->route->origin ?? 'Đà Nẵng') . ' ➔ ' . ($b->trip->route->destination ?? 'Điểm đến'),
+                                'time' => $b->trip ? Carbon::parse($b->trip->departure_time)->format('H:i d/m/Y') : 'Chưa xếp giờ',
+                                'paid' => number_format((float)($b->paid_amount ?? 0), 0, ',', '.') . 'đ',
+                                'is_deposit' => $b->is_deposit,
+                                'detail_url' => "/booking/{$b->booking_code}/detail",
+                            ];
+                        })->toArray();
+
+                    if (!empty($userBookings)) {
+                        $bookingListText = "\n\n🎫 **VÉ XE HIỆN TẠI CỦA BẠN TRÊN HỆ THỐNG:**\n";
+                        foreach ($userBookings as $ub) {
+                            $bookingListText .= "• **Mã vé: `{$ub['code']}`** | Tuyến: {$ub['route']} ({$ub['time']})\n  - Đã thanh toán: **{$ub['paid']}** (Cọc giữ chỗ)\n";
+                        }
+                        $bookingListText .= "\n👉 **Bé Kiến Trúc hỗ trợ bạn:** Bạn chỉ cần bấm nút bên dưới, hệ thống sẽ đưa bạn vào thẳng trang Hủy vé tự động để nhập STK ngân hàng và nhận lại tiền hoàn cọc ngay nhé!\n";
+                    }
+                } catch (\Exception $e) {}
+            }
+
             return [
-                'reply' => "🚫 **QUY TRÌNH HỦY VÉ & HOÀN TIỀN TỰ PHỤC VỤ TRÊN WEBSITE:**\n\n" .
-                           "Quý khách có thể tự hủy vé và nhận hoàn tiền trực tiếp ngay trên trang web mà không cần gọi điện:\n\n" .
-                           "1. Truy cập mục **'Quản Lý Vé'** trên thanh menu.\n" .
-                           "2. Tại vé bạn muốn hủy, bấm nút **'🚫 Hủy Vé & Hoàn Tiền'**.\n" .
-                           "3. Nhập số tài khoản ngân hàng để hệ thống tự động đối soát chuyển tiền hoàn.\n\n" .
-                           "• **Quy định tỷ lệ hoàn tiền:**\n" .
-                           "  - **Hủy trong vòng 2 giờ đầu** sau khi đặt vé: Hoàn **100%** không mất phí.\n" .
-                           "  - **Hủy trước giờ xe chạy từ 24 giờ trở lên:** Hoàn **100%** số tiền đã thanh toán.\n" .
-                           "  - **Hủy trước giờ xe chạy 12 - 24 giờ:** Hoàn **80%** số tiền.\n" .
-                           "  - **Hủy trước giờ xe chạy 4 - 12 giờ:** Hoàn **70%** số tiền.\n" .
-                           "  - Hủy dưới 4 giờ trước khi khởi hành: Không áp dụng hoàn tiền.\n\n" .
-                           "Hóa đơn hoàn tiền chuẩn PDF sẽ được xuất tự động để bạn lưu đối soát.",
-                'suggestions' => ['Vào Quản Lý Vé', 'Chính sách cọc 30%', 'Hotline hỗ trợ', 'Đà Nẵng đi Huế']
+                'reply' => "🚫 **BÉ KIẾN TRÚC HỖ TRỢ HỦY VÉ & HOÀN TIỀN CỌC TỰ ĐỘNG:**\n\n" .
+                           "Bé Kiến Trúc luôn đồng hành và bảo vệ tối đa quyền lợi của bạn theo chính sách linh hoạt của Trường ĐH Kiến Trúc Đà Nẵng:\n" .
+                           "• **Hủy trong 2 giờ đầu** sau khi đặt vé: **Hoàn 100% tiền cọc 0đ phí**.\n" .
+                           "• **Hủy trước giờ xe chạy từ 24h trở lên:** **Hoàn 100% tiền cọc**.\n" .
+                           "• **Hủy trước 12h - 24h:** **Hoàn 80% tiền cọc**.\n" .
+                           "• **Hủy trước 4h - 12h:** **Hoàn 70% tiền cọc**." .
+                           $bookingListText,
+                'suggestions' => ['Đến trang Quản Lý Vé', 'Tôi muốn đổi giờ chạy', 'Chính sách cọc 30%', 'Đà Nẵng đi Huế'],
+                'action' => [
+                    'type' => $user ? 'go_to_my_bookings' : 'open_login',
+                    'title' => $user ? '🚫 Đến Trang Quản Lý & Hủy Vé Tự Động ➔' : '🔐 Đăng Nhập Để Hủy Vé ➔',
+                    'url' => '/my-bookings'
+                ],
+                'user_bookings' => $userBookings
             ];
         }
 

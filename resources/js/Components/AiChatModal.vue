@@ -1,27 +1,39 @@
 <template>
   <div>
-    <!-- Nút Nổi Mở Trợ Lý AI (Góc Dưới Phải) -->
+    <!-- Nút Nổi Bé Mascot Kiến Trúc DAU (Góc Dưới Phải) -->
     <div
       v-if="!isOpen"
-      class="fixed bottom-20 right-3.5 sm:bottom-6 sm:right-6 z-40 flex items-center gap-2 sm:gap-3 cursor-pointer group"
+      class="fixed bottom-20 right-3 sm:bottom-6 sm:right-6 z-40 flex items-end gap-2.5 cursor-pointer group select-none"
       @click="openModal"
     >
-      <div class="hidden sm:flex flex-col items-end bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-lg border border-red-100 text-xs font-semibold text-red-950 group-hover:scale-105 transition-all">
-        <span>Trợ Lý AI nhaxekientruc</span>
-        <span class="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+      <!-- Bong bóng thoại thông minh chào đón -->
+      <div class="hidden sm:flex flex-col items-end max-w-[250px] bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl border-2 border-red-200 text-xs text-slate-800 group-hover:scale-105 transition-all duration-300 relative">
+        <div class="flex items-center gap-1.5 font-black text-red-600 text-[11px] mb-0.5">
+          <span>🏛️ BÉ KIẾN TRÚC DAU</span>
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-          Trực tuyến 24/7
-        </span>
+        </div>
+        <p class="text-[11px] text-slate-700 leading-tight font-medium">
+          Nói hoặc nhắn với em để em tự động tìm xe, chọn ghế êm và hỗ trợ từ A-Z nhé! 🚌✨
+        </p>
       </div>
-      <button
-        class="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-red-600 via-rose-600 to-red-700 text-white shadow-xl shadow-red-600/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 border-2 border-white relative cursor-pointer"
-        title="Trợ Lý Vé Xe nhaxekientruc AI"
-      >
-        <span class="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-3 h-3 sm:w-4 sm:h-4 bg-emerald-500 border-2 border-white rounded-full"></span>
-        <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-        </svg>
-      </button>
+
+      <!-- Mascot 3D Nổi Bật Với Hào Quang Năng Lượng ĐH Kiến Trúc -->
+      <div class="relative flex items-center justify-center">
+        <!-- Vòng hào quang năng lượng đỏ cam -->
+        <div class="absolute inset-0 rounded-full bg-gradient-to-tr from-red-600 via-rose-500 to-amber-400 blur-md opacity-70 group-hover:opacity-100 transition animate-pulse"></div>
+
+        <button
+          class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-b from-white to-red-50 p-1 shadow-2xl border-2 border-red-500 relative flex items-center justify-center overflow-hidden hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer"
+          title="Bé Kiến Trúc DAU - AI Đồng Hành Trọn Chuyến"
+        >
+          <img
+            src="/images/mascot-dau.png"
+            alt="Mascot Bé Kiến Trúc DAU"
+            class="w-full h-full object-contain drop-shadow-md group-hover:rotate-6 transition-transform duration-300"
+          />
+          <span class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full shadow-xs"></span>
+        </button>
+      </div>
     </div>
 
     <!-- Khung Chat AI Cao Cấp (Có thể Di Chuyển & Phóng To / Thu Nhỏ) -->
@@ -194,30 +206,50 @@
           <!-- ============================================== -->
           <div :class="showMobileHistory ? 'hidden sm:flex' : 'flex'" class="flex-1 flex-col bg-white overflow-hidden">
             
-            <!-- HEADER KHUNG CHAT (CÓ NÚT PHÓNG TO / THU NHỎ / ĐÓNG) -->
+            <!-- HEADER KHUNG CHAT BÉ KIẾN TRÚC DAU (CÓ NÚT GIỌNG NÓI / PHÓNG TO / ĐÓNG) -->
             <div class="p-3 sm:p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 select-none">
               <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-red-600 to-rose-600 text-white flex items-center justify-center font-black text-xs sm:text-sm shadow-xs flex-shrink-0">
-                  🤖
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden border-2 border-red-500 bg-red-50 flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <img
+                    src="/images/mascot-avatar.png"
+                    alt="Bé Kiến Trúc DAU"
+                    class="w-full h-full object-cover"
+                  />
                 </div>
                 <div class="min-w-0">
-                  <h3 class="text-xs sm:text-sm font-black text-slate-900 leading-tight truncate">
-                    {{ activeView === 'admin_email' ? 'Gửi Thông Báo Gmail' : 'Trợ Lý Trực Tuyến AI' }}
-                  </h3>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <h3 class="text-xs sm:text-sm font-black text-slate-900 leading-tight truncate">
+                      {{ activeView === 'admin_email' ? 'Gửi Thông Báo Gmail' : 'Bé Kiến Trúc DAU' }}
+                    </h3>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-red-100 text-red-700 font-bold border border-red-200">
+                      ĐH Kiến Trúc Đà Nẵng
+                    </span>
+                  </div>
                   <p class="text-[10px] sm:text-[11px] text-emerald-600 font-bold flex items-center gap-1 truncate">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
-                    <span class="truncate">Tư vấn tuyến đường & đặt vé 24/7</span>
+                    <span class="truncate">AI Đồng Hành Toàn Trình • Tự Động Hóa Từ A-Z</span>
                   </p>
                 </div>
               </div>
 
-              <!-- Cụm Nút Điều Khiển: Phóng To / Thu Nhỏ / Lịch Sử Mobile / Đóng -->
+              <!-- Cụm Nút Điều Khiển: Loa Giọng Nói (TTS) / Phóng To / Lịch Sử / Đóng -->
               <div class="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                <!-- Nút Bật/Tắt Giọng Nói AI (TTS) -->
+                <button
+                  type="button"
+                  @click="toggleTts"
+                  class="px-2.5 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                  :class="isTtsEnabled ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100' : 'bg-slate-100 border-slate-200 text-slate-400 hover:bg-slate-200'"
+                  :title="isTtsEnabled ? 'Bé Kiến Trúc đang BẬT giọng đọc (Bấm để Tắt)' : 'Bé Kiến Trúc đang TẮT giọng đọc (Bấm để Bật)'"
+                >
+                  <span>{{ isTtsEnabled ? '🔊 Giọng nói' : '🔇 Tắt loa' }}</span>
+                </button>
+
                 <!-- Nút Lịch Sử trên Mobile -->
                 <button
                   type="button"
                   @click="showMobileHistory = !showMobileHistory"
-                  class="sm:hidden px-2 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition text-[11px] font-bold cursor-pointer flex items-center gap-1"
+                  class="sm:hidden px-2 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition text-[11px] font-bold cursor-pointer flex items-center gap-1"
                   title="Xem lịch sử trò chuyện"
                 >
                   <span>💬 Lịch sử</span>
@@ -237,7 +269,7 @@
                 <!-- Nút Đóng Modal -->
                 <button
                   type="button"
-                  @click="closeModal"
+                  @click="closeModal(); stopSpeech();"
                   class="text-slate-400 hover:text-red-600 font-bold p-1.5 rounded-xl hover:bg-red-50 transition cursor-pointer text-base"
                   title="Đóng cửa sổ"
                 >
@@ -321,25 +353,28 @@
               <!-- Tin nhắn hội thoại -->
               <div ref="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-3.5 custom-scrollbar">
                 
-                <!-- Lời chào & Gợi ý câu hỏi ban đầu -->
-                <div v-if="currentMessages.length === 0" class="text-center py-6 space-y-3 max-w-md mx-auto">
-                  <div class="w-12 h-12 rounded-2xl bg-red-50 text-red-600 mx-auto flex items-center justify-center text-xl shadow-2xs">
-                    💬
+                <!-- Lời chào & Gợi ý câu hỏi ban đầu Bé Kiến Trúc DAU -->
+                <div v-if="currentMessages.length === 0" class="text-center py-5 space-y-3 max-w-md mx-auto">
+                  <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-red-500 mx-auto shadow-md bg-white p-1">
+                    <img src="/images/mascot-dau.png" alt="Bé Kiến Trúc DAU" class="w-full h-full object-contain" />
                   </div>
-                  <h4 class="font-black text-sm text-slate-900">Tôi có thể hỗ trợ gì cho chuyến đi của bạn?</h4>
-                  <p class="text-xs text-slate-500">
-                    Hỏi tôi bất cứ điều gì về lịch trình xe, giá vé, chính sách đặt cọc 30%, sơ đồ ghế ngồi hoặc các trạm đón trả khách.
-                  </p>
+                  <div>
+                    <h4 class="font-black text-sm text-slate-900">Chào bạn! Em là Bé Kiến Trúc DAU 🏛️</h4>
+                    <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                      Em là AI đồng hành trọn chuyến của bạn. Bạn chỉ cần nói hoặc gõ nhu cầu, em sẽ <strong>tự động tìm tuyến, chọn ghế êm, mở đăng nhập hoặc hỗ trợ hủy đổi vé từ A-Z</strong>, bạn chỉ việc thanh toán thôi nhé!
+                    </p>
+                  </div>
 
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 text-left">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-left">
                     <button
                       v-for="(sug, idx) in promptSuggestions"
                       :key="idx"
                       type="button"
                       @click="sendPrompt(sug)"
-                      class="p-2.5 rounded-xl border border-slate-200 hover:border-red-400 hover:bg-red-50/50 text-xs font-semibold text-slate-700 hover:text-red-700 transition cursor-pointer text-left"
+                      class="p-2.5 rounded-xl border border-slate-200 hover:border-red-400 hover:bg-red-50/50 text-xs font-semibold text-slate-700 hover:text-red-700 transition cursor-pointer text-left flex items-center gap-1.5"
                     >
-                      {{ sug }}
+                      <span class="text-base shrink-0">👉</span>
+                      <span>{{ sug }}</span>
                     </button>
                   </div>
                 </div>
@@ -351,21 +386,94 @@
                   class="flex gap-2.5"
                   :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
                 >
-                  <!-- Avatar Bot -->
+                  <!-- Avatar Bé Mascot Kiến Trúc DAU -->
                   <div
                     v-if="msg.role === 'assistant'"
-                    class="w-7 h-7 rounded-lg bg-red-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
+                    class="w-8 h-8 rounded-full overflow-hidden border-2 border-red-500 bg-red-50 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs"
                   >
-                    AI
+                    <img
+                      src="/images/mascot-avatar.png"
+                      alt="Bé Kiến Trúc DAU"
+                      class="w-full h-full object-cover"
+                    />
                   </div>
 
                   <!-- Khung chat -->
                   <div
-                    class="max-w-[80%] rounded-2xl p-3.5 text-xs leading-relaxed shadow-2xs"
+                    class="max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed shadow-2xs"
                     :class="msg.role === 'user' ? 'bg-red-600 text-white rounded-tr-xs' : 'bg-slate-100 text-slate-800 rounded-tl-xs border border-slate-200'"
                   >
                     <div v-if="msg.role === 'assistant'" class="space-y-1.5">
+                      <!-- Tên Bé Kiến Trúc & Nút Loa Nghe Đọc -->
+                      <div class="flex items-center justify-between gap-2 mb-1 border-b border-slate-200/60 pb-1 select-none">
+                        <div class="flex items-center gap-1.5">
+                          <span class="font-black text-red-600 text-[11px]">Bé Kiến Trúc (DAU)</span>
+                          <span v-if="isSpeaking && speakingMsgIdx === idx" class="text-[10px] text-emerald-600 font-bold animate-pulse flex items-center gap-0.5">
+                            <span>🔊</span>
+                            <span>Đang nói...</span>
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          @click="toggleSpeakMsg(msg, idx)"
+                          class="text-[10.5px] px-2 py-0.5 rounded-lg bg-white hover:bg-red-50 border border-slate-200 text-slate-600 hover:text-red-600 font-bold flex items-center gap-1 transition cursor-pointer"
+                          title="Bấm để Bé Kiến Trúc đọc to tin nhắn này"
+                        >
+                          <span v-if="isSpeaking && speakingMsgIdx === idx">⏹️ Dừng</span>
+                          <span v-else>🔊 Nghe đọc</span>
+                        </button>
+                      </div>
+
                       <div class="leading-relaxed" v-html="formatAiMessage(msg.content)"></div>
+
+                      <!-- Thẻ Hành Động Nhanh (Action CTA Card) do Bé Kiến Trúc Kích Hoạt -->
+                      <div v-if="msg.action" class="mt-2.5 p-2.5 bg-gradient-to-r from-red-50 via-rose-50/50 to-amber-50 border-2 border-red-300 rounded-2xl">
+                        <button
+                          type="button"
+                          @click="handleAction(msg.action)"
+                          class="w-full py-2.5 px-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition active:scale-95"
+                        >
+                          <span>{{ msg.action.title }}</span>
+                        </button>
+                      </div>
+
+                      <!-- Danh Sách Vé Xe Của Tôi (Khi Khách Hỏi Hủy Vé / Tra Cứu Vé) -->
+                      <div v-if="msg.user_bookings && msg.user_bookings.length > 0" class="mt-3 space-y-2 pt-2 border-t border-slate-200/80">
+                        <div class="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                          <span class="flex items-center gap-1.5">
+                            <span>🎫</span>
+                            <span>Vé xe hiện có trên hệ thống:</span>
+                          </span>
+                        </div>
+                        <div
+                          v-for="bk in msg.user_bookings"
+                          :key="bk.code"
+                          class="p-3 bg-white border-2 border-amber-300 rounded-xl space-y-1.5 shadow-xs"
+                        >
+                          <div class="flex items-center justify-between">
+                            <span class="font-black text-red-600 font-mono text-xs">{{ bk.code }}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+                              Đã cọc: {{ bk.paid }}
+                            </span>
+                          </div>
+                          <p class="text-xs font-bold text-slate-800">{{ bk.route }}</p>
+                          <p class="text-[11px] text-slate-500">Giờ xuất bến: {{ bk.time }}</p>
+                          <div class="pt-1 flex items-center gap-2">
+                            <a
+                              :href="bk.detail_url"
+                              class="flex-1 py-1.5 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold text-center transition"
+                            >
+                              Xem vé
+                            </a>
+                            <a
+                              href="/my-bookings"
+                              class="flex-1 py-1.5 px-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold text-center transition"
+                            >
+                              Hủy vé hoàn cọc ➔
+                            </a>
+                          </div>
+                        </div>
+                      </div>
 
                       <!-- Interactive Trip Cards (Bấm vào để chuyển sang trang chọn ghế & đặt vé ngay) -->
                       <div v-if="msg.trips && msg.trips.length > 0" class="mt-3 space-y-2 pt-2 border-t border-slate-200/80">
@@ -430,7 +538,7 @@
                               <span class="text-slate-500 text-[10px] hidden sm:inline">• {{ trip.bus_type }} ({{ trip.license_plate }})</span>
                             </div>
                             <span class="font-black text-xs text-white bg-gradient-to-r from-red-600 to-rose-600 group-hover:from-red-700 group-hover:to-rose-700 px-3 py-1 rounded-xl shadow-xs transition-transform flex items-center gap-1.5">
-                              <span>{{ (trip.recommended_seats && trip.recommended_seats.length > 0) ? 'Tự Động Chọn Ghế Này Ngay' : 'Chọn ghế & đặt vé' }}</span>
+                              <span>{{ (trip.recommended_seats && trip.recommended_seats.length > 0) ? '⚡ Tự Động Chọn Ghế Này Ngay' : 'Chọn ghế & đặt vé' }}</span>
                               <span>➔</span>
                             </span>
                           </div>
@@ -520,6 +628,16 @@
           </div>
 
         </div>
+
+        <!-- Modal Đăng nhập / Đăng ký tự động kích hoạt bởi Bé Kiến Trúc -->
+        <AuthModal v-model="showAuthModal" />
+
+        <!-- Modal Google Chooser tự động kích hoạt bởi Bé Kiến Trúc -->
+        <GoogleAccountChooserModal
+          :visible="showGoogleChooser"
+          @close="showGoogleChooser = false"
+          @switchToRegister="showAuthModal = true"
+        />
       </div>
     </Teleport>
   </div>
@@ -528,6 +646,8 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
+import AuthModal from '@/Components/AuthModal.vue';
+import GoogleAccountChooserModal from '@/Components/GoogleAccountChooserModal.vue';
 
 const page = usePage();
 const isOpen = ref(false);
@@ -545,6 +665,94 @@ const editingTitle = ref('');
 
 const isSendingEmail = ref(false);
 const selectedBusFilter = ref('ALL');
+
+const showAuthModal = ref(false);
+const showGoogleChooser = ref(false);
+const isTtsEnabled = ref(true); // Voice Text-to-Speech active by default
+const isSpeaking = ref(false);
+const speakingMsgIdx = ref(null);
+
+const toggleTts = () => {
+  isTtsEnabled.value = !isTtsEnabled.value;
+  if (!isTtsEnabled.value) {
+    stopSpeech();
+  }
+};
+
+const cleanTextForSpeech = (text) => {
+  if (!text) return '';
+  return text
+    .replace(/[*#_`~\[\]\(\)\>]/g, ' ')
+    .replace(/[•\-]/g, ', ')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\bKT-\w+/gi, (m) => m.split('').join(' '))
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const speakText = (rawText, msgIdx = null) => {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  
+  if (!rawText) {
+    isSpeaking.value = false;
+    speakingMsgIdx.value = null;
+    return;
+  }
+
+  const clean = cleanTextForSpeech(rawText);
+  if (!clean) return;
+
+  const utterance = new SpeechSynthesisUtterance(clean);
+  utterance.lang = 'vi-VN';
+  utterance.rate = 1.05;
+  utterance.pitch = 1.05;
+
+  speakingMsgIdx.value = msgIdx;
+  isSpeaking.value = true;
+
+  utterance.onend = () => {
+    isSpeaking.value = false;
+    speakingMsgIdx.value = null;
+  };
+  utterance.onerror = () => {
+    isSpeaking.value = false;
+    speakingMsgIdx.value = null;
+  };
+
+  window.speechSynthesis.speak(utterance);
+};
+
+const stopSpeech = () => {
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+  isSpeaking.value = false;
+  speakingMsgIdx.value = null;
+};
+
+const toggleSpeakMsg = (msg, idx) => {
+  if (isSpeaking.value && speakingMsgIdx.value === idx) {
+    stopSpeech();
+  } else {
+    speakText(msg.content, idx);
+  }
+};
+
+const handleAction = (action) => {
+  if (!action) return;
+  if (action.type === 'open_login') {
+    showAuthModal.value = true;
+  } else if (action.type === 'open_google') {
+    showGoogleChooser.value = true;
+  } else if (action.type === 'open_register') {
+    showAuthModal.value = true;
+  } else if (action.type === 'go_to_my_bookings') {
+    window.location.href = '/my-bookings';
+  } else if (action.url) {
+    window.location.href = action.url;
+  }
+};
 
 const currentUser = computed(() => {
   return page.props.auth?.user || null;
@@ -841,6 +1049,20 @@ const startVoiceRecognition = () => {
   }
 };
 
+const detectFallbackAction = (q) => {
+  const lower = q.toLowerCase();
+  if (/(đăng nhập bằng google|google login|tài khoản google|gmail)/i.test(lower)) {
+    return { type: 'open_google', title: '🌐 Mở Chọn Tài Khoản Google Ngay' };
+  }
+  if (/(đăng nhập|đăng ký|tạo tài khoản|login|register)/i.test(lower)) {
+    return { type: 'open_login', title: '🔑 Mở Khung Đăng Nhập / Đăng Ký' };
+  }
+  if (/(hủy vé|hủy chuyến|trả vé|hoàn tiền)/i.test(lower)) {
+    return { type: 'go_to_my_bookings', title: '🎫 Mở Quản Lý Vé & Hủy Vé Tự Động' };
+  }
+  return null;
+};
+
 const sendMessage = async () => {
   const query = inputQuery.value.trim();
   if (!query) return;
@@ -886,21 +1108,56 @@ const sendMessage = async () => {
     const reply = data.reply || generateSmartReply(query);
     const suggestions = data.suggestions || [];
     const trips = data.trips || [];
+    const action = data.action || null;
+    const user_bookings = data.user_bookings || [];
 
-    currentSession.messages.push({
+    const newMsg = {
       role: 'assistant',
       content: reply,
       suggestions: suggestions,
       trips: trips,
+      action: action,
+      user_bookings: user_bookings,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-    });
+    };
+    currentSession.messages.push(newMsg);
+
+    // Tự động kích hoạt hành động thông minh (Auto-Copilot)
+    if (action) {
+      if (action.type === 'open_login' || action.type === 'open_register') {
+        setTimeout(() => { showAuthModal.value = true; }, 700);
+      } else if (action.type === 'open_google') {
+        setTimeout(() => { showGoogleChooser.value = true; }, 700);
+      }
+    }
+
+    // Bé Kiến Trúc DAU nói lại cho khách hàng (Voice TTS)
+    if (isTtsEnabled.value) {
+      speakText(reply, currentSession.messages.length - 1);
+    }
   } catch (err) {
     const fallback = generateSmartReply(query);
-    currentSession.messages.push({
+    const fallbackAction = detectFallbackAction(query);
+    const newMsg = {
       role: 'assistant',
       content: fallback,
+      action: fallbackAction,
+      user_bookings: [],
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-    });
+    };
+    currentSession.messages.push(newMsg);
+
+    if (fallbackAction) {
+      if (fallbackAction.type === 'open_login' || fallbackAction.type === 'open_register') {
+        setTimeout(() => { showAuthModal.value = true; }, 700);
+      } else if (fallbackAction.type === 'open_google') {
+        setTimeout(() => { showGoogleChooser.value = true; }, 700);
+      }
+    }
+
+    if (isTtsEnabled.value) {
+      speakText(fallback, currentSession.messages.length - 1);
+    }
   } finally {
     isAiTyping.value = false;
     persistSessions();
@@ -916,9 +1173,14 @@ const generateSmartReply = (q) => {
     return 'Dạ em thành thật xin lỗi bạn vì câu trả lời trước đó chưa đúng trọng tâm khiến bạn phiền lòng ạ! 🙏 Em vừa được cập nhật thuật toán phân tích ngữ cảnh mới. Em có thể giải đáp chính xác về: tra cứu tuyến xe (kể cả tuyến có chạy trực tiếp hay không), hướng dẫn đăng nhập admin tại /login, chính sách cọc 30% và mã giảm giá sinh viên PRO30. Bạn đang cần hỗ trợ thông tin nào ạ?';
   }
 
-  // 0.5. Thử mic / Giọng nói / "Bạn có nghe tôi nói không"
-  if (/(nghe tôi nói không|có nghe không|nghe không|nghe rõ không|alo|alo alo|test mic|thử giọng|bạn nghe được không|có ai ở đây không|bạn ở đó không|có ai không|bạn là ai|em là ai|trợ lý là ai|ai đó)/i.test(lower)) {
-    return 'Dạ em nghe bạn rất rõ và to ạ! Em là **Trợ lý AI Đồng Hành Thông Minh** của **Nhà xe Kiến Trúc Đà Nẵng** đây ạ! 😊🎙️\n\nMicro và giọng nói nhận diện hoàn hảo. Em luôn trực tuyến để lắng nghe và đồng hành cùng bạn suốt chuyến đi:\n• 🚌 Tra cứu tuyến xe & giờ chạy\n• 🎯 Tư vấn chọn giường chống say xe, giường rèm riêng tư, đi 2 người\n• 💳 Hỗ trợ đặt cọc 30% & mã ưu đãi giảm 30% sinh viên PRO30.\n\nBạn cứ nói hoặc gõ tiếp yêu cầu, em đang lắng nghe bạn đây ạ!';
+  // 0.5. Thử mic / Giọng nói / "Bạn có nghe tôi nói không" / Danh tính
+  if (/(nghe tôi nói không|có nghe không|nghe không|nghe rõ không|alo|alo alo|test mic|thử giọng|bạn nghe được không|có ai ở đây không|bạn ở đó không|có ai không|bạn là ai|em là ai|trợ lý là ai|ai đó|linh vật|mascot|kiến trúc)/i.test(lower)) {
+    return 'Dạ em nghe bạn rất rõ và to ạ! Em là **Bé Kiến Trúc DAU** - Linh vật 3D & Trợ lý AI đồng hành thông minh của **Trường Đại học Kiến Trúc Đà Nẵng** đây ạ! 🏛️🎙️\n\nEm luôn trực tuyến đồng hành cùng bạn suốt mọi lúc:\n• 🚌 Tự động tìm tuyến & chọn sẵn ghế êm chống say xe\n• 🔑 Hỗ trợ đăng nhập, tạo tài khoản mới & đăng nhập nhanh bằng Google\n• 🎫 Hỗ trợ tra cứu vé, hủy vé & hoàn tiền tự động 100%\n• 💳 Giữ chỗ với cọc 30% VietQR siêu tiện lợi.\n\nBạn cứ nói hoặc yêu cầu bất kỳ điều gì, em sẽ tự động làm hết cho bạn nhé!';
+  }
+
+  // 0.8. Tự động hỗ trợ Đăng nhập / Đăng ký / Google
+  if (/(đăng nhập|đăng ký|tạo tài khoản|tài khoản|google|gmail)/i.test(lower)) {
+    return 'Dạ để hỗ trợ bạn đặt vé và quản lý lịch trình thuận tiện nhất, em đã tự động mở khung Đăng Nhập / Đăng Ký (và Đăng nhập bằng Google) cho bạn rồi đây ạ! ✨\n\nNếu bạn chưa có tài khoản, bạn vui lòng đăng ký tài khoản trước nhé. Em luôn ở đây đồng hành cùng bạn!';
   }
 
   // 1. Đăng nhập Admin / Trang quản trị
