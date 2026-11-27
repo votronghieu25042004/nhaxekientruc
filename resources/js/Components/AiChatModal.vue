@@ -119,9 +119,21 @@
                   <img
                     src="/images/mascot-transparent.png"
                     alt="Bé Kiến Trúc DAU Hologram"
-                    class="h-full w-auto object-contain drop-shadow-[0_15px_25px_rgba(244,63,94,0.45)] transition-transform duration-500 animate-mascot-float"
-                    :class="isSpeaking ? 'scale-105' : ''"
+                    class="h-full w-auto object-contain drop-shadow-[0_15px_25px_rgba(244,63,94,0.45)] transition-transform duration-500"
+                    :class="[
+                      isCheckingLedger ? 'animate-ledger-check' : 'animate-mascot-float',
+                      isSpeaking ? 'scale-105' : ''
+                    ]"
                   />
+
+                  <!-- Huy hiệu Bé Kiến Trúc đang cúi xuống tra sổ sơ đồ -->
+                  <div
+                    v-if="isCheckingLedger"
+                    class="absolute bottom-2 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-red-950 font-black text-[9.5px] shadow-lg flex items-center gap-1.5 animate-bounce z-20 border border-amber-200"
+                  >
+                    <span>📖</span>
+                    <span>Đang cúi xuống xem sổ...</span>
+                  </div>
                 </div>
 
                 <!-- Cột Sóng Âm Thanh Equalizer Thông Minh -->
@@ -135,7 +147,8 @@
 
                 <!-- Trạng thái đàm thoại thông minh -->
                 <div class="mt-1.5 text-[10px] font-black">
-                  <span v-if="isSpeaking" class="text-amber-300 animate-pulse">🔊 Bé Kiến Trúc đang nói...</span>
+                  <span v-if="isCheckingLedger" class="text-amber-300 animate-pulse">📖 Bé Kiến Trúc đang kiểm tra sổ xe...</span>
+                  <span v-else-if="isSpeaking" class="text-amber-300 animate-pulse">🔊 Bé Kiến Trúc đang nói...</span>
                   <span v-else-if="isListeningVoice" class="text-emerald-300 animate-pulse">🎙️ Đang nghe giọng bạn...</span>
                   <span v-else class="text-emerald-400">🏛️ Trực Phòng Vé Ảo 24/7</span>
                 </div>
@@ -877,12 +890,24 @@
                   </div>
                 </div>
 
-                <!-- Loading AI Typing -->
-                <div v-if="isAiTyping" class="flex gap-2.5 items-center text-slate-400 text-xs">
-                  <div class="w-7 h-7 rounded-lg bg-red-600 text-white flex items-center justify-center text-xs font-bold">
-                    AI
+                <!-- Loading AI Typing & Optimistic Filler -->
+                <div v-if="isAiTyping" class="flex gap-2.5 items-start text-xs">
+                  <div class="w-8 h-8 rounded-full overflow-hidden border-2 border-red-500 bg-red-50 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
+                    <img src="/images/mascot-avatar.png" alt="Bé Kiến Trúc DAU" class="w-full h-full object-cover" />
                   </div>
-                  <div class="p-3 bg-slate-100 rounded-2xl border border-slate-200 flex items-center gap-1.5">
+                  
+                  <div v-if="isCheckingLedger" class="p-3 bg-gradient-to-r from-amber-50 to-rose-50 rounded-2xl border border-amber-200 text-slate-800 shadow-xs space-y-1 max-w-[85%] animate-pulse">
+                    <div class="flex items-center gap-2 font-bold text-red-700 text-xs">
+                      <span class="text-sm">📖</span>
+                      <span>{{ optimisticFillerText || 'Dạ anh/chị đợi em một chút để em kiểm tra sơ đồ xem còn ghế nào êm nhất cho mình nhé...' }}</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 flex items-center gap-1.5 font-medium pl-6">
+                      <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
+                      <span>Bé Kiến Trúc đang tra cứu sơ đồ giường & phân tích tâm trọng lực xe...</span>
+                    </div>
+                  </div>
+
+                  <div v-else class="p-3 bg-slate-100 rounded-2xl border border-slate-200 flex items-center gap-1.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce"></span>
                     <span class="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]"></span>
                     <span class="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.4s]"></span>
@@ -997,6 +1022,9 @@ let activeRecognition = null;
 let echoLoopCount = 0;
 let lastEchoDetectTime = 0;
 let isCurrentSessionAuto = false;
+
+const isCheckingLedger = ref(false);
+const optimisticFillerText = ref('');
 
 const currentBookingState = ref({});
 const quickCustomerName = ref('Trần Minh Tuấn');
@@ -1291,6 +1319,35 @@ const stopSpeech = () => {
   speakingMsgIdx.value = null;
   if (echoCooldownTimer) clearTimeout(echoCooldownTimer);
   isEchoCoolingDown.value = false;
+};
+
+const speakOptimisticFiller = (phrase) => {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  if (!isTtsEnabled.value) return;
+
+  if (activeRecognition) {
+    try { activeRecognition.abort(); } catch (e) {}
+    activeRecognition = null;
+  }
+  isListeningVoice.value = false;
+
+  window.speechSynthesis.cancel();
+  lastAiSpokenCleanText.value = phrase;
+
+  const utterance = new SpeechSynthesisUtterance(phrase);
+  utterance.lang = 'vi-VN';
+  utterance.rate = 1.05;
+  utterance.pitch = 1.05;
+
+  isSpeaking.value = true;
+  utterance.onend = () => {
+    isSpeaking.value = false;
+  };
+  utterance.onerror = () => {
+    isSpeaking.value = false;
+  };
+
+  window.speechSynthesis.speak(utterance);
 };
 
 const toggleSpeakMsg = (msg, idx) => {
@@ -1702,6 +1759,31 @@ const sendMessage = async () => {
   persistSessions();
   isAiTyping.value = true;
 
+  // -------------------------------------------------------------
+  // LUỒNG PHẢN HỒI 2 NHỊP (OPTIMISTIC FILLER & BÉ KIẾN TRÚC TRA SỔ)
+  // Phát ngay câu đệm tự nhiên và hiệu ứng cúi xuống xem sổ để khách không cảm thấy chờ lâu
+  // -------------------------------------------------------------
+  const lowerQuery = query.toLowerCase();
+  const isComplexInquiry = /(say xe|say tàu|chóng mặt|tiền đình|chọn ghế|tìm ghế|ghế nào|ghế êm|giường êm|người già|trẻ em|em bé|còn vé|còn chuyến|hôm nay còn|hủy vé|hủy giúp)/i.test(lowerQuery);
+
+  if (isComplexInquiry) {
+    isCheckingLedger.value = true;
+    let filler = 'Dạ anh/chị đợi em một chút để em kiểm tra sơ đồ xem còn ghế nào êm nhất cho mình nhé...';
+    if (/(hủy vé|hủy chuyến|hủy giúp)/i.test(lowerQuery)) {
+      filler = 'Dạ anh/chị đợi em một chút để em kiểm tra chính sách và thông tin vé cho mình nhé...';
+    } else if (/(còn vé|còn chuyến|hôm nay còn)/i.test(lowerQuery)) {
+      filler = 'Dạ anh/chị đợi em một chút để em kiểm tra sơ đồ chuyến xe trên hệ thống nhé...';
+    }
+    optimisticFillerText.value = filler;
+
+    if (isTtsEnabled.value) {
+      speakOptimisticFiller(filler);
+    }
+  } else {
+    isCheckingLedger.value = false;
+    optimisticFillerText.value = '';
+  }
+
   try {
     // Send last 8 conversation turns for rich contextual memory
     const recentHistory = currentSession.messages
@@ -1789,6 +1871,8 @@ const sendMessage = async () => {
     }
   } finally {
     isAiTyping.value = false;
+    isCheckingLedger.value = false;
+    optimisticFillerText.value = '';
     persistSessions();
     scrollToBottom();
   }
@@ -1949,5 +2033,24 @@ const triggerAutoEmail = async (isAll) => {
 
 .animate-mascot-float {
   animation: ai-mascot-float 3.5s ease-in-out infinite;
+}
+
+@keyframes ledger-check {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+  25% {
+    transform: translateY(6px) rotate(-4deg) scale(1.02);
+  }
+  50% {
+    transform: translateY(8px) rotate(2deg) scale(0.98);
+  }
+  75% {
+    transform: translateY(5px) rotate(-2deg) scale(1.01);
+  }
+}
+
+.animate-ledger-check {
+  animation: ledger-check 1.8s ease-in-out infinite;
 }
 </style>

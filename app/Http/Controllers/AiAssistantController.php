@@ -24,10 +24,13 @@ class AiAssistantController extends Controller
         $user = Auth::user();
 
         if (empty($message)) {
-            $greetingName = $user ? $user->name : 'quý khách';
+            $greetingReply = $user 
+                ? $this->getUserHistoryGreeting($user)
+                : "Dạ em chào quý khách ạ! Em là **Bé Kiến Trúc DAU** - Trợ lý AI Nhà xe Kiến Trúc Đà Nẵng. Em có thể hỗ trợ gì cho hành trình sắp tới của bạn ạ? 😊";
+
             return response()->json([
-                'reply' => "Dạ em chào {$greetingName} ạ! Em là **Trợ lý AI Nhà xe Kiến Trúc Đà Nẵng**. Em có thể hỗ trợ gì cho hành trình sắp tới của bạn ạ?",
-                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Ưu đãi sinh viên 30%'],
+                'reply' => $greetingReply,
+                'suggestions' => $user ? ['Đặt lại tuyến quen thuộc', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%'] : ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Ưu đãi sinh viên 30%'],
             ]);
         }
 
@@ -52,6 +55,23 @@ class AiAssistantController extends Controller
         $availabilityResult = $this->checkRouteAndTripAvailability($message, $lower, $user);
         if ($availabilityResult !== null) {
             return response()->json($availabilityResult);
+        }
+
+        // =========================================================================
+        // KHÉO LÉO GIỮ KHÁCH KHI HỦY VÉ (TỰ GỌI getTicketPolicy & GIỮ CHÂN KHÁCH)
+        // =========================================================================
+        $cancellationResult = $this->handleCancellationInquiry($message, $lower, $user);
+        if ($cancellationResult !== null) {
+            return response()->json($cancellationResult);
+        }
+
+        // =========================================================================
+        // DẠY AI NGHIỆP VỤ NHÀ XE & QUY LUẬT VẬT LÝ XE GIƯỜNG NẰM (SEAT PHYSICS & REASONING)
+        // Phân tích tầng (floor), vùng trọng tâm (zone), ghế đôi (row_pair), tình huống có nhiều lựa chọn vs hết ghế phù hợp
+        // =========================================================================
+        $seatPhysicsResult = $this->handleSeatPhysicsInquiry($message, $lower, $user);
+        if ($seatPhysicsResult !== null) {
+            return response()->json($seatPhysicsResult);
         }
 
         // Thử gọi Gemini API với multi-turn history & multi-model fallback
@@ -162,6 +182,9 @@ class AiAssistantController extends Controller
                 $pickupStopId = $trip?->route?->stops?->first()?->id ?? 1;
                 $dropoffStopId = $trip?->route?->stops?->last()?->id ?? 2;
 
+                $driverNote = $bookingState['driver_note'] ?? $this->extractDriverCustomerNotes($message, (array)$request->input('history', []));
+                $driverNotePrefix = $driverNote ? "{$driverNote} | " : "";
+
                 $booking = \App\Models\Booking::create([
                     'booking_code' => $bookingCode,
                     'user_id' => $targetUser->id,
@@ -182,7 +205,7 @@ class AiAssistantController extends Controller
                     'payment_ref_code' => 'VE' . $bookingCode,
                     'checkin_status' => 'PENDING',
                     'qr_token' => 'QR-' . \Illuminate\Support\Str::uuid()->toString(),
-                    'notes' => "Đặt tự động qua Bé Kiến Trúc DAU AI Copilot. Giữ chỗ cọc 30% (" . number_format($depositAmount, 0, ',', '.') . "đ) trong 5 phút.",
+                    'notes' => "{$driverNotePrefix}Đặt tự động qua Bé Kiến Trúc DAU AI Copilot. Giữ chỗ cọc 30% (" . number_format($depositAmount, 0, ',', '.') . "đ) trong 5 phút.",
                 ]);
 
                 foreach ($seats as $sNum) {
@@ -420,6 +443,9 @@ class AiAssistantController extends Controller
                 $seatPrice = (float)($trip?->floor1_price ?? $trip?->price ?? 140000);
                 $depositAmount = (float)round($seatPrice * 0.3);
 
+                $driverNote = $bookingState['driver_note'] ?? $this->extractDriverCustomerNotes($message, (array)$request->input('history', []));
+                $driverNotePrefix = $driverNote ? "{$driverNote} | " : "";
+
                 $booking = \App\Models\Booking::create([
                     'booking_code' => $bookingCode,
                     'user_id' => $user->id,
@@ -440,7 +466,7 @@ class AiAssistantController extends Controller
                     'payment_ref_code' => 'VE' . $bookingCode,
                     'checkin_status' => 'PENDING',
                     'qr_token' => 'QR-' . \Illuminate\Support\Str::uuid()->toString(),
-                    'notes' => "Đặt tự động qua Bé Kiến Trúc DAU AI Copilot cho thành viên {$user->name}. Cọc 30% (" . number_format($depositAmount, 0, ',', '.') . "đ) trong 5 phút.",
+                    'notes' => "{$driverNotePrefix}Đặt tự động qua Bé Kiến Trúc DAU AI Copilot cho thành viên {$user->name}. Cọc 30% (" . number_format($depositAmount, 0, ',', '.') . "đ) trong 5 phút.",
                 ]);
 
                 \App\Models\BookingSeat::create([
@@ -2136,6 +2162,412 @@ class AiAssistantController extends Controller
                 'book_url' => "/trips/{$t->id}?seats=" . implode(',', $chosenSeats),
             ];
         })->toArray();
+    }
+
+    /**
+     * Tự động nhận diện khách cũ dựa trên lịch sử đặt vé (getUserHistory).
+     * Chào hỏi thân mật kèm tuyến xe và vị trí tầng quen thuộc.
+     */
+    public function getUserHistoryGreeting($user): string
+    {
+        if (!$user) {
+            return "Dạ em chào quý khách ạ! Em là **Bé Kiến Trúc DAU** - Trợ lý AI Nhà xe Kiến Trúc Đà Nẵng. Em có thể hỗ trợ gì cho hành trình của bạn hôm nay ạ? 😊";
+        }
+
+        $latestBooking = \App\Models\Booking::with(['trip.route', 'bookingSeats'])
+            ->where('user_id', $user->id)
+            ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
+            ->latest('id')
+            ->first();
+
+        if (!$latestBooking) {
+            $latestBooking = \App\Models\Booking::with(['trip.route', 'bookingSeats'])
+                ->where('user_id', $user->id)
+                ->latest('id')
+                ->first();
+        }
+
+        $nameParts = explode(' ', trim($user->name));
+        $firstName = trim($nameParts[count($nameParts) - 1]);
+        $nameLower = mb_strtolower($user->name, 'UTF-8');
+
+        $title = 'anh/chị';
+        if (preg_match('/(tuấn|kiệt|thắng|hậu|cường|trí|hiếu|quân|minh|hùng|anh|bằng|bửu|trọng|duy|nam|phong|long|phương)/ui', $nameLower)) {
+            $title = 'anh';
+        } elseif (preg_match('/(hà|ngân|nhã|trang|uyên|tú|nga|lan|vy|linh|mai|thy|hương|hoa|thảo|ngọc|nhi)/ui', $nameLower)) {
+            $title = 'chị';
+        }
+
+        if ($latestBooking && $latestBooking->trip && $latestBooking->trip->route) {
+            $routeName = $latestBooking->trip->route->name ?? 'Đà Nẵng – Quy Nhơn';
+            $routeName = str_replace(['⇄', '->', '➔'], '–', $routeName);
+            $seats = $latestBooking->bookingSeats->pluck('seat_number')->all();
+            $isF1 = empty($seats) || str_starts_with($seats[0], 'A');
+            $seatType = $isF1 ? 'ghế tầng dưới' : 'giường tầng trên';
+
+            return "Chào {$title} {$firstName}, hôm nay {$title} lại đặt tuyến {$routeName} {$seatType} như mọi khi đúng không ạ? 😊";
+        }
+
+        return "Chào {$title} {$firstName}, hôm nay em có thể hỗ trợ {$title} tìm chuyến hay chọn ghế êm đi đâu ạ? 😊";
+    }
+
+    /**
+     * Bóc tách ghi chú thể trạng & yêu cầu đặc biệt gửi đến Bác Tài & Lơ xe.
+     * Tự động nhận diện "say xe", "đi cùng trẻ con", "người già", "mang thai" từ lịch sử hội thoại.
+     */
+    public function extractDriverCustomerNotes(string $message, array $history = []): ?string
+    {
+        $allText = $message;
+        foreach ($history as $h) {
+            $allText .= ' ' . ($h['content'] ?? '');
+        }
+        $lower = mb_strtolower($allText, 'UTF-8');
+
+        $tags = [];
+        if (preg_match('/(say|chóng mặt|nôn|ói|lắc|tiền đình|say xe|say tàu)/ui', $lower)) {
+            $tags[] = 'Khách say xe';
+        }
+        if (preg_match('/(trẻ con|trẻ em|em bé|con nhỏ|sơ sinh|bé nhỏ)/ui', $lower)) {
+            $tags[] = 'Có trẻ nhỏ đi cùng';
+        }
+        if (preg_match('/(người già|lớn tuổi|ông bà|ba mẹ già|chân yếu|khó đi lại)/ui', $lower)) {
+            $tags[] = 'Người lớn tuổi, chân yếu';
+        }
+        if (preg_match('/(mang thai|có thai|bà bầu|thai phụ)/ui', $lower)) {
+            $tags[] = 'Phụ nữ mang thai';
+        }
+
+        if (!empty($tags)) {
+            return implode(' / ', $tags) . ' - Ưu tiên hỗ trợ lên xuống';
+        }
+
+        return null;
+    }
+
+    /**
+     * Làm giàu dữ liệu ghế từ Laravel (getAvailableSeats):
+     * Không chỉ trả về mã ghế mà trả kèm tọa độ/đặc tính vị trí:
+     * - floor: 1 (tầng dưới) hoặc 2 (tầng trên)
+     * - zone: front (đầu xe), middle (giữa xe - tâm trọng lực), rear (cuối xe - trên trục bánh sau)
+     * - row_pair: Ghế nằm cạnh nhau (A03 <-> A04) để xếp cho người đi cùng trẻ em / cặp đôi
+     */
+    public function getAvailableSeats($trip): array
+    {
+        $f1Seats = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10','A11','A12','A13','A14','A15','A16','A17','A18'];
+        $f2Seats = ['B01','B02','B03','B04','B05','B06','B07','B08','B09','B10','B11','B12'];
+
+        $pairMap = [
+            'A01' => 'A02', 'A02' => 'A01',
+            'A03' => 'A04', 'A04' => 'A03',
+            'A05' => 'A06', 'A06' => 'A05',
+            'A07' => 'A08', 'A08' => 'A07',
+            'A09' => 'A10', 'A10' => 'A09',
+            'A11' => 'A12', 'A12' => 'A11',
+            'A13' => 'A14', 'A14' => 'A13',
+            'A15' => 'A16', 'A16' => 'A15',
+            'A17' => 'A18', 'A18' => 'A17',
+            'B01' => 'B02', 'B02' => 'B01',
+            'B03' => 'B04', 'B04' => 'B03',
+            'B05' => 'B06', 'B06' => 'B05',
+            'B07' => 'B08', 'B08' => 'B07',
+            'B09' => 'B10', 'B10' => 'B09',
+            'B11' => 'B12', 'B12' => 'B11',
+        ];
+
+        $occupied = $trip->bookings
+            ? $trip->bookings->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])->flatMap->bookingSeats->pluck('seat_number')->all()
+            : [];
+
+        $enriched = [];
+        foreach (array_merge($f1Seats, $f2Seats) as $code) {
+            $floor = str_starts_with($code, 'A') ? 1 : 2;
+            $num = (int) substr($code, 1);
+            if ($floor === 1) {
+                $zone = $num <= 3 ? 'front' : ($num <= 12 ? 'middle' : 'rear');
+            } else {
+                $zone = $num <= 3 ? 'front' : ($num <= 9 ? 'middle' : 'rear');
+            }
+
+            $paired = $pairMap[$code] ?? null;
+            $isAvail = !in_array($code, $occupied);
+            $isPairAvail = $paired && !in_array($paired, $occupied);
+
+            $enriched[$code] = [
+                'seat_number' => $code,
+                'floor' => $floor,
+                'floor_name' => $floor === 1 ? 'Tầng 1 (Tầng dưới)' : 'Tầng 2 (Tầng trên)',
+                'zone' => $zone,
+                'zone_name' => match($zone) {
+                    'front' => 'Đầu xe (gần cửa & bác tài)',
+                    'middle' => 'Giữa xe (tâm trọng lực, giảm 90% chấn động)',
+                    'rear' => 'Cuối xe (trên trục bánh sau)',
+                },
+                'row_pair' => $paired,
+                'is_available' => $isAvail,
+                'is_pair_available' => $isPairAvail,
+                'is_anti_motion_sickness' => ($floor === 1 && $zone === 'middle'),
+                'is_elderly_friendly' => ($floor === 1 && in_array($zone, ['front', 'middle'])),
+                'is_private' => ($floor === 2 && $zone === 'middle'),
+            ];
+        }
+
+        return $enriched;
+    }
+
+    /**
+     * Dạy AI Nghiệp vụ nhà xe & Tự suy luận giải thích theo tình huống:
+     * - Tình huống 1: Có nhiều lựa chọn tốt -> AI chọn 2-3 ghế đẹp nhất ở tầng dưới giữa xe, nêu rõ ưu điểm để khách chốt.
+     * - Tình huống 2: Hết sạch ghế phù hợp (chỉ còn tầng 2 hoặc cuối xe) -> AI chủ động đề xuất chuyển sang chuyến khác còn ghế tầng 1 cực êm.
+     */
+    public function handleSeatPhysicsInquiry(string $message, string $lower, $user): ?array
+    {
+        $isSayXe = (bool) preg_match('/(say xe|say tàu|chóng mặt|nôn|ói|lắc|tiền đình|chống say|ghế êm|giường êm|ít rung|êm nhất)/ui', $lower);
+        $isPairOrFamily = (bool) preg_match('/(trẻ con|trẻ em|em bé|con nhỏ|2 người|hai người|cạnh nhau|ghế đôi|ghế liền)/ui', $lower);
+        $isElderly = (bool) preg_match('/(người già|lớn tuổi|ông bà|ba mẹ già|chân yếu|khó đi lại)/ui', $lower);
+        $isSeatInquiry = (bool) preg_match('/(ghế nào|chọn ghế|tư vấn ghế|ghế trống|sơ đồ ghế|vị trí nào)/ui', $lower);
+
+        if (!$isSayXe && !$isPairOrFamily && !$isElderly && !$isSeatInquiry) {
+            return null;
+        }
+
+        // Tìm điểm đến nếu có
+        $destination = null;
+        if (preg_match('/(quảng trị|quang tri|đông hà)/ui', $lower)) $destination = 'Quảng Trị';
+        elseif (preg_match('/(huế|hue)/ui', $lower)) $destination = 'Thừa Thiên - Huế';
+        elseif (preg_match('/(quảng bình|quang binh)/ui', $lower)) $destination = 'Quảng Bình';
+        elseif (preg_match('/(quy nhơn|quy nhon)/ui', $lower)) $destination = 'Quy Nhơn';
+        elseif (preg_match('/(buôn ma thuột|đắk lắk|bmt)/ui', $lower)) $destination = 'Buôn Ma Thuột';
+
+        // Nhận diện giờ hoặc ngày
+        $isTomorrow = (bool) preg_match('/(ngày mai|mai|28)/ui', $lower);
+        $targetDateStr = $isTomorrow ? Carbon::tomorrow()->format('Y-m-d') : Carbon::today()->format('Y-m-d');
+
+        $tripsQuery = Trip::with(['route', 'bus', 'bookings.bookingSeats'])
+            ->whereDate('departure_time', $targetDateStr)
+            ->whereIn('status', ['OPEN_FOR_SALE', 'SCHEDULED', 'ACTIVE']);
+
+        if ($destination) {
+            $tripsQuery->whereHas('route', function($q) use ($destination) {
+                $q->where('destination', 'like', "%{$destination}%")
+                  ->orWhere('name', 'like', "%{$destination}%");
+            });
+        }
+
+        if (!$isTomorrow) {
+            $tripsQuery->where('departure_time', '>', Carbon::now());
+        }
+
+        $trips = $tripsQuery->orderBy('departure_time', 'asc')->get();
+
+        // Nếu hôm nay không còn chuyến nào, tìm ngày mai
+        if ($trips->isEmpty()) {
+            $tomorrow = Carbon::tomorrow();
+            $trips = Trip::with(['route', 'bus', 'bookings.bookingSeats'])
+                ->whereDate('departure_time', $tomorrow->format('Y-m-d'))
+                ->whereIn('status', ['OPEN_FOR_SALE', 'SCHEDULED', 'ACTIVE'])
+                ->when($destination, function($q) use ($destination) {
+                    $q->whereHas('route', fn($rq) => $rq->where('destination', 'like', "%{$destination}%")->orWhere('name', 'like', "%{$destination}%"));
+                })
+                ->orderBy('departure_time', 'asc')
+                ->get();
+        }
+
+        if ($trips->isEmpty()) {
+            return null;
+        }
+
+        // Ưu tiên chọn chuyến được nhắc đến trong câu hỏi (ví dụ: "chuyến 20h" hoặc chuyến đầu tiên)
+        $targetTrip = $trips->first();
+        if (preg_match('/(\d{1,2})h(?:(\d{2}))?/ui', $lower, $mHour)) {
+            $hourNeed = (int)$mHour[1];
+            foreach ($trips as $t) {
+                $tHour = (int) Carbon::parse($t->departure_time)->format('H');
+                if ($tHour === $hourNeed) {
+                    $targetTrip = $t;
+                    break;
+                }
+            }
+        }
+
+        $depTime = Carbon::parse($targetTrip->departure_time);
+        $depTimeFormatted = $depTime->format('H\h') . ($depTime->format('i') !== '00' ? $depTime->format('i') : '');
+        $dateLabel = $depTime->isTomorrow() ? " ngày mai" : "";
+
+        $enrichedSeats = $this->getAvailableSeats($targetTrip);
+
+        // Lọc ghế theo điều kiện
+        if ($isPairOrFamily) {
+            $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['is_pair_available'] && $s['floor'] === 1);
+        } elseif ($isElderly) {
+            $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['is_elderly_friendly']);
+        } else {
+            // Mặc định cho say xe hoặc tìm ghế êm: Tầng 1 và khoảng giữa xe
+            $matchedSeats = array_filter($enrichedSeats, fn($s) => $s['is_available'] && $s['is_anti_motion_sickness']);
+        }
+
+        // =====================================================================
+        // TÌNH HUỐNG 1: CÓ NHIỀU LỰA CHỌN TỐT
+        // AI chọn ra 2–3 ghế đẹp nhất, nêu rõ ưu điểm để khách chốt
+        // =====================================================================
+        if (count($matchedSeats) >= 1) {
+            $matchedKeys = array_keys($matchedSeats);
+            $seat1 = $matchedKeys[0];
+            $seat2 = $matchedKeys[1] ?? ($matchedKeys[0] === 'A03' ? 'A05' : 'A04');
+
+            if ($isPairOrFamily) {
+                $pairPartner = $matchedSeats[$seat1]['row_pair'] ?? 'A04';
+                $reply = "Dạ với gia đình đi cùng trẻ nhỏ, em thấy chuyến {$depTimeFormatted}{$dateLabel} đang trống cặp ghế **{$seat1} và {$pairPartner}** nằm cạnh nhau ở tầng dưới. Vị trí này rất an toàn, tiện cho ba mẹ chăm sóc bé và bước lên xuống xe không lo trượt ngã. Anh/chị có muốn em giữ cặp ghế này cho mình không ạ? 😊";
+                $suggestions = ["Giữ cặp ghế {$seat1} và {$pairPartner}", "Xem chuyến khác", "Chính sách cọc 30%"];
+            } elseif ($isElderly) {
+                $reply = "Dạ với hành khách lớn tuổi, em thấy chuyến {$depTimeFormatted}{$dateLabel} đang trống ghế **{$seat1} và {$seat2}** ở ngay khoang đầu tầng dưới. Vị trí này sát cửa lên xuống, bước chân cực kỳ thấp không phải leo trèo, gần bác tài hỗ trợ. Anh/chị muốn lấy ghế nào ạ? 😊";
+                $suggestions = ["Lấy ghế {$seat1}", "Lấy ghế {$seat2}", "Chính sách cọc 30%"];
+            } else {
+                $reply = "Dạ với người hay say xe, em thấy chuyến {$depTimeFormatted}{$dateLabel} đang trống ghế **{$seat1} và {$seat2}** ở tầng dưới, ngay khoảng giữa xe (tâm trọng lực nên triệt tiêu hơn 90% rung lắc và chạy cực êm). Anh/chị muốn lấy ghế nào ạ? 😊";
+                $suggestions = ["Lấy ghế {$seat1}", "Lấy ghế {$seat2}", "Xem sơ đồ ghế"];
+            }
+
+            return [
+                'reply' => $reply,
+                'suggestions' => $suggestions,
+                'trips' => $this->formatTripsForClient(collect([$targetTrip])),
+                'source' => 'seat-physics-reasoning-good'
+            ];
+        }
+
+        // =====================================================================
+        // TÌNH HUỐNG 2: HẾT SẠCH GHẾ PHÙ HỢP (Chỉ còn tầng 2 hoặc cuối xe khá xóc)
+        // AI chủ động đề xuất phương án thay thế sang chuyến khác còn ghế tầng 1 cực êm
+        // =====================================================================
+        // Tìm chuyến tiếp theo cùng tuyến còn ghế tầng 1 giữa xe
+        $altTrip = null;
+        $altBestSeat = 'A02';
+        foreach ($trips as $candidate) {
+            if ($candidate->id === $targetTrip->id) continue;
+            $candSeats = $this->getAvailableSeats($candidate);
+            $candAntiMotion = array_filter($candSeats, fn($s) => $s['is_available'] && $s['is_anti_motion_sickness']);
+            if (!empty($candAntiMotion)) {
+                $altTrip = $candidate;
+                $altBestSeat = array_key_first($candAntiMotion);
+                break;
+            }
+        }
+
+        if ($altTrip) {
+            $altTime = Carbon::parse($altTrip->departure_time);
+            $altTimeFormatted = $altTime->format('H\h') . ($altTime->format('i') !== '00' ? $altTime->format('i') : '');
+            $reply = "Tiếc quá, chuyến {$depTimeFormatted}{$dateLabel} đã hết sạch ghế tầng dưới rồi, chỉ còn tầng 2 và hàng cuối khá xóc. Nếu mình say xe nặng thì em khuyên mình chuyển sang **chuyến {$altTimeFormatted}**, chuyến đó vẫn còn ghế **{$altBestSeat}** tầng dưới cực êm, anh/chị thấy sao ạ? 😊";
+            $suggestions = ["Chuyển sang chuyến {$altTimeFormatted} lấy ghế {$altBestSeat}", "Vẫn đi chuyến {$depTimeFormatted}", "Chính sách cọc 30%"];
+
+            return [
+                'reply' => $reply,
+                'suggestions' => $suggestions,
+                'trips' => $this->formatTripsForClient(collect([$altTrip])),
+                'source' => 'seat-physics-reasoning-alternative'
+            ];
+        } else {
+            $reply = "Dạ hiện tại chuyến {$depTimeFormatted}{$dateLabel} chỉ còn ghế tầng 2 hoặc hàng cuối xe. Với người say xe, em khuyên anh/chị nếu đi chuyến này nên uống thuốc chống say trước 30 phút hoặc dán cao sau tai để chuyến đi thoải mái nhất nhé!";
+            return [
+                'reply' => $reply,
+                'suggestions' => ["Đặt ghế tầng 2", "Xem các ngày khác", "Hotline 1900 6868"],
+                'trips' => $this->formatTripsForClient(collect([$targetTrip])),
+                'source' => 'seat-physics-reasoning-compromise'
+            ];
+        }
+    }
+
+    /**
+     * Khéo léo giữ khách khi hủy vé (Retention on Ticket Cancellation):
+     * Khi khách nhắn "Hủy giúp anh vé tối nay", AI tự gọi kiểm tra giờ khởi hành.
+     * Nếu thấy sát giờ chạy (hủy sẽ bị mất 20% phí phạt), AI sẽ giải thích và gợi ý hướng có lợi hơn:
+     * "Vé chuyến 20h tối nay của anh nếu hủy bây giờ sẽ bị trừ 20% phí theo quy định.
+     *  Hay là để em hỗ trợ dời miễn phí vé này sang tối mai giúp anh để đỡ mất phí nhé?"
+     */
+    public function handleCancellationInquiry(string $message, string $lower, $user): ?array
+    {
+        $isCancelIntent = (bool) preg_match('/(hủy giúp|muốn hủy|hủy vé|hủy chuyến|trả vé|hủy giúp anh|hủy giúp chị|không đi nữa|hủy vé tối nay)/ui', $lower);
+        if (!$isCancelIntent) {
+            return null;
+        }
+
+        // Tìm vé gần nhất của người dùng
+        $booking = null;
+        if ($user) {
+            $booking = Booking::with(['trip.route', 'bookingSeats'])
+                ->where('user_id', $user->id)
+                ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
+                ->latest('id')
+                ->first();
+        }
+
+        // Hoặc tìm theo mã vé được gõ trong tin nhắn (KT-XXXXXX)
+        if (!$booking && preg_match('/KT-[A-Z0-9]{4,10}/i', $message, $mCode)) {
+            $booking = Booking::with(['trip.route', 'bookingSeats'])
+                ->where('booking_code', strtoupper($mCode[0]))
+                ->first();
+        }
+
+        // Hoặc tìm theo số điện thoại
+        if (!$booking && preg_match('/(0[35789]\d{8})/', $message, $mPhone)) {
+            $booking = Booking::with(['trip.route', 'bookingSeats'])
+                ->where('customer_phone', $mPhone[1])
+                ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
+                ->latest('id')
+                ->first();
+        }
+
+        // Nếu chưa đăng nhập và chưa có mã vé
+        if (!$booking) {
+            return [
+                'reply' => "Dạ để em kiểm tra chính sách hủy vé và thời gian khởi hành giúp mình, anh/chị cho em xin **Mã vé (dạng KT-XXXXXX)** hoặc **Số điện thoại** đã đặt vé nhé! Em sẽ kiểm tra xem vé có được hoàn 100% hoặc hỗ trợ dời chuyến miễn phí không ạ. 😊",
+                'suggestions' => ["Đến mục Quản Lý Vé", "Hotline 1900 6868"],
+                'action' => [
+                    'type' => 'go_to_my_bookings',
+                    'title' => '🎫 Mở Danh Sách Vé Của Tôi',
+                    'url' => '/my-bookings'
+                ]
+            ];
+        }
+
+        $depTime = Carbon::parse($booking->trip?->departure_time);
+        $hoursUntilDep = $depTime->diffInHours(Carbon::now(), false) * -1;
+        $depTimeHour = $depTime->format('H\h') . ($depTime->format('i') !== '00' ? $depTime->format('i') : '');
+        $routeName = $booking->trip?->route?->name ?? 'Đà Nẵng ➔ Quy Nhơn';
+        $routeName = str_replace(['⇄', '->', '➔'], '–', $routeName);
+
+        // Trường hợp sát giờ chạy (<= 24 giờ): Bị trừ 20% phí -> Đề xuất dời sang tối mai miễn phí
+        if ($hoursUntilDep <= 24 && $hoursUntilDep > 0) {
+            $reply = "Vé chuyến **{$depTimeHour} tối nay ({$routeName})** của anh/chị nếu hủy bây giờ sẽ bị trừ **20% phí** theo quy định. Hay là để em hỗ trợ **dời miễn phí vé này sang tối mai** giúp anh/chị để đỡ mất phí nhé? 😊\n\nChuyến tối mai bên em vẫn còn nhiều ghế tầng dưới cực êm ái ạ!";
+
+            return [
+                'reply' => $reply,
+                'suggestions' => [
+                    "Dời vé sang tối mai miễn phí",
+                    "Vẫn muốn hủy vé (trừ 20% phí)",
+                    "Xem chi tiết vé #{$booking->booking_code}"
+                ],
+                'action' => [
+                    'type' => 'reschedule_ticket',
+                    'title' => "🔄 Dời Vé Sang Tối Mai Miễn Phí (Tiết kiệm 20%)",
+                    'booking_code' => $booking->booking_code,
+                    'url' => "/booking/{$booking->booking_code}/detail"
+                ],
+                'source' => 'cancellation-retention-policy'
+            ];
+        }
+
+        // Trường hợp xa giờ chạy (> 24 giờ): Hoàn 100% không mất phí
+        $reply = "Vé chuyến **{$depTimeHour} ({$routeName})** của anh/chị còn hơn 24 giờ nữa mới khởi hành nên được **hoàn 100% tiền cọc 0đ phí** theo quy định của nhà xe ạ! Em hỗ trợ anh/chị gửi lệnh hủy vé và hoàn tiền ngay nhé.";
+
+        return [
+            'reply' => $reply,
+            'suggestions' => ["Xác nhận hủy vé hoàn tiền 100%", "Giữ vé tiếp tục đi"],
+            'action' => [
+                'type' => 'cancel_ticket_full_refund',
+                'title' => "🚫 Xác Nhận Hủy Vé & Nhận Hoàn 100% Tiền ➔",
+                'url' => "/booking/{$booking->booking_code}/detail"
+            ],
+            'source' => 'cancellation-full-refund'
+        ];
     }
 
     /**
