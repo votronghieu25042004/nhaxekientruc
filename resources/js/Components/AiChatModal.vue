@@ -154,17 +154,6 @@
                 </div>
               </div>
 
-              <!-- Nút Kích Hoạt Đàm Thoại 2 Chiều Rảnh Tay (Gọi Điện Thoại) -->
-              <button
-                type="button"
-                @click="toggleCallMode"
-                class="w-full py-2.5 px-3 rounded-xl font-black text-xs transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
-                :class="isCallModeActive ? 'bg-red-500 text-white animate-pulse' : 'bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-red-950'"
-              >
-                <span>{{ isCallModeActive ? '🔴' : '📞' }}</span>
-                <span>{{ isCallModeActive ? 'Đang Gọi (Bấm Dừng)' : 'Gọi Đàm Thoại 2 Chiều' }}</span>
-              </button>
-
               <!-- Gợi Ý Câu Đặt Vé Mẫu Nhanh -->
               <div class="space-y-1.5">
                 <div class="text-[10px] font-bold text-red-200/80 uppercase tracking-wider">
@@ -334,27 +323,6 @@
 
               <!-- Cụm Nút Điều Khiển: Đàm Thoại 2 Chiều / Loa Giọng Nói (TTS) / Phóng To / Lịch Sử / Đóng -->
               <div class="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
-                <!-- Nút Đàm Thoại 2 Chiều Rảnh Tay (Như Gọi Điện Thoại) -->
-                <button
-                  type="button"
-                  @click="toggleCallMode"
-                  class="px-2.5 py-1.5 rounded-xl border text-xs font-black transition flex items-center gap-1 cursor-pointer"
-                  :class="isCallModeActive ? 'bg-red-600 border-red-600 text-white animate-pulse' : 'bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 border-amber-300 text-amber-900'"
-                  :title="isCallModeActive ? 'Đang bật đàm thoại 2 chiều rảnh tay (Bấm để Dừng)' : 'Bật đàm thoại 2 chiều như gọi điện thoại'"
-                >
-                  <span>{{ isCallModeActive ? '🔴 Đang Gọi' : '📞 Gọi AI' }}</span>
-                </button>
-
-                <!-- Nút Bật/Tắt Giọng Nói AI (TTS) -->
-                <button
-                  type="button"
-                  @click="toggleTts"
-                  class="px-2.5 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                  :class="isTtsEnabled ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100' : 'bg-slate-100 border-slate-200 text-slate-400 hover:bg-slate-200'"
-                  :title="isTtsEnabled ? 'Bé Kiến Trúc đang BẬT giọng đọc (Bấm để Tắt)' : 'Bé Kiến Trúc đang TẮT giọng đọc (Bấm để Bật)'"
-                >
-                  <span>{{ isTtsEnabled ? '🔊 Giọng nói' : '🔇 Tắt loa' }}</span>
-                </button>
 
                 <!-- Nút Lịch Sử trên Mobile -->
                 <button
@@ -389,14 +357,14 @@
               </div>
             </div>
 
-            <!-- Banner Đang Đàm Thoại 2 Chiều Rảnh Tay (Voice Call) -->
-            <div v-if="isCallModeActive" class="bg-gradient-to-r from-red-600 to-rose-600 text-white px-3.5 py-2 text-xs font-bold flex flex-wrap items-center justify-between gap-2 shadow-xs select-none">
+            <!-- Banner Chế Độ Nói Chuyện Với AI (Voice Mode) -->
+            <div v-if="interactionMode === 'voice'" class="bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white px-3.5 py-2 text-xs font-bold flex flex-wrap items-center justify-between gap-2 shadow-xs select-none">
               <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
-                <span v-if="isSpeaking">🔊 Bé Kiến Trúc đang nói... (Micro tạm khóa chống vọng loa)</span>
+                <span v-if="isSpeaking">🔊 Bé Kiến Trúc đang nói tư vấn...</span>
                 <span v-else-if="isEchoCoolingDown">⏳ Đang nghỉ 1.2s triệt tiêu âm vang loa ngoài...</span>
                 <span v-else-if="isListeningVoice">🎙️ Bé Kiến Trúc đang lắng nghe... (Hãy nói yêu cầu)</span>
-                <span v-else>📞 Đang đàm thoại rảnh tay 2 chiều</span>
+                <span v-else>🎙️ Đang ở chế độ nói chuyện với AI</span>
               </div>
               <div class="flex items-center gap-2">
                 <button
@@ -404,16 +372,16 @@
                   type="button"
                   @click="triggerManualMic"
                   class="text-[11px] bg-amber-400 hover:bg-amber-300 text-red-950 px-2.5 py-0.5 rounded-lg font-black transition cursor-pointer shadow-xs"
-                  title="Bấm để nói ngay không cần chờ"
+                  title="Bấm để nói ngay"
                 >
                   🎙️ Bấm để nói
                 </button>
                 <button
                   type="button"
-                  @click="toggleCallMode"
+                  @click="setInteractionMode('chat')"
                   class="text-[11px] bg-white text-red-700 px-2.5 py-0.5 rounded-lg font-black hover:bg-red-50 cursor-pointer shadow-2xs"
                 >
-                  ⏹️ Dừng cuộc gọi
+                  💬 Chuyển sang Nhắn tin
                 </button>
               </div>
             </div>
@@ -580,94 +548,6 @@
                       </div>
 
                       <div class="leading-relaxed" v-html="formatAiMessage(msg.content)"></div>
-
-                      <!-- 1. THẺ ĐIỀN HỌ TÊN, SĐT & GMAIL GIỮ GHẾ (BƯỚC 2) -->
-                      <div v-if="msg.action && msg.action.type === 'fill_customer_info'" class="mt-3 p-3.5 bg-gradient-to-br from-red-50 to-amber-50 border-2 border-red-400 rounded-2xl space-y-2.5 shadow-sm">
-                        <div class="flex items-center gap-2 font-black text-red-700 text-xs">
-                          <span>📝</span>
-                          <span>BÉ KIẾN TRÚC TỰ ĐỘNG GIỮ GHẾ & TẠO TÀI KHOẢN NGẦM</span>
-                        </div>
-                        <p class="text-[11px] text-slate-600">
-                          Bạn có thể <strong>nói vào micro</strong> (VD: <em>"Mình tên Trần Minh Tuấn, số 0905123456, email tuantran@gmail.com"</em>) hoặc điền nhanh 3 ô bên dưới:
-                        </p>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          <div>
-                            <label class="text-[10px] font-bold text-slate-700 block mb-0.5">Họ và Tên:</label>
-                            <input
-                              type="text"
-                              v-model="quickCustomerName"
-                              placeholder="Trần Minh Tuấn"
-                              class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-red-500 font-semibold text-slate-800"
-                            />
-                          </div>
-                          <div>
-                            <label class="text-[10px] font-bold text-slate-700 block mb-0.5">Số điện thoại:</label>
-                            <input
-                              type="tel"
-                              v-model="quickCustomerPhone"
-                              placeholder="0905123456"
-                              class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-red-500 font-semibold text-slate-800"
-                            />
-                          </div>
-                          <div>
-                            <label class="text-[10px] font-bold text-slate-700 block mb-0.5">Email (Gmail):</label>
-                            <input
-                              type="email"
-                              v-model="quickCustomerEmail"
-                              placeholder="tuantran@gmail.com"
-                              class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-red-500 font-semibold text-slate-800"
-                            />
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          @click="submitQuickCustomerInfo"
-                          class="w-full py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
-                        >
-                          <span>🚀 Gửi Thông Tin Cho Bé Kiến Trúc (Nhận Mã OTP)</span>
-                        </button>
-                      </div>
-
-                      <!-- 2. THẺ XÁC THỰC MÃ OTP 6 CHỮ SỐ (BƯỚC 3) -->
-                      <div v-if="msg.action && msg.action.type === 'input_otp'" class="mt-3 p-3.5 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-400 rounded-2xl space-y-2.5 shadow-sm">
-                        <div class="flex items-center justify-between font-black text-amber-900 text-xs">
-                          <span class="flex items-center gap-1.5">
-                            <span>🔑</span>
-                            <span>XÁC THỰC MÃ OTP (6 CHỮ SỐ)</span>
-                          </span>
-                          <span class="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">
-                            Đã gửi SMS
-                          </span>
-                        </div>
-                        <p class="text-[11px] text-slate-600">
-                          Bé Kiến Trúc vừa gửi mã 6 số tới số điện thoại của bạn. Bạn có thể <strong>nói</strong> (VD: <em>"Mã là {{ msg.action.simulated_otp || '482910' }}"</em>) hoặc bấm vào mã bên dưới để điền nhanh:
-                        </p>
-                        <div class="flex items-center gap-2">
-                          <button
-                            type="button"
-                            @click="quickOtpInput = msg.action.simulated_otp || '482910'; submitQuickOtp();"
-                            class="py-1 px-3 bg-amber-200/80 hover:bg-amber-300 text-amber-950 font-mono font-black text-xs rounded-lg border border-amber-400 transition cursor-pointer shadow-2xs"
-                          >
-                            ⚡ Mã SMS: {{ msg.action.simulated_otp || '482910' }} (Bấm điền nhanh)
-                          </button>
-                        </div>
-                        <div class="flex items-center gap-2 pt-1">
-                          <input
-                            type="text"
-                            maxlength="6"
-                            v-model="quickOtpInput"
-                            placeholder="Nhập 6 số..."
-                            class="flex-1 px-3 py-1.5 text-xs bg-white border border-amber-300 rounded-lg outline-none focus:border-red-500 font-mono font-black text-slate-800 tracking-wider text-center"
-                          />
-                          <button
-                            type="button"
-                            @click="submitQuickOtp"
-                            class="py-1.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-lg shadow-xs transition cursor-pointer"
-                          >
-                            Xác Thực & Giữ Ghế ➔
-                          </button>
-                        </div>
-                      </div>
 
                       <!-- 3. THẺ THANH TOÁN VIETQR TẠI CHỖ (BƯỚC 4 - END-TO-END PAYMENT) -->
                       <div v-if="msg.qr_data" class="mt-3 p-3.5 sm:p-4 bg-gradient-to-br from-red-50 via-rose-50/60 to-amber-50/50 border-2 border-red-500 rounded-2xl space-y-3 shadow-md">
@@ -916,8 +796,42 @@
 
               </div>
 
-              <!-- THANH NHẬP CHAT BÊN DƯỚI -->
+              <!-- THANH NHẬP CHAT BÊN DƯỚI: 2 CHẾ ĐỘ RÕ RÀNG (1. NHẮN TIN - 2. NÓI CHUYỆN VỚI AI) -->
               <div class="p-3 border-t border-slate-100 bg-white">
+                <!-- Bộ Chuyển Đổi 2 Chế Độ -->
+                <div class="flex items-center justify-between pb-2.5">
+                  <div class="inline-flex p-1 bg-slate-100 rounded-xl text-xs font-bold gap-1 border border-slate-200/60 shadow-2xs">
+                    <button
+                      type="button"
+                      @click="setInteractionMode('chat')"
+                      :class="interactionMode === 'chat' ? 'bg-white text-red-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                      class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer font-bold text-xs"
+                    >
+                      <span>💬</span>
+                      <span>Nhắn tin</span>
+                    </button>
+                    <button
+                      type="button"
+                      @click="setInteractionMode('voice')"
+                      :class="interactionMode === 'voice' ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                      class="px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer font-bold text-xs"
+                    >
+                      <span>🎙️</span>
+                      <span>Nói chuyện với AI</span>
+                    </button>
+                  </div>
+
+                  <div v-if="interactionMode === 'voice'" class="text-[11px] font-bold text-red-600 flex items-center gap-1.5 animate-pulse">
+                    <span class="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
+                    <span v-if="isSpeaking">Bé Kiến Trúc đang nói...</span>
+                    <span v-else-if="isListeningVoice">Đang nghe giọng bạn...</span>
+                    <span v-else>Đàm thoại 2 chiều</span>
+                  </div>
+                  <div v-else class="text-[11px] text-slate-400 font-medium hidden sm:block">
+                    <span>Nhập câu hỏi hoặc bấm Micro để nói</span>
+                  </div>
+                </div>
+
                 <!-- Thông báo khi đang lắng nghe giọng nói -->
                 <div v-if="isListeningVoice" class="mb-2 p-2 rounded-xl bg-red-50 border border-red-200 flex items-center justify-between animate-pulse text-xs text-red-700 font-bold">
                   <div class="flex items-center gap-2">
@@ -940,14 +854,14 @@
                   <input
                     type="text"
                     v-model="inputQuery"
-                    placeholder="Nhập hoặc bấm Micro để nói (VD: Tôi bị say xe đi 2 người ra Quảng Trị...)"
+                    :placeholder="interactionMode === 'voice' ? 'Đang bật nói chuyện với AI — Bạn có thể nói trực tiếp qua Micro...' : 'Nhập tin nhắn tư vấn (VD: Tôi bị say xe đi Huế chọn giúp ghế...)'"
                     class="flex-1 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-red-500 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none transition"
                   />
                   <!-- Nút Micro Voice AI -->
                   <button
                     type="button"
                     @click="triggerManualMic"
-                    :class="isListeningVoice ? 'bg-red-600 text-white ring-4 ring-red-300 animate-pulse' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'"
+                    :class="isListeningVoice ? 'bg-red-600 text-white ring-4 ring-red-300 animate-pulse' : (interactionMode === 'voice' ? 'bg-red-50 text-red-600 border-red-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700')"
                     class="p-2.5 rounded-xl transition cursor-pointer flex-shrink-0 flex items-center justify-center border border-slate-200"
                     :title="isListeningVoice ? 'Đang lắng nghe... (Bấm để hủy)' : 'Bấm để nói bằng giọng nói (Voice AI)'"
                   >
@@ -958,6 +872,7 @@
                     type="submit"
                     :disabled="!inputQuery.trim() || isAiTyping"
                     class="p-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl shadow-xs transition cursor-pointer flex-shrink-0"
+                    title="Gửi tin nhắn"
                   >
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -1005,7 +920,8 @@ const isSendingEmail = ref(false);
 const selectedBusFilter = ref('ALL');
 
 const showAuthModal = ref(false);
-const isTtsEnabled = ref(true); // Voice Text-to-Speech active by default
+const interactionMode = ref('chat'); // 2 chế độ độc quyền: 'chat' (1. Nhắn tin) | 'voice' (2. Nói chuyện với AI)
+const isTtsEnabled = ref(false); // Chỉ tự động nói trong chế độ voice hoặc bấm Nghe đọc
 const isSpeaking = ref(false);
 const speakingMsgIdx = ref(null);
 
@@ -1027,10 +943,6 @@ const isCheckingLedger = ref(false);
 const optimisticFillerText = ref('');
 
 const currentBookingState = ref({});
-const quickCustomerName = ref('Trần Minh Tuấn');
-const quickCustomerPhone = ref('0905123456');
-const quickCustomerEmail = ref('tuantran@gmail.com');
-const quickOtpInput = ref('482910');
 const bookingCountdown = ref(300);
 let countdownInterval = null;
 
@@ -1060,20 +972,6 @@ const copyToClipboard = (text, msg) => {
   } catch (e) {
     alert('Đã sao chép: ' + text);
   }
-};
-
-const submitQuickCustomerInfo = () => {
-  const name = quickCustomerName.value.trim() || 'Trần Minh Tuấn';
-  const phone = quickCustomerPhone.value.trim() || '0905123456';
-  const email = quickCustomerEmail.value.trim() || 'tuantran@gmail.com';
-  inputQuery.value = `Mình tên ${name}, số ${phone}, email ${email}`;
-  sendMessage();
-};
-
-const submitQuickOtp = () => {
-  const otp = quickOtpInput.value.trim() || '482910';
-  inputQuery.value = `Mã là ${otp}`;
-  sendMessage();
 };
 
 // ==========================================
@@ -1215,16 +1113,28 @@ const triggerManualMic = () => {
   }
 };
 
-const toggleCallMode = () => {
-  isCallModeActive.value = !isCallModeActive.value;
-  if (isCallModeActive.value) {
+const setInteractionMode = (mode) => {
+  interactionMode.value = mode;
+  if (mode === 'voice') {
+    isCallModeActive.value = true;
     isTtsEnabled.value = true;
     autoListenBlockedReason.value = '';
     echoLoopCount = 0;
     triggerManualMic();
   } else {
+    isCallModeActive.value = false;
+    isTtsEnabled.value = false;
     cancelListening();
     stopSpeech();
+    autoListenBlockedReason.value = '';
+  }
+};
+
+const toggleCallMode = () => {
+  if (interactionMode.value === 'voice') {
+    setInteractionMode('chat');
+  } else {
+    setInteractionMode('voice');
   }
 };
 
@@ -1238,10 +1148,18 @@ const toggleTts = () => {
 const cleanTextForSpeech = (text) => {
   if (!text) return '';
   return text
-    .replace(/[*#_`~\[\]\(\)\>]/g, ' ')
-    .replace(/[•\-]/g, ', ')
-    .replace(/https?:\/\/\S+/g, '')
-    .replace(/\bKT-\w+/gi, (m) => m.split('').join(' '))
+    // 1. Loại bỏ các thẻ HTML, markdown và đường link
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/[*#_`~\[\]\(\)\>\<]/g, ' ')
+    .replace(/[➔→⇄↔⇒]/g, ' đến ')
+    .replace(/[•\-\–\—\│\|]/g, ', ')
+    .replace(/\bKT-([A-Za-z0-9]+)/gi, (m, p1) => 'mã ' + p1.split('').join(' '))
+    // 2. Loại bỏ TOÀN BỘ emoji, biểu tượng pictograph, icon xe, icon cảm xúc, hoa, sao
+    .replace(/\p{Extended_Pictographic}/gu, ' ')
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B50}\u{200D}\u{FE0F}]/gu, ' ')
+    // 3. Chỉ giữ lại chữ cái các ngôn ngữ có dấu (tiếng Việt), số, khoảng trắng và dấu câu
+    .replace(/[^\p{L}\p{N}\s.,?!;:\/%]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 };
@@ -1332,9 +1250,12 @@ const speakOptimisticFiller = (phrase) => {
   isListeningVoice.value = false;
 
   window.speechSynthesis.cancel();
-  lastAiSpokenCleanText.value = phrase;
+  const clean = cleanTextForSpeech(phrase);
+  if (!clean) return;
 
-  const utterance = new SpeechSynthesisUtterance(phrase);
+  lastAiSpokenCleanText.value = clean;
+
+  const utterance = new SpeechSynthesisUtterance(clean);
   utterance.lang = 'vi-VN';
   utterance.rate = 1.05;
   utterance.pitch = 1.05;
@@ -1820,9 +1741,6 @@ const sendMessage = async () => {
     const qr_data = data.qr_data || (data.booking_state?.qr_data) || null;
     if (qr_data) {
       startCountdownTimer();
-    }
-    if (action && action.type === 'input_otp' && action.simulated_otp) {
-      quickOtpInput.value = action.simulated_otp;
     }
 
     const newMsg = {

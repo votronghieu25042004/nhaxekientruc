@@ -39,16 +39,6 @@ class AiAssistantController extends Controller
         $matchingTrips = $this->findMatchingTrips($message);
 
         // =========================================================================
-        // AGENT ĐẶT VÉ TOÀN TRÌNH KHÔNG CẦN CHUYỂN TRANG (END-TO-END CONVERSATIONAL AGENT)
-        // Dẫn dắt từng bước: Chọn ghế -> Tạo TK ngầm qua SĐT -> Gửi & Xác thực OTP -> Khóa ghế 5p -> Bật VietQR
-        // =========================================================================
-        $bookingState = (array) $request->input('booking_state', []);
-        $bookingFlowResult = $this->handleConversationalBookingFlow($request, $message, $lower, $user, $bookingState);
-        if ($bookingFlowResult !== null) {
-            return response()->json($bookingFlowResult);
-        }
-
-        // =========================================================================
         // TRA CỨU TỒN VÉ THỜI GIAN THỰC (REAL-TIME GEMINI-GRADE AVAILABILITY CHECKER)
         // Tra cứu chính xác Database chuyến hôm nay, nếu hết vé thì báo hết và tự động đề xuất ngày mai
         // =========================================================================
@@ -58,7 +48,7 @@ class AiAssistantController extends Controller
         }
 
         // =========================================================================
-        // KHÉO LÉO GIỮ KHÁCH KHI HỦY VÉ (TỰ GỌI getTicketPolicy & GIỮ CHÂN KHÁCH)
+        // CHĂM SÓC KHÁCH HÀNG TẬN TÂM KHI HỦY VÉ (TÔN TRỌNG QUYẾT ĐỊNH, KHÔNG NÍU KÉO)
         // =========================================================================
         $cancellationResult = $this->handleCancellationInquiry($message, $lower, $user);
         if ($cancellationResult !== null) {
@@ -90,7 +80,7 @@ class AiAssistantController extends Controller
             }
         }
 
-        if (!empty($geminiKey) && str_starts_with($geminiKey, 'AIzaSy')) {
+        if (!empty($geminiKey) && strlen($geminiKey) > 10) {
             $geminiReply = $this->callGeminiApi($message, $user, $context, $geminiKey, $matchingTrips, $history);
             if ($geminiReply) {
                 return response()->json([
@@ -108,7 +98,7 @@ class AiAssistantController extends Controller
         return response()->json([
             'reply' => $result['reply'],
             'suggestions' => $result['suggestions'] ?? ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên'],
-            'trips' => $matchingTrips,
+            'trips' => array_key_exists('trips', $result) ? $result['trips'] : $matchingTrips,
             'action' => $result['action'] ?? null,
             'user_bookings' => $result['user_bookings'] ?? [],
             'source' => $result['source'] ?? 'smart-engine',
@@ -756,10 +746,9 @@ class AiAssistantController extends Controller
             };
 
             return [
-                'reply' => "Dạ hôm nay là **{$thuVN}, ngày " . $now->format('d/m/Y') . "** (giờ Việt Nam) bạn nhé! 😊\n\n" .
-                           "📅 **Ngày mai sẽ là: {$thuMaiVN}, ngày " . $tomorrow->format('d/m/Y') . "**.\n\n" .
-                           "Bạn đang có kế hoạch đặt vé xe cho ngày mai hoặc cần tra cứu các chuyến xe khởi hành từ Đà Nẵng đi Huế, Quảng Trị, Quy Nhơn, Buôn Ma Thuột... không ạ? Bạn có thể nhắn tuyến đường để em hiển thị danh sách chuyến xe phù hợp và hỗ trợ bạn chọn ghế đặt vé ngay nhé!",
-                'suggestions' => ['Xem chuyến xe ngày mai', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
+                'reply' => "Dạ hôm nay là **{$thuVN}, ngày " . $now->format('d/m/Y') . "**. Ngày mai sẽ là **{$thuMaiVN}, ngày " . $tomorrow->format('d/m/Y') . "** bạn nhé! Bạn cần em hỗ trợ kiểm tra thông tin gì thêm không ạ? 😊",
+                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%'],
+                'trips' => []
             ];
         }
 
@@ -1463,40 +1452,22 @@ class AiAssistantController extends Controller
                 $tripInfoContext .= "Hãy giới thiệu các chuyến xe này để khách chọn và thông báo khách có thể bấm trực tiếp vào thẻ chuyến xe bên dưới tin nhắn để chọn ghế đặt vé ngay lập tức.\n";
             }
 
-            $systemPrompt = "Bạn là Trợ lý AI cao cấp, đa năng, cực kỳ thông minh và tận tâm của Nhà xe Kiến Trúc Đà Nẵng (nhaxekientruc). "
-                . "TÁC PHONG: Luôn xưng 'em', gọi khách là 'bạn' (hoặc 'quý khách' / tên riêng nếu có). Trả lời thông minh, đúng trọng tâm, gãy gọn, có cấu trúc markdown rõ ràng, dùng emoji sinh động. "
-                . "{$timeContext} "
-                . "THÔNG TIN KHÁCH HÀNG: {$userDesc} "
-                . "MẠNG LƯỚI TUYẾN XE: Nhà xe phục vụ 5 tuyến liên tỉnh kết nối từ/đến trung tâm TP. Đà Nẵng: "
-                . "1) Đà Nẵng ⇄ Huế (140.000đ - 150.000đ, ~2h-2.5h, cọc 30% = 42k-45k). "
-                . "2) Đà Nẵng ⇄ Quảng Trị (160.000đ - 200.000đ, ~3.5h, cọc 30% = 48k-60k). "
-                . "3) Đà Nẵng ⇄ Quảng Bình (195.000đ - 280.000đ, ~5h, cọc 30% = 58.5k-84k). "
-                . "4) Đà Nẵng ⇄ Quy Nhơn (240.000đ - 360.000đ, ~6h, cọc 30% = 72k-108k). "
-                . "5) Đà Nẵng ⇄ Buôn Ma Thuột (380.000đ - 420.000đ, ~9-10h, cọc 30% = 114k-126k). "
-                . "QUAN TRỌNG VỀ ĐỊA LÝ: Nhà xe Kiến Trúc KHÔNG có tuyến xe chạy trực tiếp giữa các tỉnh trung gian (ví dụ: Quảng Trị đi Huế, Huế đi Quảng Bình, Quy Nhơn đi Buôn Ma Thuột... KHÔNG CÓ tuyến trực tiếp). Nếu khách hỏi các tuyến này, phải trả lời rõ ràng là nhà xe chưa có tuyến trực tiếp giữa hai tỉnh này, toàn bộ tuyến đều xuất phát từ hoặc về Đà Nẵng, đồng thời gợi ý khách đi xe khách nội tỉnh dọc QL1A hoặc đi chặng trung chuyển về Đà Nẵng. "
-                . "BẢO MẬT ADMIN: Khi khách hỏi 'bạn có cách nào đăng nhập vào admin không' hoặc xin link/cách vào admin, bạn phải trả lời là bạn không có quyền hạn can thiệp, không cung cấp tài khoản hay cấp quyền vào trang quản trị (chỉ dành cho ban quản lý và kỹ thuật nội bộ của nhà xe). "
-                . "CHÍNH SÁCH: Cọc 30% giữ chỗ 100%, 70% còn lại thanh toán cho bác tài khi lên xe. Ưu đãi sinh viên giảm 30% mã PRO30. Hủy vé tự phục vụ hoàn 100% trong 2h hoặc trước 24h tại mục 'Quản Lý Vé'. Hành lý miễn phí 20kg, nhận gửi xe máy có bọc xốp. "
-                . "BỘ QUY TẮC PHÂN TÍCH TÂM LÝ & ĐÁNH ĐỔI THỂ TRẠNG HÀNH KHÁCH XE KHÁCH (AI REASONING & TRADE-OFFS MATRIX): "
-                . "1) SAY XE vs RIÊNG TƯ: Tầng 1 không có rèm kín nhưng nằm ngay trọng tâm xe, nệm bóng hơi triệt tiêu 98% dao động đèo dốc; Tầng 2 có rèm riêng tư 100% nhưng nằm trên cao, chịu lực ly tâm văng lắc gấp 2.5 lần khi xe ôm cua. Luôn phân tích rõ ràng và khuyên khách ưu tiên chọn Tầng 1 vì sức khỏe chống nôn nao là quan trọng số 1; nếu khách nhất quyết chọn Tầng 2 thì khuyên dùng thuốc chống say trước 30 phút. "
-                . "2) SAY XE vs NGẮM CẢNH: Không nhìn ngang cửa sổ khi xe ôm cua vì gây xung đột mắt và tiền đình; khuyên chọn Tầng 1 khoang đầu sát cửa sổ nhìn thẳng theo hướng xe chạy để đồng bộ tiền đình. "
-                . "3) NGƯỜI LỚN TUỔI & ĐAU CỘT SỐNG: Tuyệt đối chọn Tầng 1 gần buồng lái (A01, A02, A03), không leo trèo cầu thang, sàn phẳng an toàn, nệm hơi êm ái, bác tài hỗ trợ lên xuống. "
-                . "4) GIA ĐÌNH CÓ EM BÉ / TRẺ NHỎ: Bắt buộc Tầng 1 an toàn không rơi ngã, nắp điều hòa xoay hướng tránh thổi thẳng vào bé, tiện pha sữa lúc nửa đêm. "
-                . "5) KHÁCH CAO > 1m75 (CHÂN DÀI): Chọn giường khoang đầu hoặc vách rộng (A01, A03, A16, B01, B03) dài lọt lòng 185-190cm, hộc để chân mở không bị cấn chân gập gối. "
-                . "6) CẦN YÊN TĨNH / KHÓ NGỦ: Chọn Tầng 2 khoang giữa xe (B04, B05, B06, B07) rèm kéo kín 100%, cách xa tiếng còi xe phía trước và tiếng động cơ phía sau, không ai dẫm chân qua lại. "
-                . "7) THÍCH NGẮM CẢNH / SỐNG ẢO: Chọn Tầng 2 cửa sổ panorama (B01, B02, B07, B08) góc rộng 180 độ bắt trọn cảnh đèo Hải Vân và biển miền Trung. "
-                . "8) THAI PHỤ & BỆNH NHÂN: Tầng 1 trọng tâm xe giảm 99% phản lực dằn xóc mặt đường, gần cửa bước xuống trạm nghỉ. "
-                . "9) MANG VALI TO / LAPTOP: Tầng 1 hộc đồ rộng để ngay dưới chân trong tầm mắt. "
-                . "10) ĐI CÔNG TÁC: Tầng 2 rèm kín bật đèn đọc sách làm việc đêm, cổng sạc Type-C 20W & Wifi 5G. "
-                . "11) CẶP ĐÔI / ĐI 2 NGƯỜI: Ưu tiên chọn 2 giường liền kề cùng một tầng; nếu xe đông hết cặp sát vách thì giải thích đã chọn 2 giường đối diện qua lối đi hoặc cùng khoang trục buồng. "
-                . "12) NHÓM 3-4 NGƯỜI: Gom cụm 4 giường trong 1 khoang buồng khép kín thành 'toa gia đình'. "
-                . "13) HẾT VÉ TẦNG 1 KHI KHÁCH SAY XE: Giải thích Tầng 1 chuyến này đã kín, AI chọn giường B02/B05 êm nhất Tầng 2 và khuyên dán miếng chống say, hoặc gợi ý chuyến kế tiếp còn Tầng 1. "
-                . "14) CHUYẾN CHỈ CÒN 1 VÉ MÀ KHÁCH ĐI 2 NGƯỜI: Cảnh báo ngay chuyến này chỉ còn 1 chỗ và tự động gợi ý chuyến kế tiếp cùng ngày còn đủ chỗ. "
-                . "15) BẤM THẺ CHUYẾN XE: Hướng dẫn khách bấm trực tiếp vào thẻ chuyến xe bên dưới tin nhắn để tự động chọn ghế và chuyển sang màn hình đặt vé.";
+            $systemPrompt = "Bạn là Trợ lý AI thông minh của Nhà xe Kiến Trúc Đà Nẵng (nhaxekientruc).\n"
+                . "QUY TẮC CỐT LÕI (BẮT BUỘC TUÂN THỦ NGHIÊM NGẶT):\n"
+                . "1. ĐỘ DÀI: Cực kỳ ngắn gọn, súc tích (1 đến tối đa 3 câu). Đi thẳng vào trọng tâm câu hỏi, KHÔNG viết văn dài dòng, KHÔNG tự ý liệt kê hàng loạt các tuyến xe hay chính sách nếu khách không hỏi.\n"
+                . "2. TÁC PHONG: Xưng 'em', gọi 'bạn' (hoặc tên khách). Lịch thiệp, tự nhiên, nhã nhặn, tôn trọng khách hàng.\n"
+                . "3. CHĂM SÓC KHÁCH HÀNG KHI HỦY VÉ: Khi khách muốn hủy vé, hãy tôn trọng quyết định của khách bằng thái độ ân cần, hướng dẫn họ xác nhận hủy vé và nhận tiền hoàn cọc tại mục 'Vé Của Tôi' hoặc nút hủy vé, TUYỆT ĐỐI KHÔNG níu kéo, không nài ép hay mời mọc dời vé nếu khách không yêu cầu.\n"
+                . "4. THỜI GIAN: {$timeContext}\n"
+                . "5. THÔNG TIN KHÁCH HÀNG: {$userDesc}\n"
+                . "6. BẢO MẬT: Tuyệt đối từ chối cung cấp quyền admin ra ngoài.\n"
+                . "7. QUY TẮC CHỌN GHẾ XE GIƯỜNG NẰM:\n"
+                . "- Say xe, người già, trẻ nhỏ, đau lưng: Chọn Tầng 1 (êm ái, giảm xóc 98%, trọng tâm cân bằng).\n"
+                . "- Riêng tư, ngắm cảnh: Chọn Tầng 2 (rèm kín 100%, ngắm cảnh đẹp).";
 
             // Xây dựng contents đa lượt (Multi-turn conversation history)
             $contents = [];
             if (!empty($history) && is_array($history)) {
-                $recentTurns = array_slice($history, -8);
+                $recentTurns = array_slice($history, -6);
                 foreach ($recentTurns as $turn) {
                     $role = (($turn['role'] ?? '') === 'model' || ($turn['role'] ?? '') === 'assistant') ? 'model' : 'user';
                     $contentStr = trim((string)($turn['content'] ?? ''));
@@ -1529,10 +1500,7 @@ class AiAssistantController extends Controller
 
             foreach ($candidateModels as $modelName) {
                 try {
-                    $response = Http::timeout(20)->withHeaders([
-                        'Content-Type' => 'application/json',
-                        'x-goog-api-key' => $apiKey,
-                    ])->post(
+                    $response = Http::timeout(10)->post(
                         "https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$apiKey}",
                         [
                             'system_instruction' => [
@@ -1540,8 +1508,8 @@ class AiAssistantController extends Controller
                             ],
                             'contents' => $contents,
                             'generationConfig' => [
-                                'temperature' => 0.7,
-                                'maxOutputTokens' => 2048,
+                                'temperature' => 0.35,
+                                'maxOutputTokens' => 800,
                             ]
                         ]
                     );
@@ -1605,11 +1573,27 @@ class AiAssistantController extends Controller
             return [];
         }
 
+        // Tuyệt đối loại trừ các câu hỏi thuần về ngày tháng, giờ giấc, thời tiết hoặc chào hỏi
+        if (preg_match('/(thứ mấy|mấy giờ|ngày mấy|hôm nay là|ngày mai là|thời tiết|bây giờ là|xin chào|tôi là ai|nhớ tôi)/u', $lower)) {
+            $isExplicitBooking = preg_match('/(đặt vé|mua vé|tìm xe|tìm chuyến|xem chuyến|có xe nào|có chuyến nào)/u', $lower);
+            if (!$isExplicitBooking) {
+                return [];
+            }
+        }
+
         $matchedDest = null;
         foreach ($destMap as $key => $name) {
             if (str_contains($lower, $key)) {
                 $matchedDest = $name;
                 break;
+            }
+        }
+
+        // Không có điểm đến và không yêu cầu rõ ràng -> không trả về danh sách chuyến ngẫu nhiên
+        if (!$matchedDest) {
+            $isExplicitBooking = preg_match('/(đặt vé|mua vé|tìm xe|tìm chuyến|xem chuyến|có xe nào|có chuyến nào|danh sách chuyến)/u', $lower);
+            if (!$isExplicitBooking) {
+                return [];
             }
         }
 
@@ -2518,55 +2502,37 @@ class AiAssistantController extends Controller
         // Nếu chưa đăng nhập và chưa có mã vé
         if (!$booking) {
             return [
-                'reply' => "Dạ để em kiểm tra chính sách hủy vé và thời gian khởi hành giúp mình, anh/chị cho em xin **Mã vé (dạng KT-XXXXXX)** hoặc **Số điện thoại** đã đặt vé nhé! Em sẽ kiểm tra xem vé có được hoàn 100% hoặc hỗ trợ dời chuyến miễn phí không ạ. 😊",
+                'reply' => "Dạ em rất tiếc khi anh/chị không thể tiếp tục chuyến đi cùng Nhà xe Kiến Trúc. Để em hỗ trợ thủ tục hủy vé cho mình, anh/chị có thể bấm vào nút bên dưới để mở danh sách vé và xác nhận hủy nhận lại tiền hoàn cọc, hoặc gửi em Mã vé (KT-XXXXXX) để em tra cứu hỗ trợ nhé! 😊",
                 'suggestions' => ["Đến mục Quản Lý Vé", "Hotline 1900 6868"],
+                'trips' => [],
                 'action' => [
                     'type' => 'go_to_my_bookings',
-                    'title' => '🎫 Mở Danh Sách Vé Của Tôi',
+                    'title' => '🎫 Mở Danh Sách Vé Của Tôi Để Hủy Vé ➔',
                     'url' => '/my-bookings'
-                ]
+                ],
+                'source' => 'cancellation-customer-care'
             ];
         }
 
         $depTime = Carbon::parse($booking->trip?->departure_time);
-        $hoursUntilDep = $depTime->diffInHours(Carbon::now(), false) * -1;
         $depTimeHour = $depTime->format('H\h') . ($depTime->format('i') !== '00' ? $depTime->format('i') : '');
         $routeName = $booking->trip?->route?->name ?? 'Đà Nẵng ➔ Quy Nhơn';
         $routeName = str_replace(['⇄', '->', '➔'], '–', $routeName);
+        $code = $booking->booking_code;
 
-        // Trường hợp sát giờ chạy (<= 24 giờ): Bị trừ 20% phí -> Đề xuất dời sang tối mai miễn phí
-        if ($hoursUntilDep <= 24 && $hoursUntilDep > 0) {
-            $reply = "Vé chuyến **{$depTimeHour} tối nay ({$routeName})** của anh/chị nếu hủy bây giờ sẽ bị trừ **20% phí** theo quy định. Hay là để em hỗ trợ **dời miễn phí vé này sang tối mai** giúp anh/chị để đỡ mất phí nhé? 😊\n\nChuyến tối mai bên em vẫn còn nhiều ghế tầng dưới cực êm ái ạ!";
-
-            return [
-                'reply' => $reply,
-                'suggestions' => [
-                    "Dời vé sang tối mai miễn phí",
-                    "Vẫn muốn hủy vé (trừ 20% phí)",
-                    "Xem chi tiết vé #{$booking->booking_code}"
-                ],
-                'action' => [
-                    'type' => 'reschedule_ticket',
-                    'title' => "🔄 Dời Vé Sang Tối Mai Miễn Phí (Tiết kiệm 20%)",
-                    'booking_code' => $booking->booking_code,
-                    'url' => "/booking/{$booking->booking_code}/detail"
-                ],
-                'source' => 'cancellation-retention-policy'
-            ];
-        }
-
-        // Trường hợp xa giờ chạy (> 24 giờ): Hoàn 100% không mất phí
-        $reply = "Vé chuyến **{$depTimeHour} ({$routeName})** của anh/chị còn hơn 24 giờ nữa mới khởi hành nên được **hoàn 100% tiền cọc 0đ phí** theo quy định của nhà xe ạ! Em hỗ trợ anh/chị gửi lệnh hủy vé và hoàn tiền ngay nhé.";
+        $reply = "Dạ em rất tiếc khi anh/chị không thể tiếp tục chuyến đi cùng Nhà xe Kiến Trúc. Em đã chuẩn bị sẵn thủ tục hủy cho vé **#{$code}** ({$routeName}, lúc {$depTimeHour}) rồi ạ. Anh/chị bấm vào nút bên dưới để xác nhận hủy vé và nhận tiền hoàn cọc theo quy định nhé! Chúc anh/chị một ngày tốt lành và hy vọng được đồng hành cùng anh/chị trong các chuyến đi tới. 😊";
 
         return [
             'reply' => $reply,
-            'suggestions' => ["Xác nhận hủy vé hoàn tiền 100%", "Giữ vé tiếp tục đi"],
+            'suggestions' => ["Xác nhận hủy vé #{$code}", "Đến mục Vé Của Tôi", "Hotline 1900 6868"],
+            'trips' => [],
             'action' => [
-                'type' => 'cancel_ticket_full_refund',
-                'title' => "🚫 Xác Nhận Hủy Vé & Nhận Hoàn 100% Tiền ➔",
-                'url' => "/booking/{$booking->booking_code}/detail"
+                'type' => 'confirm_cancel_ticket',
+                'title' => "🚫 Xác Nhận Hủy Vé #{$code} & Nhận Hoàn Cọc ➔",
+                'booking_code' => $code,
+                'url' => "/my-bookings"
             ],
-            'source' => 'cancellation-full-refund'
+            'source' => 'cancellation-customer-care'
         ];
     }
 
