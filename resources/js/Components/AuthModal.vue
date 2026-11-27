@@ -199,6 +199,13 @@
 
       </div>
     </div>
+
+    <!-- Popup Google Account Chooser chuẩn phong cách Google Chrome -->
+    <GoogleAccountChooserModal
+      :visible="showGoogleChooser"
+      @close="showGoogleChooser = false"
+      @switchToRegister="closeModal"
+    />
   </Teleport>
 </template>
 
@@ -206,6 +213,7 @@
 import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
+import GoogleAccountChooserModal from '@/Components/GoogleAccountChooserModal.vue';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -220,6 +228,7 @@ const isSubmitting = ref(false);
 const showPassword = ref(false);
 const showForgot = ref(false);
 const errorMessage = ref('');
+const showGoogleChooser = ref(false);
 
 const loginForm = ref({
   email: '',
@@ -232,6 +241,7 @@ const closeModal = () => {
   emit('close');
   errorMessage.value = '';
   showForgot.value = false;
+  showGoogleChooser.value = false;
 };
 
 const goToRegister = () => {
@@ -239,25 +249,8 @@ const goToRegister = () => {
   router.visit('/register');
 };
 
-const handleGoogleLogin = async () => {
-  isSubmitting.value = true;
-  errorMessage.value = '';
-  try {
-    const res = await axios.post('/auth/google-login', {
-      email: 'tronghieuvo9@gmail.com',
-      name: 'Võ Trọng Hiếu (Google Account)'
-    });
-    if (res.data?.success) {
-      closeModal();
-      window.location.reload();
-    } else {
-      errorMessage.value = res.data?.message || 'Đăng nhập Google thất bại!';
-      isSubmitting.value = false;
-    }
-  } catch (err) {
-    errorMessage.value = 'Đăng nhập Google không thành công. Vui lòng thử lại!';
-    isSubmitting.value = false;
-  }
+const handleGoogleLogin = () => {
+  showGoogleChooser.value = true;
 };
 
 const handlePasswordLogin = async () => {

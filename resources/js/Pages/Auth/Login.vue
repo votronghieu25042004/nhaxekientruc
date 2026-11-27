@@ -1289,6 +1289,13 @@
         </div>
       </div>
     </div>
+
+    <!-- MODAL GOOGLE ACCOUNT CHOOSER CHUẨN GOOGLE CHROME (ẢNH 1) -->
+    <GoogleAccountChooserModal
+      :visible="showGoogleChooser"
+      @close="showGoogleChooser = false"
+      @switchToRegister="onSwitchToRegisterFromGoogle"
+    />
   </div>
 </template>
 
@@ -1298,6 +1305,7 @@ import { useForm, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import Navbar from '@/Components/Navbar.vue';
 import Footer from '@/Components/Footer.vue';
+import GoogleAccountChooserModal from '@/Components/GoogleAccountChooserModal.vue';
 
 const props = defineProps({
   errors: Object,
@@ -1313,6 +1321,7 @@ const isStudentRegistration = ref(false);
 const showPassword = ref(false);
 const showForgotModal = ref(false);
 const showTermsModal = ref(false);
+const showGoogleChooser = ref(false);
 const agreeTerms = ref(true);
 const otpDeliveryMethod = ref('sms'); // 'sms' | 'voice'
 
@@ -1474,16 +1483,14 @@ const submitLogin = () => {
 };
 
 const handleGoogleLogin = () => {
-  triggerTurboSpeed();
-  router.post('/auth/google-login', {
-    email: 'tronghieuvo9@gmail.com',
-    name: 'Võ Trọng Hiếu (Google Account)'
-  }, {
-    preserveScroll: true,
-    onFinish: () => {
-      stopTurboSpeed();
-    }
-  });
+  showGoogleChooser.value = true;
+};
+
+const onSwitchToRegisterFromGoogle = ({ email, name }) => {
+  switchTab('register');
+  registerMethod.value = 'gmail';
+  if (email) regGmail.value = email;
+  if (name) regName.value = name;
 };
 
 // ==================== 2. QUY TRÌNH ĐĂNG KÝ 3 BƯỚC ====================

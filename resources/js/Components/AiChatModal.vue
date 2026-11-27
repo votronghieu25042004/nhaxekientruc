@@ -526,7 +526,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 
 const page = usePage();
@@ -553,6 +553,44 @@ const currentUser = computed(() => {
 const isAdminUser = computed(() => {
   const u = currentUser.value;
   return u && (u.role === 'admin' || u.role === 'staff');
+});
+
+const resetGuestChat = () => {
+  chatSessions.value = [
+    {
+      id: Date.now(),
+      title: 'Đoạn chat tạm thời (Khách)',
+      messages: [
+        {
+          role: 'assistant',
+          content: 'Chào bạn! Tôi là Trợ Lý AI Nhà xe Kiến Trúc Đà Nẵng. Tôi có thể hỗ trợ gì cho chuyến đi của bạn hôm nay? (Lưu ý: Đoạn chat của khách chưa đăng nhập sẽ tự động làm mới khi tải lại trang)',
+          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+        }
+      ]
+    }
+  ];
+  currentSessionId.value = chatSessions.value[0].id;
+  try {
+    sessionStorage.removeItem('nhaxekientruc_guest_chat');
+    localStorage.removeItem('nhaxekientruc_chat_sessions_guest');
+    localStorage.removeItem('bushub_chat_sessions_guest');
+  } catch (e) {}
+};
+
+onMounted(() => {
+  if (!currentUser.value) {
+    // KHÁCH CHƯA ĐĂNG NHẬP: Khi tải lại trang (reload/F5), xóa sạch toàn bộ đoạn chat cũ (Requirement 2)
+    resetGuestChat();
+  }
+});
+
+watch(() => currentUser.value, (newVal) => {
+  if (!newVal) {
+    resetGuestChat();
+  } else {
+    chatSessions.value = getInitialSessions();
+    currentSessionId.value = chatSessions.value[0]?.id || 1;
+  }
 });
 
 // Các đoạn chat: Chỉ lưu vào LocalStorage khi đã đăng nhập tài khoản
@@ -876,6 +914,11 @@ const generateSmartReply = (q) => {
   // 0. Phàn nàn / Đánh giá / "Sao dốt vậy"
   if (/(sao dốt|sao ngu|dốt vậy|dốt thế|kém vậy|chả liên quan|không liên quan|vớ vẩn|trả lời sai|chẳng hiểu gì|không hiểu gì|gemini pro)/i.test(lower)) {
     return 'Dạ em thành thật xin lỗi bạn vì câu trả lời trước đó chưa đúng trọng tâm khiến bạn phiền lòng ạ! 🙏 Em vừa được cập nhật thuật toán phân tích ngữ cảnh mới. Em có thể giải đáp chính xác về: tra cứu tuyến xe (kể cả tuyến có chạy trực tiếp hay không), hướng dẫn đăng nhập admin tại /login, chính sách cọc 30% và mã giảm giá sinh viên PRO30. Bạn đang cần hỗ trợ thông tin nào ạ?';
+  }
+
+  // 0.5. Thử mic / Giọng nói / "Bạn có nghe tôi nói không"
+  if (/(nghe tôi nói không|có nghe không|nghe không|nghe rõ không|alo|alo alo|test mic|thử giọng|bạn nghe được không|có ai ở đây không|bạn ở đó không|có ai không|bạn là ai|em là ai|trợ lý là ai|ai đó)/i.test(lower)) {
+    return 'Dạ em nghe bạn rất rõ và to ạ! Em là **Trợ lý AI Đồng Hành Thông Minh** của **Nhà xe Kiến Trúc Đà Nẵng** đây ạ! 😊🎙️\n\nMicro và giọng nói nhận diện hoàn hảo. Em luôn trực tuyến để lắng nghe và đồng hành cùng bạn suốt chuyến đi:\n• 🚌 Tra cứu tuyến xe & giờ chạy\n• 🎯 Tư vấn chọn giường chống say xe, giường rèm riêng tư, đi 2 người\n• 💳 Hỗ trợ đặt cọc 30% & mã ưu đãi giảm 30% sinh viên PRO30.\n\nBạn cứ nói hoặc gõ tiếp yêu cầu, em đang lắng nghe bạn đây ạ!';
   }
 
   // 1. Đăng nhập Admin / Trang quản trị

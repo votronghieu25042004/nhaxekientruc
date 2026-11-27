@@ -94,6 +94,31 @@ class AiAssistantController extends Controller
             ];
         }
 
+        // ==================== 1.2. THỬ MICRO, GIỌNG NÓI / "BẠN CÓ NGHE TÔI NÓI KHÔNG" / CHÀO HỎI ====================
+        if (preg_match('/(nghe tôi nói không|có nghe không|nghe không|nghe rõ không|alo|alo alo|test mic|thử giọng|bạn nghe được không|có ai ở đây không|bạn ở đó không|có ai không|bạn là ai|em là ai|trợ lý là ai|ai đó|hú|hế lô|hello|hi|chào em|chào bạn|chào ad|chào nhà xe|chào buổi sáng|chào buổi tối)/u', $lower)) {
+            $nameStr = $user ? " bạn **{$user->name}**" : "";
+            return [
+                'reply' => "Dạ em nghe{$nameStr} rất rõ và to ạ! Em là **Trợ lý AI Đồng Hành Thông Minh** của **Nhà xe Kiến Trúc Đà Nẵng** đây ạ! 😊🎙️\n\n" .
+                           "Hệ thống micro và xử lý ngôn ngữ đang hoạt động hoàn hảo 100%. Em luôn sẵn sàng đồng hành cùng bạn suốt hành trình:\n" .
+                           "• 🛣️ **Tra cứu & Tìm chuyến:** Đà Nẵng ⇄ Huế, Quảng Trị, Quảng Bình, Quy Nhơn, Buôn Ma Thuột.\n" .
+                           "• 🎯 **Tư vấn chọn giường thông minh:** Say xe, cần rèm riêng tư, đi 2 người, người lớn tuổi, chân dài...\n" .
+                           "• 💳 **Chính sách đặt cọc 30%** giữ chỗ chắc chắn & **Mã sinh viên giảm 30% (`PRO30`).**\n" .
+                           "• 🔄 **Đồng hành đổi/hủy vé** và hỗ trợ trực tuyến 24/7.\n\n" .
+                           "Bạn cứ nói hoặc nhập tiếp nhu cầu, em sẽ hỗ trợ bạn ngay lập tức nhé!",
+                'suggestions' => ['Tôi bị say xe đi Quảng Trị', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%', 'Mã giảm giá PRO30']
+            ];
+        }
+
+        // ==================== 1.3. KHEN NGỢI, CẢM ƠN, XÃ GIAO ====================
+        if (preg_match('/(cảm ơn|thank|cảm ơn em|cảm ơn bạn|tuyệt vời|thông minh|tốt lắm|ok em|oke em|okie|bye|tạm biệt)/u', $lower)) {
+            $nameStr = $user ? " bạn **{$user->name}**" : " bạn";
+            return [
+                'reply' => "Dạ không có chi ạ! Rất vui được hỗ trợ{$nameStr}! 😊\n\n" .
+                           "Nếu bạn cần tìm thêm chuyến xe, thay đổi ghế ngồi hoặc cần hỗ trợ về thủ tục cọc vé, bạn cứ nhắn cho em bất kỳ lúc nào nhé. Chúc bạn một ngày thật vui vẻ và có chuyến đi thượng lộ bình an cùng Nhà xe Kiến Trúc Đà Nẵng! 🚌✨",
+                'suggestions' => ['Xem bảng giá vé các tuyến', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên']
+            ];
+        }
+
         // ==================== 1.5. ĐẶT VÉ KÈM THỂ TRẠNG: TOÀN BỘ KỊCH BẢN THÔNG MINH & PHÂN TÍCH ĐÁNH ĐỔI (REASONING & TRADE-OFFS) ====================
         $isSayXeQ = (bool) preg_match('/(say|chóng mặt|nôn|ói|lắc|say xe|say tàu|tiền đình|chống say|êm ái|ít rung|mệt|nôn nao|hoa mắt)/u', $lower);
         $isRiengTuQ = (bool) preg_match('/(riêng tư|rèm|kín|không gian riêng|phòng riêng|tránh người|kín đáo|rèm che|khép kín|kéo rèm)/u', $lower);
