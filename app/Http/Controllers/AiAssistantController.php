@@ -36,6 +36,33 @@ class AiAssistantController extends Controller
     }
 
     /**
+     * Lấy GEMINI_API_KEY chuẩn trên cả Local (.env) lẫn Render (Environment Variables).
+     */
+    private function getGeminiApiKey(): ?string
+    {
+        $key = config('services.gemini.key')
+            ?: getenv('GEMINI_API_KEY')
+            ?: ($_ENV['GEMINI_API_KEY'] ?? $_SERVER['GEMINI_API_KEY'] ?? env('GEMINI_API_KEY'));
+
+        if (empty($key) && file_exists(base_path('.env'))) {
+            $lines = file(base_path('.env'), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($lines as $line) {
+                $trimmed = trim($line);
+                if (str_starts_with($trimmed, 'GEMINI_API_KEY=')) {
+                    $key = trim(substr($trimmed, strlen('GEMINI_API_KEY=')), "\"' \t\r\n");
+                    break;
+                }
+            }
+        }
+
+        if (!empty($key) && strlen($key) >= 20) {
+            return $key;
+        }
+
+        return null;
+    }
+
+    /**
      * Endpoint API nhận tin nhắn chat từ khách hàng và phản hồi thông minh.
      */
     public function chat(Request $request)
@@ -45,7 +72,7 @@ class AiAssistantController extends Controller
         $user = Auth::user();
 
         if (empty($message)) {
-            $greetingReply = $user 
+            $greetingReply = $user
                 ? $this->getUserHistoryGreeting($user)
                 : "Dạ em chào quý khách ạ! Em là **Bé Kiến Trúc DAU** - Trợ lý AI Nhà xe Kiến Trúc Đà Nẵng. Em có thể hỗ trợ gì cho hành trình sắp tới của bạn ạ? 😊";
 
@@ -98,6 +125,15 @@ class AiAssistantController extends Controller
         }
 
         // =========================================================================
+        // 0.3. LUỒNG ĐẶT VÉ HỘI THOẠI (NHẬP SĐT / XÁC THỰC OTP NGAY TRONG KHUNG CHAT)
+        // =========================================================================
+        $bookingState = (array) $request->input('booking_state', []);
+        $convBookingResult = $this->handleConversationalBookingFlow($request, $message, $lower, $user, $bookingState);
+        if ($convBookingResult !== null) {
+            return response()->json($convBookingResult);
+        }
+
+        // =========================================================================
         // 1. CHỐT GHẾ & LẤY MÃ QR THANH TOÁN TỨC THÌ (INSTANT SEAT LOCK & VIETQR)
         // Khi khách gõ hoặc nói "chốt cho tôi", "lấy cho tôi ghế này đi", "chốt ghế A01 cho tôi"...
         // =========================================================================
@@ -142,26 +178,9 @@ class AiAssistantController extends Controller
         }
 
         // Thử gọi Gemini API với multi-turn history & multi-model fallback
-        $geminiKey = env('GEMINI_API_KEY');
-        if (file_exists(base_path('.env'))) {
-            $envLines = file(base_path('.env'), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            foreach ($envLines as $line) {
-                if (str_starts_with(trim($line), 'GEMINI_API_KEY=')) {
-                    $val = trim(substr(trim($line), strlen('GEMINI_API_KEY=')));
-                    $val = trim($val, '"\'');
-                    if (!empty($val)) {
-                        $geminiKey = $val;
-                    }
-                    break;
-                }
-            }
-        }
+        $geminiKey = $this->getGeminiApiKey();
 
-        if (empty($geminiKey) || strlen($geminiKey) < 10) {
-            $geminiKey = base64_decode('QVEuQWI4Uk42TFoyTUFGdDB3VFVWdHNvM3M2REljNm5wbG1CcEtuMWdwZmtNMGp0SXFUNnc=');
-        }
-
-        if (!empty($geminiKey) && strlen($geminiKey) > 10) {
+        if (!empty($geminiKey)) {
             $geminiReply = $this->callGeminiApi($message, $user, $context, $geminiKey, $matchingTrips, $history);
             if ($geminiReply) {
                 return response()->json([
@@ -249,16 +268,16 @@ class AiAssistantController extends Controller
             }
 
             $bookingCode = 'KT-' . strtoupper(\Illuminate\Support\Str::random(6));
-            $seatPrice = (float)($trip->floor1_price ?? $trip->price ?? 140000);
+            $seatPrice = (float) ($trip->floor1_price ?? $trip->price ?? 140000);
             $totalSeatCount = count($seats);
             $totalAmount = $seatPrice * $totalSeatCount;
-            $depositAmount = (float)round($totalAmount * 0.3);
+            $depositAmount = (float) round($totalAmount * 0.3);
 
             // Tìm RouteStop thật trong DB, không hardcode ID 1 và 2 (tránh lỗi Foreign Key trên Render)
-            $firstStop = $trip->route?->stops?->first() 
+            $firstStop = $trip->route?->stops?->first()
                 ?: \App\Models\RouteStop::where('route_id', $trip->route_id)->orderBy('stop_order', 'asc')->first()
                 ?: \App\Models\RouteStop::first();
-            $lastStop = $trip->route?->stops?->last() 
+            $lastStop = $trip->route?->stops?->last()
                 ?: \App\Models\RouteStop::where('route_id', $trip->route_id)->orderBy('stop_order', 'desc')->first()
                 ?: \App\Models\RouteStop::latest('id')->first();
 
@@ -304,7 +323,7 @@ class AiAssistantController extends Controller
 
             $vietQr = \App\Services\VietQrService::generatePaymentData($booking, $depositAmount);
 
-            $depTimeStr = $trip?->departure_time 
+            $depTimeStr = $trip?->departure_time
                 ? Carbon::parse($trip->departure_time)->format('H:i d/m/Y')
                 : 'Sáng mai';
             $routeNameStr = $trip?->route?->name ?? 'Đà Nẵng ⇄ Thừa Thiên - Huế';
@@ -360,7 +379,7 @@ class AiAssistantController extends Controller
         $booking = Booking::where('booking_code', $bookingCode)->first();
 
         if ($booking) {
-            $depositAmount = (float)round($booking->total_amount * 0.3);
+            $depositAmount = (float) round($booking->total_amount * 0.3);
             $booking->update([
                 'payment_status' => 'DEPOSIT_PAID',
                 'paid_amount' => $depositAmount,
@@ -404,7 +423,8 @@ class AiAssistantController extends Controller
                 $hText = $history[$i]['content'] ?? '';
                 if (preg_match('/KT-[A-Z0-9]{6}/i', $hText, $hmCode)) {
                     $booking = Booking::where('booking_code', strtoupper($hmCode[0]))->first();
-                    if ($booking) break;
+                    if ($booking)
+                        break;
                 }
             }
         }
@@ -423,7 +443,7 @@ class AiAssistantController extends Controller
         }
 
         if ($booking) {
-            $depositAmount = (float)round($booking->total_amount * 0.3);
+            $depositAmount = (float) round($booking->total_amount * 0.3);
             $booking->update([
                 'payment_status' => 'DEPOSIT_PAID',
                 'paid_amount' => $depositAmount,
@@ -532,10 +552,10 @@ class AiAssistantController extends Controller
         }
 
         $bookingCode = 'KT-' . strtoupper(\Illuminate\Support\Str::random(6));
-        $seatPrice = (float)($trip->floor1_price ?? $trip->price ?? 140000);
+        $seatPrice = (float) ($trip->floor1_price ?? $trip->price ?? 140000);
         $totalSeatCount = count($seats);
         $totalAmount = $seatPrice * $totalSeatCount;
-        $depositAmount = (float)round($totalAmount * 0.3);
+        $depositAmount = (float) round($totalAmount * 0.3);
 
         $pickupStopId = $trip->route?->stops?->first()?->id ?? 1;
         $dropoffStopId = $trip->route?->stops?->last()?->id ?? 2;
@@ -575,7 +595,7 @@ class AiAssistantController extends Controller
 
         $vietQr = \App\Services\VietQrService::generatePaymentData($booking, $depositAmount);
 
-        $depTimeStr = $trip?->departure_time 
+        $depTimeStr = $trip?->departure_time
             ? Carbon::parse($trip->departure_time)->format('H:i d/m/Y')
             : 'Sáng mai';
         $routeNameStr = $trip?->route?->name ?? 'Đà Nẵng ⇄ Thừa Thiên - Huế';
@@ -735,15 +755,15 @@ class AiAssistantController extends Controller
 
                 // 3. Khóa ghế & Tạo Booking
                 $bookingCode = 'KT-' . strtoupper(\Illuminate\Support\Str::random(6));
-                $seatPrice = (float)($trip->floor1_price ?? $trip->price ?? 140000);
+                $seatPrice = (float) ($trip->floor1_price ?? $trip->price ?? 140000);
                 $totalSeatCount = count($seats);
                 $totalAmount = $seatPrice * $totalSeatCount;
-                $depositAmount = (float)round($totalAmount * 0.3);
+                $depositAmount = (float) round($totalAmount * 0.3);
 
                 $pickupStopId = $trip->route?->stops?->first()?->id ?? 1;
                 $dropoffStopId = $trip->route?->stops?->last()?->id ?? 2;
 
-                $driverNote = $bookingState['driver_note'] ?? $this->extractDriverCustomerNotes($message, (array)$request->input('history', []));
+                $driverNote = $bookingState['driver_note'] ?? $this->extractDriverCustomerNotes($message, (array) $request->input('history', []));
                 $driverNotePrefix = $driverNote ? "{$driverNote} | " : "";
 
                 $booking = \App\Models\Booking::create([
@@ -782,7 +802,7 @@ class AiAssistantController extends Controller
                 // 4. Sinh mã VietQR cọc 30%
                 $vietQr = \App\Services\VietQrService::generatePaymentData($booking, $depositAmount);
 
-                $departureTimeStr = $trip?->departure_time 
+                $departureTimeStr = $trip?->departure_time
                     ? Carbon::parse($trip->departure_time)->format('H:i d/m/Y')
                     : '20:00 hôm nay';
                 $routeNameStr = $trip?->route?->name ?? 'Đà Nẵng ➔ Quy Nhơn';
@@ -915,11 +935,16 @@ class AiAssistantController extends Controller
 
             // Nhận diện tuyến xe
             $destination = 'Quy Nhơn';
-            if (preg_match('/(huế|hue)/ui', $lower)) $destination = 'Thừa Thiên - Huế';
-            elseif (preg_match('/(quảng trị|quang tri|đông hà)/ui', $lower)) $destination = 'Quảng Trị';
-            elseif (preg_match('/(quảng bình|quang binh|đồng hới)/ui', $lower)) $destination = 'Quảng Bình';
-            elseif (preg_match('/(buôn ma thuột|đắk lắk|bmt)/ui', $lower)) $destination = 'Buôn Ma Thuột';
-            elseif (preg_match('/(quy nhơn|quy nhon|bình định)/ui', $lower)) $destination = 'Quy Nhơn';
+            if (preg_match('/(huế|hue)/ui', $lower))
+                $destination = 'Thừa Thiên - Huế';
+            elseif (preg_match('/(quảng trị|quang tri|đông hà)/ui', $lower))
+                $destination = 'Quảng Trị';
+            elseif (preg_match('/(quảng bình|quang binh|đồng hới)/ui', $lower))
+                $destination = 'Quảng Bình';
+            elseif (preg_match('/(buôn ma thuột|đắk lắk|bmt)/ui', $lower))
+                $destination = 'Buôn Ma Thuột';
+            elseif (preg_match('/(quy nhơn|quy nhon|bình định)/ui', $lower))
+                $destination = 'Quy Nhơn';
 
             // Nhận diện ngày: Hôm nay vs Ngày mai
             $isTomorrow = (bool) preg_match('/(ngày mai|mai|28)/ui', $lower);
@@ -927,9 +952,9 @@ class AiAssistantController extends Controller
 
             // Tìm chuyến xe tương ứng trong database
             $trip = \App\Models\Trip::with('route.stops')
-                ->whereHas('route', function($q) use ($destination) {
+                ->whereHas('route', function ($q) use ($destination) {
                     $q->where('destination', 'like', "%{$destination}%")
-                      ->orWhere('name', 'like', "%{$destination}%");
+                        ->orWhere('name', 'like', "%{$destination}%");
                 })
                 ->where('departure_time', 'like', "{$targetDateStr}%")
                 ->whereIn('status', ['OPEN_FOR_SALE', 'SCHEDULED', 'ACTIVE'])
@@ -940,9 +965,9 @@ class AiAssistantController extends Controller
             if (!$trip && !$isTomorrow) {
                 $tomorrow = Carbon::tomorrow();
                 $tripTomorrow = \App\Models\Trip::with('route.stops')
-                    ->whereHas('route', function($q) use ($destination) {
+                    ->whereHas('route', function ($q) use ($destination) {
                         $q->where('destination', 'like', "%{$destination}%")
-                          ->orWhere('name', 'like', "%{$destination}%");
+                            ->orWhere('name', 'like', "%{$destination}%");
                     })
                     ->where('departure_time', 'like', $tomorrow->format('Y-m-d') . '%')
                     ->whereIn('status', ['OPEN_FOR_SALE', 'SCHEDULED', 'ACTIVE'])
@@ -1000,10 +1025,10 @@ class AiAssistantController extends Controller
             } else {
                 // Người dùng ĐÃ đăng nhập: tạo đơn và xuất mã QR thanh toán ngay!
                 $bookingCode = 'KT-' . strtoupper(\Illuminate\Support\Str::random(6));
-                $seatPrice = (float)($trip?->floor1_price ?? $trip?->price ?? 140000);
-                $depositAmount = (float)round($seatPrice * 0.3);
+                $seatPrice = (float) ($trip?->floor1_price ?? $trip?->price ?? 140000);
+                $depositAmount = (float) round($seatPrice * 0.3);
 
-                $driverNote = $bookingState['driver_note'] ?? $this->extractDriverCustomerNotes($message, (array)$request->input('history', []));
+                $driverNote = $bookingState['driver_note'] ?? $this->extractDriverCustomerNotes($message, (array) $request->input('history', []));
                 $driverNotePrefix = $driverNote ? "{$driverNote} | " : "";
 
                 $booking = \App\Models\Booking::create([
@@ -1130,7 +1155,7 @@ class AiAssistantController extends Controller
             $nameStr = $user ? " bạn **{$user->name}**" : " bạn";
             return [
                 'reply' => "Dạ không có chi ạ! Rất vui được hỗ trợ{$nameStr}! 😊\n\n" .
-                           "Nếu bạn cần tìm thêm chuyến xe, thay đổi ghế ngồi hoặc cần hỗ trợ về thủ tục cọc vé, bạn cứ nhắn cho em bất kỳ lúc nào nhé. Chúc bạn một ngày thật vui vẻ và có chuyến đi thượng lộ bình an cùng Nhà xe Kiến Trúc Đà Nẵng! 🚌✨",
+                    "Nếu bạn cần tìm thêm chuyến xe, thay đổi ghế ngồi hoặc cần hỗ trợ về thủ tục cọc vé, bạn cứ nhắn cho em bất kỳ lúc nào nhé. Chúc bạn một ngày thật vui vẻ và có chuyến đi thượng lộ bình an cùng Nhà xe Kiến Trúc Đà Nẵng! 🚌✨",
                 'suggestions' => ['Xem bảng giá vé các tuyến', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên']
             ];
         }
@@ -1141,10 +1166,10 @@ class AiAssistantController extends Controller
             $nameStr = $user ? " bạn **{$user->name}**" : "";
             return [
                 'reply' => "Dạ em là **Bé Kiến Trúc DAU**! Em mở ngay cửa sổ **" . ($isGoogle ? "Đăng Nhập Google" : "Đăng Nhập & Tạo Tài Khoản") . "** cho{$nameStr} ngay đây nhé! 😊🏛️\n\n" .
-                           "• 🌐 **Đăng nhập 1 chạm Google:** Chọn tài khoản Google có sẵn cực kỳ nhanh và bảo mật.\n" .
-                           "• 🎓 **Ưu đãi sinh viên:** Nhận ngay mã **`PRO30`** (giảm 30% suốt 365 ngày) khi dùng email sinh viên.\n" .
-                           "• 🎫 **Lưu lịch sử vé:** Xem vé đã đặt và tích lũy điểm thưởng đổi vé miễn phí.\n\n" .
-                           "Cửa sổ đã được mở sẵn trên màn hình, bạn chỉ việc chọn tài khoản hoặc nhập thông tin để đăng nhập nha!",
+                    "• 🌐 **Đăng nhập 1 chạm Google:** Chọn tài khoản Google có sẵn cực kỳ nhanh và bảo mật.\n" .
+                    "• 🎓 **Ưu đãi sinh viên:** Nhận ngay mã **`PRO30`** (giảm 30% suốt 365 ngày) khi dùng email sinh viên.\n" .
+                    "• 🎫 **Lưu lịch sử vé:** Xem vé đã đặt và tích lũy điểm thưởng đổi vé miễn phí.\n\n" .
+                    "Cửa sổ đã được mở sẵn trên màn hình, bạn chỉ việc chọn tài khoản hoặc nhập thông tin để đăng nhập nha!",
                 'suggestions' => ['Tôi muốn đặt vé', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên'],
                 'action' => [
                     'type' => $isGoogle ? 'open_google' : 'open_login',
@@ -1178,88 +1203,88 @@ class AiAssistantController extends Controller
             // 1. Say xe VÀ Cần riêng tư (Conflict Trade-off kinh điển)
             if ($isSayXeQ && $isRiengTuQ) {
                 $reply .= "⚖️ **PHÂN TÍCH ĐÁNH ĐỔI Y KHOA: SAY XE vs KHÔNG GIAN RIÊNG TƯ:**\n" .
-                          "• 🤢 **Tầng 1 (Dãy giữa {$seatsStr}):** Nằm ở độ cao sát mặt đường, ngay trọng tâm xe, cách xa 2 trục bánh xe. Khi xe phanh gấp hoặc ôm cua đèo dốc, Tầng 1 hấp thụ 98% dao động quán tính, tiền đình của bạn không bị đánh võng nên giảm tới 80% cảm giác say xe và nôn nao. Tuy nhiên, Tầng 1 thiết kế thông thoáng để lưu thông luồng khí lạnh tự nhiên nên không gắn rèm che kín.\n" .
-                          "• 🎪 **Tầng 2 (Dãy B):** Có rèm che riêng tư 100% chống nhìn trộm và chống nắng, nhưng vì ở vị trí cao cách mặt đất hơn 1.8m, theo nguyên lý đòn bẩy vật lý thì tầng 2 sẽ chịu lực ly tâm lắc ngang gấp 2.5 lần Tầng 1 khi xe ôm cua.\n" .
-                          "👉 **Lời khuyên bác sĩ chuyên khoa & Nhà xe:** Với hành trình đường dài, **sức khỏe và sự tỉnh táo không say xe là yếu tố quan trọng số 1**. Em khuyên bạn nên **ƯU TIÊN CHỌN TẦNG 1 ({$seatsStr})** để có một chuyến đi êm ru và khỏe mạnh! *(Nếu bạn nhất quyết cần sự riêng tư, bạn vẫn có thể chọn Tầng 2, nhưng bạn nhớ dán miếng chống say sau tai và uống thuốc trước khi xe chạy 30 phút nhé)*.\n\n";
+                    "• 🤢 **Tầng 1 (Dãy giữa {$seatsStr}):** Nằm ở độ cao sát mặt đường, ngay trọng tâm xe, cách xa 2 trục bánh xe. Khi xe phanh gấp hoặc ôm cua đèo dốc, Tầng 1 hấp thụ 98% dao động quán tính, tiền đình của bạn không bị đánh võng nên giảm tới 80% cảm giác say xe và nôn nao. Tuy nhiên, Tầng 1 thiết kế thông thoáng để lưu thông luồng khí lạnh tự nhiên nên không gắn rèm che kín.\n" .
+                    "• 🎪 **Tầng 2 (Dãy B):** Có rèm che riêng tư 100% chống nhìn trộm và chống nắng, nhưng vì ở vị trí cao cách mặt đất hơn 1.8m, theo nguyên lý đòn bẩy vật lý thì tầng 2 sẽ chịu lực ly tâm lắc ngang gấp 2.5 lần Tầng 1 khi xe ôm cua.\n" .
+                    "👉 **Lời khuyên bác sĩ chuyên khoa & Nhà xe:** Với hành trình đường dài, **sức khỏe và sự tỉnh táo không say xe là yếu tố quan trọng số 1**. Em khuyên bạn nên **ƯU TIÊN CHỌN TẦNG 1 ({$seatsStr})** để có một chuyến đi êm ru và khỏe mạnh! *(Nếu bạn nhất quyết cần sự riêng tư, bạn vẫn có thể chọn Tầng 2, nhưng bạn nhớ dán miếng chống say sau tai và uống thuốc trước khi xe chạy 30 phút nhé)*.\n\n";
             }
             // 2. Say xe VÀ Thích ngắm cảnh
             elseif ($isSayXeQ && $isNgamCanhQ) {
                 $reply .= "👁️ **PHÂN TÍCH SAY XE vs NGẮM CẢNH (ĐỒNG BỘ TIỀN ĐÌNH):**\n" .
-                          "• Khi say xe mà nhìn ngang cửa sổ, các vật thể lướt qua quá nhanh sẽ gây xung đột giữa mắt và tai trong, làm bạn chóng mặt dữ dội hơn.\n" .
-                          "• AI đã chọn cho bạn **giường Tầng 1 khoang đầu sát cửa sổ ({$seatsStr})**: Vừa nằm ở tầng thấp êm ái chống lắc, vừa có tầm nhìn hướng thẳng về phía trước theo chiều xe chạy. Điều này giúp não bộ đồng bộ cảm giác chuyển động, triệt tiêu say xe mà vẫn thưởng ngoạn được trọn vẹn phong cảnh!\n\n";
+                    "• Khi say xe mà nhìn ngang cửa sổ, các vật thể lướt qua quá nhanh sẽ gây xung đột giữa mắt và tai trong, làm bạn chóng mặt dữ dội hơn.\n" .
+                    "• AI đã chọn cho bạn **giường Tầng 1 khoang đầu sát cửa sổ ({$seatsStr})**: Vừa nằm ở tầng thấp êm ái chống lắc, vừa có tầm nhìn hướng thẳng về phía trước theo chiều xe chạy. Điều này giúp não bộ đồng bộ cảm giác chuyển động, triệt tiêu say xe mà vẫn thưởng ngoạn được trọn vẹn phong cảnh!\n\n";
             }
             // 3. Say xe thuần túy
             elseif ($isSayXeQ) {
                 $reply .= "🤢 **TƯ VẤN CHUYÊN BIỆT CHO NGƯỜI SAY XE / TIỀN ĐÌNH KÉM:**\n" .
-                          "Hệ thống AI đã tự động phát sáng và chọn vị trí vàng **giường {$seatsStr} (Tầng 1 - Dãy giữa)**. Đây là 'tâm trọng lực' của xe limousine 34 phòng, trang bị nệm bóng hơi triệt tiêu 98% chấn động đèo dốc, gần cửa gió điều hòa dịu nhẹ, giúp bạn ngủ một giấc êm ái tới nơi mà không hề nôn nao.\n\n";
+                    "Hệ thống AI đã tự động phát sáng và chọn vị trí vàng **giường {$seatsStr} (Tầng 1 - Dãy giữa)**. Đây là 'tâm trọng lực' của xe limousine 34 phòng, trang bị nệm bóng hơi triệt tiêu 98% chấn động đèo dốc, gần cửa gió điều hòa dịu nhẹ, giúp bạn ngủ một giấc êm ái tới nơi mà không hề nôn nao.\n\n";
             }
             // 4. Riêng tư thuần túy
             elseif ($isRiengTuQ) {
                 $reply .= "😴 **TƯ VẤN KHÔNG GIAN RIÊNG TƯ & NGHỈ NGƠI:**\n" .
-                          "Em đã chọn giường **{$seatsStr} (Tầng 2 - Cạnh cửa sổ)**. Tầng 2 được trang bị rèm che riêng tư 100% chống tia UV và chống nhìn trộm, hoàn toàn tách biệt khỏi sàn xe và luồng người đi lại, kèm đèn đọc sách 3000K dịu mắt để bạn nghỉ ngơi thư thái suốt chuyến.\n\n";
+                    "Em đã chọn giường **{$seatsStr} (Tầng 2 - Cạnh cửa sổ)**. Tầng 2 được trang bị rèm che riêng tư 100% chống tia UV và chống nhìn trộm, hoàn toàn tách biệt khỏi sàn xe và luồng người đi lại, kèm đèn đọc sách 3000K dịu mắt để bạn nghỉ ngơi thư thái suốt chuyến.\n\n";
             }
 
             // 5. Người già / Đau lưng / Khó leo trèo
             if ($isElderlyQ) {
                 $reply .= "👴 **THIẾT KẾ ĐẶC BIỆT CHO NGƯỜI CAO TUỔI / ĐAU CỘT SỐNG:**\n" .
-                          "• Tuyệt đối bố trí **Tầng 1 ngay sát cửa buồng lái ({$seatsStr})**: Khách chỉ cần bước 1 bước là vào giường, sàn phẳng hoàn toàn, không phải leo thang trơn trượt nguy hiểm.\n" .
-                          "• Hệ thống bóng hơi giảm xóc bảo vệ xương khớp và cột sống; Bác tài và Phụ xe sẽ trực tiếp hỗ trợ xách hành lý và dìu người lớn tuổi khi lên xuống các trạm dừng chân.\n\n";
+                    "• Tuyệt đối bố trí **Tầng 1 ngay sát cửa buồng lái ({$seatsStr})**: Khách chỉ cần bước 1 bước là vào giường, sàn phẳng hoàn toàn, không phải leo thang trơn trượt nguy hiểm.\n" .
+                    "• Hệ thống bóng hơi giảm xóc bảo vệ xương khớp và cột sống; Bác tài và Phụ xe sẽ trực tiếp hỗ trợ xách hành lý và dìu người lớn tuổi khi lên xuống các trạm dừng chân.\n\n";
             }
 
             // 6. Gia đình có em bé sơ sinh / Trẻ nhỏ
             if ($isBabyQ) {
                 $reply .= "👶 **BẢO ĐẢM AN TOÀN CHO EM BÉ & TRẺ NHỎ:**\n" .
-                          "• AI chọn **giường Tầng 1 an toàn ({$seatsStr})**, loại bỏ hoàn toàn 100% nguy cơ trẻ lăn té ngã từ tầng cao.\n" .
-                          "• Cửa gió điều hòa tại khoang này có nắp xoay điều hướng lên trần, tránh thổi hơi lạnh trực tiếp vào thóp bé gây ho cảm; giường gần lối đi rộng giúp mẹ thuận tiện pha sữa và dỗ dành bé.\n\n";
+                    "• AI chọn **giường Tầng 1 an toàn ({$seatsStr})**, loại bỏ hoàn toàn 100% nguy cơ trẻ lăn té ngã từ tầng cao.\n" .
+                    "• Cửa gió điều hòa tại khoang này có nắp xoay điều hướng lên trần, tránh thổi hơi lạnh trực tiếp vào thóp bé gây ho cảm; giường gần lối đi rộng giúp mẹ thuận tiện pha sữa và dỗ dành bé.\n\n";
             }
 
             // 7. Người cao > 1m75 - 1m85 / Chân dài
             if ($isTallQ) {
                 $reply .= "🦵 **THOẢI MÁI TỐI ĐA CHO HÀNH KHÁCH CAO > 1m75 (CHÂN DÀI):**\n" .
-                          "Các giường chuẩn thường bị giới hạn hộc để chân 1m75 gây gò bó mỏi khớp gối. AI đã ưu tiên chọn **giường vách thoáng [{$seatsStr}]** có chiều dài lọt lòng lên tới 185cm - 190cm, hộc để chân mở rộng giúp bạn duỗi thẳng hoàn toàn bàn chân thoải mái.\n\n";
+                    "Các giường chuẩn thường bị giới hạn hộc để chân 1m75 gây gò bó mỏi khớp gối. AI đã ưu tiên chọn **giường vách thoáng [{$seatsStr}]** có chiều dài lọt lòng lên tới 185cm - 190cm, hộc để chân mở rộng giúp bạn duỗi thẳng hoàn toàn bàn chân thoải mái.\n\n";
             }
 
             // 8. Cần yên tĩnh / Khó ngủ / Nhạy cảm tiếng ồn
             if ($isQuietQ) {
                 $reply .= "🌙 **KHOANG THƯƠNG GIA TĨNH LẶNG (CHO NGƯỜI KHÓ NGỦ):**\n" .
-                          "AI đã chọn **giường Tầng 2 khoang giữa ({$seatsStr})**: Cách xa tiếng còi xe và đèn pha đối diện phía trước buồng lái, cách xa tiếng máy gầm rú phía sau đuôi xe, rèm kéo kín cách ly ánh sáng, không có người đi qua lại, mang lại giấc ngủ sâu xuyên đêm.\n\n";
+                    "AI đã chọn **giường Tầng 2 khoang giữa ({$seatsStr})**: Cách xa tiếng còi xe và đèn pha đối diện phía trước buồng lái, cách xa tiếng máy gầm rú phía sau đuôi xe, rèm kéo kín cách ly ánh sáng, không có người đi qua lại, mang lại giấc ngủ sâu xuyên đêm.\n\n";
             }
 
             // 9. Ngắm cảnh / Panorama
             if ($isNgamCanhQ && !$isSayXeQ) {
                 $reply .= "📸 **TẦM NHÌN PANORAMA TOÀN CẢNH (DÀNH CHO TÍN ĐỒ DU LỊCH):**\n" .
-                          "Giường **{$seatsStr} (Tầng 2 cạnh cửa sổ lớn)** mang lại tầm nhìn trên cao 180 độ không bị dải phân cách chắn tầm mắt, ngắm trọn vẹn cảnh sắc đèo Hải Vân, vịnh Lăng Cô và bờ biển miền Trung tuyệt đẹp!\n\n";
+                    "Giường **{$seatsStr} (Tầng 2 cạnh cửa sổ lớn)** mang lại tầm nhìn trên cao 180 độ không bị dải phân cách chắn tầm mắt, ngắm trọn vẹn cảnh sắc đèo Hải Vân, vịnh Lăng Cô và bờ biển miền Trung tuyệt đẹp!\n\n";
             }
 
             // 10. Phụ nữ mang thai / Người ốm
             if ($isPregnantQ) {
                 $reply .= "🤰 **CHĂM SÓC ĐẶC BIỆT DÀNH CHO THAI PHỤ & NGƯỜI BỆNH:**\n" .
-                          "AI khóa ngay **giường Tầng 1 trọng tâm ({$seatsStr})**: Giảm 99% phản lực dằn xóc từ mặt đường, giữ cơ thể thai phụ luôn ở trạng thái cân bằng tĩnh, ngay cạnh lối thoát hiểm và tủ thuốc y tế dự phòng.\n\n";
+                    "AI khóa ngay **giường Tầng 1 trọng tâm ({$seatsStr})**: Giảm 99% phản lực dằn xóc từ mặt đường, giữ cơ thể thai phụ luôn ở trạng thái cân bằng tĩnh, ngay cạnh lối thoát hiểm và tủ thuốc y tế dự phòng.\n\n";
             }
 
             // 11. Mang nhiều hành lý / Đồ giá trị
             if ($isLuggageQ) {
                 $reply .= "🧳 **TIỆN LỢI CHO HÀNH LÝ & ĐỒ ĐẮT TIỀN:**\n" .
-                          "Giường **Tầng 1 ({$seatsStr})** có hộc để đồ cá nhân sâu ngay dưới chân, giúp bạn để balo laptop, máy ảnh trong tầm mắt và an toàn tuyệt đối mà không sợ cồng kềnh rơi rớt khi leo trèo.\n\n";
+                    "Giường **Tầng 1 ({$seatsStr})** có hộc để đồ cá nhân sâu ngay dưới chân, giúp bạn để balo laptop, máy ảnh trong tầm mắt và an toàn tuyệt đối mà không sợ cồng kềnh rơi rớt khi leo trèo.\n\n";
             }
 
             // 12. Đi công tác / Làm việc ban đêm
             if ($isBusinessQ) {
                 $reply .= "💼 **TIỆN NGHI DOANH NHÂN & LÀM VIỆC TẠI CHỖ:**\n" .
-                          "Giường **Tầng 2 ({$seatsStr})** có rèm che kín giúp bạn bật đèn đọc sách làm việc đêm mà không làm chói mắt cabin; trang bị cổng sạc nhanh Type-C 20W và Wifi 5G xuyên suốt hành trình.\n\n";
+                    "Giường **Tầng 2 ({$seatsStr})** có rèm che kín giúp bạn bật đèn đọc sách làm việc đêm mà không làm chói mắt cabin; trang bị cổng sạc nhanh Type-C 20W và Wifi 5G xuyên suốt hành trình.\n\n";
             }
 
             // 13. Sắp xếp cặp đôi / Đi 2 người / Nhóm bạn
             if ($hasPassengerCountQ) {
                 $reply .= "👩‍❤️‍👨 **SẮP XẾP CHỖ NGỒI THÔNG MINH CHO NHIỀU NGƯỜI:**\n" .
-                          "• **Ưu tiên số 1:** AI quét sơ đồ thực tế trong database để chọn cặp giường liền kề cùng tầng còn trống đẹp nhất **[{$seatsStr}]** để các bạn nằm cạnh nhau, thuận tiện trò chuyện và chăm sóc nhau suốt chặng đường.\n" .
-                          "• **Quy tắc dự phòng thông minh:** Nếu chuyến xe đã kín các cặp sát vách, AI sẽ tự động ghép 2 giường đối diện nhau qua lối đi hoặc cùng một trục buồng để các bạn vẫn ở cạnh nhau mà không bị tách rời.\n\n";
+                    "• **Ưu tiên số 1:** AI quét sơ đồ thực tế trong database để chọn cặp giường liền kề cùng tầng còn trống đẹp nhất **[{$seatsStr}]** để các bạn nằm cạnh nhau, thuận tiện trò chuyện và chăm sóc nhau suốt chặng đường.\n" .
+                    "• **Quy tắc dự phòng thông minh:** Nếu chuyến xe đã kín các cặp sát vách, AI sẽ tự động ghép 2 giường đối diện nhau qua lối đi hoặc cùng một trục buồng để các bạn vẫn ở cạnh nhau mà không bị tách rời.\n\n";
             }
 
             $reply .= "🎁 **TIỆN NGHI MIỄN PHÍ TRÊN TỪNG GIƯỜNG:**\n" .
-                      "• Mỗi vị trí đều được tặng 1 chai nước suối tinh khiết, khăn lạnh tiệt trùng.\n" .
-                      "• Ổ cắm sạc điện thoại Type-C PD & USB 20W sạc nhanh, TV LED giải trí, chăn đắp kháng khuẩn.\n\n" .
-                      "👉 Bạn bấm trực tiếp vào mã ghế [{$seatsStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ chuyến xe bên dưới để giữ chỗ và nhận mã VietQR cọc 30% ngay nhé! 😊";
+                "• Mỗi vị trí đều được tặng 1 chai nước suối tinh khiết, khăn lạnh tiệt trùng.\n" .
+                "• Ổ cắm sạc điện thoại Type-C PD & USB 20W sạc nhanh, TV LED giải trí, chăn đắp kháng khuẩn.\n\n" .
+                "👉 Bạn bấm trực tiếp vào mã ghế [{$seatsStr}] màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ chuyến xe bên dưới để giữ chỗ và nhận mã VietQR cọc 30% ngay nhé! 😊";
 
             return [
                 'reply' => $reply,
@@ -1278,9 +1303,9 @@ class AiAssistantController extends Controller
         if (preg_match('/(đăng nhập vào admin|đăng nhập admin|link admin|vào admin|vào trang quản trị|trang quản trị|cách vào admin|quản trị viên|admin login|link dashboard|bảng điều khiển admin|trang admin|tài khoản admin)/u', $lower)) {
             return [
                 'reply' => "Dạ em là Trợ lý tư vấn khách hàng nên **hoàn toàn không có quyền hạn can thiệp, cung cấp tài khoản hay cấp quyền truy cập vào trang Quản trị (Admin)** đâu ạ! 😊\n\n" .
-                           "Hệ thống Quản trị chỉ dành riêng cho Ban quản lý và nhân sự kỹ thuật được ủy quyền của Nhà xe Kiến Trúc nhằm đảm bảo an toàn và bảo mật dữ liệu hành trình.\n\n" .
-                           "• Nếu bạn là **Khách hàng**: Bạn vui lòng bấm nút **'Đăng Nhập'** ở góc trên thanh menu để đăng nhập tài khoản thành viên thông thường, quản lý vé đã đặt và tích lũy điểm thưởng nhé.\n" .
-                           "• Nếu bạn là **Nhân sự nội bộ của Nhà xe**: Vui lòng liên hệ quản trị viên hệ thống hoặc sử dụng tài khoản nghiệp vụ đã được cấp theo đúng quy định nội bộ ạ!",
+                    "Hệ thống Quản trị chỉ dành riêng cho Ban quản lý và nhân sự kỹ thuật được ủy quyền của Nhà xe Kiến Trúc nhằm đảm bảo an toàn và bảo mật dữ liệu hành trình.\n\n" .
+                    "• Nếu bạn là **Khách hàng**: Bạn vui lòng bấm nút **'Đăng Nhập'** ở góc trên thanh menu để đăng nhập tài khoản thành viên thông thường, quản lý vé đã đặt và tích lũy điểm thưởng nhé.\n" .
+                    "• Nếu bạn là **Nhân sự nội bộ của Nhà xe**: Vui lòng liên hệ quản trị viên hệ thống hoặc sử dụng tài khoản nghiệp vụ đã được cấp theo đúng quy định nội bộ ạ!",
                 'suggestions' => ['Đăng nhập tài khoản khách', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%', 'Mã giảm giá PRO30']
             ];
         }
@@ -1289,7 +1314,7 @@ class AiAssistantController extends Controller
         if (preg_match('/(ngày mai là ngày mấy|ngày mai ngày mấy|hôm nay ngày mấy|hôm nay là ngày mấy|mai là ngày mấy|mai ngày mấy|bây giờ là mấy giờ|mấy giờ rồi|ngày mai|hôm nay)/u', $lower) && (str_contains($lower, 'ngày mấy') || str_contains($lower, 'ngày bao nhiêu') || str_contains($lower, 'thứ mấy') || str_contains($lower, 'mấy giờ') || str_contains($lower, 'ngày nào'))) {
             $now = Carbon::now();
             $tomorrow = Carbon::tomorrow();
-            $thuVN = match($now->dayOfWeek) {
+            $thuVN = match ($now->dayOfWeek) {
                 0 => 'Chủ Nhật',
                 1 => 'Thứ Hai',
                 2 => 'Thứ Ba',
@@ -1299,7 +1324,7 @@ class AiAssistantController extends Controller
                 6 => 'Thứ Bảy',
                 default => 'Hôm nay',
             };
-            $thuMaiVN = match($tomorrow->dayOfWeek) {
+            $thuMaiVN = match ($tomorrow->dayOfWeek) {
                 0 => 'Chủ Nhật',
                 1 => 'Thứ Hai',
                 2 => 'Thứ Ba',
@@ -1321,7 +1346,7 @@ class AiAssistantController extends Controller
         if (preg_match('/(nhớ tôi|nhớ tui|nhớ em|nhớ anh|nhớ tao|có nhớ tôi|có nhớ tui|bạn nhớ tôi|bạn nhớ tui|tôi là ai|tui là ai|tôi tên gì|tui tên gì|biết tôi là ai|biết tui là ai|bạn biết tôi|thông tin của tôi|tài khoản của tôi|hồ sơ của tôi|điểm của tôi|tôi có bao nhiêu điểm|tôi là hạng gì)/u', $lower)) {
             if ($user) {
                 $tierCode = $user->loyalty_tier ?? 'MEMBER';
-                $tierName = match($tierCode) {
+                $tierName = match ($tierCode) {
                     'DIAMOND' => '💎 VIP Kim Cương',
                     'GOLD' => '👑 VIP Vàng',
                     'SILVER' => '🥈 Thân Thiết Bạc',
@@ -1331,7 +1356,7 @@ class AiAssistantController extends Controller
 
                 // Tìm vé xe gần nhất của khách
                 $latestBooking = Booking::with('trip.route')
-                    ->where(function($q) use ($user) {
+                    ->where(function ($q) use ($user) {
                         $q->where('user_id', $user->id)->orWhere('customer_phone', $user->phone);
                     })
                     ->orderBy('created_at', 'desc')
@@ -1345,13 +1370,13 @@ class AiAssistantController extends Controller
                 }
 
                 $reply = "Dạ em nhớ bạn chứ ạ! 😊\n\nEm luôn ghi nhận đầy đủ thông tin tài khoản của bạn trên hệ thống Nhà xe Kiến Trúc:\n" .
-                         "• Họ và tên: **{$user->name}**\n" .
-                         "• Số điện thoại: **{$user->phone}**" .
-                         ($user->email ? "\n• Email: **{$user->email}**" : "") .
-                         "\n• Hạng thành viên: **{$tierName}**\n" .
-                         "• Điểm thưởng tích lũy: **{$points} điểm**" .
-                         $bookingText .
-                         "\n\nBạn đang có dự định đặt vé chuyến xe nào sắp tới không, để em hỗ trợ bạn tốt nhất nhé?";
+                    "• Họ và tên: **{$user->name}**\n" .
+                    "• Số điện thoại: **{$user->phone}**" .
+                    ($user->email ? "\n• Email: **{$user->email}**" : "") .
+                    "\n• Hạng thành viên: **{$tierName}**\n" .
+                    "• Điểm thưởng tích lũy: **{$points} điểm**" .
+                    $bookingText .
+                    "\n\nBạn đang có dự định đặt vé chuyến xe nào sắp tới không, để em hỗ trợ bạn tốt nhất nhé?";
 
                 return [
                     'reply' => $reply,
@@ -1360,7 +1385,7 @@ class AiAssistantController extends Controller
             } else {
                 return [
                     'reply' => "Dạ hiện tại bạn đang truy cập với tư cách **Khách vãng lai** (chưa đăng nhập tài khoản) nên em chưa nhận diện được thông tin họ tên và số điện thoại của bạn ạ! 😊\n\n" .
-                               "👉 Bạn chỉ cần bấm vào nút **'Đăng Nhập'** ở góc trên bên phải màn hình để đăng nhập tài khoản. Ngay sau đó, em sẽ nhận diện được bạn, hiển thị các vé xe bạn đã mua và tích lũy điểm thưởng thành viên tự động nhé!",
+                        "👉 Bạn chỉ cần bấm vào nút **'Đăng Nhập'** ở góc trên bên phải màn hình để đăng nhập tài khoản. Ngay sau đó, em sẽ nhận diện được bạn, hiển thị các vé xe bạn đã mua và tích lũy điểm thưởng thành viên tự động nhé!",
                     'suggestions' => ['Đăng nhập ngay', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên']
                 ];
             }
@@ -1409,13 +1434,13 @@ class AiAssistantController extends Controller
         if (preg_match('/(bảng giá|giá vé|vé bao nhiêu|tiền vé|vé rẻ nhất|giá các tuyến|vé đắt nhất|so sánh giá|các tuyến|danh sách tuyến|nhà xe có những tuyến|có những tuyến nào|nhà xe đi đâu|có xe đi đâu|lộ trình|tất cả tuyến|tuyến đường)/u', $lower)) {
             return [
                 'reply' => "🚌 **DANH SÁCH CÁC TUYẾN XE & BẢNG GIÁ NIÊM YẾT NHÀ XE KIẾN TRÚC:**\n\n" .
-                           "Toàn bộ giá vé đã bao gồm bảo hiểm hành khách, nước uống, khăn lạnh và tiện ích Limousine cao cấp:\n\n" .
-                           "1. 🛣️ **Đà Nẵng ⇄ Thừa Thiên Huế:** **150.000đ/vé** (Cọc 30% chỉ: **45.000đ** | SV mã `PRO30`: **105.000đ**)\n" .
-                           "2. 🛣️ **Đà Nẵng ⇄ Quảng Trị (Đông Hà):** **200.000đ/vé** (Cọc 30% chỉ: **60.000đ** | SV mã `PRO30`: **140.000đ**)\n" .
-                           "3. 🛣️ **Đà Nẵng ⇄ Quảng Bình (Đồng Hới):** **280.000đ/vé** (Cọc 30% chỉ: **84.000đ** | SV mã `PRO30`: **196.000đ**)\n" .
-                           "4. 🛣️ **Đà Nẵng ⇄ Quy Nhơn (Bình Định):** **360.000đ/vé** (Cọc 30% chỉ: **108.000đ** | SV mã `PRO30`: **252.000đ**)\n" .
-                           "5. 🛣️ **Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk):** **420.000đ/vé** (Cọc 30% chỉ: **126.000đ** | SV mã `PRO30`: **294.000đ**)\n\n" .
-                           "💡 **Điểm đặc biệt:** Quý khách chỉ cần **cọc trước 30%**, số tiền 70% còn lại gửi bác tài khi lên xe rất tiện lợi!",
+                    "Toàn bộ giá vé đã bao gồm bảo hiểm hành khách, nước uống, khăn lạnh và tiện ích Limousine cao cấp:\n\n" .
+                    "1. 🛣️ **Đà Nẵng ⇄ Thừa Thiên Huế:** **150.000đ/vé** (Cọc 30% chỉ: **45.000đ** | SV mã `PRO30`: **105.000đ**)\n" .
+                    "2. 🛣️ **Đà Nẵng ⇄ Quảng Trị (Đông Hà):** **200.000đ/vé** (Cọc 30% chỉ: **60.000đ** | SV mã `PRO30`: **140.000đ**)\n" .
+                    "3. 🛣️ **Đà Nẵng ⇄ Quảng Bình (Đồng Hới):** **280.000đ/vé** (Cọc 30% chỉ: **84.000đ** | SV mã `PRO30`: **196.000đ**)\n" .
+                    "4. 🛣️ **Đà Nẵng ⇄ Quy Nhơn (Bình Định):** **360.000đ/vé** (Cọc 30% chỉ: **108.000đ** | SV mã `PRO30`: **252.000đ**)\n" .
+                    "5. 🛣️ **Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk):** **420.000đ/vé** (Cọc 30% chỉ: **126.000đ** | SV mã `PRO30`: **294.000đ**)\n\n" .
+                    "💡 **Điểm đặc biệt:** Quý khách chỉ cần **cọc trước 30%**, số tiền 70% còn lại gửi bác tài khi lên xe rất tiện lợi!",
                 'suggestions' => ['Đặt vé đi Huế', 'Đặt vé đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã giảm giá PRO30']
             ];
         }
@@ -1424,12 +1449,12 @@ class AiAssistantController extends Controller
         if (preg_match('/(mấy giờ có xe|giờ xuất bến|giờ chạy|chuyến sớm nhất|chuyến muộn nhất|có xe đêm không|chạy ban đêm|lịch trình chạy|thời gian chạy)/u', $lower)) {
             return [
                 'reply' => "🕒 **LỊCH TRÌNH KHUNG GIỜ XUẤT BẾN HÀNG NGÀY TẠI ĐÀ NẴNG:**\n\n" .
-                           "• 🛣️ **Đà Nẵng ⇄ Huế:** 06:00, 06:30, 08:00, 08:30, 09:30, 11:00, 14:00, 14:30 (chạy liên tục, khoảng 2 tiếng)\n" .
-                           "• 🛣️ **Đà Nẵng ⇄ Quảng Trị (Đông Hà):** 07:00, 07:15, 08:30, 09:00, 11:00, 15:30, 18:00, 20:00 (~3.5 tiếng)\n" .
-                           "• 🛣️ **Đà Nẵng ⇄ Quảng Bình (Đồng Hới):** 06:00, 06:30, 07:00, 07:30, 08:00, 08:30, 19:30, 20:00 (~5 tiếng)\n" .
-                           "• 🛣️ **Đà Nẵng ⇄ Quy Nhơn (Bình Định):** 06:00, 07:30, 08:00, 09:30 | **Xe đêm:** 15:30, 18:00, 20:00, 22:45 (~6 tiếng)\n" .
-                           "• 🛣️ **Đà Nẵng ⇄ Buôn Ma Thuột:** 06:00, 06:30, 07:30, 08:00, 08:30 | **Xe đêm VIP:** 19:00, 20:00, 20:30, 23:30 (~10 tiếng)\n\n" .
-                           "Bạn dự định đi vào khung giờ nào để em hỗ trợ kiểm tra số ghế trống cho bạn nhé?",
+                    "• 🛣️ **Đà Nẵng ⇄ Huế:** 06:00, 06:30, 08:00, 08:30, 09:30, 11:00, 14:00, 14:30 (chạy liên tục, khoảng 2 tiếng)\n" .
+                    "• 🛣️ **Đà Nẵng ⇄ Quảng Trị (Đông Hà):** 07:00, 07:15, 08:30, 09:00, 11:00, 15:30, 18:00, 20:00 (~3.5 tiếng)\n" .
+                    "• 🛣️ **Đà Nẵng ⇄ Quảng Bình (Đồng Hới):** 06:00, 06:30, 07:00, 07:30, 08:00, 08:30, 19:30, 20:00 (~5 tiếng)\n" .
+                    "• 🛣️ **Đà Nẵng ⇄ Quy Nhơn (Bình Định):** 06:00, 07:30, 08:00, 09:30 | **Xe đêm:** 15:30, 18:00, 20:00, 22:45 (~6 tiếng)\n" .
+                    "• 🛣️ **Đà Nẵng ⇄ Buôn Ma Thuột:** 06:00, 06:30, 07:30, 08:00, 08:30 | **Xe đêm VIP:** 19:00, 20:00, 20:30, 23:30 (~10 tiếng)\n\n" .
+                    "Bạn dự định đi vào khung giờ nào để em hỗ trợ kiểm tra số ghế trống cho bạn nhé?",
                 'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Xe đêm Buôn Ma Thuột', 'Chính sách cọc 30%']
             ];
         }
@@ -1438,10 +1463,10 @@ class AiAssistantController extends Controller
         if (preg_match('/(không phải.*sinh viên|chẳng phải.*sinh viên|k phải.*sinh viên|ko phải.*sinh viên|không có thẻ.*sinh viên|k có thẻ.*sinh viên|ko có thẻ.*sinh viên|đăng nhập acc sinh viên|đăng nhập.*tài khoản sinh viên|mượn acc sinh viên|dùng acc sinh viên|dùng chung.*sinh viên|dùng ké.*sinh viên|fake sinh viên|giả sinh viên|mượn thẻ sinh viên|thẻ sinh viên người khác|không phải sv|k phải sv|ko phải sv|không là sinh viên|k là sinh viên|chưa là sinh viên)/u', $lower)) {
             return [
                 'reply' => "Dạ **không được** bạn nhé! 🚫\n\nQuy chế của Nhà xe Kiến Trúc quy định rất nghiêm ngặt về chương trình ưu đãi học sinh - sinh viên nhằm đảm bảo tính công bằng:\n\n" .
-                           "1. 👤 **Tài khoản chính chủ:** Tài khoản sinh viên được liên kết với số điện thoại và thông tin cá nhân của chính bạn sinh viên đó.\n" .
-                           "2. 🪪 **Bắt buộc đối soát thực tế khi lên xe:** Dù bạn có đăng nhập được tài khoản hay áp mã `PRO30` / `SINHVIEN`, khi lên xe Bác tài và Phụ xe **bắt buộc kiểm tra Thẻ sinh viên chính chủ còn hạn** (hoặc ứng dụng VNeID xác thực thông tin học sinh - sinh viên).\n" .
-                           "3. ⚠️ **Xử lý vi phạm:** Nếu không xuất trình được thẻ sinh viên chính chủ trùng khớp, nhà xe sẽ hủy ưu đãi và yêu cầu phụ thu 100% phần chênh lệch giá vé gốc.\n\n" .
-                           "👉 **Gợi ý:** Bạn hoàn toàn có thể đăng ký một **tài khoản thành viên thông thường** (hoàn toàn miễn phí) để được tích điểm thưởng loyalty, đổi vé miễn phí và nhận các chương trình khuyến mãi định kỳ của nhà xe nhé!",
+                    "1. 👤 **Tài khoản chính chủ:** Tài khoản sinh viên được liên kết với số điện thoại và thông tin cá nhân của chính bạn sinh viên đó.\n" .
+                    "2. 🪪 **Bắt buộc đối soát thực tế khi lên xe:** Dù bạn có đăng nhập được tài khoản hay áp mã `PRO30` / `SINHVIEN`, khi lên xe Bác tài và Phụ xe **bắt buộc kiểm tra Thẻ sinh viên chính chủ còn hạn** (hoặc ứng dụng VNeID xác thực thông tin học sinh - sinh viên).\n" .
+                    "3. ⚠️ **Xử lý vi phạm:** Nếu không xuất trình được thẻ sinh viên chính chủ trùng khớp, nhà xe sẽ hủy ưu đãi và yêu cầu phụ thu 100% phần chênh lệch giá vé gốc.\n\n" .
+                    "👉 **Gợi ý:** Bạn hoàn toàn có thể đăng ký một **tài khoản thành viên thông thường** (hoàn toàn miễn phí) để được tích điểm thưởng loyalty, đổi vé miễn phí và nhận các chương trình khuyến mãi định kỳ của nhà xe nhé!",
                 'suggestions' => ['Đăng ký tài khoản thường', 'Bảng giá vé các tuyến', 'Chính sách cọc 30%', 'Đà Nẵng đi Huế']
             ];
         }
@@ -1450,11 +1475,11 @@ class AiAssistantController extends Controller
         if (preg_match('/(không cọc|k cọc|ko cọc|chưa muốn cọc|không muốn cọc|tại sao.*cọc|sao phải cọc|sao bắt cọc|bắt buộc.*cọc|k có thẻ ngân hàng.*cọc|không có ngân hàng.*cọc|không chuyển khoản.*cọc|cọc tiền mặt|không trả cọc|không đưa cọc)/u', $lower)) {
             return [
                 'reply' => "Dạ quy định của Nhà xe Kiến Trúc là **bắt buộc phải đặt cọc trước 30%** để giữ chỗ bạn nhé! 💳\n\n" .
-                           "**Tại sao nhà xe bắt buộc cọc trước 30%?**\n" .
-                           "• 🔒 **Bảo vệ quyền lợi của bạn:** Ngay khi thanh toán cọc 30%, hệ thống tự động khóa chính xác vị trí giường nằm bạn đã chọn, cam kết 100% không bị người khác đặt đè hoặc trùng chỗ.\n" .
-                           "• 🤝 **Cam kết hai chiều:** Giúp nhà xe bố trí đúng số lượng xe, tránh tình trạng đặt vé ảo/bỏ bom chuyến, đảm bảo xe luôn xuất bến đúng giờ.\n" .
-                           "• 💵 **Linh hoạt tài chính:** Bạn không cần thanh toán hết 100% ngay. Khoản cọc chỉ từ **42.000đ - 126.000đ** tùy tuyến, còn lại **70%** bạn thanh toán trực tiếp cho bác tài khi lên xe bằng tiền mặt hoặc chuyển khoản.\n\n" .
-                           "💡 *Nếu bạn không có app ngân hàng để quét mã VietQR:* Bạn có thể nhờ người thân quét giúp trong vòng 10 phút, hoặc đến trực tiếp Văn phòng bến xe Đà Nẵng để nhân viên phòng vé xuất vé giấy thu tiền mặt nhé!",
+                    "**Tại sao nhà xe bắt buộc cọc trước 30%?**\n" .
+                    "• 🔒 **Bảo vệ quyền lợi của bạn:** Ngay khi thanh toán cọc 30%, hệ thống tự động khóa chính xác vị trí giường nằm bạn đã chọn, cam kết 100% không bị người khác đặt đè hoặc trùng chỗ.\n" .
+                    "• 🤝 **Cam kết hai chiều:** Giúp nhà xe bố trí đúng số lượng xe, tránh tình trạng đặt vé ảo/bỏ bom chuyến, đảm bảo xe luôn xuất bến đúng giờ.\n" .
+                    "• 💵 **Linh hoạt tài chính:** Bạn không cần thanh toán hết 100% ngay. Khoản cọc chỉ từ **42.000đ - 126.000đ** tùy tuyến, còn lại **70%** bạn thanh toán trực tiếp cho bác tài khi lên xe bằng tiền mặt hoặc chuyển khoản.\n\n" .
+                    "💡 *Nếu bạn không có app ngân hàng để quét mã VietQR:* Bạn có thể nhờ người thân quét giúp trong vòng 10 phút, hoặc đến trực tiếp Văn phòng bến xe Đà Nẵng để nhân viên phòng vé xuất vé giấy thu tiền mặt nhé!",
                 'suggestions' => ['Cách quét mã VietQR', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách hủy vé']
             ];
         }
@@ -1463,9 +1488,9 @@ class AiAssistantController extends Controller
         if (preg_match('/(chó|mèo|thú cưng|pet|động vật|vật nuôi|cún|mang chó|mang mèo|chở chó|chở mèo)/u', $lower)) {
             return [
                 'reply' => "Dạ quy định vận chuyển thú cưng tại Nhà xe Kiến Trúc như sau ạ: 🐾\n\n" .
-                           "• 🚫 **Trên khoang giường nằm:** Hoàn toàn **KHÔNG ĐƯỢC** mang chó, mèo hoặc bất kỳ vật nuôi nào lên khoang hành khách (nhằm đảm bảo không gian yên tĩnh, vệ sinh và phòng tránh dị ứng lông thú cho các hành khách khác).\n" .
-                           "• 📦 **Dưới khoang hành lý chuyên dụng:** Nhà xe chỉ nhận chở thú cưng nhỏ được **nhốt an toàn trong lồng kín, có khay vệ sinh và lỗ thông gió**, kèm giấy chứng nhận tiêm phòng dại còn hiệu lực.\n\n" .
-                           "Quý khách vui lòng liên hệ trước qua hotline **1900 8886** khi đặt vé để nhà xe bố trí vị trí khoang hầm thông thoáng nhất cho bé cưng nhé!",
+                    "• 🚫 **Trên khoang giường nằm:** Hoàn toàn **KHÔNG ĐƯỢC** mang chó, mèo hoặc bất kỳ vật nuôi nào lên khoang hành khách (nhằm đảm bảo không gian yên tĩnh, vệ sinh và phòng tránh dị ứng lông thú cho các hành khách khác).\n" .
+                    "• 📦 **Dưới khoang hành lý chuyên dụng:** Nhà xe chỉ nhận chở thú cưng nhỏ được **nhốt an toàn trong lồng kín, có khay vệ sinh và lỗ thông gió**, kèm giấy chứng nhận tiêm phòng dại còn hiệu lực.\n\n" .
+                    "Quý khách vui lòng liên hệ trước qua hotline **1900 8886** khi đặt vé để nhà xe bố trí vị trí khoang hầm thông thoáng nhất cho bé cưng nhé!",
                 'suggestions' => ['Hotline 1900 8886', 'Quy định hành lý 20kg', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%']
             ];
         }
@@ -1474,12 +1499,12 @@ class AiAssistantController extends Controller
         if (preg_match('/(quên đồ|để quên|rơi đồ|mất đồ|thất lạc|bỏ quên|quên điện thoại|quên ví|quên balo|quên hành lý|rơi ví|rơi điện thoại)/u', $lower)) {
             return [
                 'reply' => "Dạ nếu bạn vừa để quên đồ đạc hoặc hành lý trên xe, bạn hãy **bình tĩnh và gọi ngay hotline khẩn cấp: 1900 8886** (hoặc số điện thoại của Bác tài ghi trên vé/tin nhắn) nhé! 📞\n\n" .
-                           "Bạn vui lòng cung cấp nhanh các thông tin sau:\n" .
-                           "1. 🎫 **Mã vé (#KT-...)** hoặc Số điện thoại đặt vé.\n" .
-                           "2. 🚌 **Tuyến xe và giờ khởi hành** bạn vừa đi.\n" .
-                           "3. 💺 **Số giường và vị trí** bạn nghi ngờ để quên đồ.\n" .
-                           "4. 📦 **Đặc điểm nhận dạng món đồ** (màu sắc, loại đồ, túi xách...).\n\n" .
-                           "Bác tài và Phụ xe sẽ kiểm tra ngay lập tức tại vị trí giường nằm và bảo quản cẩn thận để gửi lại bạn tại Văn phòng bến xe gần nhất ạ!",
+                    "Bạn vui lòng cung cấp nhanh các thông tin sau:\n" .
+                    "1. 🎫 **Mã vé (#KT-...)** hoặc Số điện thoại đặt vé.\n" .
+                    "2. 🚌 **Tuyến xe và giờ khởi hành** bạn vừa đi.\n" .
+                    "3. 💺 **Số giường và vị trí** bạn nghi ngờ để quên đồ.\n" .
+                    "4. 📦 **Đặc điểm nhận dạng món đồ** (màu sắc, loại đồ, túi xách...).\n\n" .
+                    "Bác tài và Phụ xe sẽ kiểm tra ngay lập tức tại vị trí giường nằm và bảo quản cẩn thận để gửi lại bạn tại Văn phòng bến xe gần nhất ạ!",
                 'suggestions' => ['Hotline 1900 8886', 'Xem vé của tôi', 'Văn phòng nhà xe', 'Chính sách cọc 30%']
             ];
         }
@@ -1488,10 +1513,10 @@ class AiAssistantController extends Controller
         if (preg_match('/(trẻ em|em bé|trẻ con|mấy tuổi.*mua vé|con nít|người già|người cao tuổi|bà bầu|mang thai|say xe.*nằm đâu)/u', $lower)) {
             return [
                 'reply' => "Dạ chính sách vé dành cho trẻ em và hành khách đặc biệt tại Nhà xe Kiến Trúc như sau ạ: 👶👵\n\n" .
-                           "• 👶 **Trẻ em dưới 5 tuổi (cao dưới 1.1m):** Được **miễn phí vé 100%** khi nằm chung giường với bố mẹ hoặc người giám hộ.\n" .
-                           "• 👦 **Trẻ em từ 5 tuổi trở lên (hoặc cao từ 1.1m):** Bắt buộc mua **01 vé riêng** để có giường nằm riêng biệt, đảm bảo an toàn tối đa trên suốt hành trình.\n" .
-                           "• 👵 **Người cao tuổi, phụ nữ mang thai, người say xe:** Nhà xe luôn ưu tiên hỗ trợ các **giường tầng dưới (tầng 1) ở khu vực giữa xe (từ giường A2 đến A5)** - đây là vị trí êm ái, ít dằn xóc và thuận tiện lên xuống nhất.\n\n" .
-                           "Quý khách có thể tự do chọn các vị trí giường tầng 1 này trực tiếp trên sơ đồ xe khi đặt vé ạ!",
+                    "• 👶 **Trẻ em dưới 5 tuổi (cao dưới 1.1m):** Được **miễn phí vé 100%** khi nằm chung giường với bố mẹ hoặc người giám hộ.\n" .
+                    "• 👦 **Trẻ em từ 5 tuổi trở lên (hoặc cao từ 1.1m):** Bắt buộc mua **01 vé riêng** để có giường nằm riêng biệt, đảm bảo an toàn tối đa trên suốt hành trình.\n" .
+                    "• 👵 **Người cao tuổi, phụ nữ mang thai, người say xe:** Nhà xe luôn ưu tiên hỗ trợ các **giường tầng dưới (tầng 1) ở khu vực giữa xe (từ giường A2 đến A5)** - đây là vị trí êm ái, ít dằn xóc và thuận tiện lên xuống nhất.\n\n" .
+                    "Quý khách có thể tự do chọn các vị trí giường tầng 1 này trực tiếp trên sơ đồ xe khi đặt vé ạ!",
                 'suggestions' => ['Đặt vé tầng 1', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
             ];
         }
@@ -1500,9 +1525,9 @@ class AiAssistantController extends Controller
         if (preg_match('/(đón tận nhà|rước tận nhà|đón tận nơi|trả tận nhà|trả tận nơi|xe trung chuyển|đón dọc đường|bắt xe dọc đường|rước dọc đường|đón tại nhà)/u', $lower)) {
             return [
                 'reply' => "Dạ Nhà xe Kiến Trúc có dịch vụ **xe trung chuyển đón/trả tận nơi trong khu vực nội thành TP. Đà Nẵng hoàn toàn miễn phí** ạ! 🚐\n\n" .
-                           "• 📍 **Phạm vi đón trả tại Đà Nẵng:** Các quận Hải Châu, Thanh Khê, Cẩm Lệ, Sơn Trà, Ngũ Hành Sơn, Liên Chiểu (trong bán kính 7km tính từ bến xe và văn phòng). Bác tài xe trung chuyển sẽ gọi cho bạn trước 30 - 45 phút giờ xe chạy.\n" .
-                           "• 🛣️ **Đón trả dọc đường Quốc lộ 1A:** Xe có đón/trả tại các điểm dừng cố định trên trục QL1A (như Ngã ba Huế, Trạm thu phí, các nút giao lớn) nếu bạn ghi chú điểm hẹn trước khi đặt vé.\n" .
-                           "• 🏁 **Tại tỉnh đến (Huế, Quảng Trị, Quảng Bình, Quy Nhơn, Buôn Ma Thuột):** Xe trả khách tại Bến xe trung tâm tỉnh và dọc theo tuyến đường chính vào thành phố ạ!",
+                    "• 📍 **Phạm vi đón trả tại Đà Nẵng:** Các quận Hải Châu, Thanh Khê, Cẩm Lệ, Sơn Trà, Ngũ Hành Sơn, Liên Chiểu (trong bán kính 7km tính từ bến xe và văn phòng). Bác tài xe trung chuyển sẽ gọi cho bạn trước 30 - 45 phút giờ xe chạy.\n" .
+                    "• 🛣️ **Đón trả dọc đường Quốc lộ 1A:** Xe có đón/trả tại các điểm dừng cố định trên trục QL1A (như Ngã ba Huế, Trạm thu phí, các nút giao lớn) nếu bạn ghi chú điểm hẹn trước khi đặt vé.\n" .
+                    "• 🏁 **Tại tỉnh đến (Huế, Quảng Trị, Quảng Bình, Quy Nhơn, Buôn Ma Thuột):** Xe trả khách tại Bến xe trung tâm tỉnh và dọc theo tuyến đường chính vào thành phố ạ!",
                 'suggestions' => ['Hotline 1900 8886', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
             ];
         }
@@ -1511,12 +1536,12 @@ class AiAssistantController extends Controller
         if (preg_match('/(gửi xe máy|chở xe máy|cước xe máy|gửi xe số|gửi xe ga|bọc xốp xe máy|vận chuyển xe máy|gửi mô tô|gửi xe theo xe)/u', $lower)) {
             return [
                 'reply' => "Dạ Nhà xe Kiến Trúc **có nhận vận chuyển xe máy kèm theo chuyến đi** của hành khách ạ! 🏍️\n\n" .
-                           "• 🛡️ **Bọc xốp chống trầy xước:** Đội ngũ phụ xe chuyên nghiệp sẽ bọc xốp giảm chấn nhiều lớp, ràng buộc chắc chắn trong hầm xe chuyên dụng, cam kết an toàn tuyệt đối.\n" .
-                           "• 💰 **Bảng giá cước gửi xe máy tham khảo:**\n" .
-                           "  - Xe số (Wave, Sirius, Future...): **150.000đ - 200.000đ**\n" .
-                           "  - Xe tay ga (Vision, AirBlade, Lead...): **200.000đ - 280.000đ**\n" .
-                           "  - Xe tay ga lớn / Côn tay (SH, NVX, Exciter, Winner...): **280.000đ - 350.000đ**\n" .
-                           "• ⚠️ **Lưu ý quan trọng:** Bạn vui lòng mang xe đến bến trước giờ khởi hành ít nhất **45 phút** để nhân viên kỹ thuật hỗ trợ rút bớt xăng và đóng gói xe cẩn thận nhé!",
+                    "• 🛡️ **Bọc xốp chống trầy xước:** Đội ngũ phụ xe chuyên nghiệp sẽ bọc xốp giảm chấn nhiều lớp, ràng buộc chắc chắn trong hầm xe chuyên dụng, cam kết an toàn tuyệt đối.\n" .
+                    "• 💰 **Bảng giá cước gửi xe máy tham khảo:**\n" .
+                    "  - Xe số (Wave, Sirius, Future...): **150.000đ - 200.000đ**\n" .
+                    "  - Xe tay ga (Vision, AirBlade, Lead...): **200.000đ - 280.000đ**\n" .
+                    "  - Xe tay ga lớn / Côn tay (SH, NVX, Exciter, Winner...): **280.000đ - 350.000đ**\n" .
+                    "• ⚠️ **Lưu ý quan trọng:** Bạn vui lòng mang xe đến bến trước giờ khởi hành ít nhất **45 phút** để nhân viên kỹ thuật hỗ trợ rút bớt xăng và đóng gói xe cẩn thận nhé!",
                 'suggestions' => ['Hotline gửi xe máy', 'Đà Nẵng đi Buôn Ma Thuột', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
             ];
         }
@@ -1525,9 +1550,9 @@ class AiAssistantController extends Controller
         if (preg_match('/(ăn cơm|dừng nghỉ|trạm dừng|nghỉ ngơi|đi vệ sinh|dừng chân|có dừng lại|ăn uống dọc đường)/u', $lower)) {
             return [
                 'reply' => "Dạ trên các hành trình di chuyển, Nhà xe Kiến Trúc luôn bố trí thời gian dừng nghỉ hợp lý và chu đáo: 🍽️\n\n" .
-                           "• 🛑 **Các chặng dài (Quảng Bình ~5h, Quy Nhơn ~6h, Buôn Ma Thuột ~10h):** Xe luôn dừng tại các **Trạm dừng chân tiêu chuẩn sạch sẽ, văn minh** dọc tuyến. Thời gian dừng từ **20 - 30 phút** để hành khách dùng cơm, giải khát, đi vệ sinh và mua sắm đặc sản.\n" .
-                           "• 🍲 **Trạm dừng chân uy tín:** Giá cả niêm yết rõ ràng, đồ ăn đảm bảo an toàn vệ sinh thực phẩm, không chặt chém.\n" .
-                           "• 🛣️ **Chặng ngắn (Đà Nẵng ⇄ Huế ~2h):** Xe chạy thông suốt qua Hầm đường bộ Hải Vân, không dừng ăn cơm và chỉ dừng trả khách tại các trạm trả khách cố định nhé!",
+                    "• 🛑 **Các chặng dài (Quảng Bình ~5h, Quy Nhơn ~6h, Buôn Ma Thuột ~10h):** Xe luôn dừng tại các **Trạm dừng chân tiêu chuẩn sạch sẽ, văn minh** dọc tuyến. Thời gian dừng từ **20 - 30 phút** để hành khách dùng cơm, giải khát, đi vệ sinh và mua sắm đặc sản.\n" .
+                    "• 🍲 **Trạm dừng chân uy tín:** Giá cả niêm yết rõ ràng, đồ ăn đảm bảo an toàn vệ sinh thực phẩm, không chặt chém.\n" .
+                    "• 🛣️ **Chặng ngắn (Đà Nẵng ⇄ Huế ~2h):** Xe chạy thông suốt qua Hầm đường bộ Hải Vân, không dừng ăn cơm và chỉ dừng trả khách tại các trạm trả khách cố định nhé!",
                 'suggestions' => ['Đà Nẵng đi Quy Nhơn', 'Đà Nẵng đi Buôn Ma Thuột', 'Đà Nẵng đi Huế', 'Chính sách cọc 30%']
             ];
         }
@@ -1536,9 +1561,9 @@ class AiAssistantController extends Controller
         if (preg_match('/(lái ẩu|phóng nhanh|vượt ẩu|an toàn không|có say xe không|say xe|chống say xe|tài xế lái thế nào|chạy ẩu|lái an toàn)/u', $lower)) {
             return [
                 'reply' => "Dạ bạn hoàn toàn yên tâm 100% về độ an toàn và chất lượng chuyến đi của Nhà xe Kiến Trúc ạ! 🛡️\n\n" .
-                           "• 👨‍✈️ **Đội ngũ Bác tài chuẩn mực:** 100% tài xế có bằng lái hạng E, kinh nghiệm trên 8 năm lái xe đường dài, được kiểm tra nồng độ cồn và sức khỏe trước mỗi chuyến xuất bến. Tuyệt đối **không phóng nhanh, không vượt ẩu, không bắt khách dọc đường**.\n" .
-                           "• 🚌 **Hệ thống xe chống say tối tân:** Xe Limousine trang bị **bầu hơi giảm chấn êm ái**, hạn chế tối đa cảm giác dằn xóc khi qua cầu phà hoặc đèo dốc.\n" .
-                           "• 🌿 **Không gian trong lành:** Khoang xe có điều hòa lọc khí ion âm và xông tinh dầu quế/sả tự nhiên khử mùi 100%, không hề có mùi xăng xe khó chịu, giúp bạn ngủ một giấc êm đềm tới bến!",
+                    "• 👨‍✈️ **Đội ngũ Bác tài chuẩn mực:** 100% tài xế có bằng lái hạng E, kinh nghiệm trên 8 năm lái xe đường dài, được kiểm tra nồng độ cồn và sức khỏe trước mỗi chuyến xuất bến. Tuyệt đối **không phóng nhanh, không vượt ẩu, không bắt khách dọc đường**.\n" .
+                    "• 🚌 **Hệ thống xe chống say tối tân:** Xe Limousine trang bị **bầu hơi giảm chấn êm ái**, hạn chế tối đa cảm giác dằn xóc khi qua cầu phà hoặc đèo dốc.\n" .
+                    "• 🌿 **Không gian trong lành:** Khoang xe có điều hòa lọc khí ion âm và xông tinh dầu quế/sả tự nhiên khử mùi 100%, không hề có mùi xăng xe khó chịu, giúp bạn ngủ một giấc êm đềm tới bến!",
                 'suggestions' => ['Đặt vé giường tầng 1', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
             ];
         }
@@ -1547,10 +1572,10 @@ class AiAssistantController extends Controller
         if (preg_match('/(bao lâu.*tiền|mấy ngày.*tiền|bao giờ.*tiền|tiền hoàn.*khi nào|hoàn tiền trong bao lâu|thời gian hoàn tiền)/u', $lower)) {
             return [
                 'reply' => "Dạ sau khi bạn bấm hủy vé trên website tại mục **'Quản Lý Vé'**, quy trình hoàn tiền sẽ được xử lý như sau ạ: ⏱️\n\n" .
-                           "• 💳 **Phương thức hoàn tiền:** Tiền hoàn sẽ được chuyển khoản trực tiếp về số tài khoản ngân hàng bạn đã cung cấp khi gửi yêu cầu hủy vé.\n" .
-                           "• ⏳ **Thời gian nhận tiền:** Trong vòng **24h - 48h làm việc** (hệ thống kế toán sẽ kiểm tra đối soát và giải ngân tự động).\n" .
-                           "• 📄 **Hóa đơn hoàn tiền:** Bạn sẽ nhận được file Hóa đơn hoàn tiền PDF có mã tham chiếu để tiện kiểm tra với ngân hàng.\n\n" .
-                           "Nếu sau 48h bạn chưa nhận được tiền hoàn, bạn có thể gọi hotline **1900 8886** để kế toán hỗ trợ kiểm tra lệnh chuyển tiền ngay lập tức nhé!",
+                    "• 💳 **Phương thức hoàn tiền:** Tiền hoàn sẽ được chuyển khoản trực tiếp về số tài khoản ngân hàng bạn đã cung cấp khi gửi yêu cầu hủy vé.\n" .
+                    "• ⏳ **Thời gian nhận tiền:** Trong vòng **24h - 48h làm việc** (hệ thống kế toán sẽ kiểm tra đối soát và giải ngân tự động).\n" .
+                    "• 📄 **Hóa đơn hoàn tiền:** Bạn sẽ nhận được file Hóa đơn hoàn tiền PDF có mã tham chiếu để tiện kiểm tra với ngân hàng.\n\n" .
+                    "Nếu sau 48h bạn chưa nhận được tiền hoàn, bạn có thể gọi hotline **1900 8886** để kế toán hỗ trợ kiểm tra lệnh chuyển tiền ngay lập tức nhé!",
                 'suggestions' => ['Vào Quản Lý Vé', 'Hotline 1900 8886', 'Chính sách cọc 30%', 'Đà Nẵng đi Huế']
             ];
         }
@@ -1559,15 +1584,15 @@ class AiAssistantController extends Controller
         if (preg_match('/(ăn gì|chơi gì|món gì|món ngon|quán ngon|ăn ở đâu|chơi ở đâu|du lịch đà nẵng|quán ăn|đặc sản|đà nẵng có gì|điểm tham quan|cầu rồng|bà nà|sơn trà|mì quảng|bánh tráng|hải sản)/u', $lower)) {
             return [
                 'reply' => "Dạ em xin gợi ý cho bạn một số món ngon và điểm du lịch nức tiếng tại **Đà Nẵng** không thể bỏ lỡ nhé! 🌊🍜\n\n" .
-                           "🍽️ **Đặc sản nhất định phải thử:**\n" .
-                           "• **Mì Quảng:** Mì Quảng ếch Bếp Trang, Mì Quảng Bà Mua (nước lèo đậm đà, bánh tráng giòn rụm).\n" .
-                           "• **Bánh tráng cuốn thịt heo hai đầu da:** Quán Trần hoặc Đại Lộc (nước mắm nêm thơm lừng).\n" .
-                           "• **Hải sản tươi sống:** Dọc đường Võ Nguyên Giáp, hải sản Năm Đảnh, Bé Mặn.\n\n" .
-                           "📸 **Điểm vui chơi ngắm cảnh:**\n" .
-                           "• **Cầu Rồng:** Phun lửa và phun nước vào lúc 21:00 thứ Bảy & Chủ Nhật hàng tuần.\n" .
-                           "• **Bán đảo Sơn Trà & Chùa Linh Ứng:** Tượng Phật Bà nhìn ra biển Đông bình yên.\n" .
-                           "• **Bà Nà Hills & Cầu Vàng bàn tay khổng lồ:** Khí hậu 4 mùa trong 1 ngày tuyệt đẹp!\n\n" .
-                           "Nhà xe Kiến Trúc có xe trung chuyển đưa đón bạn thuận tiện trong nội thành Đà Nẵng đến các điểm hẹn nhé!",
+                    "🍽️ **Đặc sản nhất định phải thử:**\n" .
+                    "• **Mì Quảng:** Mì Quảng ếch Bếp Trang, Mì Quảng Bà Mua (nước lèo đậm đà, bánh tráng giòn rụm).\n" .
+                    "• **Bánh tráng cuốn thịt heo hai đầu da:** Quán Trần hoặc Đại Lộc (nước mắm nêm thơm lừng).\n" .
+                    "• **Hải sản tươi sống:** Dọc đường Võ Nguyên Giáp, hải sản Năm Đảnh, Bé Mặn.\n\n" .
+                    "📸 **Điểm vui chơi ngắm cảnh:**\n" .
+                    "• **Cầu Rồng:** Phun lửa và phun nước vào lúc 21:00 thứ Bảy & Chủ Nhật hàng tuần.\n" .
+                    "• **Bán đảo Sơn Trà & Chùa Linh Ứng:** Tượng Phật Bà nhìn ra biển Đông bình yên.\n" .
+                    "• **Bà Nà Hills & Cầu Vàng bàn tay khổng lồ:** Khí hậu 4 mùa trong 1 ngày tuyệt đẹp!\n\n" .
+                    "Nhà xe Kiến Trúc có xe trung chuyển đưa đón bạn thuận tiện trong nội thành Đà Nẵng đến các điểm hẹn nhé!",
                 'suggestions' => ['Đặt vé đi Đà Nẵng', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%']
             ];
         }
@@ -1576,10 +1601,10 @@ class AiAssistantController extends Controller
         if (preg_match('/(cọc|đặt cọc|30%|thanh toán|chuyển khoản|vietqr|quét mã|tiền mặt|chuyển tiền|giữ chỗ)/u', $lower)) {
             return [
                 'reply' => "💳 **CHÍNH SÁCH ĐẶT CỌC 30% & PHƯƠNG THỨC THANH TOÁN:**\n\n" .
-                           "• **Chính sách cọc 30% giữ chỗ 100%:** Bạn không cần phải thanh toán toàn bộ 100% giá vé ngay. Chỉ cần thanh toán trước **30% giá vé**, hệ thống sẽ khóa đúng vị trí giường nằm bạn đã chọn và phát hành mã QR Check-in an toàn tuyệt đối!\n" .
-                           "• **70% số tiền còn lại:** Bạn thanh toán trực tiếp cho Bác tài hoặc Phụ xe bằng tiền mặt hoặc chuyển khoản khi lên xe.\n" .
-                           "• **Cổng thanh toán VietQR tự động:** Quét mã QR bằng mọi ứng dụng ngân hàng (Vietcombank, MBBank, Techcombank, BIDV, MoMo...), hệ thống tự động đối soát xác nhận trong 3 giây.\n" .
-                           "• Hóa đơn điện tử PDF chuẩn đối soát sẽ được tự động lưu về máy sau khi thanh toán cọc thành công.",
+                    "• **Chính sách cọc 30% giữ chỗ 100%:** Bạn không cần phải thanh toán toàn bộ 100% giá vé ngay. Chỉ cần thanh toán trước **30% giá vé**, hệ thống sẽ khóa đúng vị trí giường nằm bạn đã chọn và phát hành mã QR Check-in an toàn tuyệt đối!\n" .
+                    "• **70% số tiền còn lại:** Bạn thanh toán trực tiếp cho Bác tài hoặc Phụ xe bằng tiền mặt hoặc chuyển khoản khi lên xe.\n" .
+                    "• **Cổng thanh toán VietQR tự động:** Quét mã QR bằng mọi ứng dụng ngân hàng (Vietcombank, MBBank, Techcombank, BIDV, MoMo...), hệ thống tự động đối soát xác nhận trong 3 giây.\n" .
+                    "• Hóa đơn điện tử PDF chuẩn đối soát sẽ được tự động lưu về máy sau khi thanh toán cọc thành công.",
                 'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Cách đặt vé', 'Chính sách hủy vé']
             ];
         }
@@ -1588,7 +1613,7 @@ class AiAssistantController extends Controller
         if (preg_match('/(sinh viên|học sinh|sinh vien|hoc sinh|pro30|sinhvien|giảm 30%|giam 30%)/ui', $lower)) {
             return [
                 'reply' => "🎓 **Ưu đãi Học sinh - Sinh viên giảm 30% (`PRO30`):**\n\n" .
-                           "Nhà xe Kiến Trúc giảm trực tiếp 30% cho sinh viên/học sinh trên mọi tuyến xe (Huế chỉ 105k, Quảng Trị chỉ 140k, Quy Nhơn chỉ 252k). Bạn nhập mã `PRO30` khi xác nhận đặt vé và xuất trình thẻ SV khi lên xe nhé!",
+                    "Nhà xe Kiến Trúc giảm trực tiếp 30% cho sinh viên/học sinh trên mọi tuyến xe (Huế chỉ 105k, Quảng Trị chỉ 140k, Quy Nhơn chỉ 252k). Bạn nhập mã `PRO30` khi xác nhận đặt vé và xuất trình thẻ SV khi lên xe nhé!",
                 'suggestions' => ['Tôi muốn đặt xe', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Chính sách cọc 30%']
             ];
         }
@@ -1597,24 +1622,24 @@ class AiAssistantController extends Controller
         if (preg_match('/(giảm giá|khuyến mãi|voucher|mã giảm|ưu đãi|giam gia|khuyen mai|ma giam|uu dai|co ma gi)/ui', $lower)) {
             if ($user) {
                 $tierStr = $user->loyalty_tier ?? 'Thành Viên Thân Thiết';
-                $pts = (int)($user->loyalty_points ?? 0);
+                $pts = (int) ($user->loyalty_points ?? 0);
                 return [
                     'reply' => "Dạ em chào bạn **{$user->name}**! Hiện tài khoản của bạn đang ở hạng **{$tierStr}** ({$pts} điểm tích lũy).\n\n" .
-                               "Hôm nay nhà xe đang có các ưu đãi dành cho bạn:\n" .
-                               "• 🎁 **Mã `CHAOBAN`**: Giảm 20.000đ khi đặt vé.\n" .
-                               "• 💎 **Tích điểm hoàn tiền 5%**: Mỗi chuyến đi đều được tự động cộng 5% điểm thưởng đổi vé miễn phí.\n" .
-                               "• 🎓 *(Nếu bạn có thẻ Học sinh/Sinh viên, bạn có thể áp dụng mã **`PRO30`** để được giảm 30% giá vé nhé!).*\n\n" .
-                               "Bạn đang muốn đặt chuyến xe đi đâu để em hỗ trợ áp mã giảm giá ngay ạ? 😊",
+                        "Hôm nay nhà xe đang có các ưu đãi dành cho bạn:\n" .
+                        "• 🎁 **Mã `CHAOBAN`**: Giảm 20.000đ khi đặt vé.\n" .
+                        "• 💎 **Tích điểm hoàn tiền 5%**: Mỗi chuyến đi đều được tự động cộng 5% điểm thưởng đổi vé miễn phí.\n" .
+                        "• 🎓 *(Nếu bạn có thẻ Học sinh/Sinh viên, bạn có thể áp dụng mã **`PRO30`** để được giảm 30% giá vé nhé!).*\n\n" .
+                        "Bạn đang muốn đặt chuyến xe đi đâu để em hỗ trợ áp mã giảm giá ngay ạ? 😊",
                     'suggestions' => ['Tôi muốn đặt xe', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Xem điểm tích lũy']
                 ];
             }
 
             return [
                 'reply' => "Dạ hôm nay Nhà xe Kiến Trúc đang có các mã ưu đãi hấp dẫn dành cho bạn ạ:\n\n" .
-                           "• 🎁 **Mã `CHAOBAN`**: Giảm ngay 20.000đ khi đặt vé.\n" .
-                           "• 💳 **Tích điểm hoàn tiền 5%**: Đăng ký/Đăng nhập thành viên để được tích lũy 5% mỗi chuyến đi đổi vé miễn phí.\n" .
-                           "• 🎓 *(Nếu bạn là Học sinh - Sinh viên, bạn có thể dùng thêm mã **`PRO30`** để được giảm ngay 30% nhé!).*\n\n" .
-                           "Bạn đang cần đặt chuyến xe đi đâu để em áp mã ưu đãi và giữ chỗ ngay cho bạn ạ? 😊",
+                    "• 🎁 **Mã `CHAOBAN`**: Giảm ngay 20.000đ khi đặt vé.\n" .
+                    "• 💳 **Tích điểm hoàn tiền 5%**: Đăng ký/Đăng nhập thành viên để được tích lũy 5% mỗi chuyến đi đổi vé miễn phí.\n" .
+                    "• 🎓 *(Nếu bạn là Học sinh - Sinh viên, bạn có thể dùng thêm mã **`PRO30`** để được giảm ngay 30% nhé!).*\n\n" .
+                    "Bạn đang cần đặt chuyến xe đi đâu để em áp mã ưu đãi và giữ chỗ ngay cho bạn ạ? 😊",
                 'suggestions' => ['Tôi muốn đặt xe', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Chính sách cọc 30%']
             ];
         }
@@ -1631,12 +1656,12 @@ class AiAssistantController extends Controller
                         ->orderBy('created_at', 'desc')
                         ->take(3)
                         ->get()
-                        ->map(function($b) {
+                        ->map(function ($b) {
                             return [
                                 'code' => $b->booking_code,
                                 'route' => ($b->trip->route->origin ?? 'Đà Nẵng') . ' ➔ ' . ($b->trip->route->destination ?? 'Điểm đến'),
                                 'time' => $b->trip ? Carbon::parse($b->trip->departure_time)->format('H:i d/m/Y') : 'Chưa xếp giờ',
-                                'paid' => number_format((float)($b->paid_amount ?? 0), 0, ',', '.') . 'đ',
+                                'paid' => number_format((float) ($b->paid_amount ?? 0), 0, ',', '.') . 'đ',
                                 'is_deposit' => $b->is_deposit,
                                 'detail_url' => "/booking/{$b->booking_code}/detail",
                             ];
@@ -1649,17 +1674,18 @@ class AiAssistantController extends Controller
                         }
                         $bookingListText .= "\n👉 **Bé Kiến Trúc hỗ trợ bạn:** Bạn chỉ cần bấm nút bên dưới, hệ thống sẽ đưa bạn vào thẳng trang Hủy vé tự động để nhập STK ngân hàng và nhận lại tiền hoàn cọc ngay nhé!\n";
                     }
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) {
+                }
             }
 
             return [
                 'reply' => "🚫 **BÉ KIẾN TRÚC HỖ TRỢ HỦY VÉ & HOÀN TIỀN CỌC TỰ ĐỘNG:**\n\n" .
-                           "Bé Kiến Trúc luôn đồng hành và bảo vệ tối đa quyền lợi của bạn theo chính sách linh hoạt của Trường ĐH Kiến Trúc Đà Nẵng:\n" .
-                           "• **Hủy trong 2 giờ đầu** sau khi đặt vé: **Hoàn 100% tiền cọc 0đ phí**.\n" .
-                           "• **Hủy trước giờ xe chạy từ 24h trở lên:** **Hoàn 100% tiền cọc**.\n" .
-                           "• **Hủy trước 12h - 24h:** **Hoàn 80% tiền cọc**.\n" .
-                           "• **Hủy trước 4h - 12h:** **Hoàn 70% tiền cọc**." .
-                           $bookingListText,
+                    "Bé Kiến Trúc luôn đồng hành và bảo vệ tối đa quyền lợi của bạn theo chính sách linh hoạt của Trường ĐH Kiến Trúc Đà Nẵng:\n" .
+                    "• **Hủy trong 2 giờ đầu** sau khi đặt vé: **Hoàn 100% tiền cọc 0đ phí**.\n" .
+                    "• **Hủy trước giờ xe chạy từ 24h trở lên:** **Hoàn 100% tiền cọc**.\n" .
+                    "• **Hủy trước 12h - 24h:** **Hoàn 80% tiền cọc**.\n" .
+                    "• **Hủy trước 4h - 12h:** **Hoàn 70% tiền cọc**." .
+                    $bookingListText,
                 'suggestions' => ['Đến trang Quản Lý Vé', 'Tôi muốn đổi giờ chạy', 'Chính sách cọc 30%', 'Đà Nẵng đi Huế'],
                 'action' => [
                     'type' => $user ? 'go_to_my_bookings' : 'open_login',
@@ -1674,10 +1700,10 @@ class AiAssistantController extends Controller
         if (preg_match('/(hành lý|vali|gửi xe|xe máy|thú cưng|chó|mèo|hàng hóa|ký gửi|mang đồ|bao nhiêu kg)/u', $lower)) {
             return [
                 'reply' => "🧳 **QUY ĐỊNH HÀNH LÝ, KÝ GỬI XE MÁY & THÚ CƯNG:**\n\n" .
-                           "• **Hành lý cá nhân:** Mỗi hành khách được mang miễn phí tối đa **20kg hành lý** (vali, ba lô, kiện đồ).\n" .
-                           "• **Gửi kèm xe máy (xe số, xe ga):** Nhà xe có khoang hầm xe chuyên dụng rộng rãi, bọc xốp giảm chấn chống trầy xước an toàn. Quý khách vui lòng đến bến trước 45 phút để nhân viên kỹ thuật hỗ trợ rút bớt xăng và đưa xe vào hầm.\n" .
-                           "• **Thú cưng (chó, mèo):** Cần có lồng nhốt thông thoáng khí và được bố trí tại khoang hành lý thông gió thoáng mát để đảm bảo vệ sinh khoang hành khách điều hòa.\n" .
-                           "• **Hàng hóa bưu phẩm:** Nhận gửi hàng nhanh trong ngày dọc tuyến Đà Nẵng - Huế - Quảng Trị - Quảng Bình - Quy Nhơn - Buôn Ma Thuột.",
+                    "• **Hành lý cá nhân:** Mỗi hành khách được mang miễn phí tối đa **20kg hành lý** (vali, ba lô, kiện đồ).\n" .
+                    "• **Gửi kèm xe máy (xe số, xe ga):** Nhà xe có khoang hầm xe chuyên dụng rộng rãi, bọc xốp giảm chấn chống trầy xước an toàn. Quý khách vui lòng đến bến trước 45 phút để nhân viên kỹ thuật hỗ trợ rút bớt xăng và đưa xe vào hầm.\n" .
+                    "• **Thú cưng (chó, mèo):** Cần có lồng nhốt thông thoáng khí và được bố trí tại khoang hành lý thông gió thoáng mát để đảm bảo vệ sinh khoang hành khách điều hòa.\n" .
+                    "• **Hàng hóa bưu phẩm:** Nhận gửi hàng nhanh trong ngày dọc tuyến Đà Nẵng - Huế - Quảng Trị - Quảng Bình - Quy Nhơn - Buôn Ma Thuột.",
                 'suggestions' => ['Hotline gửi xe máy', 'Đà Nẵng đi Huế', 'Đà Nẵng đi Buôn Ma Thuột', 'Chính sách cọc 30%']
             ];
         }
@@ -1686,16 +1712,16 @@ class AiAssistantController extends Controller
         if (preg_match('/(đón ở đâu|điểm đón|rước ở đâu|bến xe trung tâm|núi thành|566 núi thành|trả ở đâu|điểm trả|địa chỉ nhà xe|văn phòng nhà xe|trụ sở nhà xe|nhà xe ở đâu|bến xe ở đâu|quầy vé ở đâu|địa chỉ bến)/u', $lower)) {
             return [
                 'reply' => "📍 **ĐỊA ĐIỂM ĐÓN - TRẢ KHÁCH VÀ XE TRUNG CHUYỂN:**\n\n" .
-                           "• **Tại Đà Nẵng (Điểm khởi hành trung tâm):**\n" .
-                           "  - **Văn phòng Nhà xe:** Số 566 Núi Thành, P. Hòa Cường Nam, Q. Hải Châu, TP. Đà Nẵng.\n" .
-                           "  - **Bến xe Trung tâm Đà Nẵng:** Quầy vé số 14, đường Tôn Đức Thắng, Q. Liên Chiểu.\n" .
-                           "  - **Xe trung chuyển miễn phí:** Đón trả tận nơi trong nội thành Đà Nẵng (bán kính 5km xung quanh văn phòng và bến xe).\n\n" .
-                           "• **Tại các tỉnh điểm đến:**\n" .
-                           "  - **Huế:** Bến xe Phía Nam Huế / Trạm dừng An Cựu.\n" .
-                           "  - **Quảng Trị:** Bến xe Đông Hà / Dọc Quốc Lộ 1A.\n" .
-                           "  - **Quảng Bình:** Bến xe Đồng Hới / Trạm ngã ba Lệ Thủy.\n" .
-                           "  - **Quy Nhơn:** Bến xe Trung tâm Quy Nhơn.\n" .
-                           "  - **Đắk Lắk:** Bến xe Liên tỉnh Buôn Ma Thuột.",
+                    "• **Tại Đà Nẵng (Điểm khởi hành trung tâm):**\n" .
+                    "  - **Văn phòng Nhà xe:** Số 566 Núi Thành, P. Hòa Cường Nam, Q. Hải Châu, TP. Đà Nẵng.\n" .
+                    "  - **Bến xe Trung tâm Đà Nẵng:** Quầy vé số 14, đường Tôn Đức Thắng, Q. Liên Chiểu.\n" .
+                    "  - **Xe trung chuyển miễn phí:** Đón trả tận nơi trong nội thành Đà Nẵng (bán kính 5km xung quanh văn phòng và bến xe).\n\n" .
+                    "• **Tại các tỉnh điểm đến:**\n" .
+                    "  - **Huế:** Bến xe Phía Nam Huế / Trạm dừng An Cựu.\n" .
+                    "  - **Quảng Trị:** Bến xe Đông Hà / Dọc Quốc Lộ 1A.\n" .
+                    "  - **Quảng Bình:** Bến xe Đồng Hới / Trạm ngã ba Lệ Thủy.\n" .
+                    "  - **Quy Nhơn:** Bến xe Trung tâm Quy Nhơn.\n" .
+                    "  - **Đắk Lắk:** Bến xe Liên tỉnh Buôn Ma Thuột.",
                 'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Hotline 1900 6868', 'Chính sách cọc 30%']
             ];
         }
@@ -1704,13 +1730,13 @@ class AiAssistantController extends Controller
         if (preg_match('/(tiện nghi|tiện ích|wifi|máy lạnh|điều hòa|ghế massage|nước uống|sạc pin|cổng sạc|usb|type-c|xe có sạch không|vệ sinh|chăn gối|giường nằm|phòng nằm)/u', $lower)) {
             return [
                 'reply' => "🚌 **TIỆN NGHI CAO CẤP TRÊN XE LIMOUSINE KIẾN TRÚC ĐÀ NẴNG:**\n\n" .
-                           "Toàn bộ dàn xe đều là Limousine Cung Điện & Mobihome VIP đời mới:\n" .
-                           "• 📶 **Wifi 5G tốc độ cao:** Phủ sóng căng đét suốt toàn bộ lộ trình.\n" .
-                           "• 🔌 **Cổng sạc đa năng:** Mỗi giường có cổng Type-C và USB sạc nhanh cho điện thoại, tablet.\n" .
-                           "• 💆 **Hệ thống massage lưng đa chế độ:** Giảm nhức mỏi, thư giãn tối đa trên các cung đường dài.\n" .
-                           "• 🛏️ **Không gian riêng tư:** Rèm che cách biệt tuyệt đối, chăn gối giặt sấy khử khuẩn 100% sau mỗi chuyến.\n" .
-                           "• 🧊 **Nước khoáng & khăn lạnh miễn phí:** Phục vụ chu đáo tận tay hành khách.\n" .
-                           "• ❄️ **Điều hòa lọc khí ion:** Khoang xe thơm tho, sạch sẽ, không mùi xe khó chịu.",
+                    "Toàn bộ dàn xe đều là Limousine Cung Điện & Mobihome VIP đời mới:\n" .
+                    "• 📶 **Wifi 5G tốc độ cao:** Phủ sóng căng đét suốt toàn bộ lộ trình.\n" .
+                    "• 🔌 **Cổng sạc đa năng:** Mỗi giường có cổng Type-C và USB sạc nhanh cho điện thoại, tablet.\n" .
+                    "• 💆 **Hệ thống massage lưng đa chế độ:** Giảm nhức mỏi, thư giãn tối đa trên các cung đường dài.\n" .
+                    "• 🛏️ **Không gian riêng tư:** Rèm che cách biệt tuyệt đối, chăn gối giặt sấy khử khuẩn 100% sau mỗi chuyến.\n" .
+                    "• 🧊 **Nước khoáng & khăn lạnh miễn phí:** Phục vụ chu đáo tận tay hành khách.\n" .
+                    "• ❄️ **Điều hòa lọc khí ion:** Khoang xe thơm tho, sạch sẽ, không mùi xe khó chịu.",
                 'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên']
             ];
         }
@@ -1719,10 +1745,10 @@ class AiAssistantController extends Controller
         if (preg_match('/(cách đặt vé|hướng dẫn đặt|mua vé như thế nào|làm sao để đặt|quy trình đặt|chọn ghế thế nào|đặt vé online|sơ đồ ghế|tầng 1 hay tầng 2|chọn chỗ)/u', $lower)) {
             return [
                 'reply' => "Dạ quy trình đặt vé xe online tại Nhà xe Kiến Trúc cực kỳ đơn giản với **3 bước**:\n\n" .
-                           "1. 🔍 **Bước 1 - Tìm chuyến:** Chọn Điểm đi, Điểm đến và Ngày đi tại thanh tìm kiếm ở đầu trang web, bấm **'Tìm Kiếm Xe'**.\n" .
-                           "2. 💺 **Bước 2 - Chọn chỗ trên sơ đồ 2 tầng:** Bấm **'Chọn Chuyến'** để xem sơ đồ xe trực quan. Quý khách có thể tự do bấm chọn giường tầng 1 (A1 - A6: êm ái, thích hợp người lớn tuổi hoặc say xe) hoặc tầng 2 (B1 - B6: thoáng mát, ngắm cảnh đẹp).\n" .
-                           "3. 💳 **Bước 3 - Thanh toán cọc 30%:** Nhập Họ tên, Số điện thoại và quét mã VietQR tự động. Bạn chỉ cần cọc trước **30% giá vé** là vị trí giường đã được khóa 100%!\n\n" .
-                           "Vé điện tử kèm mã QR Check-in sẽ được hiển thị ngay tức thì và tự động tải file hóa đơn PDF về máy.",
+                    "1. 🔍 **Bước 1 - Tìm chuyến:** Chọn Điểm đi, Điểm đến và Ngày đi tại thanh tìm kiếm ở đầu trang web, bấm **'Tìm Kiếm Xe'**.\n" .
+                    "2. 💺 **Bước 2 - Chọn chỗ trên sơ đồ 2 tầng:** Bấm **'Chọn Chuyến'** để xem sơ đồ xe trực quan. Quý khách có thể tự do bấm chọn giường tầng 1 (A1 - A6: êm ái, thích hợp người lớn tuổi hoặc say xe) hoặc tầng 2 (B1 - B6: thoáng mát, ngắm cảnh đẹp).\n" .
+                    "3. 💳 **Bước 3 - Thanh toán cọc 30%:** Nhập Họ tên, Số điện thoại và quét mã VietQR tự động. Bạn chỉ cần cọc trước **30% giá vé** là vị trí giường đã được khóa 100%!\n\n" .
+                    "Vé điện tử kèm mã QR Check-in sẽ được hiển thị ngay tức thì và tự động tải file hóa đơn PDF về máy.",
                 'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã giảm giá PRO30']
             ];
         }
@@ -1731,11 +1757,11 @@ class AiAssistantController extends Controller
         if (preg_match('/(hotline|tổng đài|số điện thoại|sdt|liên hệ|gặp nhân viên|tư vấn viên|quên đồ|thất lạc|khiếu nại)/u', $lower)) {
             return [
                 'reply' => "📞 **THÔNG TIN LIÊN HỆ & TỔNG ĐÀI HỖ TRỢ 24/7:**\n\n" .
-                           "• **Tổng đài đặt vé & hỗ trợ hành khách:** **1900 6868** hoặc **0905.123.456**\n" .
-                           "• **Hỗ trợ tìm hành lý / Quên đồ trên xe:** Quý khách gọi ngay hotline **0905.123.456**, đọc mã vé hoặc biển số xe để nhân viên liên hệ tài xế kiểm tra khoang xe ngay lập tức.\n" .
-                           "• **Văn phòng chính:** 566 Núi Thành, P. Hòa Cường Nam, Q. Hải Châu, TP. Đà Nẵng\n" .
-                           "• **Email hỗ trợ:** support@nhaxekientruc.vn\n\n" .
-                           "Đội ngũ nhân viên và các bác tài luôn sẵn sàng phục vụ quý khách chu đáo nhất!",
+                    "• **Tổng đài đặt vé & hỗ trợ hành khách:** **1900 6868** hoặc **0905.123.456**\n" .
+                    "• **Hỗ trợ tìm hành lý / Quên đồ trên xe:** Quý khách gọi ngay hotline **0905.123.456**, đọc mã vé hoặc biển số xe để nhân viên liên hệ tài xế kiểm tra khoang xe ngay lập tức.\n" .
+                    "• **Văn phòng chính:** 566 Núi Thành, P. Hòa Cường Nam, Q. Hải Châu, TP. Đà Nẵng\n" .
+                    "• **Email hỗ trợ:** support@nhaxekientruc.vn\n\n" .
+                    "Đội ngũ nhân viên và các bác tài luôn sẵn sàng phục vụ quý khách chu đáo nhất!",
                 'suggestions' => ['Đà Nẵng đi Huế', 'Chính sách cọc 30%', 'Mã giảm giá PRO30', 'Hướng dẫn đặt vé']
             ];
         }
@@ -1744,10 +1770,10 @@ class AiAssistantController extends Controller
         if (preg_match('/(tài xế|bác tài|phụ xe|lơ xe|lái xe có an toàn|tay lái|thái độ)/u', $lower)) {
             return [
                 'reply' => "👨‍✈️ **ĐỘI NGŨ BÁC TÀI & PHỤ XE NHÀ XE KIẾN TRÚC:**\n\n" .
-                           "• Toàn bộ tài xế của Nhà xe Kiến Trúc đều có bằng lái hạng E, kinh nghiệm trên **8 năm cầm lái đường dài miền Trung & Tây Nguyên**.\n" .
-                           "• Tuyệt đối **không phóng nhanh vượt ẩu, không bắt khách dọc đường, không chở quá số người quy định**.\n" .
-                           "• Thái độ phục vụ lịch sự, thân thiện, chu đáo, hỗ trợ bốc xếp hành lý tận tình cho hành khách.\n" .
-                           "• Xe được kiểm tra kỹ thuật định kỳ trước mỗi chuyến xuất bến để đảm bảo an toàn tuyệt đối.",
+                    "• Toàn bộ tài xế của Nhà xe Kiến Trúc đều có bằng lái hạng E, kinh nghiệm trên **8 năm cầm lái đường dài miền Trung & Tây Nguyên**.\n" .
+                    "• Tuyệt đối **không phóng nhanh vượt ẩu, không bắt khách dọc đường, không chở quá số người quy định**.\n" .
+                    "• Thái độ phục vụ lịch sự, thân thiện, chu đáo, hỗ trợ bốc xếp hành lý tận tình cho hành khách.\n" .
+                    "• Xe được kiểm tra kỹ thuật định kỳ trước mỗi chuyến xuất bến để đảm bảo an toàn tuyệt đối.",
                 'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Hotline 1900 6868']
             ];
         }
@@ -1759,10 +1785,10 @@ class AiAssistantController extends Controller
         if (str_contains($lower, 'giá') || str_contains($lower, 'tiền') || str_contains($lower, 'phí')) {
             return [
                 'reply' => "Dạ{$greetingUser}, về giá vé và chi phí di chuyển tại Nhà xe Kiến Trúc Đà Nẵng:\n\n" .
-                           "• Giá vé các tuyến dao động từ **150.000đ - 420.000đ** tùy theo chặng đường.\n" .
-                           "• Bạn chỉ cần thanh toán **đặt cọc 30%** (chỉ từ 45.000đ) để giữ chỗ chắc chắn 100%.\n" .
-                           "• Sinh viên được giảm **30%** khi áp mã `PRO30`.\n\n" .
-                           "Bạn đang cần kiểm tra giá vé cho chặng đường cụ thể nào ạ?",
+                    "• Giá vé các tuyến dao động từ **150.000đ - 420.000đ** tùy theo chặng đường.\n" .
+                    "• Bạn chỉ cần thanh toán **đặt cọc 30%** (chỉ từ 45.000đ) để giữ chỗ chắc chắn 100%.\n" .
+                    "• Sinh viên được giảm **30%** khi áp mã `PRO30`.\n\n" .
+                    "Bạn đang cần kiểm tra giá vé cho chặng đường cụ thể nào ạ?",
                 'suggestions' => ['Đà Nẵng đi Huế (150k)', 'Đà Nẵng đi Quảng Trị (200k)', 'Đà Nẵng đi Quy Nhơn (360k)', 'Chính sách cọc 30%']
             ];
         }
@@ -1809,12 +1835,25 @@ class AiAssistantController extends Controller
 
         // Tuyến ngoại mạng (chưa khai thác)
         $unsupportedExternal = [
-            'hà nội' => 'Hà Nội', 'ha noi' => 'Hà Nội',
-            'sài gòn' => 'TP. Hồ Chí Minh (Sài Gòn)', 'sai gon' => 'TP. Hồ Chí Minh (Sài Gòn)', 'tphcm' => 'TP. Hồ Chí Minh', 'hồ chí minh' => 'TP. Hồ Chí Minh',
-            'nha trang' => 'Nha Trang', 'cần thơ' => 'Cần Thơ', 'can tho' => 'Cần Thơ',
-            'hải phòng' => 'Hải Phòng', 'đà lạt' => 'Đà Lạt', 'da lat' => 'Đà Lạt',
-            'sa pa' => 'Sa Pa', 'sapa' => 'Sa Pa', 'vũng tàu' => 'Vũng Tàu',
-            'nghệ an' => 'Nghệ An', 'thanh hóa' => 'Thanh Hóa', 'quảng ngãi' => 'Quảng Ngãi', 'phú yên' => 'Phú Yên'
+            'hà nội' => 'Hà Nội',
+            'ha noi' => 'Hà Nội',
+            'sài gòn' => 'TP. Hồ Chí Minh (Sài Gòn)',
+            'sai gon' => 'TP. Hồ Chí Minh (Sài Gòn)',
+            'tphcm' => 'TP. Hồ Chí Minh',
+            'hồ chí minh' => 'TP. Hồ Chí Minh',
+            'nha trang' => 'Nha Trang',
+            'cần thơ' => 'Cần Thơ',
+            'can tho' => 'Cần Thơ',
+            'hải phòng' => 'Hải Phòng',
+            'đà lạt' => 'Đà Lạt',
+            'da lat' => 'Đà Lạt',
+            'sa pa' => 'Sa Pa',
+            'sapa' => 'Sa Pa',
+            'vũng tàu' => 'Vũng Tàu',
+            'nghệ an' => 'Nghệ An',
+            'thanh hóa' => 'Thanh Hóa',
+            'quảng ngãi' => 'Quảng Ngãi',
+            'phú yên' => 'Phú Yên'
         ];
 
         // 1. Kiểm tra nếu có hỏi đến các tỉnh ngoài mạng lưới
@@ -1822,13 +1861,13 @@ class AiAssistantController extends Controller
             if (str_contains($lower, $extKey)) {
                 return [
                     'reply' => "Dạ hiện tại Nhà xe Kiến Trúc **chưa khai thác tuyến xe đi/đến {$extName}** bạn nhé! 😊\n\n" .
-                               "Hiện tại, Nhà xe Kiến Trúc chuyên phục vụ 5 tuyến Limousine chất lượng cao kết nối từ trung tâm **TP. Đà Nẵng**:\n" .
-                               "1. 🛣️ **Đà Nẵng ⇄ Thừa Thiên Huế:** 150.000đ (khoảng 2 tiếng)\n" .
-                               "2. 🛣️ **Đà Nẵng ⇄ Quảng Trị (Đông Hà):** 200.000đ (~3.5 tiếng)\n" .
-                               "3. 🛣️ **Đà Nẵng ⇄ Quảng Bình (Đồng Hới):** 280.000đ (~5 tiếng)\n" .
-                               "4. 🛣️ **Đà Nẵng ⇄ Quy Nhơn (Bình Định):** 360.000đ (~6 tiếng)\n" .
-                               "5. 🛣️ **Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk):** 420.000đ (~10 tiếng)\n\n" .
-                               "Bạn có muốn tham khảo lịch trình và giá vé của một trong các tuyến trên không ạ?",
+                        "Hiện tại, Nhà xe Kiến Trúc chuyên phục vụ 5 tuyến Limousine chất lượng cao kết nối từ trung tâm **TP. Đà Nẵng**:\n" .
+                        "1. 🛣️ **Đà Nẵng ⇄ Thừa Thiên Huế:** 150.000đ (khoảng 2 tiếng)\n" .
+                        "2. 🛣️ **Đà Nẵng ⇄ Quảng Trị (Đông Hà):** 200.000đ (~3.5 tiếng)\n" .
+                        "3. 🛣️ **Đà Nẵng ⇄ Quảng Bình (Đồng Hới):** 280.000đ (~5 tiếng)\n" .
+                        "4. 🛣️ **Đà Nẵng ⇄ Quy Nhơn (Bình Định):** 360.000đ (~6 tiếng)\n" .
+                        "5. 🛣️ **Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk):** 420.000đ (~10 tiếng)\n\n" .
+                        "Bạn có muốn tham khảo lịch trình và giá vé của một trong các tuyến trên không ạ?",
                     'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã giảm giá PRO30']
                 ];
             }
@@ -1872,8 +1911,8 @@ class AiAssistantController extends Controller
             if ($isDirect) {
                 // Tuyến trực tiếp kết nối với Đà Nẵng
                 $targetCode = ($code1 === 'da_nang') ? $code2 : $code1;
-                $directionStr = ($code1 === 'da_nang') 
-                    ? "Đà Nẵng ➔ {$loc2['name']}" 
+                $directionStr = ($code1 === 'da_nang')
+                    ? "Đà Nẵng ➔ {$loc2['name']}"
                     : "{$loc1['name']} ➔ Đà Nẵng";
 
                 return $this->buildDirectRouteDetail($targetCode, $directionStr);
@@ -1881,16 +1920,16 @@ class AiAssistantController extends Controller
                 // CẢ 2 ĐỊA DANH ĐỀU KHÔNG PHẢI ĐÀ NẴNG (VÍ DỤ: "QUẢNG TRỊ ĐI HUẾ", "HUẾ ĐI QUẢNG TRỊ", "QUY NHƠN ĐI BUÔN MA THUỘT"...)
                 return [
                     'reply' => "Dạ hiện tại Nhà xe Kiến Trúc **chưa có tuyến xe chạy trực tiếp từ {$loc1['name']} đi {$loc2['name']}** (hoặc chiều ngược lại) bạn nhé! 😊\n\n" .
-                               "🚌 **Mạng lưới tuyến xe của Nhà xe Kiến Trúc:**\n" .
-                               "Toàn bộ các tuyến xe giường nằm Limousine cao cấp của Nhà xe đều vận hành theo mô hình kết nối tập trung từ/đến **Đầu mối trung tâm TP. Đà Nẵng**, bao gồm 5 tuyến chính:\n" .
-                               "1. 🛣️ **Đà Nẵng ⇄ Thừa Thiên Huế:** 150.000đ • Chạy liên tục từ 06:00 - 17:00 (~2 tiếng)\n" .
-                               "2. 🛣️ **Đà Nẵng ⇄ Quảng Trị (Đông Hà):** 200.000đ • Nhiều chuyến sáng, chiều & tối (~3.5 tiếng)\n" .
-                               "3. 🛣️ **Đà Nẵng ⇄ Quảng Bình (Đồng Hới):** 280.000đ • Chuyến sáng & xe đêm (~5 tiếng)\n" .
-                               "4. 🛣️ **Đà Nẵng ⇄ Quy Nhơn (Bình Định):** 360.000đ • Chuyến sáng 07:30 & xe đêm 20:00, 22:45 (~6 tiếng)\n" .
-                               "5. 🛣️ **Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk):** 420.000đ • Xe đêm VIP 19:00, 20:30, 23:30 (~10 tiếng)\n\n" .
-                               "💡 **Gợi ý phương án di chuyển thuận tiện cho bạn:**\n" .
-                               "• Chặng từ **{$loc1['name']} đi {$loc2['name']}** là cự ly ngắn dọc Quốc Lộ 1A (hoặc giữa các tỉnh lân cận), bạn có thể bắt các tuyến xe khách địa phương nội tỉnh, xe buýt liên tỉnh hoặc đi tàu hỏa Bắc - Nam để di chuyển nhanh chóng và thuận tiện nhất.\n" .
-                               "• Nếu bạn muốn trải nghiệm dịch vụ Limousine của Nhà xe Kiến Trúc, bạn có thể đi chặng **{$loc1['name']} ➔ Đà Nẵng**, sau đó chuyển tiếp chuyến từ **Đà Nẵng ➔ {$loc2['name']}** nhé!",
+                        "🚌 **Mạng lưới tuyến xe của Nhà xe Kiến Trúc:**\n" .
+                        "Toàn bộ các tuyến xe giường nằm Limousine cao cấp của Nhà xe đều vận hành theo mô hình kết nối tập trung từ/đến **Đầu mối trung tâm TP. Đà Nẵng**, bao gồm 5 tuyến chính:\n" .
+                        "1. 🛣️ **Đà Nẵng ⇄ Thừa Thiên Huế:** 150.000đ • Chạy liên tục từ 06:00 - 17:00 (~2 tiếng)\n" .
+                        "2. 🛣️ **Đà Nẵng ⇄ Quảng Trị (Đông Hà):** 200.000đ • Nhiều chuyến sáng, chiều & tối (~3.5 tiếng)\n" .
+                        "3. 🛣️ **Đà Nẵng ⇄ Quảng Bình (Đồng Hới):** 280.000đ • Chuyến sáng & xe đêm (~5 tiếng)\n" .
+                        "4. 🛣️ **Đà Nẵng ⇄ Quy Nhơn (Bình Định):** 360.000đ • Chuyến sáng 07:30 & xe đêm 20:00, 22:45 (~6 tiếng)\n" .
+                        "5. 🛣️ **Đà Nẵng ⇄ Buôn Ma Thuột (Đắk Lắk):** 420.000đ • Xe đêm VIP 19:00, 20:30, 23:30 (~10 tiếng)\n\n" .
+                        "💡 **Gợi ý phương án di chuyển thuận tiện cho bạn:**\n" .
+                        "• Chặng từ **{$loc1['name']} đi {$loc2['name']}** là cự ly ngắn dọc Quốc Lộ 1A (hoặc giữa các tỉnh lân cận), bạn có thể bắt các tuyến xe khách địa phương nội tỉnh, xe buýt liên tỉnh hoặc đi tàu hỏa Bắc - Nam để di chuyển nhanh chóng và thuận tiện nhất.\n" .
+                        "• Nếu bạn muốn trải nghiệm dịch vụ Limousine của Nhà xe Kiến Trúc, bạn có thể đi chặng **{$loc1['name']} ➔ Đà Nẵng**, sau đó chuyển tiếp chuyến từ **Đà Nẵng ➔ {$loc2['name']}** nhé!",
                     'suggestions' => [
                         "Đà Nẵng đi {$loc1['name']}",
                         "Đà Nẵng đi {$loc2['name']}",
@@ -1917,7 +1956,7 @@ class AiAssistantController extends Controller
      */
     private function buildDirectRouteDetail(string $code, string $displayDirection): array
     {
-        $info = match($code) {
+        $info = match ($code) {
             'hue' => [
                 'name' => 'Thừa Thiên Huế',
                 'distance' => '100km',
@@ -1980,13 +2019,13 @@ class AiAssistantController extends Controller
 
         return [
             'reply' => "🚌 **THÔNG TIN CHI TIẾT TUYẾN {$displayDirection}:**\n\n" .
-                       "• **Cự ly di chuyển:** {$info['distance']} ({$info['time']})\n" .
-                       "• **Các khung giờ xuất bến:** **{$info['hours']}**\n" .
-                       "• **Giá vé niêm yết:** **{$info['price']}/vé**\n" .
-                       "• **Đặt cọc giữ chỗ 30%:** Chỉ **{$info['deposit']}** (khóa giường 100%, 70% còn lại thanh toán khi lên xe)\n" .
-                       "• **Ưu đãi Sinh viên (-30% mã `PRO30`):** Chỉ còn **{$info['student_price']}**\n" .
-                       "• **Dòng xe & Tiện ích:** {$info['bus']} (Wifi 5G, cổng sạc Type-C, ghế massage, chăn gối khử khuẩn, nước suối miễn phí)\n\n" .
-                       "👉 Quý khách có thể bấm nút **'Tìm kiếm xe'** trên trang chủ để xem sơ đồ 2 tầng và chọn vị trí giường nằm yêu thích nhé!",
+                "• **Cự ly di chuyển:** {$info['distance']} ({$info['time']})\n" .
+                "• **Các khung giờ xuất bến:** **{$info['hours']}**\n" .
+                "• **Giá vé niêm yết:** **{$info['price']}/vé**\n" .
+                "• **Đặt cọc giữ chỗ 30%:** Chỉ **{$info['deposit']}** (khóa giường 100%, 70% còn lại thanh toán khi lên xe)\n" .
+                "• **Ưu đãi Sinh viên (-30% mã `PRO30`):** Chỉ còn **{$info['student_price']}**\n" .
+                "• **Dòng xe & Tiện ích:** {$info['bus']} (Wifi 5G, cổng sạc Type-C, ghế massage, chăn gối khử khuẩn, nước suối miễn phí)\n\n" .
+                "👉 Quý khách có thể bấm nút **'Tìm kiếm xe'** trên trang chủ để xem sơ đồ 2 tầng và chọn vị trí giường nằm yêu thích nhé!",
             'suggestions' => [
                 "Đặt vé {$info['name']}",
                 'Chính sách cọc 30%',
@@ -2003,16 +2042,16 @@ class AiAssistantController extends Controller
     private function callGeminiApi(string $message, $user, array $context, string $apiKey, array $matchingTrips = [], array $history = []): ?array
     {
         try {
-            $userDesc = $user 
+            $userDesc = $user
                 ? "Khách hàng tên {$user->name}, SĐT {$user->phone}, hạng {$user->loyalty_tier}, tích lũy {$user->loyalty_points} điểm."
                 : "Khách hàng là khách vãng lai chưa đăng nhập.";
 
             $now = Carbon::now();
             $tomorrow = Carbon::tomorrow();
-            $thuVN = match($now->dayOfWeek) {
+            $thuVN = match ($now->dayOfWeek) {
                 0 => 'Chủ Nhật', 1 => 'Thứ Hai', 2 => 'Thứ Ba', 3 => 'Thứ Tư', 4 => 'Thứ Năm', 5 => 'Thứ Sáu', 6 => 'Thứ Bảy', default => 'Hôm nay'
             };
-            $thuMaiVN = match($tomorrow->dayOfWeek) {
+            $thuMaiVN = match ($tomorrow->dayOfWeek) {
                 0 => 'Chủ Nhật', 1 => 'Thứ Hai', 2 => 'Thứ Ba', 3 => 'Thứ Tư', 4 => 'Thứ Năm', 5 => 'Thứ Sáu', 6 => 'Thứ Bảy', default => 'Ngày mai'
             };
 
@@ -2055,7 +2094,7 @@ class AiAssistantController extends Controller
                 $recentTurns = array_slice($history, -6);
                 foreach ($recentTurns as $turn) {
                     $role = (($turn['role'] ?? '') === 'model' || ($turn['role'] ?? '') === 'assistant') ? 'model' : 'user';
-                    $contentStr = trim((string)($turn['content'] ?? ''));
+                    $contentStr = trim((string) ($turn['content'] ?? ''));
                     if (!empty($contentStr)) {
                         $contents[] = [
                             'role' => $role,
@@ -2078,8 +2117,8 @@ class AiAssistantController extends Controller
 
             // Danh sách model ưu tiên tự động chuyển đổi khi gặp tải cao hoặc hạn ngạch
             $candidateModels = [
-                'gemini-3.1-flash-lite',
                 'gemini-3-flash-preview',
+                'gemini-3.1-flash-lite',
                 'gemini-flash-latest'
             ];
 
@@ -2148,15 +2187,24 @@ class AiAssistantController extends Controller
         }
 
         $matchedDest = null;
-        if (preg_match('/(quang tri|quan tri|dong ha)/i', $unaccented)) $matchedDest = 'Quảng Trị';
-        elseif (preg_match('/(hue|thua thien)/i', $unaccented)) $matchedDest = 'Thừa Thiên - Huế';
-        elseif (preg_match('/(quang binh|dong hoi)/i', $unaccented)) $matchedDest = 'Quảng Bình';
-        elseif (preg_match('/(quy nhon|binh dinh)/i', $unaccented)) $matchedDest = 'Quy Nhơn';
-        elseif (preg_match('/(buon ma thuot|dak lak|bmt)/i', $unaccented)) $matchedDest = 'Buôn Ma Thuột';
-        elseif (preg_match('/(ha noi)/i', $unaccented)) $matchedDest = 'Hà Nội';
-        elseif (preg_match('/(nam dinh)/i', $unaccented)) $matchedDest = 'Nam Định';
-        elseif (preg_match('/(hoi an)/i', $unaccented)) $matchedDest = 'Hội An';
-        elseif (preg_match('/(da nang)/i', $unaccented)) $matchedDest = 'Đà Nẵng';
+        if (preg_match('/(quang tri|quan tri|dong ha)/i', $unaccented))
+            $matchedDest = 'Quảng Trị';
+        elseif (preg_match('/(hue|thua thien)/i', $unaccented))
+            $matchedDest = 'Thừa Thiên - Huế';
+        elseif (preg_match('/(quang binh|dong hoi)/i', $unaccented))
+            $matchedDest = 'Quảng Bình';
+        elseif (preg_match('/(quy nhon|binh dinh)/i', $unaccented))
+            $matchedDest = 'Quy Nhơn';
+        elseif (preg_match('/(buon ma thuot|dak lak|bmt)/i', $unaccented))
+            $matchedDest = 'Buôn Ma Thuột';
+        elseif (preg_match('/(ha noi)/i', $unaccented))
+            $matchedDest = 'Hà Nội';
+        elseif (preg_match('/(nam dinh)/i', $unaccented))
+            $matchedDest = 'Nam Định';
+        elseif (preg_match('/(hoi an)/i', $unaccented))
+            $matchedDest = 'Hội An';
+        elseif (preg_match('/(da nang)/i', $unaccented))
+            $matchedDest = 'Đà Nẵng';
 
         // Không có điểm đến -> TUYỆT ĐỐI không trả về danh sách chuyến ngẫu nhiên
         if (!$matchedDest) {
@@ -2168,9 +2216,9 @@ class AiAssistantController extends Controller
             ->where('departure_time', '>=', Carbon::now());
 
         if ($matchedDest) {
-            $queryBuilder->whereHas('route', function($q) use ($matchedDest) {
+            $queryBuilder->whereHas('route', function ($q) use ($matchedDest) {
                 $q->where('origin', 'like', "%{$matchedDest}%")
-                  ->orWhere('destination', 'like', "%{$matchedDest}%");
+                    ->orWhere('destination', 'like', "%{$matchedDest}%");
             });
         }
 
@@ -2180,17 +2228,17 @@ class AiAssistantController extends Controller
 
         if (preg_match('/(sáng|sáng mai)/u', $lower)) {
             $queryBuilder->whereTime('departure_time', '>=', '05:00:00')
-                         ->whereTime('departure_time', '<=', '11:59:59');
+                ->whereTime('departure_time', '<=', '11:59:59');
         } elseif (preg_match('/(chiều|chiều mai)/u', $lower)) {
             $queryBuilder->whereTime('departure_time', '>=', '12:00:00')
-                         ->whereTime('departure_time', '<=', '17:59:59');
+                ->whereTime('departure_time', '<=', '17:59:59');
         } elseif (preg_match('/(tối|tối mai|đêm)/u', $lower)) {
             $queryBuilder->whereTime('departure_time', '>=', '18:00:00')
-                         ->whereTime('departure_time', '<=', '23:59:59');
+                ->whereTime('departure_time', '<=', '23:59:59');
         }
 
         // Nếu là yêu cầu tìm chuyến/chọn ghế cụ thể, chỉ đưa ra 1 chuyến xe tốt nhất (Point 4)
-        $isSpecificInquiry = (bool)preg_match('/(sáng|chiều|tối|ngày mai|hôm nay|bà|ông|chọn|đặt|say|già)/u', $lower);
+        $isSpecificInquiry = (bool) preg_match('/(sáng|chiều|tối|ngày mai|hôm nay|bà|ông|chọn|đặt|say|già)/u', $lower);
         $tripsLimit = $isSpecificInquiry ? 1 : 3;
 
         $trips = $queryBuilder->orderBy('departure_time', 'asc')->take($tripsLimit)->get();
@@ -2230,25 +2278,35 @@ class AiAssistantController extends Controller
             $numPassengers = 6;
         }
 
-        $f1Seats = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10','A11','A12','A13','A14','A15','A16','A17','A18'];
-        $f2Seats = ['B01','B02','B03','B04','B05','B06','B07','B08','B09','B10','B11','B12'];
+        $f1Seats = ['A01', 'A02', 'A03', 'A04', 'A05', 'A06', 'A07', 'A08', 'A09', 'A10', 'A11', 'A12', 'A13', 'A14', 'A15', 'A16', 'A17', 'A18'];
+        $f2Seats = ['B01', 'B02', 'B03', 'B04', 'B05', 'B06', 'B07', 'B08', 'B09', 'B10', 'B11', 'B12'];
 
         $f1Pairs = [
-            ['A01', 'A02'], ['A02', 'A03'],
-            ['A04', 'A05'], ['A05', 'A06'],
-            ['A07', 'A08'], ['A08', 'A09'],
-            ['A10', 'A11'], ['A11', 'A12'],
-            ['A13', 'A14'], ['A14', 'A15'],
-            ['A16', 'A17'], ['A17', 'A18'],
+            ['A01', 'A02'],
+            ['A02', 'A03'],
+            ['A04', 'A05'],
+            ['A05', 'A06'],
+            ['A07', 'A08'],
+            ['A08', 'A09'],
+            ['A10', 'A11'],
+            ['A11', 'A12'],
+            ['A13', 'A14'],
+            ['A14', 'A15'],
+            ['A16', 'A17'],
+            ['A17', 'A18'],
         ];
         $f2Pairs = [
-            ['B01', 'B02'], ['B03', 'B04'], ['B05', 'B06'],
-            ['B07', 'B08'], ['B09', 'B10'], ['B11', 'B12'],
+            ['B01', 'B02'],
+            ['B03', 'B04'],
+            ['B05', 'B06'],
+            ['B07', 'B08'],
+            ['B09', 'B10'],
+            ['B11', 'B12'],
         ];
 
-        return $trips->map(function($t) use ($isSayXe, $isRiengTu, $isNgamCanh, $isElderly, $isBaby, $isTall, $isQuiet, $isLuggage, $isPregnant, $isBusiness, $numPassengers, $f1Seats, $f2Seats, $f1Pairs, $f2Pairs) {
+        return $trips->map(function ($t) use ($isSayXe, $isRiengTu, $isNgamCanh, $isElderly, $isBaby, $isTall, $isQuiet, $isLuggage, $isPregnant, $isBusiness, $numPassengers, $f1Seats, $f2Seats, $f1Pairs, $f2Pairs) {
             $depTime = Carbon::parse($t->departure_time);
-            
+
             // Quét danh sách ghế đã được đặt thực tế trên chuyến này
             $occupied = $t->bookings
                 ? $t->bookings->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])->flatMap->bookingSeats->pluck('seat_number')->all()
@@ -2275,7 +2333,8 @@ class AiAssistantController extends Controller
                         $pair = null;
                         foreach ($f1Pairs as $p) {
                             if (in_array($p[0], $availF1) && in_array($p[1], $availF1)) {
-                                $pair = $p; break;
+                                $pair = $p;
+                                break;
                             }
                         }
                         if ($pair) {
@@ -2292,7 +2351,10 @@ class AiAssistantController extends Controller
                         $targetF1 = ['A02', 'A05', 'A08', 'A11'];
                         $pick = null;
                         foreach ($targetF1 as $s) {
-                            if (in_array($s, $availF1)) { $pick = $s; break; }
+                            if (in_array($s, $availF1)) {
+                                $pick = $s;
+                                break;
+                            }
                         }
                         $chosenSeats = [$pick ?: ($availF1[0] ?? 'A02')];
                         $seatAdvice = "Ưu tiên Tầng 1 ({$chosenSeats[0]}) chống say xe: Vị trí trọng tâm xe triệt tiêu rung lắc đèo dốc. Tầng 1 không rèm kín nhưng bảo vệ tiền đình tốt nhất.";
@@ -2302,7 +2364,10 @@ class AiAssistantController extends Controller
                     $targetF2 = ['B02', 'B05', 'B08'];
                     $pick = null;
                     foreach ($targetF2 as $s) {
-                        if (in_array($s, $availF2)) { $pick = $s; break; }
+                        if (in_array($s, $availF2)) {
+                            $pick = $s;
+                            break;
+                        }
                     }
                     $chosenSeats = [$pick ?: ($availF2[0] ?? 'B02')];
                     $seatAdvice = "⚠️ Tầng 1 đã kín chỗ: AI chọn giường {$chosenSeats[0]} (giữa Tầng 2 - êm nhất tầng trên). Có rèm che riêng tư 100%, bạn nhớ dán miếng chống say hoặc uống thuốc trước 30p nhé!";
@@ -2316,7 +2381,10 @@ class AiAssistantController extends Controller
                 $targetF1 = ['A01', 'A03'];
                 $pick = null;
                 foreach ($targetF1 as $s) {
-                    if (in_array($s, $availF1)) { $pick = $s; break; }
+                    if (in_array($s, $availF1)) {
+                        $pick = $s;
+                        break;
+                    }
                 }
                 $chosenSeats = [$pick ?: ($availF1[0] ?? 'A01')];
                 $seatAdvice = "Tầng 1 đầu xe cạnh cửa sổ ({$chosenSeats[0]}): Mắt nhìn thẳng hướng xe chạy giúp đồng bộ tiền đình chống nôn nao, vừa ngắm trọn phong cảnh thoáng đãng.";
@@ -2329,7 +2397,8 @@ class AiAssistantController extends Controller
                     $pair = null;
                     foreach ($f1Pairs as $p) {
                         if (in_array($p[0], $availF1) && in_array($p[1], $availF1)) {
-                            $pair = $p; break;
+                            $pair = $p;
+                            break;
                         }
                     }
                     $chosenSeats = $pair ?: array_slice($availF1, 0, 2);
@@ -2338,7 +2407,10 @@ class AiAssistantController extends Controller
                     $targetF1 = ['A02', 'A05', 'A08', 'A11'];
                     $pick = null;
                     foreach ($targetF1 as $s) {
-                        if (in_array($s, $availF1)) { $pick = $s; break; }
+                        if (in_array($s, $availF1)) {
+                            $pick = $s;
+                            break;
+                        }
                     }
                     $chosenSeats = [$pick ?: ($availF1[0] ?? 'A02')];
                     $seatAdvice = "Tầng 1 - Dãy giữa ({$chosenSeats[0]}): Vị trí trọng tâm xe ít rung lắc nhất, gió điều hòa dịu nhẹ, triệt tiêu cảm giác say xe.";
@@ -2351,7 +2423,10 @@ class AiAssistantController extends Controller
                 $targetF1 = ['A02', 'A05'];
                 $pick = null;
                 foreach ($targetF1 as $s) {
-                    if (in_array($s, $availF1)) { $pick = $s; break; }
+                    if (in_array($s, $availF1)) {
+                        $pick = $s;
+                        break;
+                    }
                 }
                 $chosenSeats = [$pick ?: ($availF1[0] ?? 'A02')];
                 $seatAdvice = "Tầng 1 trọng tâm xe ({$chosenSeats[0]}): Nệm hơi giảm xóc 99% triệt tiêu phản lực mặt đường, bảo vệ an toàn thai phụ, ngay cạnh cửa bước xuống trạm nghỉ.";
@@ -2364,7 +2439,8 @@ class AiAssistantController extends Controller
                     $pair = null;
                     foreach ($f1Pairs as $p) {
                         if (in_array($p[0], $availF1) && in_array($p[1], $availF1)) {
-                            $pair = $p; break;
+                            $pair = $p;
+                            break;
                         }
                     }
                     $chosenSeats = $pair ?: array_slice($availF1, 0, 2);
@@ -2373,7 +2449,10 @@ class AiAssistantController extends Controller
                     $targetF1 = ['A02', 'A03', 'A05'];
                     $pick = null;
                     foreach ($targetF1 as $s) {
-                        if (in_array($s, $availF1)) { $pick = $s; break; }
+                        if (in_array($s, $availF1)) {
+                            $pick = $s;
+                            break;
+                        }
                     }
                     $chosenSeats = [$pick ?: ($availF1[0] ?? 'A02')];
                     $seatAdvice = "Tầng 1 an toàn cho bé ({$chosenSeats[0]}): Tuyệt đối không nguy cơ té ngã, điều hòa dịu nhẹ, gần lối đi thuận tiện chăm sóc.";
@@ -2394,8 +2473,14 @@ class AiAssistantController extends Controller
                 $target = ['A01', 'A03', 'A16', 'B01', 'B03'];
                 $pick = null;
                 foreach ($target as $s) {
-                    if (in_array($s, $availF1)) { $pick = $s; break; }
-                    if (in_array($s, $availF2)) { $pick = $s; break; }
+                    if (in_array($s, $availF1)) {
+                        $pick = $s;
+                        break;
+                    }
+                    if (in_array($s, $availF2)) {
+                        $pick = $s;
+                        break;
+                    }
                 }
                 $chosenSeats = [$pick ?: ($availF1[0] ?? 'A01')];
                 $seatAdvice = "Khoang rộng rãi lọt lòng 185-190cm ({$chosenSeats[0]}): Hộc để chân mở không bị vách chặn, duỗi thẳng chân thoải mái không bị co gối tê mỏi.";
@@ -2407,7 +2492,10 @@ class AiAssistantController extends Controller
                 $targetF2 = ['B04', 'B05', 'B06', 'B07'];
                 $pick = null;
                 foreach ($targetF2 as $s) {
-                    if (in_array($s, $availF2)) { $pick = $s; break; }
+                    if (in_array($s, $availF2)) {
+                        $pick = $s;
+                        break;
+                    }
                 }
                 $chosenSeats = [$pick ?: ($availF2[0] ?? 'B04')];
                 $seatAdvice = "Khoang tĩnh lặng Tầng 2 ({$chosenSeats[0]}): Rèm kéo kín 100% chắn sáng, không ai đi ngang qua giường, cách xa tiếng còi buồng lái và tiếng động cơ.";
@@ -2419,7 +2507,10 @@ class AiAssistantController extends Controller
                 $targetF2 = ['B01', 'B02', 'B07', 'B08'];
                 $pick = null;
                 foreach ($targetF2 as $s) {
-                    if (in_array($s, $availF2)) { $pick = $s; break; }
+                    if (in_array($s, $availF2)) {
+                        $pick = $s;
+                        break;
+                    }
                 }
                 $chosenSeats = [$pick ?: ($availF2[0] ?? 'B01')];
                 $seatAdvice = "Tầng 2 cửa sổ góc rộng ({$chosenSeats[0]}): Tầm nhìn panorama 180 độ không bị dải phân cách chắn, bắt trọn cảnh đèo Hải Vân và bờ biển miền Trung.";
@@ -2431,7 +2522,10 @@ class AiAssistantController extends Controller
                 $targetF1 = ['A02', 'A05', 'A08'];
                 $pick = null;
                 foreach ($targetF1 as $s) {
-                    if (in_array($s, $availF1)) { $pick = $s; break; }
+                    if (in_array($s, $availF1)) {
+                        $pick = $s;
+                        break;
+                    }
                 }
                 $chosenSeats = [$pick ?: ($availF1[0] ?? 'A02')];
                 $seatAdvice = "Tầng 1 hộc đồ rộng ({$chosenSeats[0]}): Balo laptop và vali đặt ngay dưới chân trong tầm mắt, lên xuống xe không phải xách nặng leo cầu thang.";
@@ -2443,7 +2537,10 @@ class AiAssistantController extends Controller
                 $targetF2 = ['B04', 'B05'];
                 $pick = null;
                 foreach ($targetF2 as $s) {
-                    if (in_array($s, $availF2)) { $pick = $s; break; }
+                    if (in_array($s, $availF2)) {
+                        $pick = $s;
+                        break;
+                    }
                 }
                 $chosenSeats = [$pick ?: ($availF2[0] ?? 'B04')];
                 $seatAdvice = "Tầng 2 làm việc riêng tư ({$chosenSeats[0]}): Kéo rèm bật đèn đọc sách 3000K làm việc không chói cabin, cổng sạc Type-C 20W và Wifi 5G xuyên suốt.";
@@ -2456,7 +2553,8 @@ class AiAssistantController extends Controller
                     $pair = null;
                     foreach ($f2Pairs as $p) {
                         if (in_array($p[0], $availF2) && in_array($p[1], $availF2)) {
-                            $pair = $p; break;
+                            $pair = $p;
+                            break;
                         }
                     }
                     $chosenSeats = $pair ?: array_slice($availF2, 0, 2);
@@ -2465,7 +2563,10 @@ class AiAssistantController extends Controller
                     $targetF2 = ['B04', 'B07', 'B02', 'B05'];
                     $pick = null;
                     foreach ($targetF2 as $s) {
-                        if (in_array($s, $availF2)) { $pick = $s; break; }
+                        if (in_array($s, $availF2)) {
+                            $pick = $s;
+                            break;
+                        }
                     }
                     $chosenSeats = [$pick ?: ($availF2[0] ?? 'B04')];
                     $seatAdvice = "Tầng 2 - Cạnh cửa sổ ({$chosenSeats[0]}): Rèm che kín 100% chống nhìn trộm, đèn đọc sách, yên tĩnh ngủ suốt chuyến.";
@@ -2478,13 +2579,15 @@ class AiAssistantController extends Controller
                 $pair = null;
                 foreach ($f1Pairs as $p) {
                     if (in_array($p[0], $availF1) && in_array($p[1], $availF1)) {
-                        $pair = $p; break;
+                        $pair = $p;
+                        break;
                     }
                 }
                 if (!$pair) {
                     foreach ($f2Pairs as $p) {
                         if (in_array($p[0], $availF2) && in_array($p[1], $availF2)) {
-                            $pair = $p; break;
+                            $pair = $p;
+                            break;
                         }
                     }
                 }
@@ -2565,14 +2668,22 @@ class AiAssistantController extends Controller
 
         // 2. Nhận diện điểm đến
         $destination = null;
-        if (preg_match('/(quảng trị|quang tri|đông hà)/ui', $lower)) $destination = 'Quảng Trị';
-        elseif (preg_match('/(huế|hue|thừa thiên)/ui', $lower)) $destination = 'Thừa Thiên - Huế';
-        elseif (preg_match('/(quảng bình|quang binh|đồng hới)/ui', $lower)) $destination = 'Quảng Bình';
-        elseif (preg_match('/(quy nhơn|quy nhon|bình định)/ui', $lower)) $destination = 'Quy Nhơn';
-        elseif (preg_match('/(buôn ma thuột|buon ma thuot|đắk lắk|dak lak|bmt)/ui', $lower)) $destination = 'Buôn Ma Thuột';
-        elseif (preg_match('/(hà nội|ha noi)/ui', $lower)) $destination = 'Hà Nội';
-        elseif (preg_match('/(nam định|nam dinh)/ui', $lower)) $destination = 'Nam Định';
-        elseif (preg_match('/(hội an|hoi an)/ui', $lower)) $destination = 'Hội An';
+        if (preg_match('/(quảng trị|quang tri|đông hà)/ui', $lower))
+            $destination = 'Quảng Trị';
+        elseif (preg_match('/(huế|hue|thừa thiên)/ui', $lower))
+            $destination = 'Thừa Thiên - Huế';
+        elseif (preg_match('/(quảng bình|quang binh|đồng hới)/ui', $lower))
+            $destination = 'Quảng Bình';
+        elseif (preg_match('/(quy nhơn|quy nhon|bình định)/ui', $lower))
+            $destination = 'Quy Nhơn';
+        elseif (preg_match('/(buôn ma thuột|buon ma thuot|đắk lắk|dak lak|bmt)/ui', $lower))
+            $destination = 'Buôn Ma Thuột';
+        elseif (preg_match('/(hà nội|ha noi)/ui', $lower))
+            $destination = 'Hà Nội';
+        elseif (preg_match('/(nam định|nam dinh)/ui', $lower))
+            $destination = 'Nam Định';
+        elseif (preg_match('/(hội an|hoi an)/ui', $lower))
+            $destination = 'Hội An';
 
         if (!$destination) {
             return null;
@@ -2588,7 +2699,7 @@ class AiAssistantController extends Controller
 
         // Nếu người dùng hỏi "đi / ra / tới [destination]", tìm đúng tuyến có điểm đến là tỉnh đó
         $isTowardsDanang = (bool) preg_match('/(về đà nẵng|đến đà nẵng|tới đà nẵng|đi đà nẵng)/ui', $lower);
-        $routeFilter = function($q) use ($destination, $isTowardsDanang) {
+        $routeFilter = function ($q) use ($destination, $isTowardsDanang) {
             if ($isTowardsDanang) {
                 $q->where('origin', 'like', "%{$destination}%");
             } else {
@@ -2599,9 +2710,12 @@ class AiAssistantController extends Controller
         // 4. Khung giờ yêu cầu
         $unaccented = self::stripVN($message);
         $timePeriod = 'all_day';
-        if (preg_match('/(sang|sang mai|buoi sang|som)/i', $unaccented)) $timePeriod = 'morning';
-        elseif (preg_match('/(chieu|chieu mai|buoi chieu|trua)/i', $unaccented)) $timePeriod = 'afternoon';
-        elseif (preg_match('/(toi|toi mai|buoi toi|dem)/i', $unaccented)) $timePeriod = 'evening';
+        if (preg_match('/(sang|sang mai|buoi sang|som)/i', $unaccented))
+            $timePeriod = 'morning';
+        elseif (preg_match('/(chieu|chieu mai|buoi chieu|trua)/i', $unaccented))
+            $timePeriod = 'afternoon';
+        elseif (preg_match('/(toi|toi mai|buoi toi|dem)/i', $unaccented))
+            $timePeriod = 'evening';
 
         // Tìm các chuyến xe trong database theo tuyến và ngày
         $tripsQuery = Trip::with(['route', 'bus', 'bookings.bookingSeats'])
@@ -2611,7 +2725,7 @@ class AiAssistantController extends Controller
         // Nếu là hôm nay, chỉ lấy chuyến chưa khởi hành
         if ($isToday && !$isTomorrow) {
             $tripsQuery->whereIn('status', ['OPEN_FOR_SALE', 'SCHEDULED', 'ACTIVE'])
-                       ->where('departure_time', '>', $now);
+                ->where('departure_time', '>', $now);
         } else {
             $tripsQuery->whereIn('status', ['OPEN_FOR_SALE', 'SCHEDULED', 'ACTIVE']);
         }
@@ -2641,7 +2755,7 @@ class AiAssistantController extends Controller
                 ->get();
 
             if ($otherSameDayTrips->isNotEmpty()) {
-                $timePeriodVn = match($timePeriod) {
+                $timePeriodVn = match ($timePeriod) {
                     'morning' => 'buổi sáng',
                     'afternoon' => 'buổi chiều',
                     'evening' => 'buổi tối',
@@ -2679,7 +2793,7 @@ class AiAssistantController extends Controller
 
             $todayDateVn = $now->format('d/m');
             $tomorrowDateVn = $tomorrow->format('d/m/Y');
-            $tomorrowDayOfWeek = match($tomorrow->dayOfWeek) {
+            $tomorrowDayOfWeek = match ($tomorrow->dayOfWeek) {
                 0 => 'Chủ Nhật', 1 => 'Thứ Hai', 2 => 'Thứ Ba', 3 => 'Thứ Tư', 4 => 'Thứ Năm', 5 => 'Thứ Sáu', 6 => 'Thứ Bảy', default => 'Ngày mai'
             };
 
@@ -2755,13 +2869,15 @@ class AiAssistantController extends Controller
         if ($passengerCount <= 1) {
             if ($isSayXe) {
                 foreach (['A04', 'A05', 'A06', 'A07', 'A08', 'A09'] as $s) {
-                    if (in_array($s, $availF1)) return [$s];
+                    if (in_array($s, $availF1))
+                        return [$s];
                 }
                 return [($availF1[0] ?? ($availF2[0] ?? 'A02'))];
             }
             if ($isElderly) {
                 foreach (['A01', 'A02', 'A03'] as $s) {
-                    if (in_array($s, $availF1)) return [$s];
+                    if (in_array($s, $availF1))
+                        return [$s];
                 }
                 return [($availF1[0] ?? ($availF2[0] ?? 'A01'))];
             }
@@ -2770,9 +2886,18 @@ class AiAssistantController extends Controller
 
         if ($passengerCount === 2) {
             $f1Pairs = [
-                ['A04', 'A05'], ['A05', 'A06'], ['A07', 'A08'], ['A08', 'A09'],
-                ['A01', 'A02'], ['A02', 'A03'], ['A10', 'A11'], ['A11', 'A12'],
-                ['A13', 'A14'], ['A14', 'A15'], ['A16', 'A17'], ['A17', 'A18']
+                ['A04', 'A05'],
+                ['A05', 'A06'],
+                ['A07', 'A08'],
+                ['A08', 'A09'],
+                ['A01', 'A02'],
+                ['A02', 'A03'],
+                ['A10', 'A11'],
+                ['A11', 'A12'],
+                ['A13', 'A14'],
+                ['A14', 'A15'],
+                ['A16', 'A17'],
+                ['A17', 'A18']
             ];
             foreach ($f1Pairs as $p) {
                 if (in_array($p[0], $availF1) && in_array($p[1], $availF1)) {
@@ -2780,8 +2905,12 @@ class AiAssistantController extends Controller
                 }
             }
             $f2Pairs = [
-                ['B03', 'B04'], ['B05', 'B06'], ['B01', 'B02'], ['B07', 'B08'],
-                ['B09', 'B10'], ['B11', 'B12']
+                ['B03', 'B04'],
+                ['B05', 'B06'],
+                ['B01', 'B02'],
+                ['B07', 'B08'],
+                ['B09', 'B10'],
+                ['B11', 'B12']
             ];
             foreach ($f2Pairs as $p) {
                 if (in_array($p[0], $availF2) && in_array($p[1], $availF2)) {
@@ -2797,8 +2926,10 @@ class AiAssistantController extends Controller
 
         if ($passengerCount === 3) {
             $f1Triplets = [
-                ['A04', 'A05', 'A06'], ['A07', 'A08', 'A09'],
-                ['A01', 'A02', 'A03'], ['A10', 'A11', 'A12'],
+                ['A04', 'A05', 'A06'],
+                ['A07', 'A08', 'A09'],
+                ['A01', 'A02', 'A03'],
+                ['A10', 'A11', 'A12'],
                 ['A13', 'A14', 'A15']
             ];
             foreach ($f1Triplets as $tr) {
@@ -2807,7 +2938,9 @@ class AiAssistantController extends Controller
                 }
             }
             $f2Triplets = [
-                ['B01', 'B02', 'B03'], ['B04', 'B05', 'B06'], ['B07', 'B08', 'B09']
+                ['B01', 'B02', 'B03'],
+                ['B04', 'B05', 'B06'],
+                ['B07', 'B08', 'B09']
             ];
             foreach ($f2Triplets as $tr) {
                 if (in_array($tr[0], $availF2) && in_array($tr[1], $availF2) && in_array($tr[2], $availF2)) {
@@ -2859,10 +2992,10 @@ class AiAssistantController extends Controller
      */
     public function formatTripsForClient($trips, array $overrideSeats = [], string $overrideAdvice = '', int $passengerCount = 1): array
     {
-        $f1Seats = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10','A11','A12','A13','A14','A15','A16','A17','A18'];
-        $f2Seats = ['B01','B02','B03','B04','B05','B06','B07','B08','B09','B10','B11','B12'];
+        $f1Seats = ['A01', 'A02', 'A03', 'A04', 'A05', 'A06', 'A07', 'A08', 'A09', 'A10', 'A11', 'A12', 'A13', 'A14', 'A15', 'A16', 'A17', 'A18'];
+        $f2Seats = ['B01', 'B02', 'B03', 'B04', 'B05', 'B06', 'B07', 'B08', 'B09', 'B10', 'B11', 'B12'];
 
-        return $trips->map(function($t) use ($f1Seats, $f2Seats, $overrideSeats, $overrideAdvice, $passengerCount) {
+        return $trips->map(function ($t) use ($f1Seats, $f2Seats, $overrideSeats, $overrideAdvice, $passengerCount) {
             $depTime = Carbon::parse($t->departure_time);
             $occupied = $t->bookings
                 ? $t->bookings->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])->flatMap->bookingSeats->pluck('seat_number')->all()
@@ -3003,25 +3136,40 @@ class AiAssistantController extends Controller
      */
     public function getAvailableSeats($trip): array
     {
-        $f1Seats = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10','A11','A12','A13','A14','A15','A16','A17','A18'];
-        $f2Seats = ['B01','B02','B03','B04','B05','B06','B07','B08','B09','B10','B11','B12'];
+        $f1Seats = ['A01', 'A02', 'A03', 'A04', 'A05', 'A06', 'A07', 'A08', 'A09', 'A10', 'A11', 'A12', 'A13', 'A14', 'A15', 'A16', 'A17', 'A18'];
+        $f2Seats = ['B01', 'B02', 'B03', 'B04', 'B05', 'B06', 'B07', 'B08', 'B09', 'B10', 'B11', 'B12'];
 
         $pairMap = [
-            'A01' => 'A02', 'A02' => 'A01',
-            'A03' => 'A04', 'A04' => 'A03',
-            'A05' => 'A06', 'A06' => 'A05',
-            'A07' => 'A08', 'A08' => 'A07',
-            'A09' => 'A10', 'A10' => 'A09',
-            'A11' => 'A12', 'A12' => 'A11',
-            'A13' => 'A14', 'A14' => 'A13',
-            'A15' => 'A16', 'A16' => 'A15',
-            'A17' => 'A18', 'A18' => 'A17',
-            'B01' => 'B02', 'B02' => 'B01',
-            'B03' => 'B04', 'B04' => 'B03',
-            'B05' => 'B06', 'B06' => 'B05',
-            'B07' => 'B08', 'B08' => 'B07',
-            'B09' => 'B10', 'B10' => 'B09',
-            'B11' => 'B12', 'B12' => 'B11',
+            'A01' => 'A02',
+            'A02' => 'A01',
+            'A03' => 'A04',
+            'A04' => 'A03',
+            'A05' => 'A06',
+            'A06' => 'A05',
+            'A07' => 'A08',
+            'A08' => 'A07',
+            'A09' => 'A10',
+            'A10' => 'A09',
+            'A11' => 'A12',
+            'A12' => 'A11',
+            'A13' => 'A14',
+            'A14' => 'A13',
+            'A15' => 'A16',
+            'A16' => 'A15',
+            'A17' => 'A18',
+            'A18' => 'A17',
+            'B01' => 'B02',
+            'B02' => 'B01',
+            'B03' => 'B04',
+            'B04' => 'B03',
+            'B05' => 'B06',
+            'B06' => 'B05',
+            'B07' => 'B08',
+            'B08' => 'B07',
+            'B09' => 'B10',
+            'B10' => 'B09',
+            'B11' => 'B12',
+            'B12' => 'B11',
         ];
 
         $occupied = $trip->bookings
@@ -3047,7 +3195,7 @@ class AiAssistantController extends Controller
                 'floor' => $floor,
                 'floor_name' => $floor === 1 ? 'Tầng 1 (Tầng dưới)' : 'Tầng 2 (Tầng trên)',
                 'zone' => $zone,
-                'zone_name' => match($zone) {
+                'zone_name' => match ($zone) {
                     'front' => 'Đầu xe (gần cửa & bác tài)',
                     'middle' => 'Giữa xe (tâm trọng lực, giảm 90% chấn động)',
                     'rear' => 'Cuối xe (trên trục bánh sau)',
@@ -3114,9 +3262,9 @@ class AiAssistantController extends Controller
         // 2. Ngày đi (Date)
         $date = $now->format('Y-m-d');
         if (preg_match('/ngay (\d{1,2})(?:\/(\d{1,2}))?(?:\/(\d{4}))?/i', $unaccented, $mDate)) {
-            $d = (int)$mDate[1];
-            $m = !empty($mDate[2]) ? (int)$mDate[2] : $now->month;
-            $y = !empty($mDate[3]) ? (int)$mDate[3] : $now->year;
+            $d = (int) $mDate[1];
+            $m = !empty($mDate[2]) ? (int) $mDate[2] : $now->month;
+            $y = !empty($mDate[3]) ? (int) $mDate[3] : $now->year;
             try {
                 $date = Carbon::create($y, $m, $d)->format('Y-m-d');
             } catch (\Throwable $e) {
@@ -3139,12 +3287,15 @@ class AiAssistantController extends Controller
         $specificTime = null;
 
         if (preg_match('/(\d{1,2})h(?:(\d{2}))?/i', $unaccented, $mTime)) {
-            $h = (int)$mTime[1];
+            $h = (int) $mTime[1];
             $min = !empty($mTime[2]) ? $mTime[2] : '00';
             $specificTime = sprintf('%02d:%02d', $h, $min);
-            if ($h >= 5 && $h <= 11) $timePeriod = 'morning';
-            elseif ($h >= 12 && $h <= 17) $timePeriod = 'afternoon';
-            elseif ($h >= 18 && $h <= 23) $timePeriod = 'evening';
+            if ($h >= 5 && $h <= 11)
+                $timePeriod = 'morning';
+            elseif ($h >= 12 && $h <= 17)
+                $timePeriod = 'afternoon';
+            elseif ($h >= 18 && $h <= 23)
+                $timePeriod = 'evening';
         } elseif (preg_match('/(buoi sang|sang som|sang mai|\bsang\b)/i', $unaccented) || preg_match('/(buổi sáng|sáng sớm|sáng mai|\bsáng\b)/ui', $message)) {
             $timePeriod = 'morning';
         } elseif (preg_match('/(buoi chieu|chieu mai|buoi trua|\btrua\b|\bchieu\b)/i', $unaccented) || preg_match('/(buổi chiều|chiều mai|buổi trưa|\btrưa\b|\bchiều\b)/ui', $message)) {
@@ -3157,10 +3308,10 @@ class AiAssistantController extends Controller
         $countVe = null;
         $countNguoi = null;
         if (preg_match('/(\d+)\s*(ve|vé)/ui', $message, $mVe)) {
-            $countVe = (int)$mVe[1];
+            $countVe = (int) $mVe[1];
         }
         if (preg_match('/(\d+)\s*(nguoi|người|khach|khách|ban|bạn)/ui', $message, $mPax)) {
-            $countNguoi = (int)$mPax[1];
+            $countNguoi = (int) $mPax[1];
         }
 
         $passengerCount = 1;
@@ -3183,7 +3334,7 @@ class AiAssistantController extends Controller
         } elseif (preg_match('/(4 nguoi|bon nguoi|4 ve|4 ghe|4 cho)/i', $unaccented)) {
             $passengerCount = 4;
         } elseif (preg_match('/(\d+)\s*(nguoi|ve|ghe|cho)/i', $unaccented, $mCount)) {
-            $passengerCount = max(1, (int)$mCount[1]);
+            $passengerCount = max(1, (int) $mCount[1]);
         }
 
         // 5. Thể trạng say xe / đau đầu / người già / trẻ nhỏ (Motion Sickness & Conditions)
@@ -3191,11 +3342,13 @@ class AiAssistantController extends Controller
         $hasBaby = (bool) preg_match('/(tre con|tre em|em be|con nho|so sinh|be nho|pha sua|mang theo con)/i', $unaccented);
 
         // 6. Xử lý thêm mâu thuẫn cổ điển "1 vé cho 2 người"
-        if (!$isContradiction && (
-            preg_match('/(1 ve|mot ve)\s+(cho|danh cho)\s+(2|hai)\s+(nguoi|ban|ve)/i', $unaccented)
-            || preg_match('/(dat|mua)\s+(1|mot)\s+(ve)\s+(cho|danh cho)\s+(2|hai)\s+(nguoi)/i', $unaccented)
-            || preg_match('/(1 ve cho 2 nguoi|1 ve 2 nguoi)/i', $unaccented)
-        )) {
+        if (
+            !$isContradiction && (
+                preg_match('/(1 ve|mot ve)\s+(cho|danh cho)\s+(2|hai)\s+(nguoi|ban|ve)/i', $unaccented)
+                || preg_match('/(dat|mua)\s+(1|mot)\s+(ve)\s+(cho|danh cho)\s+(2|hai)\s+(nguoi)/i', $unaccented)
+                || preg_match('/(1 ve cho 2 nguoi|1 ve 2 nguoi)/i', $unaccented)
+            )
+        ) {
             $isContradiction = true;
             $passengerCount = 2;
             $contradictionClarification = "Dạ em hiểu mình cần đặt 2 giường cho 2 người đi cùng nhau đúng không ạ?";
@@ -3221,22 +3374,7 @@ class AiAssistantController extends Controller
     public function extractIntentWithGemini(string $message, array $history = []): array
     {
         $ruleIntent = $this->parseIntentRuleBased($message);
-
-        $geminiKey = env('GEMINI_API_KEY');
-        if (file_exists(base_path('.env'))) {
-            $envLines = file(base_path('.env'), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            foreach ($envLines as $line) {
-                if (str_starts_with(trim($line), 'GEMINI_API_KEY=')) {
-                    $val = trim(substr(trim($line), strlen('GEMINI_API_KEY=')));
-                    $val = trim($val, '"\'');
-                    if (!empty($val)) $geminiKey = $val;
-                    break;
-                }
-            }
-        }
-        if (empty($geminiKey) || strlen($geminiKey) < 10) {
-            $geminiKey = base64_decode('QVEuQWI4Uk42TFoyTUFGdDB3VFVWdHNvM3M2REljNm5wbG1CcEtuMWdwZmtNMGp0SXFUNnc=');
-        }
+        $geminiKey = $this->getGeminiApiKey();
 
         if (empty($geminiKey)) {
             return $ruleIntent;
@@ -3266,8 +3404,8 @@ class AiAssistantController extends Controller
                 . "}";
 
             $candidateModels = [
-                'gemini-3.1-flash-lite',
                 'gemini-3-flash-preview',
+                'gemini-3.1-flash-lite',
                 'gemini-flash-latest'
             ];
 
@@ -3289,15 +3427,20 @@ class AiAssistantController extends Controller
                         $jsonText = $response->json('candidates.0.content.parts.0.text');
                         $parsed = json_decode($jsonText, true);
                         if (is_array($parsed)) {
-                            if (!empty($parsed['destination'])) $ruleIntent['destination'] = $parsed['destination'];
-                            if (!empty($parsed['date'])) $ruleIntent['date'] = $parsed['date'];
-                            if (!empty($parsed['time_period']) && $parsed['time_period'] !== 'all_day') $ruleIntent['time_period'] = $parsed['time_period'];
-                            if (!empty($parsed['specific_time'])) $ruleIntent['specific_time'] = $parsed['specific_time'];
+                            if (!empty($parsed['destination']))
+                                $ruleIntent['destination'] = $parsed['destination'];
+                            if (!empty($parsed['date']))
+                                $ruleIntent['date'] = $parsed['date'];
+                            if (!empty($parsed['time_period']) && $parsed['time_period'] !== 'all_day')
+                                $ruleIntent['time_period'] = $parsed['time_period'];
+                            if (!empty($parsed['specific_time']))
+                                $ruleIntent['specific_time'] = $parsed['specific_time'];
                             if (!empty($parsed['passenger_count'])) {
-                                $geminiPax = (int)$parsed['passenger_count'];
+                                $geminiPax = (int) $parsed['passenger_count'];
                                 $ruleIntent['passenger_count'] = max($ruleIntent['passenger_count'], $geminiPax);
                             }
-                            if (!empty($parsed['has_motion_sickness'])) $ruleIntent['has_motion_sickness'] = true;
+                            if (!empty($parsed['has_motion_sickness']))
+                                $ruleIntent['has_motion_sickness'] = true;
                             if (!empty($parsed['is_contradiction'])) {
                                 $isNormal2Pax = (bool) preg_match('/(\b2\s*v[eé]\b|\bhai\s*v[eé]\b)/ui', $message) && (bool) preg_match('/(\b2\s*ng[uư][oờ]i\b|\bhai\s*ng[uư][oờ]i\b)/ui', $message);
                                 if (!$isNormal2Pax) {
@@ -3341,8 +3484,10 @@ class AiAssistantController extends Controller
             || (bool) preg_match('/(ghế nào|chọn ghế|tư vấn ghế|ghế trống|sơ đồ ghế|vị trí nào|chọn giúp ghế|đặt \d+ vé|chốt ghế|đặt vé|đặt xe|tìm vé|tìm xe|có vé|có chuyến|có xe|chuyến xe|tuyến xe)/ui', $lower);
 
         // Trường hợp hỏi về xe máy, gửi xe máy, gửi hàng hóa bưu phẩm
-        if (preg_match('/(xe may|gui xe|cho xe may|thue xe may|van chuyen xe|hang hoa|gui hang|gui do|chuyen phat)/i', $unaccented)
-            || preg_match('/(xe máy|gửi xe|chở xe máy|thuê xe máy|vận chuyển xe|hàng hóa|gửi hàng|gửi đồ|chuyển phát)/ui', $lower)) {
+        if (
+            preg_match('/(xe may|gui xe|cho xe may|thue xe may|van chuyen xe|hang hoa|gui hang|gui do|chuyen phat)/i', $unaccented)
+            || preg_match('/(xe máy|gửi xe|chở xe máy|thuê xe máy|vận chuyển xe|hàng hóa|gửi hàng|gửi đồ|chuyển phát)/ui', $lower)
+        ) {
             return [
                 'reply' => "Dạ Nhà xe Kiến Trúc có nhận vận chuyển xe máy (cả xe ga và xe số) cùng hành lý cồng kềnh, bưu phẩm dưới hầm hàng xe Limousine giường nằm ạ! 🛵📦 Xe máy của bạn sẽ được nhân viên bao bọc chăn nệm chống trầy xước 100% và rút xăng an toàn trước khi lên xe. Bạn cần gửi xe máy trên tuyến nào để em báo giá cước và giữ chỗ hầm hàng cho xe nhé! 😊",
                 'suggestions' => ['Gửi xe máy Đà Nẵng đi Huế', 'Gửi xe máy đi Quảng Trị', 'Gửi xe máy đi Quy Nhơn', 'Hotline gửi hàng 1900 6868'],
@@ -3394,11 +3539,37 @@ class AiAssistantController extends Controller
             }
         }
 
+        // TÌNH HUỐNG: Đã có điểm đến nhưng KHÁCH CHƯA NÓI RÕ NGÀY ĐI VÀ CHƯA NÓI SỐ NGƯỜI
+        // AI không tự ý gán mặc định đi hôm nay và chốt ghế A01, mà lịch sự hỏi lại để khách chủ động
+        $allUserText = $message;
+        foreach (array_slice($history, -3) as $h) {
+            if (($h['role'] ?? '') === 'user') {
+                $allUserText .= ' ' . ($h['content'] ?? '');
+            }
+        }
+        $unaccentedContext = self::stripVN($allUserText);
+        $hasExplicitDate = (bool) preg_match('/(hom nay|ngay mai|sang mai|chieu mai|toi mai|\bmai\b|ngay mot|ngay kia|cuoi tuan|thu \d|chu nhat|ngay \d{1,2}|\d{1,2}\/\d{1,2})/i', $unaccentedContext);
+        $hasExplicitPax = (bool) preg_match('/(\d+\s*(nguoi|ve|khach|ban|ghe|cho)|hai nguoi|hai ve|cap doi|vo chong|di 1 minh|mot minh|1 minh)/i', $unaccentedContext);
+
+        if (!$hasExplicitDate && !$hasExplicitPax && !$isSayXe && !$isBaby && !$isElderly) {
+            return [
+                'reply' => "Dạ tuyến **Đà Nẵng ➔ {$destination}** bên em có xe Limousine chạy liên tục trong ngày ạ! 😊 Để em tìm đúng chuyến và chọn vị trí giường nằm êm nhất cho bạn, bạn cho em biết thêm:\n• Bạn dự định đi **ngày nào** (hôm nay, ngày mai hay ngày khác) và **buổi nào** (sáng/chiều/tối)?\n• Đoàn mình đi **mấy người** và có ai bị **say xe** hay đi cùng **trẻ nhỏ / người lớn tuổi** không để em xếp chỗ nhé! ✨",
+                'suggestions' => [
+                    "1 người đi {$destination} sáng mai",
+                    "2 người đi {$destination} ngày mai, có người say xe",
+                    "1 người đi {$destination} hôm nay",
+                    "Chính sách cọc 30%"
+                ],
+                'trips' => [],
+                'source' => 'seat-physics-ask-details'
+            ];
+        }
+
         // TÌNH HUỐNG: Đã có điểm đến -> Truy vấn Database THẬT
         $tripsQuery = Trip::with(['route', 'bus', 'bookings.bookingSeats'])
             ->whereDate('departure_time', $targetDateStr)
             ->whereIn('status', ['OPEN_FOR_SALE', 'SCHEDULED', 'ACTIVE'])
-            ->whereHas('route', function($q) use ($destination, $origin) {
+            ->whereHas('route', function ($q) use ($destination, $origin) {
                 $q->where('destination', 'like', "%{$destination}%");
                 if ($origin) {
                     $q->where('origin', 'like', "%{$origin}%");
@@ -3421,11 +3592,20 @@ class AiAssistantController extends Controller
         $trips = $tripsQuery->orderBy('departure_time', 'asc')->get();
 
         $f1Pairs = [
-            ['A04', 'A05'], ['A05', 'A06'], ['A07', 'A08'], ['A08', 'A09'],
-            ['A01', 'A02'], ['A02', 'A03'], ['A10', 'A11'], ['A11', 'A12'],
+            ['A04', 'A05'],
+            ['A05', 'A06'],
+            ['A07', 'A08'],
+            ['A08', 'A09'],
+            ['A01', 'A02'],
+            ['A02', 'A03'],
+            ['A10', 'A11'],
+            ['A11', 'A12'],
         ];
         $f2Pairs = [
-            ['B03', 'B04'], ['B05', 'B06'], ['B01', 'B02'], ['B07', 'B08']
+            ['B03', 'B04'],
+            ['B05', 'B06'],
+            ['B01', 'B02'],
+            ['B07', 'B08']
         ];
 
         // -------------------------------------------------------------------------
@@ -3434,7 +3614,7 @@ class AiAssistantController extends Controller
         // AI PHẢI TRẢ LỜI TRUNG THỰC VÀ TỰ TRUY VẤN CÁC KHUNG GIỜ KHÁC TRONG NGÀY CỦA ĐÚNG TUYẾN ĐÓ!
         // -------------------------------------------------------------------------
         if ($trips->isEmpty()) {
-            $timeLabel = match($timePeriod) {
+            $timeLabel = match ($timePeriod) {
                 'morning' => 'buổi sáng',
                 'afternoon' => 'buổi chiều',
                 'evening' => 'buổi tối',
@@ -3447,7 +3627,7 @@ class AiAssistantController extends Controller
             $otherTripsSameDay = Trip::with(['route', 'bus', 'bookings.bookingSeats'])
                 ->whereDate('departure_time', $targetDateStr)
                 ->whereIn('status', ['OPEN_FOR_SALE', 'SCHEDULED', 'ACTIVE'])
-                ->whereHas('route', function($q) use ($destination, $origin) {
+                ->whereHas('route', function ($q) use ($destination, $origin) {
                     $q->where('destination', 'like', "%{$destination}%");
                     if ($origin) {
                         $q->where('origin', 'like', "%{$origin}%");
@@ -3496,7 +3676,7 @@ class AiAssistantController extends Controller
             $nextTrips = Trip::with(['route', 'bus', 'bookings.bookingSeats'])
                 ->whereDate('departure_time', $nextDate->format('Y-m-d'))
                 ->whereIn('status', ['OPEN_FOR_SALE', 'SCHEDULED', 'ACTIVE'])
-                ->whereHas('route', function($q) use ($destination, $origin) {
+                ->whereHas('route', function ($q) use ($destination, $origin) {
                     $q->where('destination', 'like', "%{$destination}%");
                     if ($origin) {
                         $q->where('origin', 'like', "%{$origin}%");

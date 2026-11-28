@@ -569,7 +569,7 @@
                               :src="msg.qr_data.qr_url"
                               alt="VietQR Bé Kiến Trúc"
                               class="w-full h-full object-contain cursor-pointer"
-                              @click="window.open(msg.qr_data.qr_url, '_blank')"
+                              @click="openQrTab(msg.qr_data.qr_url)"
                               title="Bấm để mở ảnh to"
                             />
                           </div>
@@ -1615,12 +1615,16 @@ const toggleSpeakMsg = (msg, idx) => {
   }
 };
 
+const openQrTab = (url) => {
+  if (url) window.open(url, '_blank');
+};
+
 const handleAction = (action) => {
   if (!action) return;
   if (action.type === 'open_login') {
     showAuthModal.value = true;
   } else if (action.type === 'open_google') {
-    showGoogleChooser.value = true;
+    showAuthModal.value = true;
   } else if (action.type === 'open_register') {
     showAuthModal.value = true;
   } else if (action.type === 'go_to_my_bookings') {
