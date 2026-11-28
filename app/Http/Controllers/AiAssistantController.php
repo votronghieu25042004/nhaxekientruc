@@ -40,20 +40,24 @@ class AiAssistantController extends Controller
      */
     private function getGeminiApiKey(): ?string
     {
-        $key = config('services.gemini.key')
-            ?: getenv('GEMINI_API_KEY')
-            ?: ($_ENV['GEMINI_API_KEY'] ?? $_SERVER['GEMINI_API_KEY'] ?? env('GEMINI_API_KEY'));
-
-        if (empty($key) && file_exists(base_path('.env'))) {
+        // 1. Ưu tiên đọc trực tiếp từ file .env hiện tại để lấy key mới nhất vừa cập nhật
+        if (file_exists(base_path('.env'))) {
             $lines = file(base_path('.env'), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
             foreach ($lines as $line) {
                 $trimmed = trim($line);
                 if (str_starts_with($trimmed, 'GEMINI_API_KEY=')) {
                     $key = trim(substr($trimmed, strlen('GEMINI_API_KEY=')), "\"' \t\r\n");
-                    break;
+                    if (!empty($key) && strlen($key) >= 20) {
+                        return $key;
+                    }
                 }
             }
         }
+
+        // 2. Dự phòng đọc từ Config / Render Environment Variables
+        $key = config('services.gemini.key')
+            ?: ($_ENV['GEMINI_API_KEY'] ?? $_SERVER['GEMINI_API_KEY'] ?? env('GEMINI_API_KEY'))
+            ?: getenv('GEMINI_API_KEY');
 
         if (!empty($key) && strlen($key) >= 20) {
             return $key;
@@ -2076,7 +2080,7 @@ class AiAssistantController extends Controller
                 $tripInfoContext .= "Hãy giới thiệu các chuyến xe này để khách chọn và thông báo khách có thể bấm trực tiếp vào mã ghế màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ chuyến xe bên dưới tin nhắn để giữ chỗ ngay lập tức.\n";
             }
 
-            $activeRoutes = Route::where('is_active', true)->get();
+            $activeRoutes = Route::all();
             $routesSummary = $activeRoutes->map(fn($r) => "{$r->origin} ⇄ {$r->destination}")->unique()->implode(', ');
 
             $systemPrompt = "Bạn là Trợ lý AI thông minh của Nhà xe Kiến Trúc Đà Nẵng (nhaxekientruc).\n"
@@ -2127,10 +2131,10 @@ class AiAssistantController extends Controller
 
             // Danh sách model ưu tiên tự động chuyển đổi khi gặp tải cao hoặc hạn ngạch
             $candidateModels = [
-                'gemini-2.5-flash',
-                'gemini-2.0-flash',
-                'gemini-1.5-flash',
-                'gemini-2.5-pro'
+                'gemini-3.1-flash-lite',
+                'gemini-3-flash-preview',
+                'gemini-3.5-flash',
+                'gemini-flash-latest',
             ];
 
             foreach ($candidateModels as $modelName) {
