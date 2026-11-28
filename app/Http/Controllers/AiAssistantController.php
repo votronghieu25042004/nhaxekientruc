@@ -67,10 +67,110 @@ class AiAssistantController extends Controller
     }
 
     /**
+     * Trích xuất thông tin thể trạng, nhu cầu và tình tiết đàm thoại xuyên suốt phiên chat
+     * Giúp Trợ lý AI có bộ nhớ liên tục như Gemini Pro (Deep Context Retention)
+     */
+    private function extractConversationMemory(array $history, string $currentMessage, $user): array
+    {
+        $allUserTexts = [];
+        foreach ($history as $h) {
+            $role = ($h['role'] ?? '') === 'assistant' || ($h['role'] ?? '') === 'model' ? 'model' : 'user';
+            if ($role === 'user' && !empty($h['content'])) {
+                $allUserTexts[] = (string) $h['content'];
+            }
+        }
+        $allUserTexts[] = $currentMessage;
+        $combinedText = mb_strtolower(implode(" \n ", $allUserTexts), 'UTF-8');
+        $unaccentedCombined = self::stripVN($combinedText);
+        $currentUnaccented = self::stripVN($currentMessage);
+
+        // 1. Nhận diện say xe & vấn đề sức khỏe (Xuyên suốt các lượt chat)
+        $hasSayXe = (bool) preg_match('/(say|chong mat|non|oi|say xe|say tau|tien dinh|chong say|em ai|it rung|non nao|hoa mat)/i', $unaccentedCombined);
+        $isElderly = (bool) preg_match('/(gia|lon tuoi|nguoi gia|cao tuoi|ong ba|ba me|me gia|dau lung|thoat vi|chan yeu|kho di lai|ba cua toi|ba toi|ong toi)/i', $unaccentedCombined);
+        $isBaby = (bool) preg_match('/(em be|tre em|tre nho|con nho|so sinh|be con|mang theo con)/i', $unaccentedCombined);
+        $isRiengTu = (bool) preg_match('/(rieng tu|rem|kin|khong gian rieng|phong rieng|tranh nguoi|kin dao|rem che)/i', $unaccentedCombined);
+
+        // 2. Nhận diện số lượng khách/vé (Cập nhật từ tin nhắn có chứa số lượng)
+        $passengerCount = 1;
+        foreach (array_reverse($allUserTexts) as $txt) {
+            $txtUnacc = self::stripVN($txt);
+            if (preg_match('/(2\s*(nguoi|ve|ghe|cho|ban|khach)|hai\s*(nguoi|ve|ghe|cho|ban|khach)|cap doi|vo chong)/i', $txtUnacc)) {
+                $passengerCount = 2;
+                break;
+            } elseif (preg_match('/(3\s*(nguoi|ve|ghe|cho|ban|khach)|ba\s*(nguoi|ve|ghe|cho|ban|khach))/i', $txtUnacc)) {
+                $passengerCount = 3;
+                break;
+            } elseif (preg_match('/(4\s*(nguoi|ve|ghe|cho|ban|khach)|bon\s*(nguoi|ve|ghe|cho|ban|khach))/i', $txtUnacc)) {
+                $passengerCount = 4;
+                break;
+            } elseif (preg_match('/(5\s*(nguoi|ve|ghe|cho|ban|khach)|nam\s*(nguoi|ve|ghe|cho|ban|khach))/i', $txtUnacc)) {
+                $passengerCount = 5;
+                break;
+            } elseif (preg_match('/(6\s*(nguoi|ve|ghe|cho|ban|khach)|sau\s*(nguoi|ve|ghe|cho|ban|khach))/i', $txtUnacc)) {
+                $passengerCount = 6;
+                break;
+            }
+        }
+
+        // 3. Nhận diện tuyến khách vừa từ chối / không muốn đi nữa
+        $rejectedDest = null;
+        if (preg_match('/(khong muon di|thoi khong di|doi y|khong di nua|bo chuyen)\s+(ve\s+|den\s+|toi\s+)?(hu[eế]|quang tri|quang binh|quy nhon|da nang)/ui', $combinedText, $mRej)) {
+            $rejectedDest = trim($mRej[3] ?? '');
+            if (stripos($rejectedDest, 'hue') !== false || stripos($rejectedDest, 'huế') !== false) $rejectedDest = 'Thừa Thiên - Huế';
+            elseif (stripos($rejectedDest, 'quang tri') !== false) $rejectedDest = 'Quảng Trị';
+            elseif (stripos($rejectedDest, 'quy nhon') !== false) $rejectedDest = 'Quy Nhơn';
+        }
+
+        // 4. Nhận diện điểm đến trong tin nhắn hiện tại
+        $currentDest = null;
+        if (preg_match('/(quang tri|quan tri|dong ha)/i', $currentUnaccented)) $currentDest = 'Quảng Trị';
+        elseif (preg_match('/(hue|thua thien)/i', $currentUnaccented)) $currentDest = 'Thừa Thiên - Huế';
+        elseif (preg_match('/(quang binh|dong hoi)/i', $currentUnaccented)) $currentDest = 'Quảng Bình';
+        elseif (preg_match('/(quy nhon|binh dinh)/i', $currentUnaccented)) $currentDest = 'Quy Nhơn';
+        elseif (preg_match('/(da nang)/i', $currentUnaccented)) $currentDest = 'Đà Nẵng';
+
+        // 5. Kiểm tra xem người dùng đã cung cấp đủ thông tin chuyến đi chưa (Ngày, Giờ)
+        $hasDate = (bool) preg_match('/(hom nay|ngay mai|sang mai|chieu mai|toi mai|mai|ngay \d+|\d{1,2}\/\d{1,2})/i', $currentUnaccented);
+        $hasTime = (bool) preg_match('/(sang|chieu|toi|dem|trua|\d{1,2}h|\d{1,2}:\d{2})/i', $currentUnaccented);
+        $hasOrigin = (bool) preg_match('/(da nang|xuat phat|don o|don tai|ben xe)/i', $currentUnaccented);
+
+        // 6. Kiểm tra xem khách có thực sự đã đặt vé / thanh toán cọc trong DB chưa
+        $hasPaidBooking = false;
+        if ($user) {
+            $hasPaidBooking = \App\Models\Booking::where('user_id', $user->id)
+                ->whereIn('payment_status', ['PAID', 'DEPOSIT_PAID', 'PARTIALLY_PAID'])
+                ->whereNotIn('checkin_status', ['CANCELLED', 'REFUNDED'])
+                ->exists();
+        }
+
+        // 7. Nhận diện khách nói không muốn đi / đổi ý (Chưa bấm đặt)
+        $isChangingMind = (bool) preg_match('/(khong muon di|thoi khong di|doi y khong di|khong di nua|bo chuyen)/i', $currentUnaccented);
+
+        return [
+            'has_motion_sickness' => $hasSayXe,
+            'is_elderly' => $isElderly,
+            'is_baby' => $isBaby,
+            'is_rieng_tu' => $isRiengTu,
+            'passenger_count' => $passengerCount,
+            'rejected_destination' => $rejectedDest,
+            'current_destination' => $currentDest,
+            'has_date' => $hasDate,
+            'has_time' => $hasTime,
+            'has_origin' => $hasOrigin,
+            'has_paid_booking' => $hasPaidBooking,
+            'is_changing_mind' => $isChangingMind,
+            'combined_user_text' => $combinedText,
+        ];
+    }
+
+    /**
      * Endpoint API nhận tin nhắn chat từ khách hàng và phản hồi thông minh.
      */
     public function chat(Request $request)
     {
+        // Tự động giải phóng ghế cho các đơn giữ chỗ UNPAID quá 5 phút
+        \App\Services\SeatSegmentService::autoReleaseExpiredHolds();
+
         $message = trim((string) $request->input('message', ''));
         $history = (array) $request->input('history', []);
         $user = Auth::user();
@@ -89,7 +189,24 @@ class AiAssistantController extends Controller
         $context = $this->buildBusHubContext();
         $lower = mb_strtolower($message, 'UTF-8');
         $unaccented = self::stripVN($message);
-        $matchingTrips = $this->findMatchingTrips($message);
+        $memory = $this->extractConversationMemory($history, $message, $user);
+
+        // =========================================================================
+        // 0.0. KHÁCH ĐỔI Ý KHÔNG MUỐN ĐI NỮA (KHI CHƯA MUA / CHƯA ĐẶT CỌC VÉ)
+        // Tuyệt đối không bắt khách vào "Vé Của Tôi" để hoàn vé khi khách chưa hề mua vé!
+        // =========================================================================
+        if ($memory['is_changing_mind'] && !$memory['has_paid_booking']) {
+            $nameStr = $user ? " bạn **{$user->name}**" : " bạn";
+            $destStr = !empty($memory['rejected_destination']) ? " đi " . $memory['rejected_destination'] : "";
+            return response()->json([
+                'reply' => "Dạ vâng{$nameStr}, em đã hủy tìm kiếm chuyến{$destStr} cho mình rồi ạ! Bạn có muốn đổi lịch trình sang tuyến khác (ví dụ: Đà Nẵng đi Quảng Trị, Quy Nhơn...) hay cần em hỗ trợ tìm chuyến đi đâu không ạ? 😊",
+                'suggestions' => ['Tôi muốn đi Quảng Trị', 'Đà Nẵng đi Quy Nhơn', 'Xem tất cả các tuyến'],
+                'trips' => [],
+                'source' => 'search-cancelled'
+            ]);
+        }
+
+        $matchingTrips = $this->findMatchingTrips($message, $history, $memory);
 
         // =========================================================================
         // 0.0. XỬ LÝ PHÀN NÀN (KHI KHÁCH BỰC MÌNH "SAO NGU VẬY", "DỐT VẬY")
@@ -147,7 +264,7 @@ class AiAssistantController extends Controller
         $geminiKey = $this->getGeminiApiKey();
 
         if (!empty($geminiKey)) {
-            $geminiReply = $this->callGeminiApi($message, $user, $context, $geminiKey, $matchingTrips, $history);
+            $geminiReply = $this->callGeminiApi($message, $user, $context, $geminiKey, $matchingTrips, $history, $memory);
             if ($geminiReply) {
                 return response()->json([
                     'reply' => $geminiReply['reply'],
@@ -210,6 +327,7 @@ class AiAssistantController extends Controller
     public function instantBook(Request $request)
     {
         try {
+            \App\Services\SeatSegmentService::autoReleaseExpiredHolds();
             $user = Auth::user();
             $tripId = $request->input('trip_id');
             $rawSeats = $request->input('seats') ?: $request->input('seat_numbers', []);
@@ -234,9 +352,16 @@ class AiAssistantController extends Controller
 
             if ($user) {
                 $targetUser = $user;
-                $name = $user->name;
-                $phone = $user->phone;
-                $email = $user->email;
+                $name = $user->name ?: ($customerName ?: 'Khách Hàng');
+                $phone = $user->phone ?: ($customerPhone ?: '0905123456');
+                $email = $user->email ?: ($customerPhone ? $customerPhone . '@nhaxekientruc.vn' : 'khachhang@nhaxekientruc.vn');
+                // Nếu user chưa có số điện thoại trong DB thì lưu lại luôn
+                if (empty($user->phone) && !empty($phone)) {
+                    try {
+                        $user->phone = $phone;
+                        $user->save();
+                    } catch (\Throwable $saveEx) {}
+                }
             } else {
                 $name = !empty($customerName) ? $customerName : 'Khách Hàng';
                 $phone = !empty($customerPhone) ? $customerPhone : '0905123456';
@@ -265,6 +390,10 @@ class AiAssistantController extends Controller
                     // Bỏ qua nếu môi trường API stateless
                 }
             }
+
+            $name = !empty($name) ? $name : 'Khách Hàng';
+            $phone = !empty($phone) ? $phone : '0905123456';
+            $email = !empty($email) ? $email : ($phone . '@nhaxekientruc.vn');
 
             $bookingCode = 'KT-' . strtoupper(\Illuminate\Support\Str::random(6));
             $seatPrice = (float) ($trip->floor1_price ?? $trip->price ?? 140000);
@@ -2052,7 +2181,7 @@ class AiAssistantController extends Controller
      * Gọi Gemini API nếu có cấu hình Google API Studio Key hợp lệ
      * Hỗ trợ đa lượt đàm thoại (multi-turn context), tự động dự phòng đa model (gemini-3.1-flash-lite, gemini-3-flash-preview)
      */
-    private function callGeminiApi(string $message, $user, array $context, string $apiKey, array $matchingTrips = [], array $history = []): ?array
+    private function callGeminiApi(string $message, $user, array $context, string $apiKey, array $matchingTrips = [], array $history = [], array $memory = []): ?array
     {
         try {
             $userDesc = $user
@@ -2077,20 +2206,37 @@ class AiAssistantController extends Controller
                     $dayTag = $mt['is_today'] ? '(Hôm nay)' : ($mt['is_tomorrow'] ? '(Ngày mai)' : '');
                     $tripInfoContext .= "- Chuyến #{$mt['id']}: {$mt['route_name']} lúc {$mt['time_str']} ngày {$mt['date_str']} {$dayTag}, vé {$mt['price_formatted']} (cọc 30%: {$mt['deposit_price_formatted']}), xe {$mt['bus_type']} BKS {$mt['license_plate']}. Đường dẫn đặt vé: {$mt['book_url']}\n";
                 }
-                $tripInfoContext .= "Hãy giới thiệu các chuyến xe này để khách chọn và thông báo khách có thể bấm trực tiếp vào mã ghế màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ chuyến xe bên dưới tin nhắn để giữ chỗ ngay lập tức.\n";
+                $tripInfoContext .= "Hãy giới thiệu các chuyến xe này để khách chọn và thông báo khách có thể bấm trực tiếp vào mã ghế màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ chuyến xe bên dưới tin nhắn để giữ chỗ 5 phút qua mã VietQR.\n";
             }
 
             $activeRoutes = Route::all();
             $routesSummary = $activeRoutes->map(fn($r) => "{$r->origin} ⇄ {$r->destination}")->unique()->implode(', ');
 
+            $memoryText = "\n[HỒ SƠ HÀNH KHÁCH & BỘ NHỚ HỘI THOẠI XUYÊN SUỐT (DEEP CONTEXT RETENTION - GIỐNG GEMINI PRO)]:\n"
+                . "- Thể trạng sức khỏe: " . (!empty($memory['has_motion_sickness']) ? 'BỊ SAY XE NẶNG (Bắt buộc luôn ghi nhớ ưu tiên ghế tầng 1 dãy giữa A04-A08 để chống xóc)' : 'Bình thường') . "\n"
+                . "- Số lượng khách/vé: " . ((!empty($memory['passenger_count']) && $memory['passenger_count'] > 1) ? "{$memory['passenger_count']} người (luôn tư vấn các giường cạnh nhau)" : '1 người') . "\n"
+                . "- Điểm xuất phát mặc định: Đà Nẵng\n"
+                . "- Điểm đến vừa đổi ý/không muốn đi nữa: " . (!empty($memory['rejected_destination']) ? "{$memory['rejected_destination']} (Khách đã bảo không muốn đi tuyến này nữa, không gợi ý lại)" : 'Không có') . "\n"
+                . "- Trạng thái vé hiện tại: " . (!empty($memory['has_paid_booking']) ? 'ĐÃ CÓ VÉ ĐẶT TRƯỚC' : 'CHƯA ĐẶT VÉ NÀO TRONG PHIÊN NÀY (Khách chỉ đang hỏi tư vấn, chưa bấm đặt vé hay thanh toán)');
+
             $systemPrompt = "Bạn là Trợ lý AI thông minh của Nhà xe Kiến Trúc Đà Nẵng (nhaxekientruc).\n"
-                . "QUY TẮC CỐT LÕI (BẮT BUỘC TUÂN THỦ):\n"
+                . "QUY TẮC CỐT LÕI (BẮT BUỘC TUÂN THỦ ĐỂ ĐẠT ĐỘ THÔNG MINH NHƯ GEMINI PRO):\n"
                 . "1. PHONG CÁCH & ĐỘ DÀI: Trả lời tự nhiên, thân thiện, ngắn gọn và hữu ích (1 đến 4 câu). Đi thẳng vào trọng tâm câu hỏi. Xưng 'em', gọi 'bạn' (hoặc tên khách).\n"
-                . "2. TỰ NHIÊN KHI ĐẶT VÉ: Khi khách hỏi chung chung như 'tôi muốn đặt vé', 'tôi muốn đi xe', 'đặt vé giúp'... TUYỆT ĐỐI KHÔNG tự ý chốt ghế hay tự gán tuyến đường. Hãy hỏi khách xem khách muốn đi tỉnh/thành nào, ngày giờ dự kiến và bao nhiêu vé một cách lịch sự, tự nhiên như tư vấn viên thực thụ.\n"
+                . "2. HỎI LẠI ĐẦY ĐỦ KHI THIẾU THÔNG TIN: Khi khách nói muốn đi một điểm đến (ví dụ 'tôi đi Quảng Trị', 'tôi muốn đi Quy Nhơn', 'có xe đi Huế không') mà chưa nói rõ thời gian (khi nào, ngày nào), khung giờ nào, số người, hoặc điểm bắt đầu xuất phát ở đâu:\n"
+                . "   Bạn BẮT BUỘC PHẢI HỎI LẠI ĐẦY ĐỦ CÁC Ý SAU MỘT CÁCH ÂN CẦN:\n"
+                . "   - Bạn dự kiến đi ngày nào (hôm nay, ngày mai hay ngày cụ thể)?\n"
+                . "   - Khung giờ bạn muốn xuất phát (sáng, trưa, chiều hay tối)?\n"
+                . "   - Bạn đi mấy người (mấy vé)?\n"
+                . "   - Bắt đầu xuất phát từ Đà Nẵng đúng không ạ?\n"
+                . "   * ĐẶC BIỆT: Nếu khách đã từng nói mình bị say xe ở câu trước (xem hồ sơ bên dưới), bạn PHẢI NHẮC LẠI để khách an tâm: Em vẫn nhớ bạn bị say xe nên em sẽ ưu tiên chọn các giường tầng 1 dãy giữa êm nhất cho bạn nhé!\n"
                 . "3. HIỂU TỪ NGỮ LINH HOẠT & LỖI CHÍNH TẢ: Khách có thể gõ sai chính tả (ví dụ 'quản trị' -> Quảng Trị, 'xem bus' -> xe bus, 'bình định' -> Quy Nhơn...). Hãy thông minh nhận diện ý định của khách và hỗ trợ ngay.\n"
-                . "4. CHĂM SÓC KHÁCH HÀNG KHI HỦY VÉ: Khi khách muốn hủy vé, hãy tôn trọng quyết định của khách bằng thái độ ân cần, hướng dẫn họ xác nhận hủy vé và nhận tiền hoàn cọc tại mục 'Vé Của Tôi' hoặc nút hủy vé, TUYỆT ĐỐI KHÔNG níu kéo, không nài ép hay mời mọc dời vé nếu khách không yêu cầu.\n"
+                . "4. PHÂN BIỆT ĐỔI Ý CHƯA ĐẶT VS HỦY VÉ THỰC TẾ:\n"
+                . "   - Nếu khách nói 'không muốn đi nữa', 'thôi không đi Huế nữa', 'tôi đổi ý rồi'... mà khách CHƯA HỀ BẤM ĐẶT VÉ / CHƯA THANH TOÁN CỌC (Trạng thái vé: CHƯA ĐẶT VÉ):\n"
+                . "     TUYỆT ĐỐI KHÔNG BẮT KHÁCH VÀO MỤC 'VÉ CỦA TÔI' ĐỂ HOÀN VÉ! Vì khách chưa hề mua vé thì không có vé nào để hoàn cả! Bạn chỉ cần vui vẻ xác nhận: 'Dạ em đã hủy tìm kiếm chuyến đó cho bạn rồi ạ! Bạn có muốn đổi sang đi tuyến nào khác (như Quảng Trị, Quy Nhơn...) hay cần em hỗ trợ gì thêm không ạ?'.\n"
+                . "   - Chỉ khi khách ĐÃ ĐẶT VÉ THẬT SỰ (có mã vé KT-..., hoặc đã cọc tiền thành công) và yêu cầu hủy vé: Mới ân cần hướng dẫn hủy vé và hoàn tiền cọc 30%.\n"
                 . "5. THỜI GIAN: {$timeContext}\n"
                 . "6. THÔNG TIN KHÁCH HÀNG: {$userDesc}\n"
+                . "{$memoryText}\n"
                 . "7. BẢO MẬT: Tuyệt đối từ chối cung cấp quyền admin ra ngoài.\n"
                 . "8. QUY TẮC CHỌN GHẾ XE GIƯỜNG NẰM:\n"
                 . "- Say xe, người già, trẻ nhỏ, đau lưng: Chọn Tầng 1 (êm ái, giảm xóc 98%, trọng tâm cân bằng).\n"
@@ -2098,14 +2244,14 @@ class AiAssistantController extends Controller
                 . "9. DANH SÁCH CÁC TUYẾN ĐƯỜNG ĐANG KHAI THÁC THỰC TẾ:\n"
                 . "- Nhà xe Kiến Trúc CHỈ KHAI THÁC CÁC TUYẾN SAU: {$routesSummary}.\n"
                 . "- TUYỆT ĐỐI KHÔNG TỰ BỊA RA HOẶC NHẬN CÁC TUYẾN KHÁC (như Cà Mau, Cần Thơ, Sài Gòn, TP.HCM, Hải Phòng...). Nếu khách hỏi tuyến không nằm trong danh sách trên, bạn BẮT BUỘC phải thông báo lịch sự là Nhà xe Kiến Trúc hiện chưa khai thác tuyến đó và gợi ý các tuyến nhà xe đang phục vụ.\n"
-                . "10. SAY XE: Khi khách đề cập 'say xe', giải thích rõ lý do chọn vị trí ghế tầng 1 ở giữa xe/đầu xe là để giảm chấn tối đa 98%, chống bồng bềnh say xe.\n"
+                . "10. BỘ NHỚ DUY TRÌ TÌNH TIẾT CŨ (DEEP CONTEXT RETENTION): Bạn PHẢI NHỚ TOÀN BỘ CÁC TÌNH TIẾT CŨ từ các câu trước trong phiên chat (như khách bị say xe, đi mấy người, người già...). Dù khách đổi từ chuyến Huế sang Quảng Trị thì bạn VẪN PHẢI NHỚ khách bị say xe và đi mấy người để tự động lọc ghế tầng 1 dãy giữa êm ái cho tuyến mới!\n"
                 . "11. XỬ LÝ MÂU THUẪN: Nếu khách nói mâu thuẫn như 'đặt 1 vé cho 2 người', hãy khéo léo xác nhận lại: 'Dạ em hiểu mình cần đặt 2 giường cho 2 người đi cùng nhau đúng không ạ?' trước khi giữ chỗ.\n"
-                . "12. ĐỒNG BỘ NÚT BẤM: Khi hướng dẫn khách giữ vé trên thẻ chuyến xe, chỉ hướng dẫn bấm trực tiếp vào mã ghế màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ.";
+                . "12. ĐỒNG BỘ NÚT BẤM: Khi hướng dẫn khách giữ vé trên thẻ chuyến xe, chỉ hướng dẫn bấm trực tiếp vào mã ghế màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ (chỗ ngồi được giữ 5 phút qua mã VietQR).";
 
-            // Xây dựng contents đa lượt (Multi-turn conversation history)
+            // Xây dựng contents đa lượt (Multi-turn conversation history - tối đa 12 lượt)
             $contents = [];
             if (!empty($history) && is_array($history)) {
-                $recentTurns = array_slice($history, -6);
+                $recentTurns = array_slice($history, -12);
                 foreach ($recentTurns as $turn) {
                     $role = (($turn['role'] ?? '') === 'model' || ($turn['role'] ?? '') === 'assistant') ? 'model' : 'user';
                     $contentStr = trim((string) ($turn['content'] ?? ''));
@@ -2158,7 +2304,7 @@ class AiAssistantController extends Controller
                         if (!empty($replyText)) {
                             return [
                                 'reply' => trim($replyText),
-                                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%', 'Mã ưu đãi sinh viên'],
+                                'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%'],
                             ];
                         }
                     }
@@ -2176,10 +2322,18 @@ class AiAssistantController extends Controller
     /**
      * Tra cứu chuyến xe phù hợp thời gian thực từ Database.
      */
-    public function findMatchingTrips(string $query): array
+    public function findMatchingTrips(string $query, array $history = [], array $memory = []): array
     {
+        // Tự động giải phóng các đơn giữ chỗ đã quá 5 phút
+        \App\Services\SeatSegmentService::autoReleaseExpiredHolds();
+
         $lower = mb_strtolower($query, 'UTF-8');
         $unaccented = self::stripVN($query);
+
+        // 1. Nếu khách đang từ chối / đổi ý không muốn đi nữa -> Không trả về thẻ chuyến xe nào
+        if (preg_match('/(khong muon di|thoi khong di|doi y|khong di nua|bo chuyen)/i', $unaccented)) {
+            return [];
+        }
 
         // Tuyến không khai thác trực tiếp giữa các tỉnh lân cận
         if ((preg_match('/(quang tri|dong ha)/i', $unaccented)) && (preg_match('/(hue|thua thien)/i', $unaccented)) && !preg_match('/(da nang)/i', $unaccented)) {
@@ -2226,6 +2380,16 @@ class AiAssistantController extends Controller
             return [];
         }
 
+        // NẾU KHÁCH CHỈ NÓI ĐIỂM ĐẾN (VÍ DỤ "TÔI ĐI QUẢNG TRỊ", "TÔI MUỐN ĐI QUẢNG TRỊ")
+        // MÀ CHƯA CÓ NGÀY, CHƯA CÓ GIỜ VÀ KHÔNG HỎI LỊCH CHẠY -> ĐỂ TRỢ LÝ HỎI LẠI TRƯỚC, KHÔNG XUẤT THẺ CHUYẾN SỚM
+        $hasDateInfo = (bool) preg_match('/(hom nay|ngay mai|sang mai|chieu mai|toi mai|mai|ngay \d+|\d{1,2}\/\d{1,2})/i', $unaccented);
+        $hasTimeInfo = (bool) preg_match('/(sang|chieu|toi|dem|trua|\d{1,2}h|\d{1,2}:\d{2})/i', $unaccented);
+        $isAskingSchedule = (bool) preg_match('/(xem lich|lich chay|may gio|gio chay|co nhung chuyen|co chuyen nao|tat ca cac chuyen|co xe nao)/i', $unaccented);
+
+        if (!$hasDateInfo && !$hasTimeInfo && !$isAskingSchedule && empty($memory['has_date'])) {
+            return [];
+        }
+
         $queryBuilder = Trip::with(['route', 'bus', 'bookings.bookingSeats'])
             ->whereIn('status', ['SCHEDULED', 'OPEN_FOR_SALE', 'READY', 'BOARDING'])
             ->where('departure_time', '>=', Carbon::now());
@@ -2237,7 +2401,7 @@ class AiAssistantController extends Controller
             });
         }
 
-        if (preg_match('/(ngày mai|sáng mai|chiều mai|tối mai|mai)/u', $lower)) {
+        if (preg_match('/(ngày mai|sáng mai|chiều mai|tối mai|mai)/u', $lower) || (!empty($memory['has_date']) && preg_match('/(mai)/i', $memory['combined_user_text'] ?? ''))) {
             $queryBuilder->whereDate('departure_time', Carbon::tomorrow()->toDateString());
         }
 
@@ -2253,7 +2417,7 @@ class AiAssistantController extends Controller
         }
 
         // Nếu là yêu cầu tìm chuyến/chọn ghế cụ thể, chỉ đưa ra 1 chuyến xe tốt nhất (Point 4)
-        $isSpecificInquiry = (bool) preg_match('/(sáng|chiều|tối|ngày mai|hôm nay|bà|ông|chọn|đặt|say|già)/u', $lower);
+        $isSpecificInquiry = (bool) preg_match('/(sáng|chiều|tối|ngày mai|hôm nay|bà|ông|chọn|đặt|say|già)/u', $lower) || !empty($memory['has_motion_sickness']);
         $tripsLimit = $isSpecificInquiry ? 1 : 3;
 
         $trips = $queryBuilder->orderBy('departure_time', 'asc')->take($tripsLimit)->get();
@@ -2268,19 +2432,19 @@ class AiAssistantController extends Controller
                 ->get();
         }
 
-        // Phân tích thể trạng & nhu cầu khách hàng qua câu hỏi tự nhiên (Comprehensive Condition Matrix)
-        $isSayXe = (bool) preg_match('/(say|chóng mặt|nôn|ói|lắc|say xe|say tàu|tiền đình|chống say|êm ái|ít rung|mệt|nôn nao|hoa mắt)/u', $lower);
-        $isRiengTu = (bool) preg_match('/(riêng tư|rèm|kín|không gian riêng|phòng riêng|tránh người|kín đáo|rèm che|khép kín|kéo rèm)/u', $lower);
+        // Phân tích thể trạng & nhu cầu khách hàng qua câu hỏi hiện tại HOẶC bộ nhớ đàm thoại (Deep Context Retention)
+        $isSayXe = !empty($memory['has_motion_sickness']) || (bool) preg_match('/(say|chóng mặt|nôn|ói|lắc|say xe|say tàu|tiền đình|chống say|êm ái|ít rung|mệt|nôn nao|hoa mắt)/u', $lower);
+        $isRiengTu = !empty($memory['is_rieng_tu']) || (bool) preg_match('/(riêng tư|rèm|kín|không gian riêng|phòng riêng|tránh người|kín đáo|rèm che|khép kín|kéo rèm)/u', $lower);
         $isNgamCanh = (bool) preg_match('/(ngắm cảnh|ngắm đường|ngắm biển|chụp hình|chụp ảnh|view đẹp|cửa sổ|phong cảnh|ngắm đèo|ngắm núi|panorama)/u', $lower);
-        $isElderly = (bool) preg_match('/(già|lớn tuổi|người già|người cao tuổi|ông bà|ba mẹ|mẹ già|đau lưng|thoát vị|đau khớp|chân yếu|leo trèo|khó đi lại|\bbà\b|bà của tôi|bà tôi|ông tôi|ông của tôi|cụ)/u', $lower);
-        $isBaby = (bool) preg_match('/(em bé|trẻ em|trẻ nhỏ|con nhỏ|sơ sinh|bế con|bé|em nhỏ|pha sữa|mang theo con)/u', $lower);
+        $isElderly = !empty($memory['is_elderly']) || (bool) preg_match('/(già|lớn tuổi|người già|người cao tuổi|ông bà|ba mẹ|mẹ già|đau lưng|thoát vị|đau khớp|chân yếu|leo trèo|khó đi lại|\bbà\b|bà của tôi|bà tôi|ông tôi|ông của tôi|cụ)/u', $lower);
+        $isBaby = !empty($memory['is_baby']) || (bool) preg_match('/(em bé|trẻ em|trẻ nhỏ|con nhỏ|sơ sinh|bế con|bé|em nhỏ|pha sữa|mang theo con)/u', $lower);
         $isTall = (bool) preg_match('/(cao|chân dài|1m7|1m8|1m85|1m9|m8|m75|to cao|nặng cân|ngoại cỡ|chật chân|đụng đầu)/u', $lower);
         $isQuiet = (bool) preg_match('/(khó ngủ|mất ngủ|cần yên tĩnh|sợ ồn|không ồn|tránh tiếng ồn|ánh sáng|chói mắt|ngủ say|giấc ngủ|yên tĩnh)/u', $lower);
         $isLuggage = (bool) preg_match('/(nhiều đồ|vali|vali to|hành lý|balo nặng|cồng kềnh|laptop|máy tính|đồ đắt tiền|đồ giá trị)/u', $lower);
         $isPregnant = (bool) preg_match('/(mang thai|có thai|có bầu|bà bầu|mang bầu|thai phụ|mới mổ|mới phẫu thuật|bệnh nhân|người ốm|thể trạng yếu)/u', $lower);
         $isBusiness = (bool) preg_match('/(công tác|làm việc|sạc laptop|sạc pin|deadline|làm việc đêm|bàn làm việc)/u', $lower);
 
-        $numPassengers = 1;
+        $numPassengers = !empty($memory['passenger_count']) ? $memory['passenger_count'] : 1;
         if (preg_match('/(2 người|hai người|2 vé|hai vé|2 bạn|hai bạn|cặp đôi|người yêu|vợ chồng|2 ghế|hai ghế|2 chỗ|hai chỗ)/u', $lower)) {
             $numPassengers = 2;
         } elseif (preg_match('/(3 người|ba người|3 vé|3 ghế|3 chỗ)/u', $lower)) {
@@ -2322,9 +2486,13 @@ class AiAssistantController extends Controller
         return $trips->map(function ($t) use ($isSayXe, $isRiengTu, $isNgamCanh, $isElderly, $isBaby, $isTall, $isQuiet, $isLuggage, $isPregnant, $isBusiness, $numPassengers, $f1Seats, $f2Seats, $f1Pairs, $f2Pairs) {
             $depTime = Carbon::parse($t->departure_time);
 
-            // Quét danh sách ghế đã được đặt thực tế trên chuyến này
+            // Quét danh sách ghế đã được đặt thực tế trên chuyến này (loại trừ vé hủy và vé giữ chỗ UNPAID quá 5 phút)
             $occupied = $t->bookings
-                ? $t->bookings->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])->flatMap->bookingSeats->pluck('seat_number')->all()
+                ? $t->bookings->filter(function($b) {
+                    if (in_array($b->payment_status, ['CANCELLED', 'REFUNDED'])) return false;
+                    if ($b->payment_status === 'UNPAID' && $b->created_at && \Carbon\Carbon::parse($b->created_at)->lt(\Carbon\Carbon::now()->subMinutes(5))) return false;
+                    return true;
+                })->flatMap->bookingSeats->pluck('seat_number')->all()
                 : [];
 
             $availF1 = array_values(array_diff($f1Seats, $occupied));
@@ -3798,17 +3966,21 @@ class AiAssistantController extends Controller
      */
     public function handleCancellationInquiry(string $message, string $lower, $user): ?array
     {
-        $isCancelIntent = (bool) preg_match('/(hủy giúp|muốn hủy|hủy vé|hủy chuyến|trả vé|hủy giúp anh|hủy giúp chị|không đi nữa|hủy vé tối nay)/ui', $lower);
-        if (!$isCancelIntent) {
+        // Chỉ kích hoạt luồng hủy vé khi khách thực sự yêu cầu hủy VÉ ĐÃ ĐẶT (chứ không phải chỉ đổi ý khi đang tìm chuyến)
+        $isExplicitTicketCancel = (bool) preg_match('/(hủy vé|trả vé|hủy chuyến đã đặt|hoàn cọc|hủy cọc|hủy mã vé|hủy giúp anh vé|hủy giúp chị vé|hủy vé tối nay)/ui', $lower)
+            || preg_match('/KT-[A-Z0-9]{4,10}/i', $message);
+
+        if (!$isExplicitTicketCancel) {
             return null;
         }
 
-        // Tìm vé gần nhất của người dùng
+        // Tìm vé đã đặt/đã thanh toán cọc gần nhất của người dùng
         $booking = null;
         if ($user) {
             $booking = Booking::with(['trip.route', 'bookingSeats'])
                 ->where('user_id', $user->id)
-                ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
+                ->whereIn('payment_status', ['PAID', 'DEPOSIT_PAID', 'PARTIALLY_PAID'])
+                ->whereNotIn('checkin_status', ['CANCELLED', 'REFUNDED'])
                 ->latest('id')
                 ->first();
         }
@@ -3824,22 +3996,18 @@ class AiAssistantController extends Controller
         if (!$booking && preg_match('/(0[35789]\d{8})/', $message, $mPhone)) {
             $booking = Booking::with(['trip.route', 'bookingSeats'])
                 ->where('customer_phone', $mPhone[1])
-                ->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED'])
+                ->whereIn('payment_status', ['PAID', 'DEPOSIT_PAID', 'PARTIALLY_PAID'])
+                ->whereNotIn('checkin_status', ['CANCELLED', 'REFUNDED'])
                 ->latest('id')
                 ->first();
         }
 
-        // Nếu chưa đăng nhập và chưa có mã vé
+        // Nếu khách chưa có vé nào đã thanh toán cọc trong hệ thống
         if (!$booking) {
             return [
-                'reply' => "Dạ em rất tiếc khi anh/chị không thể tiếp tục chuyến đi cùng Nhà xe Kiến Trúc. Để em hỗ trợ thủ tục hủy vé cho mình, anh/chị có thể bấm vào nút bên dưới để mở danh sách vé và xác nhận hủy nhận lại tiền hoàn cọc, hoặc gửi em Mã vé (KT-XXXXXX) để em tra cứu hỗ trợ nhé! 😊",
-                'suggestions' => ["Đến mục Quản Lý Vé", "Hotline 1900 6868"],
+                'reply' => "Dạ em đã kiểm tra trên hệ thống, hiện tại bạn chưa có vé xe nào đang ở trạng thái thanh toán hoặc đặt cọc cần hủy ạ. Nếu bạn vừa thay đổi kế hoạch chuyến đi, em đã hủy thông tin tìm kiếm cũ cho mình rồi nhé. Bạn có muốn tìm chuyến xe đến điểm đến khác không ạ? 😊",
+                'suggestions' => ["Tôi muốn đi Quảng Trị", "Đà Nẵng đi Quy Nhơn", "Xem lịch trình"],
                 'trips' => [],
-                'action' => [
-                    'type' => 'go_to_my_bookings',
-                    'title' => '🎫 Mở Danh Sách Vé Của Tôi Để Hủy Vé ➔',
-                    'url' => '/my-bookings'
-                ],
                 'source' => 'cancellation-customer-care'
             ];
         }

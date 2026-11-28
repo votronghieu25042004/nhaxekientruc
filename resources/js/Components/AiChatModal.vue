@@ -77,89 +77,110 @@
             </div>
 
             <!-- TAB 1: QUẦY TRỢ LÝ AI (VIRTUAL ASSISTANT KIOSK STANDEE) -->
+            <!-- TAB 1: QUẦY TRỢ LÝ AI (FUTURISTIC AI NEURAL CO-PILOT) -->
             <div v-if="sidebarTab === 'kiosk'" class="flex-1 flex flex-col p-3 overflow-y-auto custom-scrollbar justify-between space-y-3">
-              <!-- Khung Quầy Trợ Lý AI -->
-              <div class="relative rounded-3xl p-3.5 text-center overflow-hidden bg-white border border-slate-200 shadow-md text-slate-800">
-                <div class="relative z-10 flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span class="text-[9.5px] font-black tracking-wider text-slate-700 uppercase">TRỢ LÝ AI</span>
-                  <span class="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-300 text-[9px] font-black text-emerald-700 flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                    <span>AI LIVE 24/7</span>
+              <!-- Holographic AI Chamber Pod -->
+              <div class="relative rounded-3xl p-3.5 text-center overflow-hidden bg-slate-900/90 border border-red-500/30 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl text-white">
+                <!-- Ambient Holographic Glow Top -->
+                <div class="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-20 bg-gradient-to-b from-red-500/20 via-rose-500/10 to-transparent blur-xl pointer-events-none"></div>
+
+                <div class="relative z-10 flex items-center justify-between pb-2 border-b border-white/10">
+                  <span class="text-[9.5px] font-black tracking-widest text-red-300 uppercase flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping"></span>
+                    <span>AI NEURAL CORE</span>
+                  </span>
+                  <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[9px] font-black text-emerald-300 flex items-center gap-1 shadow-xs">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>GEMINI 3.1 PRO</span>
                   </span>
                 </div>
 
-                <!-- Linh vật Katedee Trợ Lý AI -->
+                <!-- Linh vật Trợ Lý AI trong Buồng Chiếu Hologram -->
                 <div class="relative my-2.5 h-44 sm:h-48 flex flex-col items-center justify-center">
-                  <!-- Đổ bóng tự nhiên dưới chân -->
-                  <div class="absolute bottom-1 w-24 h-4 rounded-full bg-slate-300/40 blur-xs"></div>
+                  <!-- Đĩa chiếu Hologram đa giác bên dưới chân linh vật -->
+                  <div class="absolute bottom-1 w-28 h-5 rounded-full bg-cyan-500/20 border border-cyan-400/40 blur-[1px] shadow-[0_0_20px_rgba(6,182,212,0.4)] animate-pulse"></div>
+                  <div class="absolute bottom-2 w-20 h-3 rounded-full bg-red-500/30 blur-xs"></div>
 
                   <img
                     src="/images/mascot-transparent.png"
                     alt="Trợ lý AI Nhà xe Kiến Trúc"
-                    class="h-full w-auto object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.12)] transition-transform duration-300"
+                    class="h-full w-auto object-contain drop-shadow-[0_4px_16px_rgba(239,68,68,0.35)] transition-transform duration-300"
                     :class="[
                       isCheckingLedger ? 'animate-ledger-check' : 'animate-mascot-float',
                       isSpeaking ? 'scale-105' : ''
                     ]"
                   />
 
-                  <!-- Huy hiệu đang kiểm tra sổ xe -->
+                  <!-- Huy hiệu đang kiểm tra sơ đồ chuyến xe -->
                   <div
                     v-if="isCheckingLedger"
-                    class="absolute bottom-2 px-2.5 py-1 rounded-full bg-amber-400 text-red-950 font-black text-[9.5px] shadow-lg flex items-center gap-1.5 animate-bounce z-20 border border-amber-200"
+                    class="absolute bottom-2 px-2.5 py-1 rounded-full bg-amber-400 text-slate-950 font-black text-[9.5px] shadow-lg flex items-center gap-1.5 animate-bounce z-20 border border-amber-200"
                   >
-                    <span>📖</span>
-                    <span>Đang kiểm tra sơ đồ...</span>
+                    <span>⚡</span>
+                    <span>Đang rà soát dữ liệu ghế...</span>
                   </div>
                 </div>
 
-                <!-- Cột Sóng Âm Thanh Equalizer -->
-                <div class="flex items-center gap-1.5 justify-center py-1.5 bg-slate-50 rounded-xl border border-slate-200">
-                  <span class="w-1 bg-red-500 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-5 animate-pulse' : 'h-1.5'"></span>
-                  <span class="w-1 bg-amber-500 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-7 animate-bounce' : 'h-2'"></span>
-                  <span class="w-1 bg-rose-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-9 animate-pulse' : 'h-3'"></span>
-                  <span class="w-1 bg-amber-500 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-7 animate-bounce' : 'h-2'"></span>
-                  <span class="w-1 bg-red-500 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-5 animate-pulse' : 'h-1.5'"></span>
+                <!-- Cột Sóng Âm Thanh Equalizer Cyber Neon -->
+                <div class="flex items-center gap-1.5 justify-center py-1.5 bg-black/40 rounded-xl border border-white/10 shadow-inner">
+                  <span class="w-1 bg-cyan-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-5 animate-pulse shadow-[0_0_6px_#22d3ee]' : 'h-1.5'"></span>
+                  <span class="w-1 bg-amber-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-7 animate-bounce shadow-[0_0_6px_#fbbf24]' : 'h-2'"></span>
+                  <span class="w-1 bg-rose-500 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-9 animate-pulse shadow-[0_0_8px_#f43f5e]' : 'h-3'"></span>
+                  <span class="w-1 bg-amber-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-7 animate-bounce shadow-[0_0_6px_#fbbf24]' : 'h-2'"></span>
+                  <span class="w-1 bg-cyan-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-5 animate-pulse shadow-[0_0_6px_#22d3ee]' : 'h-1.5'"></span>
                 </div>
 
                 <!-- Trạng thái đàm thoại -->
                 <div class="mt-2 text-[10.5px] font-black">
-                  <span v-if="isCheckingLedger" class="text-amber-700 animate-pulse">📖 Trợ lý AI đang kiểm tra lịch trình...</span>
-                  <span v-else-if="isSpeaking" class="text-red-600 animate-pulse">🔊 Trợ lý AI đang nói...</span>
-                  <span v-else-if="isListeningVoice" class="text-emerald-600 animate-pulse">🎙️ Đang nghe giọng bạn...</span>
-                  <span v-else class="text-slate-700 flex items-center justify-center gap-1">
-                    <span>🏛️</span>
-                    <span>Trực Tuyến 24/7</span>
+                  <span v-if="isCheckingLedger" class="text-amber-300 animate-pulse">⚡ AI đang kiểm tra chuyến xe trực tiếp...</span>
+                  <span v-else-if="isSpeaking" class="text-rose-300 animate-pulse">🔊 Trợ lý AI đang phản hồi...</span>
+                  <span v-else-if="isListeningVoice" class="text-emerald-300 animate-pulse">🎙️ Đang tiếp nhận giọng nói...</span>
+                  <span v-else class="text-slate-300 flex items-center justify-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span class="tracking-wide">TRỰC TUYẾN 24/7 • SẴN SÀNG</span>
                   </span>
                 </div>
               </div>
 
-              <!-- Gợi Ý Câu Đặt Vé Mẫu Nhanh -->
-              <div class="space-y-1.5">
-                <div class="text-[10px] font-bold text-red-200/80 uppercase tracking-wider">
-                  Mẫu câu thử nghiệm:
+              <!-- HUD NĂNG LỰC TRÍ TUỆ NHÂN TẠO (AI CAPABILITIES HUD - THAY THẾ MẪU CÂU CŨ) -->
+              <div class="space-y-2">
+                <div class="flex items-center justify-between text-[10px] font-black text-red-200/90 uppercase tracking-widest px-1">
+                  <span>⚡ NĂNG LỰC TRÍ TUỆ AI</span>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded bg-white/10 text-emerald-300 font-mono">v3.5 PRO</span>
                 </div>
-                <button
-                  type="button"
-                  @click="sendPrompt('Đặt giúp mình ghế A04 chuyến Đà Nẵng đi Quy Nhơn 20h tối nay, mình chưa có tài khoản')"
-                  class="w-full text-left p-2 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] text-red-100 font-medium transition cursor-pointer border border-white/10"
-                >
-                  👉 "Đặt ghế A04 đi Quy Nhơn 20h, chưa có tài khoản"
-                </button>
-                <button
-                  type="button"
-                  @click="sendPrompt('Tôi bị say xe đi Huế chọn giúp tôi ghế êm')"
-                  class="w-full text-left p-2 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] text-red-100 font-medium transition cursor-pointer border border-white/10"
-                >
-                  👉 "Tôi bị say xe đi Huế chọn giúp ghế"
-                </button>
-                <button
-                  type="button"
-                  @click="sendPrompt('Tôi muốn hủy vé và hoàn lại tiền cọc')"
-                  class="w-full text-left p-2 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] text-red-100 font-medium transition cursor-pointer border border-white/10"
-                >
-                  👉 "Tôi muốn hủy vé và hoàn tiền cọc"
-                </button>
+
+                <!-- Capability Card 1: Trí Nhớ Đa Ngữ Cảnh (Context Memory) -->
+                <div class="p-2.5 rounded-2xl bg-black/30 border border-white/10 hover:border-red-400/40 transition shadow-sm space-y-1">
+                  <div class="flex items-center gap-1.5 text-xs font-bold text-red-100">
+                    <span class="text-sm">🧠</span>
+                    <span>Trí Nhớ Đa Ngữ Cảnh</span>
+                  </div>
+                  <p class="text-[10px] text-red-200/80 leading-relaxed">
+                    Tự động ghi nhớ say xe, số khách & thói quen từ các câu trước, không bao giờ quên khi đổi tuyến.
+                  </p>
+                </div>
+
+                <!-- Capability Card 2: Khóa Giữ Ghế 5 Phút -->
+                <div class="p-2.5 rounded-2xl bg-black/30 border border-white/10 hover:border-cyan-400/40 transition shadow-sm space-y-1">
+                  <div class="flex items-center gap-1.5 text-xs font-bold text-cyan-200">
+                    <span class="text-sm">⏱️</span>
+                    <span>Khóa Giữ Chỗ 5 Phút</span>
+                  </div>
+                  <p class="text-[10px] text-red-200/80 leading-relaxed">
+                    Tự động giữ ghế tức thì và kích hoạt đồng hồ đếm ngược 5 phút, giải phóng ghế tự động nếu chưa cọc.
+                  </p>
+                </div>
+
+                <!-- Capability Card 3: Phân Biệt Hủy & Hoàn Cọc Thông Minh -->
+                <div class="p-2.5 rounded-2xl bg-black/30 border border-white/10 hover:border-amber-400/40 transition shadow-sm space-y-1">
+                  <div class="flex items-center gap-1.5 text-xs font-bold text-amber-200">
+                    <span class="text-sm">🛡️</span>
+                    <span>Tư Vấn & Hoàn Cọc 30%</span>
+                  </div>
+                  <p class="text-[10px] text-red-200/80 leading-relaxed">
+                    Nhận biết chính xác khi bạn chỉ đổi ý hỏi đường và hỗ trợ hoàn tiền cọc 30% minh bạch khi có vé thật.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -276,14 +297,15 @@
           <div :class="showMobileHistory ? 'hidden sm:flex' : 'flex'" class="flex-1 flex-col bg-white overflow-hidden">
             
             <!-- HEADER KHUNG CHAT BÉ KIẾN TRÚC DAU (CÓ NÚT GIỌNG NÓI / PHÓNG TO / ĐÓNG) -->
-            <div class="p-3 sm:p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 select-none">
+            <div class="p-3 sm:p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 backdrop-blur-sm select-none">
               <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden border-2 border-red-500 bg-white p-0.5 flex items-center justify-center flex-shrink-0 shadow-sm">
+                <div class="relative w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden border-2 border-red-500 bg-white p-0.5 flex items-center justify-center flex-shrink-0 shadow-sm">
                   <img
                     src="/images/mascot-avatar.png"
-                    alt="Bé Kiến Trúc DAU"
+                    alt="Trợ lý AI Nhà xe Kiến Trúc"
                     class="w-full h-full object-cover"
                   />
+                  <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white"></span>
                 </div>
                 <div class="min-w-0">
                   <div class="flex items-center gap-1.5 flex-wrap">
@@ -293,10 +315,14 @@
                     <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-bold border border-slate-200">
                       Nhà xe Kiến Trúc
                     </span>
+                    <span class="text-[9px] px-2 py-0.5 rounded-full bg-red-50 text-red-700 font-extrabold border border-red-200 flex items-center gap-1 shadow-2xs">
+                      <span>⚡</span>
+                      <span>Gemini Pro</span>
+                    </span>
                   </div>
-                  <p class="text-[10px] sm:text-[11px] text-emerald-600 font-bold flex items-center gap-1 truncate mt-0.5">
+                  <p class="text-[10px] sm:text-[11px] text-emerald-600 font-bold flex items-center gap-1.5 truncate mt-0.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
-                    <span class="truncate">Trực Tuyến 24/7</span>
+                    <span class="truncate">Trực Tuyến 24/7 • Bộ Nhớ Đa Ngữ Cảnh • Khóa Ghế 5 Phút</span>
                   </p>
                 </div>
               </div>
@@ -558,16 +584,26 @@
                       <div class="leading-relaxed" v-html="formatAiMessage(msg.content)"></div>
 
                       <!-- 3. THẺ THANH TOÁN VIETQR TẠI CHỖ (BƯỚC 4 - END-TO-END PAYMENT) -->
-                      <div v-if="msg.qr_data" class="mt-3 p-3.5 sm:p-4 bg-gradient-to-br from-red-50 via-rose-50/60 to-amber-50/50 border-2 border-red-500 rounded-2xl space-y-3 shadow-md">
+                      <div v-if="msg.qr_data" class="mt-3 p-3.5 sm:p-4 bg-gradient-to-br from-red-50 via-rose-50/60 to-amber-50/50 border-2 rounded-2xl space-y-3 shadow-md transition-colors"
+                           :class="isHoldExpired ? 'border-amber-400 bg-amber-50/40' : 'border-red-500'">
                         <div class="flex items-center justify-between gap-1 flex-wrap">
                           <div class="flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-                            <span class="font-black text-red-700 text-xs sm:text-sm">⚡ KHÓA GHẾ THÀNH CÔNG • QUÉT MÃ VIETQR</span>
+                            <span class="w-2.5 h-2.5 rounded-full" :class="isHoldExpired ? 'bg-amber-500' : 'bg-emerald-500 animate-ping'"></span>
+                            <span class="font-black text-xs sm:text-sm" :class="isHoldExpired ? 'text-amber-800' : 'text-red-700'">
+                              {{ isHoldExpired ? '⚠️ ĐÃ HẾT 5 PHÚT GIỮ CHỖ • GHẾ ĐÃ MỞ LẠI' : '⚡ KHÓA GHẾ THÀNH CÔNG • QUÉT MÃ VIETQR' }}
+                            </span>
                           </div>
-                          <div class="flex items-center gap-1 bg-red-600 text-white font-mono text-[10px] sm:text-xs font-black px-2.5 py-1 rounded-full shadow-2xs">
-                            <span>⏱️ Giữ:</span>
-                            <span>{{ formatTimer(bookingCountdown) }}</span>
+                          <div class="flex items-center gap-1 font-mono text-[10px] sm:text-xs font-black px-2.5 py-1 rounded-full shadow-2xs"
+                               :class="isHoldExpired ? 'bg-slate-800 text-amber-300' : 'bg-red-600 text-white'">
+                            <span>⏱️ {{ isHoldExpired ? 'Hết hạn:' : 'Giữ:' }}</span>
+                            <span>{{ isHoldExpired ? '00:00' : formatTimer(bookingCountdown) }}</span>
                           </div>
+                        </div>
+
+                        <!-- Cảnh báo khi hết 5 phút giữ chỗ -->
+                        <div v-if="isHoldExpired" class="p-2.5 rounded-xl bg-amber-100/80 border border-amber-300 text-amber-900 text-[11px] font-bold flex items-center gap-2">
+                          <span>⚠️</span>
+                          <span>Đã hết 5 phút giữ chỗ! Ghế của bạn đã được hệ thống tự động giải phóng lại cho các hành khách khác. Bạn có thể bấm chọn ghế lại trên thẻ chuyến xe nếu cần giữ lại nhé.</span>
                         </div>
 
                         <div class="flex flex-col sm:flex-row gap-3 items-center sm:items-start bg-white p-3 rounded-xl border border-red-200">
@@ -1284,6 +1320,7 @@ const consultationForm = ref({
 
 const isBookingInstant = ref(false);
 const isConfirmingPayment = ref(false);
+const isHoldExpired = ref(false);
 const guestBookingInfo = ref({
   show: false,
   trip: null,
@@ -1294,12 +1331,14 @@ const guestBookingInfo = ref({
 
 const startCountdownTimer = () => {
   bookingCountdown.value = 300;
+  isHoldExpired.value = false;
   if (countdownInterval) clearInterval(countdownInterval);
   countdownInterval = setInterval(() => {
     if (bookingCountdown.value > 0) {
       bookingCountdown.value--;
     } else {
       clearInterval(countdownInterval);
+      isHoldExpired.value = true;
     }
   }, 1000);
 };

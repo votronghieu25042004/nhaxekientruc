@@ -287,6 +287,9 @@ class TripController extends Controller
             $bookedCount = 0;
             if ($trip->bookings) {
                 foreach ($trip->bookings->whereNotIn('payment_status', ['CANCELLED', 'REFUNDED']) as $bk) {
+                    if ($bk->payment_status === 'UNPAID' && $bk->created_at && Carbon::parse($bk->created_at)->lt($now->copy()->subMinutes(5))) {
+                        continue;
+                    }
                     $bsCount = $bk->relationLoaded('bookingSeats') ? $bk->bookingSeats->count() : 0;
                     $bookedCount += ($bsCount > 0 ? $bsCount : (int)($bk->total_seats ?: 1));
                 }
