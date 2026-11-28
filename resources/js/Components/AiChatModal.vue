@@ -1,46 +1,29 @@
 <template>
   <div>
-    <!-- NHÂN VIÊN PHÒNG VÉ ẢO BÉ KIẾN TRÚC DAU (GÓC DƯỚI MÀN HÌNH) -->
+    <!-- TRỢ LÝ AI (GÓC DƯỚI MÀN HÌNH) -->
     <div
       v-if="!isOpen"
-      class="fixed bottom-4 right-3 sm:bottom-6 sm:right-6 z-40 flex items-end gap-3 cursor-pointer group select-none"
+      class="fixed bottom-4 right-3 sm:bottom-6 sm:right-6 z-40 flex flex-col items-center cursor-pointer group select-none"
       @click="openModal"
     >
-      <!-- Bong bóng thoại thông minh chào đón -->
-      <div class="hidden sm:flex flex-col items-end max-w-[270px] bg-white/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-2xl border-2 border-red-300 text-xs text-slate-800 group-hover:scale-105 transition-all duration-300 relative">
-        <div class="flex items-center gap-1.5 font-black text-red-600 text-[11px] mb-1">
-          <span>🏛️ BÉ KIẾN TRÚC DAU (PHÒNG VÉ ẢO)</span>
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-        </div>
-        <p class="text-[11.5px] text-slate-700 leading-snug font-semibold text-right">
-          "Chào anh/chị! Em là nhân viên phòng vé ảo trường ĐH Kiến Trúc. Bấm vào em hoặc nói chuyện để em tự động giữ ghế & hỗ trợ từ A-Z nhé! 🚌✨"
-        </p>
-        <div class="flex items-center gap-1.5 mt-2">
-          <span class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-black">🎙️ Đàm thoại 2 chiều</span>
-          <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black">⚡ Tự động đặt vé</span>
-        </div>
-        <!-- Mũi tên chỉ vào mascot -->
-        <div class="absolute -right-2 bottom-6 w-3 h-3 bg-white border-r-2 border-b-2 border-red-300 rotate-[-45deg]"></div>
+      <!-- Mascot 3D Đứng Trực Tiếp Tự Nhiên Không Nền Hồng -->
+      <div class="relative w-24 sm:w-28 h-32 sm:h-38 transition-all duration-300 group-hover:scale-105 active:scale-95 group-hover:-translate-y-1 animate-mascot-float">
+        <img
+          src="/images/mascot-transparent.png"
+          alt="Trợ lý AI Nhà xe Kiến Trúc"
+          class="w-full h-full object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.18)]"
+        />
+        <!-- Huy hiệu online -->
+        <span class="absolute top-1 right-1 flex h-3.5 w-3.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white shadow-xs"></span>
+        </span>
       </div>
 
-      <!-- Mascot 3D Lơ Lửng Trực Tiếp Không Đóng Khung Ảnh -->
-      <div class="relative flex flex-col items-center">
-        <!-- Vòng năng lượng tỏa sáng dưới chân -->
-        <div class="absolute -bottom-1 w-24 sm:w-28 h-6 bg-gradient-to-r from-red-600 via-rose-500 to-amber-400 rounded-full blur-md opacity-80 group-hover:opacity-100 transition duration-500 animate-pulse"></div>
-
-        <!-- Hình Mascot Bé Kiến Trúc Trong Suốt Lơ Lửng Tự Nhiên -->
-        <div class="relative w-24 sm:w-28 h-32 sm:h-40 transition-all duration-300 group-hover:scale-110 active:scale-95 group-hover:-translate-y-2 animate-mascot-float">
-          <img
-            src="/images/mascot-transparent.png"
-            alt="Mascot Bé Kiến Trúc DAU"
-            class="w-full h-full object-contain drop-shadow-[0_15px_20px_rgba(225,29,72,0.45)]"
-          />
-          <!-- Huy hiệu online -->
-          <span class="absolute top-1 right-1 flex h-3.5 w-3.5">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white shadow-xs"></span>
-          </span>
-        </div>
+      <!-- Huy hiệu nhãn gọn gàng Trợ lý AI -->
+      <div class="mt-1 px-3 py-1 rounded-full bg-white/95 shadow-md border border-slate-200 text-xs font-black text-slate-800 flex items-center gap-1.5 backdrop-blur-xs group-hover:bg-red-50 group-hover:text-red-700 group-hover:border-red-200 transition-all">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Trợ lý AI</span>
       </div>
     </div>
 
@@ -80,7 +63,7 @@
                 :class="sidebarTab === 'kiosk' ? 'bg-white text-red-800 shadow-sm' : 'text-red-200 hover:text-white hover:bg-white/10'"
               >
                 <span>🏛️</span>
-                <span>Nhân Viên Ảo</span>
+                <span>Trợ lý AI</span>
               </button>
               <button
                 type="button"
@@ -93,27 +76,27 @@
               </button>
             </div>
 
-            <!-- TAB 1: QUẦY NHÂN VIÊN ẢO (VIRTUAL STAFF KIOSK STANDEE) -->
+            <!-- TAB 1: QUẦY TRỢ LÝ AI (VIRTUAL ASSISTANT KIOSK STANDEE) -->
             <div v-if="sidebarTab === 'kiosk'" class="flex-1 flex flex-col p-3 overflow-y-auto custom-scrollbar justify-between space-y-3">
-              <!-- Khung Quầy Nhân Viên Ảo Bé Kiến Trúc DAU -->
-              <div class="relative rounded-3xl p-3.5 text-center overflow-hidden bg-gradient-to-b from-[#fff8f8] via-white to-[#fff1f2] border-2 border-red-200/90 shadow-xl backdrop-blur-md text-slate-800">
-                <div class="relative z-10 flex items-center justify-between pb-2 border-b border-red-100">
-                  <span class="text-[9.5px] font-black tracking-wider text-red-700 uppercase">ĐH KIẾN TRÚC ĐÀ NẴNG</span>
+              <!-- Khung Quầy Trợ Lý AI -->
+              <div class="relative rounded-3xl p-3.5 text-center overflow-hidden bg-white border border-slate-200 shadow-md text-slate-800">
+                <div class="relative z-10 flex items-center justify-between pb-2 border-b border-slate-100">
+                  <span class="text-[9.5px] font-black tracking-wider text-slate-700 uppercase">TRỢ LÝ AI</span>
                   <span class="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-300 text-[9px] font-black text-emerald-700 flex items-center gap-1">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
                     <span>AI LIVE 24/7</span>
                   </span>
                 </div>
 
-                <!-- Linh vật Katedee Bé Kiến Trúc DAU -->
+                <!-- Linh vật Katedee Trợ Lý AI -->
                 <div class="relative my-2.5 h-44 sm:h-48 flex flex-col items-center justify-center">
                   <!-- Đổ bóng tự nhiên dưới chân -->
                   <div class="absolute bottom-1 w-24 h-4 rounded-full bg-slate-300/40 blur-xs"></div>
 
                   <img
                     src="/images/mascot-transparent.png"
-                    alt="Bé Kiến Trúc DAU Mascot Katedee"
-                    class="h-full w-auto object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.1)] drop-shadow-[0_12px_24px_rgba(225,29,72,0.25)] transition-transform duration-300"
+                    alt="Trợ lý AI Nhà xe Kiến Trúc"
+                    class="h-full w-auto object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.12)] transition-transform duration-300"
                     :class="[
                       isCheckingLedger ? 'animate-ledger-check' : 'animate-mascot-float',
                       isSpeaking ? 'scale-105' : ''
@@ -131,7 +114,7 @@
                 </div>
 
                 <!-- Cột Sóng Âm Thanh Equalizer -->
-                <div class="flex items-center gap-1.5 justify-center py-1.5 bg-red-50/80 rounded-xl border border-red-100">
+                <div class="flex items-center gap-1.5 justify-center py-1.5 bg-slate-50 rounded-xl border border-slate-200">
                   <span class="w-1 bg-red-500 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-5 animate-pulse' : 'h-1.5'"></span>
                   <span class="w-1 bg-amber-500 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-7 animate-bounce' : 'h-2'"></span>
                   <span class="w-1 bg-rose-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-9 animate-pulse' : 'h-3'"></span>
@@ -141,12 +124,12 @@
 
                 <!-- Trạng thái đàm thoại -->
                 <div class="mt-2 text-[10.5px] font-black">
-                  <span v-if="isCheckingLedger" class="text-amber-700 animate-pulse">📖 Bé Kiến Trúc đang kiểm tra sổ xe...</span>
-                  <span v-else-if="isSpeaking" class="text-red-600 animate-pulse">🔊 Bé Kiến Trúc đang nói...</span>
+                  <span v-if="isCheckingLedger" class="text-amber-700 animate-pulse">📖 Trợ lý AI đang kiểm tra lịch trình...</span>
+                  <span v-else-if="isSpeaking" class="text-red-600 animate-pulse">🔊 Trợ lý AI đang nói...</span>
                   <span v-else-if="isListeningVoice" class="text-emerald-600 animate-pulse">🎙️ Đang nghe giọng bạn...</span>
                   <span v-else class="text-slate-700 flex items-center justify-center gap-1">
                     <span>🏛️</span>
-                    <span>Trực Phòng Vé Ảo 24/7</span>
+                    <span>Trực Tuyến 24/7</span>
                   </span>
                 </div>
               </div>
@@ -305,10 +288,10 @@
                 <div class="min-w-0">
                   <div class="flex items-center gap-1.5 flex-wrap">
                     <h3 class="text-xs sm:text-sm font-black text-slate-900 leading-tight truncate">
-                      {{ activeView === 'admin_email' ? 'Gửi Thông Báo Gmail' : 'Bé Kiến Trúc DAU (Phòng Vé Ảo)' }}
+                      {{ activeView === 'admin_email' ? 'Gửi Thông Báo Gmail' : 'Trợ lý AI' }}
                     </h3>
-                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold border border-red-200">
-                      ĐH Kiến Trúc Đà Nẵng
+                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-bold border border-slate-200">
+                      Nhà xe Kiến Trúc
                     </span>
                   </div>
                   <p class="text-[10px] sm:text-[11px] text-emerald-600 font-bold flex items-center gap-1 truncate mt-0.5">
@@ -358,9 +341,9 @@
             <div v-if="interactionMode === 'voice'" class="bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white px-3.5 py-2 text-xs font-bold flex flex-wrap items-center justify-between gap-2 shadow-xs select-none">
               <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
-                <span v-if="isSpeaking">🔊 Bé Kiến Trúc đang nói tư vấn...</span>
+                <span v-if="isSpeaking">🔊 Trợ lý AI đang nói...</span>
                 <span v-else-if="isEchoCoolingDown">⏳ Đang nghỉ 1.2s triệt tiêu âm vang loa ngoài...</span>
-                <span v-else-if="isListeningVoice">🎙️ Bé Kiến Trúc đang lắng nghe... (Hãy nói yêu cầu)</span>
+                <span v-else-if="isListeningVoice">🎙️ Trợ lý AI đang lắng nghe... (Hãy nói yêu cầu)</span>
                 <span v-else>🎙️ Đang ở chế độ nói chuyện với AI</span>
               </div>
               <div class="flex items-center gap-2">
@@ -473,42 +456,42 @@
               <!-- Tin nhắn hội thoại -->
               <div ref="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-3.5 custom-scrollbar">
                 
-                <!-- Lời chào & Gợi ý câu hỏi ban đầu Bé Kiến Trúc DAU (Khung Bong Bóng Thoại Hình 3) -->
+                <!-- Lời chào & Gợi ý câu hỏi ban đầu Trợ lý AI -->
                 <div v-if="currentMessages.length === 0" class="py-4 space-y-4 max-w-lg mx-auto">
-                  <!-- Khung Speech Bubble Bé Kiến Trúc DAU (Phòng Vé Ảo) theo đúng Hình 3 -->
-                  <div class="relative bg-gradient-to-br from-white via-rose-50/30 to-amber-50/30 rounded-3xl p-4 sm:p-5 border-2 border-red-300 shadow-lg flex flex-col sm:flex-row items-center gap-4">
-                    <div class="flex-1 space-y-2.5 text-left">
-                      <!-- Tiêu đề đỏ đậm giống Hình 3 -->
-                      <div class="flex items-center gap-2 font-black text-red-600 text-sm sm:text-base">
-                        <span>🏛️</span>
-                        <span>BÉ KIẾN TRÚC DAU (PHÒNG VÉ ẢO)</span>
+                  <!-- Khung Giới Thiệu Gọn Gàng Trợ Lý AI -->
+                  <div class="relative bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center gap-4">
+                    <!-- Linh vật Trợ lý AI đứng tự nhiên -->
+                    <div class="flex-shrink-0 w-20 sm:w-24 h-24 sm:h-28 flex items-center justify-center">
+                      <img
+                        src="/images/mascot-transparent.png"
+                        alt="Trợ lý AI Nhà xe Kiến Trúc"
+                        class="w-full h-full object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.12)] animate-mascot-float"
+                      />
+                    </div>
+
+                    <div class="flex-1 space-y-2 text-left">
+                      <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <h4 class="font-black text-slate-900 text-sm sm:text-base">Trợ lý AI</h4>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200">
+                          Nhà xe Kiến Trúc
+                        </span>
                       </div>
 
-                      <!-- Lời chào quote giống hệt Hình 3 -->
-                      <p class="text-xs sm:text-[13px] text-slate-700 leading-relaxed font-semibold">
-                        "Chào anh/chị! Em là nhân viên phòng vé ảo trường ĐH Kiến Trúc. Bấm vào em hoặc nói chuyện để em tự động giữ ghế & hỗ trợ từ A–Z nhé! 🚌 ✨"
+                      <p class="text-xs text-slate-600 leading-relaxed font-medium">
+                        Xin chào! Tôi là Trợ lý AI của Nhà xe Kiến Trúc Đà Nẵng. Bạn có thể hỏi tôi về lịch trình, giá vé, tư vấn chọn vị trí ghế hoặc hỗ trợ đặt vé 24/7.
                       </p>
 
-                      <!-- 2 Huy hiệu đặc trưng Hình 3 -->
-                      <div class="flex flex-wrap items-center gap-2 pt-1">
-                        <span class="px-3 py-1 rounded-full bg-rose-100 text-red-700 text-xs font-extrabold flex items-center gap-1 shadow-2xs">
+                      <div class="flex flex-wrap items-center gap-2 pt-0.5">
+                        <span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold flex items-center gap-1 border border-slate-200">
                           <span>🎙️</span>
                           <span>Đàm thoại 2 chiều</span>
                         </span>
-                        <span class="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-extrabold flex items-center gap-1 shadow-2xs">
+                        <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold flex items-center gap-1 border border-emerald-200">
                           <span>⚡</span>
-                          <span>Tự động đặt vé</span>
+                          <span>Trực tuyến 24/7</span>
                         </span>
                       </div>
-                    </div>
-
-                    <!-- Linh vật Katedee Bé Kiến Trúc bên cạnh giống Hình 3 -->
-                    <div class="flex-shrink-0 w-24 sm:w-28 h-28 sm:h-32 flex items-center justify-center">
-                      <img
-                        src="/images/mascot-transparent.png"
-                        alt="Bé Kiến Trúc DAU Mascot"
-                        class="w-full h-full object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.1)] drop-shadow-[0_10px_20px_rgba(225,29,72,0.25)] animate-mascot-float"
-                      />
                     </div>
                   </div>
 
@@ -534,14 +517,14 @@
                   class="flex gap-2.5"
                   :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
                 >
-                  <!-- Avatar Bé Mascot Kiến Trúc DAU -->
+                  <!-- Avatar Trợ lý AI -->
                   <div
                     v-if="msg.role === 'assistant'"
-                    class="w-8 h-8 rounded-full overflow-hidden border-2 border-red-500 bg-red-50 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs"
+                    class="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-300 bg-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs"
                   >
                     <img
                       src="/images/mascot-avatar.png"
-                      alt="Bé Kiến Trúc DAU"
+                      alt="Trợ lý AI"
                       class="w-full h-full object-cover"
                     />
                   </div>
@@ -552,10 +535,10 @@
                     :class="msg.role === 'user' ? 'bg-red-600 text-white rounded-tr-xs' : 'bg-slate-100 text-slate-800 rounded-tl-xs border border-slate-200'"
                   >
                     <div v-if="msg.role === 'assistant'" class="space-y-1.5">
-                      <!-- Tên Bé Kiến Trúc & Nút Loa Nghe Đọc -->
+                      <!-- Tên Trợ lý AI & Nút Loa Nghe Đọc -->
                       <div class="flex items-center justify-between gap-2 mb-1 border-b border-slate-200/60 pb-1 select-none">
                         <div class="flex items-center gap-1.5">
-                          <span class="font-black text-red-600 text-[11px]">Bé Kiến Trúc (DAU)</span>
+                          <span class="font-black text-red-600 text-[11px]">Trợ lý AI</span>
                           <span v-if="isSpeaking && speakingMsgIdx === idx" class="text-[10px] text-emerald-600 font-bold animate-pulse flex items-center gap-0.5">
                             <span>🔊</span>
                             <span>Đang nói...</span>
@@ -1031,8 +1014,8 @@
 
                 <!-- Loading AI Typing & Optimistic Filler -->
                 <div v-if="isAiTyping" class="flex gap-2.5 items-start text-xs">
-                  <div class="w-8 h-8 rounded-full overflow-hidden border-2 border-red-500 bg-red-50 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
-                    <img src="/images/mascot-avatar.png" alt="Bé Kiến Trúc DAU" class="w-full h-full object-cover" />
+                  <div class="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-300 bg-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
+                    <img src="/images/mascot-avatar.png" alt="Trợ lý AI" class="w-full h-full object-cover" />
                   </div>
                   
                   <div v-if="isCheckingLedger" class="p-3 bg-gradient-to-r from-amber-50 to-rose-50 rounded-2xl border border-amber-200 text-slate-800 shadow-xs space-y-1 max-w-[85%] animate-pulse">
@@ -1042,7 +1025,7 @@
                     </div>
                     <div class="text-[10px] text-slate-500 flex items-center gap-1.5 font-medium pl-6">
                       <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
-                      <span>Bé Kiến Trúc đang tra cứu sơ đồ giường & phân tích tâm trọng lực xe...</span>
+                      <span>Trợ lý AI đang tra cứu sơ đồ giường & phân tích lịch trình...</span>
                     </div>
                   </div>
 
@@ -1082,7 +1065,7 @@
 
                   <div v-if="interactionMode === 'voice'" class="text-[11px] font-bold text-red-600 flex items-center gap-1.5 animate-pulse">
                     <span class="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
-                    <span v-if="isSpeaking">Bé Kiến Trúc đang nói...</span>
+                    <span v-if="isSpeaking">Trợ lý AI đang nói...</span>
                     <span v-else-if="isListeningVoice">Đang nghe giọng bạn...</span>
                     <span v-else>Đàm thoại 2 chiều</span>
                   </div>
@@ -2405,7 +2388,7 @@ const generateSmartReply = (q) => {
 
   // 0.5. Thử mic / Giọng nói / "Bạn có nghe tôi nói không" / Danh tính
   if (/(nghe tôi nói không|có nghe không|nghe không|nghe rõ không|alo|alo alo|test mic|thử giọng|bạn nghe được không|có ai ở đây không|bạn ở đó không|có ai không|bạn là ai|em là ai|trợ lý là ai|ai đó|linh vật|mascot|kiến trúc)/i.test(lower)) {
-    return 'Dạ em nghe bạn rất rõ và to ạ! Em là **Bé Kiến Trúc DAU** - Linh vật 3D & Trợ lý AI đồng hành thông minh của **Trường Đại học Kiến Trúc Đà Nẵng** đây ạ! 🏛️🎙️\n\nEm luôn trực tuyến đồng hành cùng bạn suốt mọi lúc:\n• 🚌 Tự động tìm tuyến & chọn sẵn ghế êm chống say xe\n• 🔑 Hỗ trợ đăng nhập, tạo tài khoản mới & đăng nhập nhanh bằng Google\n• 🎫 Hỗ trợ tra cứu vé, hủy vé & hoàn tiền tự động 100%\n• 💳 Giữ chỗ với cọc 30% VietQR siêu tiện lợi.\n\nBạn cứ nói hoặc yêu cầu bất kỳ điều gì, em sẽ tự động làm hết cho bạn nhé!';
+    return 'Dạ em nghe bạn rất rõ và to ạ! Em là **Trợ lý AI** đồng hành thông minh của **Nhà xe Kiến Trúc Đà Nẵng** đây ạ! 🏛️🎙️\n\nEm luôn trực tuyến đồng hành cùng bạn suốt mọi lúc:\n• 🚌 Tự động tìm tuyến & gợi ý vị trí ghế êm ái\n• 🔑 Hỗ trợ đăng nhập, tạo tài khoản mới & đăng nhập nhanh bằng Google\n• 🎫 Hỗ trợ tra cứu vé, hủy vé & hoàn tiền tự động 100%\n• 💳 Giữ chỗ với cọc 30% VietQR siêu tiện lợi.\n\nBạn cứ nhắn tin hoặc nói yêu cầu bất kỳ điều gì, em sẽ hỗ trợ bạn ngay nhé!';
   }
 
   // 0.8. Tự động hỗ trợ Đăng nhập / Đăng ký / Google
@@ -2456,7 +2439,7 @@ const generateSmartReply = (q) => {
   // Chào hỏi
   const greetingWords = ['hi', 'hello', 'hey', 'alo', 'xin chào', 'xin chao', 'chào', 'chao', 'chào bạn', 'chao ban', 'chào em', 'chao em', 'chào anh', 'chao anh', 'chào chị', 'chao chi', 'chào ad', 'chào bot'];
   if (greetingWords.some(w => lower.startsWith(w) || lower === w)) {
-    return 'Dạ em chào bạn ạ! Em là **Bé Kiến Trúc DAU** - Nhà xe Kiến Trúc Đà Nẵng. Em có thể hỗ trợ gì cho chuyến đi hôm nay của mình ạ? 😊';
+    return 'Dạ em chào bạn ạ! Em là **Trợ lý AI** - Nhà xe Kiến Trúc Đà Nẵng. Em có thể hỗ trợ gì cho chuyến đi hôm nay của mình ạ? 😊';
   }
 
   // Tuyến cụ thể

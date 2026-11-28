@@ -125,59 +125,21 @@ class AiAssistantController extends Controller
         }
 
         // =========================================================================
-        // 0.3. LUỒNG ĐẶT VÉ HỘI THOẠI (NHẬP SĐT / XÁC THỰC OTP NGAY TRONG KHUNG CHAT)
+        // 0.3. LUỒNG ĐẶT VÉ HỘI THOẠI ĐANG CHỜ OTP (NẾU ĐANG TRONG BƯỚC XÁC THỰC)
         // =========================================================================
         $bookingState = (array) $request->input('booking_state', []);
-        $convBookingResult = $this->handleConversationalBookingFlow($request, $message, $lower, $user, $bookingState);
-        if ($convBookingResult !== null) {
-            return response()->json($convBookingResult);
+        if (!empty($bookingState['step']) && in_array($bookingState['step'], ['AWAITING_OTP', 'AWAITING_CONFIRMATION'])) {
+            $convBookingResult = $this->handleConversationalBookingFlow($request, $message, $lower, $user, $bookingState);
+            if ($convBookingResult !== null) {
+                return response()->json($convBookingResult);
+            }
         }
 
         // =========================================================================
-        // 1. CHỐT GHẾ & LẤY MÃ QR THANH TOÁN TỨC THÌ (INSTANT SEAT LOCK & VIETQR)
-        // Khi khách gõ hoặc nói "chốt cho tôi", "lấy cho tôi ghế này đi", "chốt ghế A01 cho tôi"...
+        // 1. ƯU TIÊN GỌI GEMINI API TRỰC TIẾP (NATURAL CONVERSATIONAL FIRST)
+        // Khi người dùng trò chuyện, hỏi lịch trình, tư vấn đặt vé... Hãy để Gemini
+        // phản hồi tự nhiên, linh hoạt và thông minh như trên Google AI Studio!
         // =========================================================================
-        $instantLockResult = $this->handleInstantSeatLockInquiry($request, $message, $lower, $user, $history);
-        if ($instantLockResult !== null) {
-            return response()->json($instantLockResult);
-        }
-
-        // =========================================================================
-        // 2. DẠY AI NGHIỆP VỤ NHÀ XE & QUY LUẬT VẬT LÝ XE GIƯỜNG NẰM (SEAT PHYSICS & REASONING)
-        // Khi khách nêu thể trạng (say xe, đi cùng bà/ông, trẻ nhỏ, cần 2 vé liền kề, chọn ghế...)
-        // =========================================================================
-        $seatPhysicsResult = $this->handleSeatPhysicsInquiry($message, $lower, $user, $history);
-        if ($seatPhysicsResult !== null) {
-            return response()->json($seatPhysicsResult);
-        }
-
-        // =========================================================================
-        // 3. KHUNG MẪU TƯ VẤN ĐẶT VÉ (CONSULTATION FORM THEO YÊU CẦU ĐIỀN THÔNG TIN)
-        // Khi khách yêu cầu hỗ trợ đặt vé nhưng chưa cung cấp đủ chi tiết
-        // =========================================================================
-        $consultationResult = $this->handleConsultationFormInquiry($message, $lower, $user);
-        if ($consultationResult !== null) {
-            return response()->json($consultationResult);
-        }
-
-        // =========================================================================
-        // 4. TRA CỨU TỒN VÉ THỜI GIAN THỰC (REAL-TIME AVAILABILITY CHECKER)
-        // Tra cứu chính xác Database chuyến hôm nay, nếu hết vé thì báo hết và tự động đề xuất ngày mai
-        // =========================================================================
-        $availabilityResult = $this->checkRouteAndTripAvailability($message, $lower, $user);
-        if ($availabilityResult !== null) {
-            return response()->json($availabilityResult);
-        }
-
-        // =========================================================================
-        // 5. CHĂM SÓC KHÁCH HÀNG TẬN TÂM KHI HỦY VÉ (TÔN TRỌNG QUYẾT ĐỊNH, KHÔNG NÍU KÉO)
-        // =========================================================================
-        $cancellationResult = $this->handleCancellationInquiry($message, $lower, $user);
-        if ($cancellationResult !== null) {
-            return response()->json($cancellationResult);
-        }
-
-        // Thử gọi Gemini API với multi-turn history & multi-model fallback
         $geminiKey = $this->getGeminiApiKey();
 
         if (!empty($geminiKey)) {
@@ -190,6 +152,39 @@ class AiAssistantController extends Controller
                     'source' => 'gemini-live',
                 ]);
             }
+        }
+
+        // =========================================================================
+        // 2. ĐỘNG CƠ CỤC BỘ DỰ PHÒNG KHI CHƯA CÓ GEMINI HOẶC MẤT KẾT NỐI (FALLBACK ENGINE)
+        // =========================================================================
+        $convBookingResult = $this->handleConversationalBookingFlow($request, $message, $lower, $user, $bookingState);
+        if ($convBookingResult !== null) {
+            return response()->json($convBookingResult);
+        }
+
+        $instantLockResult = $this->handleInstantSeatLockInquiry($request, $message, $lower, $user, $history);
+        if ($instantLockResult !== null) {
+            return response()->json($instantLockResult);
+        }
+
+        $seatPhysicsResult = $this->handleSeatPhysicsInquiry($message, $lower, $user, $history);
+        if ($seatPhysicsResult !== null) {
+            return response()->json($seatPhysicsResult);
+        }
+
+        $consultationResult = $this->handleConsultationFormInquiry($message, $lower, $user);
+        if ($consultationResult !== null) {
+            return response()->json($consultationResult);
+        }
+
+        $availabilityResult = $this->checkRouteAndTripAvailability($message, $lower, $user);
+        if ($availabilityResult !== null) {
+            return response()->json($availabilityResult);
+        }
+
+        $cancellationResult = $this->handleCancellationInquiry($message, $lower, $user);
+        if ($cancellationResult !== null) {
+            return response()->json($cancellationResult);
         }
 
         // Phản hồi thông minh đa ngữ cảnh từ Natural Conversational Engine
@@ -927,24 +922,38 @@ class AiAssistantController extends Controller
 
         $isExplicitBookingAction = preg_match('/(đặt giúp|đặt vé|giữ ghế|đặt ghế|chọn ghế|giữ chỗ|lấy cho mình ghế|lấy vé|đặt chuyến|mua vé)/ui', $lower);
         if ($isExplicitBookingAction) {
+            // Nhận diện tuyến xe
+            $destination = null;
+            if (preg_match('/(huế|hue)/ui', $lower))
+                $destination = 'Thừa Thiên - Huế';
+            elseif (preg_match('/(quảng trị|quang tri|đông hà|quản trị)/ui', $lower))
+                $destination = 'Quảng Trị';
+            elseif (preg_match('/(quảng bình|quang binh|đồng hới)/ui', $lower))
+                $destination = 'Quảng Bình';
+            elseif (preg_match('/(buôn ma thuột|đắk lắk|bmt|dak lak)/ui', $lower))
+                $destination = 'Buôn Ma Thuột';
+            elseif (preg_match('/(quy nhơn|quy nhon|bình định)/ui', $lower))
+                $destination = 'Quy Nhơn';
+
+            // Nếu khách nói "tôi muốn đặt vé" mà CHƯA cung cấp điểm đến:
+            if (!$destination) {
+                return [
+                    'reply' => "Dạ em sẵn sàng hỗ trợ bạn đặt vé xe! Bạn cho em xin một vài thông tin để em kiểm tra và hỗ trợ nhé:\n\n" .
+                        "• **Điểm đến** bạn muốn đi (ví dụ: Huế, Quảng Trị, Quảng Bình, Quy Nhơn, Buôn Ma Thuột...)\n" .
+                        "• **Ngày đi dự kiến** (hôm nay, ngày mai hoặc ngày cụ thể)\n" .
+                        "• **Số lượng vé** bạn muốn đặt\n\n" .
+                        "Bạn cần vé đi đâu cứ nhắn với em nhé! 😊",
+                    'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Đà Nẵng đi Quy Nhơn', 'Đà Nẵng đi Buôn Ma Thuột'],
+                    'trips' => [],
+                    'source' => 'conversational-booking-ask-destination'
+                ];
+            }
+
             // Nhận diện ghế
             $seat = 'A04';
             if (preg_match('/\b([A-Ba-b]\d{2})\b/', $message, $mSeat)) {
                 $seat = strtoupper($mSeat[1]);
             }
-
-            // Nhận diện tuyến xe
-            $destination = 'Quy Nhơn';
-            if (preg_match('/(huế|hue)/ui', $lower))
-                $destination = 'Thừa Thiên - Huế';
-            elseif (preg_match('/(quảng trị|quang tri|đông hà)/ui', $lower))
-                $destination = 'Quảng Trị';
-            elseif (preg_match('/(quảng bình|quang binh|đồng hới)/ui', $lower))
-                $destination = 'Quảng Bình';
-            elseif (preg_match('/(buôn ma thuột|đắk lắk|bmt)/ui', $lower))
-                $destination = 'Buôn Ma Thuột';
-            elseif (preg_match('/(quy nhơn|quy nhon|bình định)/ui', $lower))
-                $destination = 'Quy Nhơn';
 
             // Nhận diện ngày: Hôm nay vs Ngày mai
             $isTomorrow = (bool) preg_match('/(ngày mai|mai|28)/ui', $lower);
@@ -2071,22 +2080,23 @@ class AiAssistantController extends Controller
             $routesSummary = $activeRoutes->map(fn($r) => "{$r->origin} ⇄ {$r->destination}")->unique()->implode(', ');
 
             $systemPrompt = "Bạn là Trợ lý AI thông minh của Nhà xe Kiến Trúc Đà Nẵng (nhaxekientruc).\n"
-                . "QUY TẮC CỐT LÕI (BẮT BUỘC TUÂN THỦ NGHIÊM NGẶT):\n"
-                . "1. ĐỘ DÀI: Cực kỳ ngắn gọn, súc tích (1 đến tối đa 3 câu). Đi thẳng vào trọng tâm câu hỏi, KHÔNG viết văn dài dòng, KHÔNG tự ý liệt kê hàng loạt các tuyến xe hay chính sách nếu khách không hỏi.\n"
-                . "2. TÁC PHONG: Xưng 'em', gọi 'bạn' (hoặc tên khách). Lịch thiệp, tự nhiên, nhã nhặn, tôn trọng khách hàng.\n"
-                . "3. CHĂM SÓC KHÁCH HÀNG KHI HỦY VÉ: Khi khách muốn hủy vé, hãy tôn trọng quyết định của khách bằng thái độ ân cần, hướng dẫn họ xác nhận hủy vé và nhận tiền hoàn cọc tại mục 'Vé Của Tôi' hoặc nút hủy vé, TUYỆT ĐỐI KHÔNG níu kéo, không nài ép hay mời mọc dời vé nếu khách không yêu cầu.\n"
-                . "4. THỜI GIAN: {$timeContext}\n"
-                . "5. THÔNG TIN KHÁCH HÀNG: {$userDesc}\n"
-                . "6. BẢO MẬT: Tuyệt đối từ chối cung cấp quyền admin ra ngoài.\n"
-                . "7. QUY TẮC CHỌN GHẾ XE GIƯỜNG NẰM:\n"
+                . "QUY TẮC CỐT LÕI (BẮT BUỘC TUÂN THỦ):\n"
+                . "1. PHONG CÁCH & ĐỘ DÀI: Trả lời tự nhiên, thân thiện, ngắn gọn và hữu ích (1 đến 4 câu). Đi thẳng vào trọng tâm câu hỏi. Xưng 'em', gọi 'bạn' (hoặc tên khách).\n"
+                . "2. TỰ NHIÊN KHI ĐẶT VÉ: Khi khách hỏi chung chung như 'tôi muốn đặt vé', 'tôi muốn đi xe', 'đặt vé giúp'... TUYỆT ĐỐI KHÔNG tự ý chốt ghế hay tự gán tuyến đường. Hãy hỏi khách xem khách muốn đi tỉnh/thành nào, ngày giờ dự kiến và bao nhiêu vé một cách lịch sự, tự nhiên như tư vấn viên thực thụ.\n"
+                . "3. HIỂU TỪ NGỮ LINH HOẠT & LỖI CHÍNH TẢ: Khách có thể gõ sai chính tả (ví dụ 'quản trị' -> Quảng Trị, 'xem bus' -> xe bus, 'bình định' -> Quy Nhơn...). Hãy thông minh nhận diện ý định của khách và hỗ trợ ngay.\n"
+                . "4. CHĂM SÓC KHÁCH HÀNG KHI HỦY VÉ: Khi khách muốn hủy vé, hãy tôn trọng quyết định của khách bằng thái độ ân cần, hướng dẫn họ xác nhận hủy vé và nhận tiền hoàn cọc tại mục 'Vé Của Tôi' hoặc nút hủy vé, TUYỆT ĐỐI KHÔNG níu kéo, không nài ép hay mời mọc dời vé nếu khách không yêu cầu.\n"
+                . "5. THỜI GIAN: {$timeContext}\n"
+                . "6. THÔNG TIN KHÁCH HÀNG: {$userDesc}\n"
+                . "7. BẢO MẬT: Tuyệt đối từ chối cung cấp quyền admin ra ngoài.\n"
+                . "8. QUY TẮC CHỌN GHẾ XE GIƯỜNG NẰM:\n"
                 . "- Say xe, người già, trẻ nhỏ, đau lưng: Chọn Tầng 1 (êm ái, giảm xóc 98%, trọng tâm cân bằng).\n"
                 . "- Riêng tư, ngắm cảnh: Chọn Tầng 2 (rèm kín 100%, ngắm cảnh đẹp).\n"
-                . "8. DANH SÁCH CÁC TUYẾN ĐƯỜNG ĐANG KHAI THÁC THỰC TẾ:\n"
+                . "9. DANH SÁCH CÁC TUYẾN ĐƯỜNG ĐANG KHAI THÁC THỰC TẾ:\n"
                 . "- Nhà xe Kiến Trúc CHỈ KHAI THÁC CÁC TUYẾN SAU: {$routesSummary}.\n"
                 . "- TUYỆT ĐỐI KHÔNG TỰ BỊA RA HOẶC NHẬN CÁC TUYẾN KHÁC (như Cà Mau, Cần Thơ, Sài Gòn, TP.HCM, Hải Phòng...). Nếu khách hỏi tuyến không nằm trong danh sách trên, bạn BẮT BUỘC phải thông báo lịch sự là Nhà xe Kiến Trúc hiện chưa khai thác tuyến đó và gợi ý các tuyến nhà xe đang phục vụ.\n"
-                . "9. SAY XE: Khi khách đề cập 'say xe' (kể cả đi 1 mình hay đi 2 người), BẮT BUỘC phải giải thích rõ lý do chọn vị trí ghế tầng 1 ở giữa xe/đầu xe là để giảm chấn tối đa 98%, chống bồng bềnh say xe, và nếu đi 2 người thì chọn cặp ghế liền kề để tiện chăm sóc nhau.\n"
-                . "10. XỬ LÝ MÂU THUẪN: Nếu khách nói mâu thuẫn như 'đặt 1 vé cho 2 người', hãy khéo léo xác nhận lại: 'Dạ em hiểu mình cần đặt 2 giường cho 2 người đi cùng nhau đúng không ạ?' trước khi giữ chỗ.\n"
-                . "11. ĐỒNG BỘ NÚT BẤM: Khi hướng dẫn khách giữ vé trên thẻ chuyến xe, chỉ hướng dẫn bấm trực tiếp vào mã ghế màu đỏ (ví dụ [A03, A04]) hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ.";
+                . "10. SAY XE: Khi khách đề cập 'say xe', giải thích rõ lý do chọn vị trí ghế tầng 1 ở giữa xe/đầu xe là để giảm chấn tối đa 98%, chống bồng bềnh say xe.\n"
+                . "11. XỬ LÝ MÂU THUẪN: Nếu khách nói mâu thuẫn như 'đặt 1 vé cho 2 người', hãy khéo léo xác nhận lại: 'Dạ em hiểu mình cần đặt 2 giường cho 2 người đi cùng nhau đúng không ạ?' trước khi giữ chỗ.\n"
+                . "12. ĐỒNG BỘ NÚT BẤM: Khi hướng dẫn khách giữ vé trên thẻ chuyến xe, chỉ hướng dẫn bấm trực tiếp vào mã ghế màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ.";
 
             // Xây dựng contents đa lượt (Multi-turn conversation history)
             $contents = [];
@@ -2117,9 +2127,10 @@ class AiAssistantController extends Controller
 
             // Danh sách model ưu tiên tự động chuyển đổi khi gặp tải cao hoặc hạn ngạch
             $candidateModels = [
-                'gemini-3-flash-preview',
-                'gemini-3.1-flash-lite',
-                'gemini-flash-latest'
+                'gemini-2.5-flash',
+                'gemini-2.0-flash',
+                'gemini-1.5-flash',
+                'gemini-2.5-pro'
             ];
 
             foreach ($candidateModels as $modelName) {
@@ -3474,14 +3485,14 @@ class AiAssistantController extends Controller
     public function handleSeatPhysicsInquiry(string $message, string $lower, $user, array $history = []): ?array
     {
         $unaccented = self::stripVN($message);
-        $isSayXe = (bool) preg_match('/(say xe|say tau|chong mat|non nao|buon non|\boi mua\b|tien dinh|chong say|it rung|triet tieu rung|hay say|\bsay\b)/i', $unaccented)
-            || (bool) preg_match('/(say xe|say tàu|chóng mặt|nôn nao|buồn nôn|ói mửa|tiền đình|chống say|ít rung|triệt tiêu rung|hay say|\bsay\b)/ui', $lower);
-        $isPairOrFamily = (bool) preg_match('/(tre con|tre em|em be|con nho|2 nguoi|hai nguoi|2 ve|hai ve|canh nhau|ghe doi|ghe lien|cap doi|ba cua toi|di cung ba|di cung me)/i', $unaccented)
-            || (bool) preg_match('/(trẻ con|trẻ em|em bé|con nhỏ|2 người|hai người|2 vé|hai vé|cạnh nhau|ghế đôi|ghế liền|cặp đôi|bà của tôi|đi cùng bà|đi cùng mẹ)/ui', $lower);
-        $isElderly = (bool) preg_match('/(nguoi gia|lon tuoi|ong ba|ba me gia|chan yeu|kho di lai|\bba\b|ba cua toi|ba toi|ong toi|ong cua toi|cu)/i', $unaccented)
-            || (bool) preg_match('/(người già|lớn tuổi|ông bà|ba mẹ già|chân yếu|khó đi lại|\bbà\b|bà của tôi|bà tôi|ông tôi|ông của tôi|cụ)/ui', $lower);
-        $isSeatInquiry = (bool) preg_match('/(ghe nao|chon ghe|tu van ghe|ghe trong|so do ghe|vi tri nao|chon giup ghe|dat \d+ ve|chot ghe|dat ve|dat xe|tim ve|tim xe|co ve|co chuyen|co xe|chuyen xe|tuyen xe)/i', $unaccented)
-            || (bool) preg_match('/(ghế nào|chọn ghế|tư vấn ghế|ghế trống|sơ đồ ghế|vị trí nào|chọn giúp ghế|đặt \d+ vé|chốt ghế|đặt vé|đặt xe|tìm vé|tìm xe|có vé|có chuyến|có xe|chuyến xe|tuyến xe)/ui', $lower);
+        $isSayXe = (bool) preg_match('/(\bsay xe\b|\bsay tau\b|\bchong mat\b|\bnon nao\b|\bbuon non\b|\boi mua\b|\btien dinh\b|\bchong say\b|\bit rung\b|\btriet tieu rung\b|\bhay say\b)/i', $unaccented)
+            || (bool) preg_match('/(\bsay xe\b|\bsay tàu\b|\bchóng mặt\b|\bnôn nao\b|\bbuồn nôn\b|\bói mửa\b|\btiền đình\b|\bchống say\b|\bít rung\b|\btriệt tiêu rung\b|\bhay say\b)/ui', $lower);
+        $isPairOrFamily = (bool) preg_match('/(\btre con\b|\btre em\b|\bem be\b|\bcon nho\b|\b2\s*nguoi\b|\bhai\s*nguoi\b|\b2\s*ve\b|\bhai\s*ve\b|\bcanh nhau\b|\bghe doi\b|\bghe lien\b|\bcap doi\b|\bba cua toi\b|\bdi cung ba\b|\bdi cung me\b)/i', $unaccented)
+            || (bool) preg_match('/(\btrẻ con\b|\btrẻ em\b|\bem bé\b|\bcon nhỏ\b|\b2\s*người\b|\bhai\s*người\b|\b2\s*vé\b|\bhai\s*vé\b|\bcạnh nhau\b|\bghế đôi\b|\bghế liền\b|\bcặp đôi\b|\bbà của tôi\b|\bđi cùng bà\b|\bđi cùng mẹ\b)/ui', $lower);
+        $isElderly = (bool) preg_match('/(\bnguoi gia\b|\blon tuoi\b|\bong ba\b|\bba me gia\b|\bchan yeu\b|\bkho di lai\b|\bba toi\b|\bong toi\b|\bong cua toi\b|\bcu ong\b|\bcu ba\b)/i', $unaccented)
+            || (bool) preg_match('/(\bngười già\b|\blớn tuổi\b|\bông bà\b|\bba mẹ già\b|\bchân yếu\b|\bkhó đi lại\b|\bbà tôi\b|\bông tôi\b|\bông của tôi\b|\bcụ ông\b|\bcụ bà\b)/ui', $lower);
+        $isSeatInquiry = (bool) preg_match('/(\bghe nao\b|\bchon ghe\b|\btu van ghe\b|\bghe trong\b|\bso do ghe\b|\bvi tri nao\b|\bchon giup ghe\b|\bchot ghe\b|\bghe em\b|\btang 1\b|\btang 2\b|\btang duoi\b|\btang tren\b)/i', $unaccented)
+            || (bool) preg_match('/(\bghế nào\b|\bchọn ghế\b|\btư vấn ghế\b|\bghế trống\b|\bsơ đồ ghế\b|\bvị trí nào\b|\bchọn giúp ghế\b|\bchốt ghế\b|\bghế êm\b|\btầng 1\b|\btầng 2\b|\btầng dưới\b|\btầng trên\b)/ui', $lower);
 
         // Trường hợp hỏi về xe máy, gửi xe máy, gửi hàng hóa bưu phẩm
         if (
