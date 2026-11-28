@@ -112,15 +112,22 @@ class AiAssistantController extends Controller
         $currentUnaccented = self::stripVN($currentMessage);
 
         // 1. Nhận diện say xe & vấn đề sức khỏe (Xuyên suốt các lượt chat)
+        // Dùng \b word boundary chặt chẽ để tuyệt đối không bị trùng với các từ phổ thông như "tôi", "nói", "ngồi", "thôi"...
+        $hasSayXe = (bool) preg_match('/\b(say xe|say tau|say tàu|chóng mặt|chong mat|buồn nôn|buon non|nôn nao|non nao|tiền đình|tien dinh|chống say|chong say|hay say|dễ say|de say|mắc ói|mac oi|nôn mửa|non mua|sợ say|so say|\bsay\b)/ui', $combinedText)
+            || (bool) preg_match('/\b(say xe|say tau|chong mat|buon non|non nao|tien dinh|chong say|hay say|de say|mac oi|non mua|so say|\bsay\b)/i', $unaccentedCombined);
+
         // Nếu người dùng bảo "không say", "hết say xe", "không bị say xe" thì reset cờ say xe
-        $hasSayXe = (bool) preg_match('/(say|chong mat|non|oi|say xe|say tau|tien dinh|chong say|em ai|it rung|non nao|hoa mat)/i', $unaccentedCombined);
-        if (preg_match('/(khong say|het say|khong bi say|khong con say|khong can chong say)/i', $currentUnaccented)) {
+        if (preg_match('/\b(khong say|het say|khong bi say|khong con say|khong can chong say|không say|hết say|không bị say|không còn say)\b/ui', $currentMessage) || preg_match('/\b(khong say|het say|khong bi say|khong con say)\b/i', $currentUnaccented)) {
             $hasSayXe = false;
         }
 
-        $isElderly = (bool) preg_match('/(gia|lon tuoi|nguoi gia|cao tuoi|ong ba|ba me|me gia|dau lung|thoat vi|chan yeu|kho di lai|ba cua toi|ba toi|ong toi)/i', $unaccentedCombined);
-        $isBaby = (bool) preg_match('/(em be|tre em|tre nho|con nho|so sinh|be con|mang theo con)/i', $unaccentedCombined);
-        $isRiengTu = (bool) preg_match('/(rieng tu|rem|kin|khong gian rieng|phong rieng|tranh nguoi|kin dao|rem che)/i', $unaccentedCombined);
+        $isElderly = (bool) preg_match('/\b(người già|nguoi gia|lớn tuổi|lon tuoi|cao tuổi|cao tuoi|ông bà|ong ba|ba mẹ già|mẹ già|me gia|đau lưng|dau lung|thoát vị|thoat vi|chân yếu|chan yeu|khó đi lại|kho di lai|bà của tôi|bà tôi|ông tôi|ông của tôi)\b/ui', $combinedText);
+        $isBaby = (bool) preg_match('/\b(em bé|em be|trẻ em|tre em|trẻ nhỏ|tre nho|con nhỏ|con nho|sơ sinh|so sinh|bé con|be con|mang theo con|con nít|con nit)\b/ui', $combinedText);
+        $isRiengTu = (bool) preg_match('/\b(riêng tư|rieng tu|rèm kín|rem kin|không gian riêng|khong gian rieng|phòng riêng|phong rieng|kín đáo|kin dao|rèm che|rem che|khép kín|khep kin|tầng 2|tang 2)\b/ui', $combinedText);
+
+        // Kiểm tra xem khách có đang nhấn mạnh / nhắc lại lần 2 muốn riêng tư / tầng 2 không
+        $isInsistingRiengTu = (bool) preg_match('/(cu dat rieng tu|muon dat rieng tu|dat rieng tu di|cu dat khong gian rieng tu|chon rieng tu|chon tang 2|cu tang 2|thich rieng tu|cu dat tang 2|da noi.*rieng tu|da bao.*rieng tu|van muon.*rieng tu|cu.*rieng tu|lay tang 2|chon tang 2|dat tang 2)/i', $currentUnaccented)
+            || (bool) preg_match('/(cứ đặt riêng tư|muốn đặt riêng tư|đặt riêng tư đi|cứ đặt không gian riêng tư|chọn riêng tư|chọn tầng 2|cứ tầng 2|thích riêng tư|cứ đặt tầng 2|đã nói.*riêng tư|đã bảo.*riêng tư|vẫn muốn.*riêng tư|cứ.*riêng tư|lấy tầng 2|chọn tầng 2|đặt tầng 2)/ui', $currentMessage);
 
         // 2. Nhận diện số lượng khách/vé (Cập nhật từ tin nhắn gần nhất có chứa số lượng)
         $passengerCount = 1;
@@ -189,6 +196,7 @@ class AiAssistantController extends Controller
             'is_elderly' => $isElderly,
             'is_baby' => $isBaby,
             'is_rieng_tu' => $isRiengTu,
+            'is_insisting_rieng_tu' => $isInsistingRiengTu,
             'is_window_preferred' => $isWindowPreferred,
             'is_seat_change_request' => $isSeatChangeRequest,
             'passenger_count' => $passengerCount,
@@ -544,30 +552,41 @@ class AiAssistantController extends Controller
     public function confirmPayment(Request $request)
     {
         $bookingCode = trim((string) $request->input('booking_code', ''));
-        $booking = Booking::where('booking_code', $bookingCode)->first();
+        $booking = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])
+            ->where('booking_code', $bookingCode)
+            ->first();
 
         if ($booking) {
             $depositAmount = (float) round($booking->total_amount * 0.3);
             $booking->update([
                 'payment_status' => 'DEPOSIT_PAID',
                 'paid_amount' => $depositAmount,
+                'payment_confirmed_at' => now(),
+                'payment_method' => 'DEPOSIT_30',
                 'checkin_status' => 'CONFIRMED',
             ]);
+
+            // Gửi email vé điện tử tự động về Gmail của khách hàng
+            if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
+                try {
+                    \App\Services\EmailService::sendBookingConfirmation($booking);
+                } catch (\Throwable $mailEx) {
+                    \Illuminate\Support\Facades\Log::warning("[AI_BOOKING_EMAIL_ERR] " . $mailEx->getMessage());
+                }
+            }
 
             return response()->json([
                 'success' => true,
                 'booking_code' => $booking->booking_code,
-                'message' => "Bạn đã thanh toán thành công thật như bài mình đã làm nhé! Vé của bạn đã được xuất và lưu vào tài khoản. Mời bạn bấm vào liên kết bên dưới để xem chi tiết vé xe.",
-                'redirect_url' => '/my-bookings',
+                'message' => "Thanh toán đặt cọc 30% giữ chỗ thành công! Vé của bạn đã được kích hoạt và thông tin xác nhận đã gửi về email của bạn.",
+                'redirect_url' => "/booking/{$booking->booking_code}/payment",
             ]);
         }
 
         return response()->json([
-            'success' => true,
-            'booking_code' => $bookingCode,
-            'message' => "Hệ thống đã ghi nhận thanh toán đặt cọc thành công! Vé của bạn đã sẵn sàng.",
-            'redirect_url' => '/my-bookings',
-        ]);
+            'success' => false,
+            'message' => "Không tìm thấy mã đặt chỗ {$bookingCode}.",
+        ], 404);
     }
 
     /**
@@ -583,14 +602,18 @@ class AiAssistantController extends Controller
         // 1. Tìm booking code nếu khách có nói hoặc trong lịch sử chat
         $booking = null;
         if (preg_match('/KT-[A-Z0-9]{6}/i', $message, $mCode)) {
-            $booking = Booking::where('booking_code', strtoupper($mCode[0]))->first();
+            $booking = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])
+                ->where('booking_code', strtoupper($mCode[0]))
+                ->first();
         }
 
         if (!$booking && !empty($history)) {
             for ($i = count($history) - 1; $i >= 0; $i--) {
                 $hText = $history[$i]['content'] ?? '';
                 if (preg_match('/KT-[A-Z0-9]{6}/i', $hText, $hmCode)) {
-                    $booking = Booking::where('booking_code', strtoupper($hmCode[0]))->first();
+                    $booking = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])
+                        ->where('booking_code', strtoupper($hmCode[0]))
+                        ->first();
                     if ($booking)
                         break;
                 }
@@ -598,14 +621,16 @@ class AiAssistantController extends Controller
         }
 
         if (!$booking && $user) {
-            $booking = Booking::where('user_id', $user->id)
+            $booking = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])
+                ->where('user_id', $user->id)
                 ->where('payment_status', 'UNPAID')
                 ->latest()
                 ->first();
         }
 
         if (!$booking) {
-            $booking = Booking::where('payment_status', 'UNPAID')
+            $booking = Booking::with(['trip.route', 'trip.bus', 'trip.driver', 'pickupStop', 'dropoffStop', 'bookingSeats', 'user'])
+                ->where('payment_status', 'UNPAID')
                 ->latest()
                 ->first();
         }
@@ -615,28 +640,33 @@ class AiAssistantController extends Controller
             $booking->update([
                 'payment_status' => 'DEPOSIT_PAID',
                 'paid_amount' => $depositAmount,
+                'payment_confirmed_at' => now(),
+                'payment_method' => 'DEPOSIT_30',
                 'checkin_status' => 'CONFIRMED',
             ]);
 
+            if ($booking->customer_email && filter_var($booking->customer_email, FILTER_VALIDATE_EMAIL)) {
+                try {
+                    \App\Services\EmailService::sendBookingConfirmation($booking);
+                } catch (\Throwable $mailEx) {
+                    \Illuminate\Support\Facades\Log::warning("[AI_PAYMENT_CONFIRM_EMAIL_ERR] " . $mailEx->getMessage());
+                }
+            }
+
             return [
-                'reply' => "Bạn đã thanh toán thành thật như bài mình đã làm nhé! 🎉 Vé **{$booking->booking_code}** của bạn đã được xuất và lưu vào tài khoản thành công. Bạn hãy bấm vào liên kết bên dưới để chuyển sang Quản Lý Vé xem chi tiết vé và mã QR lên xe nhé!",
+                'reply' => "Dạ em đã kiểm tra và xác nhận thanh toán cọc 30% thành công cho vé **{$booking->booking_code}** rồi ạ! 🎉 Vé của bạn đã được kích hoạt chính thức trên hệ thống và gửi thông tin xác nhận qua Email của bạn. Bạn có thể bấm vào liên kết bên dưới để xem chi tiết trang thanh toán nhé!",
                 'action' => [
-                    'type' => 'go_to_my_bookings',
-                    'title' => '🎫 Chuyển Sang Quản Lý Vé Để Xem Vé ➔',
-                    'url' => '/my-bookings',
+                    'type' => 'view_payment_detail',
+                    'title' => '📄 Xem Trang Thanh Toán Chi Tiết ➔',
+                    'url' => "/booking/{$booking->booking_code}/payment",
                 ],
-                'suggestions' => ['Xem vé của tôi', 'Hủy vé hoàn tiền', 'Chính sách cọc 30%', 'Tư vấn chuyến mới'],
+                'suggestions' => ['Xem vé của tôi', 'Chính sách cọc 30%', 'Tư vấn chuyến mới'],
             ];
         }
 
         return [
-            'reply' => "Bạn đã thanh toán thành thật như bài mình đã làm nhé! 🎉 Vé của bạn đã được cập nhật thành công trên hệ thống Nhà xe Kiến Trúc. Bạn có thể bấm vào mục Quản Lý Vé bên dưới để xem toàn bộ thông tin vé của mình nhé!",
-            'action' => [
-                'type' => 'go_to_my_bookings',
-                'title' => '🎫 Mở Quản Lý Vé Của Tôi ➔',
-                'url' => '/my-bookings',
-            ],
-            'suggestions' => ['Xem vé của tôi', 'Chính sách xe', 'Tư vấn chuyến khác'],
+            'reply' => "Dạ em chưa tìm thấy mã vé của bạn. Bạn vui lòng đọc giúp em **Mã vé** (ví dụ KT-XXXXXX) để em kiểm tra trạng thái thanh toán ngay nhé! 😊",
+            'suggestions' => ['Tôi muốn đặt xe', 'Chính sách cọc 30%'],
         ];
     }
 
@@ -2312,7 +2342,11 @@ class AiAssistantController extends Controller
                 . "      + Ghế gần cửa sổ TẦNG 1 (như giường em vừa đổi bên dưới): Vừa sát cửa sổ ngắm trọn cảnh đẹp, vừa ở tầng thấp sát sàn xe nên ít bị lắc ngang, vẫn đỡ say xe rất tốt (giảm ~85% say xe).\n"
                 . "      + Cảnh báo khách: Anh/chị nên tránh các ghế gần cửa sổ TẦNG 2 (dãy B) hoặc đuôi xe, vì ở trên cao lực văng ly tâm khi xe ôm cua đèo dốc mạnh hơn gấp 2.5 lần, nhìn vật thể lướt nhanh ngang cửa sổ sẽ làm tiền đình xung đột gây say xe nặng hơn nhiều.\n"
                 . "   d. Kết luận: 'Vì vậy, em đã đổi sang giường gần cửa sổ TẦNG 1 trên thẻ chuyến xe mới bên dưới cho mình rồi ạ! Bạn kiểm tra lại thẻ chuyến xe mới và bấm vào nút \"⚡ Tự Động Chọn Ghế Này Ngay\" để giữ chỗ 5 phút nhé!'\n"
-                . "   * TUYỆT ĐỐI KHÔNG tự gõ các mã giả lập hoặc văn bản trong ngoặc vuông mô phỏng thẻ chuyến xe, vì giao diện web đã tự động gắn thẻ chuyến xe trực quan ngay bên dưới tin nhắn!";
+                . "   * TUYỆT ĐỐI KHÔNG tự gõ các mã giả lập hoặc văn bản trong ngoặc vuông mô phỏng thẻ chuyến xe, vì giao diện web đã tự động gắn thẻ chuyến xe trực quan ngay bên dưới tin nhắn!\n"
+                . "14. TƯ VẤN KHÔNG GIAN RIÊNG TƯ (TẦNG 2 CÓ RÈM KÍN 100%):\n"
+                . "   - LẦN 1 KHI KHÁCH HỎI RIÊNG TƯ: Bạn giải thích nhẹ nhàng: Tầng 1 thì êm ái chống xóc tốt nhất nhưng không có rèm kín, còn Tầng 2 có rèm kéo kín 100% đảm bảo sự riêng tư tuyệt đối cho bố con/gia đình. Khéo léo hỏi khách muốn ưu tiên êm ái hay muốn chuyển hẳn sang Tầng 2 riêng tư.\n"
+                . "   - KHI KHÁCH NHẮC LẠI LẦN 2 HOẶC KHẲNG ĐỊNH MUỐN ĐẶT RIÊNG TƯ (ví dụ: 'tôi muốn đặt không gian riêng tư đi', 'cứ đặt riêng tư đi', 'chọn tầng 2 cho tôi'...):\n"
+                . "     BẠN TUYỆT ĐỐI KHÔNG HỎI LẠI HOẶC CẢNH BÁO LẶP LẠI NỮA! Hãy ngay lập tức vui vẻ tôn trọng quyết định của khách: 'Dạ vâng, em đã cập nhật lại thẻ chuyến xe bên dưới với 2 giường TẦNG 2 (có rèm che kín 100% để đảm bảo sự riêng tư tuyệt đối cho anh và bé rồi ạ). Bạn kiểm tra lại thẻ chuyến xe mới và bấm vào nút \"⚡ Tự Động Chọn Ghế Này Ngay\" để giữ chỗ 5 phút nhé! (Anh nhớ chuẩn bị thêm thuốc chống say trước khi khởi hành nhé ạ)'.";
 
             // Xây dựng contents đa lượt (Multi-turn conversation history - tối đa 12 lượt)
             $contents = [];
@@ -2529,8 +2563,12 @@ class AiAssistantController extends Controller
         }
 
         // Phân tích thể trạng & nhu cầu khách hàng qua câu hỏi hiện tại HOẶC bộ nhớ đàm thoại (Deep Context Retention)
-        $isSayXe = !empty($memory['has_motion_sickness']) || (bool) preg_match('/(say|chóng mặt|nôn|ói|lắc|say xe|say tàu|tiền đình|chống say|êm ái|ít rung|mệt|nôn nao|hoa mắt)/u', $lower);
-        $isRiengTu = !empty($memory['is_rieng_tu']) || (bool) preg_match('/(riêng tư|rèm|kín|không gian riêng|phòng riêng|tránh người|kín đáo|rèm che|khép kín|kéo rèm)/u', $lower);
+        // Dùng \b chặt chẽ để tuyệt đối không bị trùng với các từ như "tôi", "nói", "ngồi", "thôi"...
+        $isSayXe = !empty($memory['has_motion_sickness']) || (bool) preg_match('/\b(say xe|say tau|say tàu|chóng mặt|chong mat|buồn nôn|buon non|nôn nao|non nao|tiền đình|tien dinh|chống say|chong say|hay say|dễ say|de say|mắc ói|mac oi|nôn mửa|non mua|sợ say|so say|\bsay\b)/ui', $lower);
+        $isRiengTu = !empty($memory['is_rieng_tu']) || (bool) preg_match('/(riêng tư|rèm|kín|không gian riêng|phòng riêng|tránh người|kín đáo|rèm che|khép kín|kéo rèm|tầng 2)/u', $lower);
+        $isInsistingRiengTu = !empty($memory['is_insisting_rieng_tu'])
+            || (bool) preg_match('/(cu dat rieng tu|muon dat rieng tu|dat rieng tu di|cu dat khong gian rieng tu|chon rieng tu|chon tang 2|cu tang 2|thich rieng tu|cu dat tang 2)/i', $unaccented)
+            || (bool) preg_match('/(cứ đặt riêng tư|muốn đặt riêng tư|đặt riêng tư đi|cứ đặt không gian riêng tư|chọn riêng tư|chọn tầng 2|cứ tầng 2|thích riêng tư|cứ đặt tầng 2)/ui', $lower);
         $isNgamCanh = !empty($memory['is_window_preferred']) || (bool) preg_match('/(ngắm cảnh|ngắm đường|ngắm biển|chụp hình|chụp ảnh|view đẹp|cửa sổ|phong cảnh|ngắm đèo|ngắm núi|panorama|sát cửa|cạnh cửa|gần cửa)/u', $lower);
         $isElderly = !empty($memory['is_elderly']) || (bool) preg_match('/(già|lớn tuổi|người già|người cao tuổi|ông bà|ba mẹ|mẹ già|đau lưng|thoát vị|đau khớp|chân yếu|leo trèo|khó đi lại|\bbà\b|bà của tôi|bà tôi|ông tôi|ông của tôi|cụ)/u', $lower);
         $isBaby = !empty($memory['is_baby']) || (bool) preg_match('/(em bé|trẻ em|trẻ nhỏ|con nhỏ|sơ sinh|bế con|bé|em nhỏ|pha sữa|mang theo con)/u', $lower);
@@ -2579,7 +2617,7 @@ class AiAssistantController extends Controller
             ['B11', 'B12'],
         ];
 
-        return $trips->map(function ($t) use ($isSayXe, $isRiengTu, $isNgamCanh, $isElderly, $isBaby, $isTall, $isQuiet, $isLuggage, $isPregnant, $isBusiness, $numPassengers, $f1Seats, $f2Seats, $f1Pairs, $f2Pairs) {
+        return $trips->map(function ($t) use ($isSayXe, $isRiengTu, $isInsistingRiengTu, $isNgamCanh, $isElderly, $isBaby, $isTall, $isQuiet, $isLuggage, $isPregnant, $isBusiness, $numPassengers, $f1Seats, $f2Seats, $f1Pairs, $f2Pairs) {
             $depTime = Carbon::parse($t->departure_time);
 
             // Quét danh sách ghế đã được đặt thực tế trên chuyến này (loại trừ vé hủy và vé giữ chỗ UNPAID quá 5 phút)
@@ -2603,8 +2641,41 @@ class AiAssistantController extends Controller
             // Cảnh báo nếu chuyến xe không đủ số ghế theo yêu cầu của đoàn
             $isLowSeatsWarning = ($totalAvail < $numPassengers);
 
-            // 1. SAY XE VÀ CẦN RIÊNG TƯ
-            if ($isSayXe && $isRiengTu) {
+            // 0. KHÁCH NHẤN MẠNH / NHẮC LẠI LẦN 2 MUỐN RIÊNG TƯ (HOẶC CHỈ CẦN RIÊNG TƯ MÀ KHÔNG SAY XE)
+            if ($isInsistingRiengTu || ($isRiengTu && !$isSayXe)) {
+                $reasonTag = 'rieng_tu';
+                $score = '99% Riêng Tư Tuyệt Đối';
+                if (!empty($availF2)) {
+                    if ($numPassengers >= 2) {
+                        $pair = null;
+                        foreach ($f2Pairs as $p) {
+                            if (in_array($p[0], $availF2) && in_array($p[1], $availF2)) {
+                                $pair = $p;
+                                break;
+                            }
+                        }
+                        $chosenSeats = $pair ?: array_slice($availF2, 0, 2);
+                    } else {
+                        $targetF2 = ['B01', 'B02', 'B04', 'B05'];
+                        $pick = null;
+                        foreach ($targetF2 as $s) {
+                            if (in_array($s, $availF2)) {
+                                $pick = $s;
+                                break;
+                            }
+                        }
+                        $chosenSeats = [$pick ?: ($availF2[0] ?? 'B01')];
+                    }
+                    $seatsStr = implode(', ', $chosenSeats);
+                    $seatAdvice = "Tầng 2 - Rèm che kín 100% ({$seatsStr}): Cặp giường Tầng 2 có rèm kéo kín 100% che chắn riêng tư tuyệt đối, yên tĩnh và thoải mái cho hai bạn." . ($isSayXe ? " (Lưu ý: Bạn nhớ chuẩn bị thêm thuốc chống say trước khi khởi hành nhé ạ!)" : "");
+                } else {
+                    $chosenSeats = array_slice($availF1, 0, $numPassengers);
+                    $seatsStr = implode(', ', $chosenSeats);
+                    $seatAdvice = "Tầng 1 ({$seatsStr}): Giường Tầng 2 rèm kín đã kín chỗ, em chọn giường Tầng 1 êm ái thay thế cho bạn.";
+                }
+            }
+            // 1. SAY XE VÀ CẦN RIÊNG TƯ (LẦN 1 TƯ VẤN)
+            elseif ($isSayXe && $isRiengTu) {
                 $reasonTag = 'say_xe';
                 $score = '99% Y Khoa Khuyên';
                 if (!empty($availF1)) {
@@ -3677,8 +3748,8 @@ class AiAssistantController extends Controller
         }
 
         // 5. Thể trạng say xe / đau đầu / người già / trẻ nhỏ (Motion Sickness & Conditions)
-        $hasMotionSickness = (bool) preg_match('/(say xe|say tau|chong mat|non nao|buon non|\boi mua\b|tien dinh|chong say|it rung|triet tieu rung|hay say|\bsay\b)/i', $unaccented);
-        $hasBaby = (bool) preg_match('/(tre con|tre em|em be|con nho|so sinh|be nho|pha sua|mang theo con)/i', $unaccented);
+        $hasMotionSickness = (bool) preg_match('/\b(say xe|say tau|chong mat|non nao|buon non|oi mua|tien dinh|chong say|hay say|\bsay\b)/i', $unaccented);
+        $hasBaby = (bool) preg_match('/\b(tre con|tre em|em be|con nho|so sinh|be nho|pha sua|mang theo con)\b/i', $unaccented);
 
         // 6. Xử lý thêm mâu thuẫn cổ điển "1 vé cho 2 người"
         if (

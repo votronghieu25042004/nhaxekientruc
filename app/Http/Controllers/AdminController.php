@@ -475,7 +475,7 @@ class AdminController extends Controller
             $bookingsQuery->orderBy('bookings.id', 'desc');
         }
 
-        $limit = $searchQuery ? 1500 : 1000; // Tăng lên 1000 vé để bao quát toàn bộ lịch sử ngày cũ và ngày mới
+        $limit = 10000; // Mở rộng sức chứa lên 10.000 vé để bao quát toàn bộ vé đặt hệ thống theo yêu cầu admin
         $recentBookings = $bookingsQuery
             ->take($limit)
             ->get()

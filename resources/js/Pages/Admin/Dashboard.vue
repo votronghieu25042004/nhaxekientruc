@@ -331,21 +331,27 @@
                   <div class="mt-0.5">
                     <span
                       v-if="b.payment_status === 'CANCELLED' || b.payment_status === 'REFUNDED'"
-                      class="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200 inline-block"
+                      class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200 inline-block"
                     >
                       ✕ Hoàn Tiền
                     </span>
                     <span
                       v-else-if="b.payment_status === 'PAID'"
-                      class="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-block"
+                      class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-block"
                     >
-                      ✓ Đã Thanh Toán
+                      ✓ Đã Thanh Toán 100%
+                    </span>
+                    <span
+                      v-else-if="b.payment_status === 'DEPOSIT_PAID' || b.paid_amount > 0"
+                      class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-teal-50 text-teal-700 border border-teal-200 inline-block"
+                    >
+                      ✓ Đã Cọc 30% ({{ formatCurrency(b.paid_amount || (b.total_amount * 0.3)) }})
                     </span>
                     <span
                       v-else
-                      class="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200 inline-block"
+                      class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-300 inline-block animate-pulse"
                     >
-                      ⏳ Cọc 30%
+                      ⏳ Giữ chỗ (Chưa TT)
                     </span>
                   </div>
                 </td>
@@ -955,12 +961,20 @@
                           ✓ Đã TT 100%
                         </span>
                       </div>
-                      <div v-else>
-                        <span class="font-mono font-bold text-amber-700 block text-xs">
+                      <div v-else-if="b.payment_status === 'DEPOSIT_PAID' || b.paid_amount > 0">
+                        <span class="font-mono font-bold text-teal-700 block text-xs">
                           Đã cọc: {{ formatCurrency(b.paid_amount || (b.total_amount * 0.3)) }}
                         </span>
+                        <span class="text-[9px] px-2 py-0.5 rounded-md font-bold inline-block bg-teal-100 text-teal-900 border border-teal-300">
+                          ✓ Đã Cọc 30% • Còn thu: {{ formatCurrency(b.total_amount - (b.paid_amount || (b.total_amount * 0.3))) }}
+                        </span>
+                      </div>
+                      <div v-else>
+                        <span class="font-mono font-bold text-amber-700 block text-xs">
+                          Cần cọc: {{ formatCurrency(b.total_amount * 0.3) }}
+                        </span>
                         <span class="text-[9px] px-2 py-0.5 rounded-md font-bold inline-block bg-amber-100 text-amber-900 border border-amber-300">
-                          ⚠️ Cọc 30% • Còn thu: {{ formatCurrency(b.total_amount - (b.paid_amount || (b.total_amount * 0.3))) }}
+                          ⏳ Đang giữ chỗ (Chưa cọc)
                         </span>
                       </div>
                     </div>

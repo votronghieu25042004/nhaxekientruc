@@ -76,35 +76,27 @@
               </button>
             </div>
 
-            <!-- TAB 1: QUẦY TRỢ LÝ AI (VIRTUAL ASSISTANT KIOSK STANDEE) -->
-            <!-- TAB 1: QUẦY TRỢ LÝ AI (FUTURISTIC AI NEURAL CO-PILOT) -->
+            <!-- TAB 1: QUẦY TRỢ LÝ AI (SANG TRỌNG, SÁNG SỦA, CHUYÊN NGHIỆP DEPLOY WEB) -->
             <div v-if="sidebarTab === 'kiosk'" class="flex-1 flex flex-col p-3 overflow-y-auto custom-scrollbar justify-between space-y-3">
-              <!-- Holographic AI Chamber Pod -->
-              <div class="relative rounded-3xl p-3.5 text-center overflow-hidden bg-slate-900/90 border border-red-500/30 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl text-white">
-                <!-- Ambient Holographic Glow Top -->
-                <div class="absolute -top-10 left-1/2 -translate-x-1/2 w-40 h-20 bg-gradient-to-b from-red-500/20 via-rose-500/10 to-transparent blur-xl pointer-events-none"></div>
-
-                <div class="relative z-10 flex items-center justify-between pb-2 border-b border-white/10">
-                  <span class="text-[9.5px] font-black tracking-widest text-red-300 uppercase flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping"></span>
-                    <span>AI NEURAL CORE</span>
+              <!-- Thẻ Trợ Lý AI Nhà Xe -->
+              <div class="relative rounded-3xl p-4 text-center overflow-hidden bg-gradient-to-b from-white via-rose-50/50 to-amber-50/30 border border-red-200/90 shadow-md text-slate-800">
+                <div class="relative z-10 flex items-center justify-between pb-2 border-b border-red-100">
+                  <span class="text-[10px] font-black text-red-600 uppercase flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    <span>Trợ lý AI Nhà xe</span>
                   </span>
-                  <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[9px] font-black text-emerald-300 flex items-center gap-1 shadow-xs">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>GEMINI 3.1 PRO</span>
+                  <span class="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-300 text-[9.5px] font-black text-emerald-700 flex items-center gap-1 shadow-2xs">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Trực tuyến 24/7</span>
                   </span>
                 </div>
 
-                <!-- Linh vật Trợ Lý AI trong Buồng Chiếu Hologram -->
-                <div class="relative my-2.5 h-44 sm:h-48 flex flex-col items-center justify-center">
-                  <!-- Đĩa chiếu Hologram đa giác bên dưới chân linh vật -->
-                  <div class="absolute bottom-1 w-28 h-5 rounded-full bg-cyan-500/20 border border-cyan-400/40 blur-[1px] shadow-[0_0_20px_rgba(6,182,212,0.4)] animate-pulse"></div>
-                  <div class="absolute bottom-2 w-20 h-3 rounded-full bg-red-500/30 blur-xs"></div>
-
+                <!-- Linh vật Trợ Lý AI -->
+                <div class="relative my-3 h-44 sm:h-48 flex flex-col items-center justify-center">
                   <img
                     src="/images/mascot-transparent.png"
                     alt="Trợ lý AI Nhà xe Kiến Trúc"
-                    class="h-full w-auto object-contain drop-shadow-[0_4px_16px_rgba(239,68,68,0.35)] transition-transform duration-300"
+                    class="h-full w-auto object-contain drop-shadow-[0_6px_16px_rgba(220,38,38,0.2)] transition-transform duration-300"
                     :class="[
                       isCheckingLedger ? 'animate-ledger-check' : 'animate-mascot-float',
                       isSpeaking ? 'scale-105' : ''
@@ -114,71 +106,70 @@
                   <!-- Huy hiệu đang kiểm tra sơ đồ chuyến xe -->
                   <div
                     v-if="isCheckingLedger"
-                    class="absolute bottom-2 px-2.5 py-1 rounded-full bg-amber-400 text-slate-950 font-black text-[9.5px] shadow-lg flex items-center gap-1.5 animate-bounce z-20 border border-amber-200"
+                    class="absolute bottom-2 px-3 py-1 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] shadow-md flex items-center gap-1.5 animate-bounce z-20 border border-amber-200"
                   >
                     <span>⚡</span>
-                    <span>Đang rà soát dữ liệu ghế...</span>
+                    <span>Đang kiểm tra vé...</span>
                   </div>
                 </div>
 
-                <!-- Cột Sóng Âm Thanh Equalizer Cyber Neon -->
-                <div class="flex items-center gap-1.5 justify-center py-1.5 bg-black/40 rounded-xl border border-white/10 shadow-inner">
-                  <span class="w-1 bg-cyan-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-5 animate-pulse shadow-[0_0_6px_#22d3ee]' : 'h-1.5'"></span>
-                  <span class="w-1 bg-amber-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-7 animate-bounce shadow-[0_0_6px_#fbbf24]' : 'h-2'"></span>
-                  <span class="w-1 bg-rose-500 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-9 animate-pulse shadow-[0_0_8px_#f43f5e]' : 'h-3'"></span>
-                  <span class="w-1 bg-amber-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-7 animate-bounce shadow-[0_0_6px_#fbbf24]' : 'h-2'"></span>
-                  <span class="w-1 bg-cyan-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-5 animate-pulse shadow-[0_0_6px_#22d3ee]' : 'h-1.5'"></span>
+                <!-- Cột Sóng Âm Thanh Khi AI Trả Lời -->
+                <div class="flex items-center gap-1.5 justify-center py-2 bg-white/95 rounded-2xl border border-red-100 shadow-2xs">
+                  <span class="w-1.5 bg-red-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-5 animate-pulse' : 'h-1.5'"></span>
+                  <span class="w-1.5 bg-amber-500 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-7 animate-bounce' : 'h-2'"></span>
+                  <span class="w-1.5 bg-red-600 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-9 animate-pulse' : 'h-3'"></span>
+                  <span class="w-1.5 bg-amber-500 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-7 animate-bounce' : 'h-2'"></span>
+                  <span class="w-1.5 bg-red-400 rounded-full transition-all duration-150" :class="(isSpeaking || isListeningVoice) ? 'h-5 animate-pulse' : 'h-1.5'"></span>
                 </div>
 
                 <!-- Trạng thái đàm thoại -->
-                <div class="mt-2 text-[10.5px] font-black">
-                  <span v-if="isCheckingLedger" class="text-amber-300 animate-pulse">⚡ AI đang kiểm tra chuyến xe trực tiếp...</span>
-                  <span v-else-if="isSpeaking" class="text-rose-300 animate-pulse">🔊 Trợ lý AI đang phản hồi...</span>
-                  <span v-else-if="isListeningVoice" class="text-emerald-300 animate-pulse">🎙️ Đang tiếp nhận giọng nói...</span>
-                  <span v-else class="text-slate-300 flex items-center justify-center gap-1.5">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                    <span class="tracking-wide">TRỰC TUYẾN 24/7 • SẴN SÀNG</span>
+                <div class="mt-2.5 text-[11px] font-bold">
+                  <span v-if="isCheckingLedger" class="text-amber-700 animate-pulse">⚡ Đang rà soát dữ liệu vé trực tiếp...</span>
+                  <span v-else-if="isSpeaking" class="text-red-600 animate-pulse">🔊 Trợ lý AI đang nói...</span>
+                  <span v-else-if="isListeningVoice" class="text-emerald-700 animate-pulse">🎙️ Đang lắng nghe bạn...</span>
+                  <span v-else class="text-slate-600 flex items-center justify-center gap-1.5 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Sẵn sàng hỗ trợ đặt vé 24/7</span>
                   </span>
                 </div>
               </div>
 
-              <!-- HUD NĂNG LỰC TRÍ TUỆ NHÂN TẠO (AI CAPABILITIES HUD - THAY THẾ MẪU CÂU CŨ) -->
+              <!-- DỊCH VỤ & CAM KẾT KHÁCH HÀNG -->
               <div class="space-y-2">
                 <div class="flex items-center justify-between text-[10px] font-black text-red-200/90 uppercase tracking-widest px-1">
-                  <span>⚡ NĂNG LỰC TRÍ TUỆ AI</span>
-                  <span class="text-[9px] px-1.5 py-0.2 rounded bg-white/10 text-emerald-300 font-mono">v3.5 PRO</span>
+                  <span>DỊCH VỤ NHÀ XE KIẾN TRÚC</span>
                 </div>
 
-                <!-- Capability Card 1: Trí Nhớ Đa Ngữ Cảnh (Context Memory) -->
-                <div class="p-2.5 rounded-2xl bg-black/30 border border-white/10 hover:border-red-400/40 transition shadow-sm space-y-1">
-                  <div class="flex items-center gap-1.5 text-xs font-bold text-red-100">
-                    <span class="text-sm">🧠</span>
-                    <span>Trí Nhớ Đa Ngữ Cảnh</span>
+                <!-- Card 1: Tổng đài 24/7 -->
+                <div class="p-2.5 rounded-2xl bg-white/15 border border-white/20 text-white shadow-xs space-y-1">
+                  <div class="flex items-center gap-1.5 text-xs font-black text-amber-200">
+                    <span>📞</span>
+                    <span>Hotline 24/7: 1900 6868</span>
                   </div>
-                  <p class="text-[10px] text-red-200/80 leading-relaxed">
-                    Tự động ghi nhớ say xe, số khách & thói quen từ các câu trước, không bao giờ quên khi đổi tuyến.
+                  <p class="text-[10.5px] text-red-100/90 leading-relaxed">
+                    Tư vấn lộ trình, hỗ trợ đặt vé & thông báo lịch xe đón trả tận nơi.
                   </p>
                 </div>
 
-                <!-- Capability Card 2: Khóa Giữ Ghế 5 Phút -->
-                <div class="p-2.5 rounded-2xl bg-black/30 border border-white/10 hover:border-cyan-400/40 transition shadow-sm space-y-1">
-                  <div class="flex items-center gap-1.5 text-xs font-bold text-cyan-200">
-                    <span class="text-sm">⏱️</span>
-                    <span>Khóa Giữ Chỗ 5 Phút</span>
+                <!-- Card 2: Cam kết giữ đúng chỗ -->
+                <div class="p-2.5 rounded-2xl bg-white/15 border border-white/20 text-white shadow-xs space-y-1">
+                  <div class="flex items-center gap-1.5 text-xs font-black text-emerald-200">
+                    <span>🛡️</span>
+                    <span>Cam Kết Đúng Ghế & Đúng Giờ</span>
                   </div>
-                  <p class="text-[10px] text-red-200/80 leading-relaxed">
-                    Tự động giữ ghế tức thì và kích hoạt đồng hồ đếm ngược 5 phút, giải phóng ghế tự động nếu chưa cọc.
+                  <p class="text-[10.5px] text-red-100/90 leading-relaxed">
+                    Khởi hành đúng giờ, giữ chuẩn xác vị trí giường, không bắt khách dọc đường.
                   </p>
                 </div>
 
-                <!-- Capability Card 3: Phân Biệt Hủy & Hoàn Cọc Thông Minh -->
-                <div class="p-2.5 rounded-2xl bg-black/30 border border-white/10 hover:border-amber-400/40 transition shadow-sm space-y-1">
-                  <div class="flex items-center gap-1.5 text-xs font-bold text-amber-200">
-                    <span class="text-sm">🛡️</span>
-                    <span>Tư Vấn & Hoàn Cọc 30%</span>
+                <!-- Card 3: Tiện nghi xe -->
+                <div class="p-2.5 rounded-2xl bg-white/15 border border-white/20 text-white shadow-xs space-y-1">
+                  <div class="flex items-center gap-1.5 text-xs font-black text-cyan-200">
+                    <span>☕</span>
+                    <span>Tiện Nghi Đẳng Cấp</span>
                   </div>
-                  <p class="text-[10px] text-red-200/80 leading-relaxed">
-                    Nhận biết chính xác khi bạn chỉ đổi ý hỏi đường và hỗ trợ hoàn tiền cọc 30% minh bạch khi có vé thật.
+                  <p class="text-[10.5px] text-red-100/90 leading-relaxed">
+                    Nước suối, khăn lạnh, sạc Type-C 20W, wifi tốc độ cao & nệm massage êm ái.
                   </p>
                 </div>
               </div>
@@ -309,20 +300,18 @@
                 </div>
                 <div class="min-w-0">
                   <div class="flex items-center gap-1.5 flex-wrap">
-                    <h3 class="text-xs sm:text-sm font-black text-slate-900 leading-tight truncate">
-                      {{ activeView === 'admin_email' ? 'Gửi Thông Báo Gmail' : 'Trợ lý AI' }}
+                    <h3 class="text-xs sm:text-sm font-black text-slate-900 leading-tight truncate flex items-center gap-1.5">
+                      <span>{{ activeView === 'admin_email' ? 'Gửi Thông Báo Gmail' : 'Trợ lý AI' }}</span>
+                      <span class="text-slate-400 font-normal">|</span>
+                      <span class="text-red-600 truncate max-w-[140px] sm:max-w-[200px]">💬 {{ currentChatSession?.title || 'Đoạn chat mới' }}</span>
                     </h3>
                     <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-bold border border-slate-200">
                       Nhà xe Kiến Trúc
                     </span>
-                    <span class="text-[9px] px-2 py-0.5 rounded-full bg-red-50 text-red-700 font-extrabold border border-red-200 flex items-center gap-1 shadow-2xs">
-                      <span>⚡</span>
-                      <span>Gemini Pro</span>
-                    </span>
                   </div>
                   <p class="text-[10px] sm:text-[11px] text-emerald-600 font-bold flex items-center gap-1.5 truncate mt-0.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
-                    <span class="truncate">Trực Tuyến 24/7 • Bộ Nhớ Đa Ngữ Cảnh • Khóa Ghế 5 Phút</span>
+                    <span class="truncate">Trực Tuyến 24/7 • Phục Vụ Tận Tâm</span>
                   </p>
                 </div>
               </div>
@@ -676,22 +665,44 @@
                           </div>
                         </div>
 
-                        <!-- Nút Khách Hàng Bấm Xác Nhận Đã Chuyển Khoản -->
-                        <button
-                          type="button"
-                          @click="handleConfirmPayment(msg.qr_data.booking_code)"
-                          :disabled="isConfirmingPayment"
-                          class="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition active:scale-95 text-center"
-                        >
-                          <span v-if="isConfirmingPayment">⏳ Đang xác nhận thanh toán...</span>
-                          <span v-else>✅ Tôi Đã Chuyển Khoản Thành Công (Xác Nhận & Xuất Vé)</span>
-                        </button>
+                        <!-- Trạng thái xác nhận thanh toán tự động -->
+                        <div v-if="msg.is_paid" class="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2.5">
+                          <span class="text-xl flex-shrink-0">🎉</span>
+                          <div class="flex-1 min-w-0">
+                            <p class="text-xs font-black text-emerald-900 leading-tight">Đã nhận thanh toán cọc thành công!</p>
+                            <p class="text-[10.5px] text-emerald-700 mt-0.5">Vé điện tử đã kích hoạt và gửi về email. Ghế của bạn đã được khóa an toàn 100%.</p>
+                          </div>
+                        </div>
+
+                        <!-- Trạng thái đang quét thanh toán tự động -->
+                        <div v-else class="p-3 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-300 rounded-xl space-y-2">
+                          <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                              <span class="text-xs font-bold text-emerald-900">Đang quét thanh toán VietQR tự động...</span>
+                            </div>
+                            <button
+                              type="button"
+                              @click="checkBookingPaymentStatus(msg.qr_data.booking_code, idx, true)"
+                              :disabled="isCheckingPaymentStatus"
+                              class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-[10.5px] rounded-lg shadow-2xs transition cursor-pointer flex items-center gap-1 active:scale-95"
+                              title="Bấm để kiểm tra giao dịch ngay lập tức"
+                            >
+                              <span v-if="isCheckingPaymentStatus">⏳</span>
+                              <span v-else>🔄</span>
+                              <span>Kiểm tra ngay</span>
+                            </button>
+                          </div>
+                          <p class="text-[10.5px] text-emerald-700 leading-relaxed">
+                            💡 Sau khi bạn quét mã trên ứng dụng ngân hàng và chuyển khoản, hệ thống sẽ tự động xác nhận và xuất vé ngay lập tức mà không cần thao tác thêm.
+                          </p>
+                        </div>
 
                         <a
                           :href="msg.qr_data.payment_url"
                           class="w-full py-2 px-4 bg-white hover:bg-slate-50 text-slate-700 font-bold text-[11px] rounded-xl border border-slate-200 shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition text-center"
                         >
-                          <span>📄 Xem Trang Thanh Toán Chi Tiết (Tải Vé PDF) ➔</span>
+                          <span>📄 Xem Trang Thanh Toán Chi Tiết ➔</span>
                         </a>
                       </div>
 
@@ -1804,6 +1815,10 @@ const currentMessages = computed(() => {
   return s ? s.messages : [];
 });
 
+const currentChatSession = computed(() => {
+  return chatSessions.value.find(x => x.id === currentSessionId.value) || chatSessions.value[0] || null;
+});
+
 const promptSuggestions = [
   'Có xe đi Quảng Trị lúc mấy giờ?',
   'Chính sách đặt cọc 30% giữ chỗ?',
@@ -1846,6 +1861,9 @@ const openModal = () => {
   } else if (!chatSessions.value.find(s => s.id === currentSessionId.value)) {
     currentSessionId.value = chatSessions.value[0].id;
   }
+  nextTick(() => {
+    checkActiveQrBookings();
+  });
 };
 
 const closeModal = () => {
@@ -1853,12 +1871,14 @@ const closeModal = () => {
   stopSpeech();
   cancelListening();
   isCallModeActive.value = false;
+  stopAllPaymentPolling();
 };
 
 onUnmounted(() => {
   stopSpeech();
   cancelListening();
   if (countdownInterval) clearInterval(countdownInterval);
+  stopAllPaymentPolling();
 });
 
 const toggleMaximize = () => {
@@ -1884,6 +1904,7 @@ const createNewChat = () => {
   lastAiSpokenCleanText.value = '';
   stopSpeech();
   cancelListening();
+  stopAllPaymentPolling();
 
   chatSessions.value.unshift({
     id: newId,
@@ -1913,6 +1934,10 @@ const switchChatSession = (id) => {
   isHoldExpired.value = false;
   lastAiSpokenCleanText.value = '';
   stopSpeech();
+  stopAllPaymentPolling();
+  nextTick(() => {
+    checkActiveQrBookings();
+  });
 };
 
 const startRename = (session) => {
@@ -1960,6 +1985,8 @@ const deleteChatSession = (id) => {
     return;
   }
 
+  stopAllPaymentPolling();
+
   chatSessions.value = chatSessions.value.filter(x => x.id !== id);
   if (currentSessionId.value === id) {
     currentSessionId.value = chatSessions.value[0].id;
@@ -1977,6 +2004,7 @@ const clearAllChats = () => {
     lastAiSpokenCleanText.value = '';
     stopSpeech();
     cancelListening();
+    stopAllPaymentPolling();
 
     chatSessions.value = [
       {
@@ -2172,6 +2200,7 @@ const executeInstantBook = async (trip, seats, name, phone, email) => {
       currentSession.messages.push(newMsg);
       if (data.qr_data) {
         startCountdownTimer();
+        startPaymentPolling(data.booking_code, currentSession.messages.length - 1);
       }
       persistSessions();
       scrollToBottom();
@@ -2190,47 +2219,106 @@ const executeInstantBook = async (trip, seats, name, phone, email) => {
   }
 };
 
-const handleConfirmPayment = async (bookingCode) => {
+// ==========================================
+// QUÉT VÀ KIỂM TRA TRẠNG THÁI THANH TOÁN VIETQR TỰ ĐỘNG
+// ==========================================
+const isCheckingPaymentStatus = ref(false);
+const paymentPollingTimers = new Map();
+
+const startPaymentPolling = (bookingCode, msgIdx = null) => {
   if (!bookingCode) return;
-  isConfirmingPayment.value = true;
+  if (paymentPollingTimers.has(bookingCode)) {
+    clearInterval(paymentPollingTimers.get(bookingCode));
+  }
+  // Quét ngay lần đầu và định kỳ 2.5s / lần
+  checkBookingPaymentStatus(bookingCode, msgIdx, false);
+  const timer = setInterval(() => {
+    checkBookingPaymentStatus(bookingCode, msgIdx, false);
+  }, 2500);
+  paymentPollingTimers.set(bookingCode, timer);
+};
+
+const stopPaymentPolling = (bookingCode) => {
+  if (paymentPollingTimers.has(bookingCode)) {
+    clearInterval(paymentPollingTimers.get(bookingCode));
+    paymentPollingTimers.delete(bookingCode);
+  }
+};
+
+const stopAllPaymentPolling = () => {
+  paymentPollingTimers.forEach((timer) => clearInterval(timer));
+  paymentPollingTimers.clear();
+};
+
+const checkActiveQrBookings = () => {
+  const msgs = currentMessages.value || [];
+  msgs.forEach((m, idx) => {
+    if (m.qr_data?.booking_code && !m.is_paid) {
+      startPaymentPolling(m.qr_data.booking_code, idx);
+    }
+  });
+};
+
+const checkBookingPaymentStatus = async (bookingCode, msgIdx = null, isManual = false) => {
+  if (!bookingCode) return;
+  if (isManual) isCheckingPaymentStatus.value = true;
+
   try {
-    const res = await fetch('/api/ai/confirm-payment', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-      },
-      body: JSON.stringify({ booking_code: bookingCode })
-    });
+    const res = await fetch(`/api/booking/${bookingCode}/payment-status`);
+    if (!res.ok) return;
     const data = await res.json();
 
-    const replyText = "Bạn đã thanh toán thành thật như bài mình đã làm nhé! 🎉\n\nVé **" + (data.booking_code || bookingCode) + "** của bạn đã được xác nhận thanh toán cọc thành công trên hệ thống Nhà xe Kiến Trúc. Bạn bấm vào nút bên dưới để chuyển sang Quản Lý Vé xem chi tiết vé và mã QR lên xe nhé!";
+    if (data.is_paid) {
+      stopPaymentPolling(bookingCode);
 
-    const currentSession = chatSessions.value.find(x => x.id === currentSessionId.value);
-    if (currentSession) {
-      currentSession.messages.push({
-        role: 'assistant',
-        content: replyText,
-        action: {
-          type: 'go_to_my_bookings',
-          title: '🎫 Chuyển Sang Quản Lý Vé Để Xem Vé ➔',
-          url: '/my-bookings'
-        },
-        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-      });
-      persistSessions();
-      scrollToBottom();
+      const currentSession = chatSessions.value.find(x => x.id === currentSessionId.value);
+      if (currentSession) {
+        if (msgIdx !== null && currentSession.messages[msgIdx]) {
+          currentSession.messages[msgIdx].is_paid = true;
+        } else {
+          const m = currentSession.messages.find(x => x.qr_data?.booking_code === bookingCode);
+          if (m) m.is_paid = true;
+        }
 
-      if (interactionMode.value === 'voice') {
-        speakText("Bạn đã thanh toán thành thật như bài mình đã làm nhé! Em đã chuyển thông tin vé sang mục Quản Lý Vé cho bạn rồi ạ.", currentSession.messages.length - 1);
+        const alreadyNotified = currentSession.messages.some(m =>
+          m.role === 'assistant' &&
+          (m.content?.includes(bookingCode) || m.content?.includes('thanh toán cọc thành công')) &&
+          m.action?.type === 'view_payment_detail'
+        );
+
+        if (!alreadyNotified) {
+          const successContent = `🎉 **Thanh toán cọc 30% thành công!**\n\nHệ thống Nhà xe Kiến Trúc đã xác nhận thanh toán tiền cọc cho mã vé **${bookingCode}**. Vé điện tử đã được kích hoạt thành công và thông tin vé đã được gửi về email của bạn.\n\nBạn có thể bấm vào nút bên dưới để xem trang thanh toán chi tiết và theo dõi chuyến xe nhé!`;
+
+          currentSession.messages.push({
+            role: 'assistant',
+            content: successContent,
+            action: {
+              type: 'view_payment_detail',
+              title: '📄 Xem Trang Thanh Toán Chi Tiết ➔',
+              url: `/booking/${bookingCode}/payment`
+            },
+            time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+          });
+          persistSessions();
+          scrollToBottom();
+
+          if (interactionMode.value === 'voice') {
+            speakText(`Thanh toán cọc cho vé ${bookingCode} thành công! Vé đã được kích hoạt và gửi về email cho bạn rồi ạ.`, currentSession.messages.length - 1);
+          }
+        }
       }
+    } else if (isManual) {
+      alert(`Mã vé ${bookingCode} hiện chưa ghi nhận thanh toán. Nếu bạn vừa chuyển khoản, vui lòng đợi 5-10 giây để hệ thống ngân hàng xử lý nhé!`);
     }
   } catch (err) {
-    alert('Đã xác nhận thanh toán thành công!');
-    window.location.href = '/my-bookings';
+    console.warn('[PaymentCheck] Lỗi kiểm tra:', err);
   } finally {
-    isConfirmingPayment.value = false;
+    if (isManual) isCheckingPaymentStatus.value = false;
   }
+};
+
+const handleConfirmPayment = (bookingCode) => {
+  checkBookingPaymentStatus(bookingCode, null, true);
 };
 
 const sendPrompt = (text) => {
@@ -2456,6 +2544,10 @@ const sendMessage = async (isVoiceTurn = false) => {
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
     };
     currentSession.messages.push(newMsg);
+
+    if (qr_data && qr_data.booking_code) {
+      startPaymentPolling(qr_data.booking_code, currentSession.messages.length - 1);
+    }
 
     // Tự động kích hoạt hành động thông minh (Auto-Copilot)
     if (action) {

@@ -516,6 +516,46 @@
                   <!-- Form Đăng Nhập Chính -->
                   <form @submit.prevent="submitLogin" class="space-y-4">
                     
+                    <!-- Dropdown Chọn Nhanh Tài Xế (Khi chọn tab Bác Tài) -->
+                    <div v-if="activeRoleTab === 'driver'" class="p-3 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50/60 border border-amber-300 space-y-1.5 shadow-2xs">
+                      <div class="flex items-center justify-between text-xs font-black text-amber-900">
+                        <span class="flex items-center gap-1.5">
+                          <span>👨‍✈️</span>
+                          <span>Chọn tài khoản Bác Tài:</span>
+                        </span>
+                        <span class="text-[10px] text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-full">10 Tài Xế</span>
+                      </div>
+                      <select
+                        :value="loginForm.email"
+                        @change="onStaffAccountSelected"
+                        class="w-full bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-xs"
+                      >
+                        <option v-for="d in driverAccounts" :key="d.email" :value="d.email">
+                          {{ d.name }} • SĐT: {{ d.phone }} ({{ d.email }})
+                        </option>
+                      </select>
+                    </div>
+
+                    <!-- Dropdown Chọn Nhanh Lơ Xe (Khi chọn tab Lơ Xe) -->
+                    <div v-if="activeRoleTab === 'conductor'" class="p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-sky-50/60 border border-blue-300 space-y-1.5 shadow-2xs">
+                      <div class="flex items-center justify-between text-xs font-black text-blue-900">
+                        <span class="flex items-center gap-1.5">
+                          <span>🎫</span>
+                          <span>Chọn tài khoản Lơ Xe:</span>
+                        </span>
+                        <span class="text-[10px] text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded-full">10 Lơ Xe</span>
+                      </div>
+                      <select
+                        :value="loginForm.email"
+                        @change="onStaffAccountSelected"
+                        class="w-full bg-white border border-blue-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs"
+                      >
+                        <option v-for="c in conductorAccounts" :key="c.email" :value="c.email">
+                          {{ c.name }} • SĐT: {{ c.phone }} ({{ c.email }})
+                        </option>
+                      </select>
+                    </div>
+
                     <!-- Ô Nhập Số Điện Thoại hoặc Email -->
                     <div>
                       <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -1292,19 +1332,59 @@ const showTermsModal = ref(false);
 const agreeTerms = ref(true);
 const otpDeliveryMethod = ref('sms'); // 'sms' | 'voice'
 
+const driverAccounts = [
+  { name: 'Trần Văn Kiên 1', email: 'taixe1@gmail.com', phone: '0905123401' },
+  { name: 'Nguyễn Văn Hùng 2', email: 'taixe2@gmail.com', phone: '0905123402' },
+  { name: 'Trần Đình Trọng 3', email: 'taixe3@gmail.com', phone: '0905123403' },
+  { name: 'Lê Hoàng Nam 4', email: 'taixe4@gmail.com', phone: '0905123404' },
+  { name: 'Phạm Quốc Bảo 5', email: 'taixe5@gmail.com', phone: '0905123405' },
+  { name: 'Hoàng Minh Tuấn 6', email: 'taixe6@gmail.com', phone: '0905123406' },
+  { name: 'Đặng Văn Lâm 7', email: 'taixe7@gmail.com', phone: '0905123407' },
+  { name: 'Bùi Tiến Dũng 8', email: 'taixe8@gmail.com', phone: '0905123408' },
+  { name: 'Hồ Tấn Tài 9', email: 'taixe9@gmail.com', phone: '0905123409' },
+  { name: 'Vũ Văn Thanh 10', email: 'taixe10@gmail.com', phone: '0905123410' },
+];
+
+const conductorAccounts = [
+  { name: 'Nguyễn Văn Phúc 1', email: 'loxe1@gmail.com', phone: '0905221101' },
+  { name: 'Lê Quốc Đạt 2', email: 'loxe2@gmail.com', phone: '0905221102' },
+  { name: 'Phạm Thành Long 3', email: 'loxe3@gmail.com', phone: '0905221103' },
+  { name: 'Vũ Anh Tuấn 4', email: 'loxe4@gmail.com', phone: '0905221104' },
+  { name: 'Đỗ Minh Trí 5', email: 'loxe5@gmail.com', phone: '0905221105' },
+  { name: 'Hoàng Hải Nam 6', email: 'loxe6@gmail.com', phone: '0905221106' },
+  { name: 'Bùi Gia Huy 7', email: 'loxe7@gmail.com', phone: '0905221107' },
+  { name: 'Ngô Tiến Dũng 8', email: 'loxe8@gmail.com', phone: '0905221108' },
+  { name: 'Dương Văn Kiên 9', email: 'loxe9@gmail.com', phone: '0905221109' },
+  { name: 'Trần Quốc Thanh 10', email: 'loxe10@gmail.com', phone: '0905221110' },
+];
+
+const selectedStaffEmail = ref('');
+const onStaffAccountSelected = (e) => {
+  const email = e.target.value;
+  if (!email) return;
+  selectedStaffEmail.value = email;
+  loginForm.email = email;
+  loginForm.password = '123456';
+  triggerTurboSpeed();
+};
+
 const selectRoleQuickLogin = (role) => {
   activeRoleTab.value = role;
   switchTab('login');
   if (role === 'driver') {
+    selectedStaffEmail.value = 'taixe1@gmail.com';
     loginForm.email = 'taixe1@gmail.com';
     loginForm.password = '123456';
   } else if (role === 'conductor') {
+    selectedStaffEmail.value = 'loxe1@gmail.com';
     loginForm.email = 'loxe1@gmail.com';
     loginForm.password = '123456';
   } else if (role === 'admin') {
+    selectedStaffEmail.value = '';
     loginForm.email = 'admin@nhaxekientruc.vn';
     loginForm.password = '123456';
   } else {
+    selectedStaffEmail.value = '';
     loginForm.email = '';
     loginForm.password = '';
   }
