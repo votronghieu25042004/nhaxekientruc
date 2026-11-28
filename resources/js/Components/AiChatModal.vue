@@ -327,17 +327,28 @@
                 </div>
               </div>
 
-              <!-- Cụm Nút Điều Khiển: Đàm Thoại 2 Chiều / Loa Giọng Nói (TTS) / Phóng To / Lịch Sử / Đóng -->
+              <!-- Cụm Nút Điều Khiển: Tạo Chat Mới / Đàm Thoại 2 Chiều / Phóng To / Lịch Sử / Đóng -->
               <div class="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+
+                <!-- Nút Tạo Đoạn Chat Mới (Bắt đầu lại từ đầu) -->
+                <button
+                  type="button"
+                  @click="createNewChat"
+                  class="px-2.5 py-1 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white transition text-[11px] font-black cursor-pointer flex items-center gap-1 shadow-xs active:scale-95"
+                  title="Tạo đoạn chat mới (Bắt đầu lại từ đầu sạch sẽ)"
+                >
+                  <span>➕</span>
+                  <span class="text-[11px]">Chat mới</span>
+                </button>
 
                 <!-- Nút Lịch Sử trên Mobile -->
                 <button
                   type="button"
                   @click="showMobileHistory = !showMobileHistory"
-                  class="sm:hidden px-2 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition text-[11px] font-bold cursor-pointer flex items-center gap-1"
+                  class="sm:hidden px-2 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition text-[11px] font-bold cursor-pointer flex items-center gap-1"
                   title="Xem lịch sử trò chuyện"
                 >
-                  <span>💬 Lịch sử</span>
+                  <span>💬</span>
                 </button>
 
                 <!-- Phóng to / Thu nhỏ -->
@@ -915,8 +926,23 @@
                         </div>
                       </div>
 
+                      <!-- Thẻ chuyến xe cũ khi khách đã đổi ghế / có đề xuất chuyến mới hơn -->
+                      <div v-if="msg.trips && msg.trips.length > 0 && !isLatestTripMessage(idx)" class="mt-2.5 p-2 rounded-xl bg-slate-200/80 border border-slate-300 text-slate-600 text-[11px] flex items-center justify-between shadow-2xs">
+                        <div class="flex items-center gap-1.5 truncate">
+                          <span class="text-xs">🔒</span>
+                          <span class="truncate font-medium">Đề xuất ghế cũ (Đã cập nhật vị trí ghế mới bên dưới ⬇️)</span>
+                        </div>
+                        <button
+                          type="button"
+                          @click="msg.showOldTrip = !msg.showOldTrip"
+                          class="text-[10px] text-red-600 font-bold hover:underline shrink-0 ml-2 cursor-pointer"
+                        >
+                          {{ msg.showOldTrip ? 'Thu gọn' : 'Xem lại thẻ cũ' }}
+                        </button>
+                      </div>
+
                       <!-- Interactive Trip Cards (Đề xuất chuyến xe tốt nhất & Tự động khóa ghế VietQR) -->
-                      <div v-if="msg.trips && msg.trips.length > 0" class="mt-3 space-y-2 pt-2 border-t border-slate-200/80">
+                      <div v-if="msg.trips && msg.trips.length > 0 && (isLatestTripMessage(idx) || msg.showOldTrip)" class="mt-3 space-y-2 pt-2 border-t border-slate-200/80">
                         <div class="text-[11px] font-bold text-slate-700 flex items-center justify-between">
                           <span class="flex items-center gap-1.5">
                             <span>🚌</span>
@@ -1839,15 +1865,33 @@ const toggleMaximize = () => {
   isMaximized.value = !isMaximized.value;
 };
 
+const isLatestTripMessage = (msgIdx) => {
+  const msgs = currentMessages.value;
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].trips && msgs[i].trips.length > 0) {
+      return i === msgIdx;
+    }
+  }
+  return false;
+};
+
 const createNewChat = () => {
   const newId = Date.now();
+  currentBookingState.value = {};
+  if (countdownInterval) clearInterval(countdownInterval);
+  bookingCountdown.value = 0;
+  isHoldExpired.value = false;
+  lastAiSpokenCleanText.value = '';
+  stopSpeech();
+  cancelListening();
+
   chatSessions.value.unshift({
     id: newId,
     title: `Đoạn chat ${chatSessions.value.length + 1}`,
     messages: [
       {
         role: 'assistant',
-        content: 'Chào bạn! Tôi là Trợ Lý AI nhaxekientruc. Tôi có thể hỗ trợ gì cho bạn?',
+        content: `Chào ${currentUser.value ? currentUser.value.name : 'bạn'}! Tôi là Trợ Lý AI Nhà xe Kiến Trúc. Bạn cần hỗ trợ gì cho chuyến đi mới ạ?`,
         time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       }
     ]
@@ -1855,11 +1899,20 @@ const createNewChat = () => {
   currentSessionId.value = newId;
   showMobileHistory.value = false;
   persistSessions();
+  nextTick(() => {
+    scrollToBottom();
+  });
 };
 
 const switchChatSession = (id) => {
   currentSessionId.value = id;
   showMobileHistory.value = false;
+  currentBookingState.value = {};
+  if (countdownInterval) clearInterval(countdownInterval);
+  bookingCountdown.value = 0;
+  isHoldExpired.value = false;
+  lastAiSpokenCleanText.value = '';
+  stopSpeech();
 };
 
 const startRename = (session) => {
@@ -1879,7 +1932,34 @@ const saveSessionTitle = (id) => {
 };
 
 const deleteChatSession = (id) => {
-  if (chatSessions.value.length <= 1) return;
+  currentBookingState.value = {};
+  if (countdownInterval) clearInterval(countdownInterval);
+  bookingCountdown.value = 0;
+  isHoldExpired.value = false;
+  lastAiSpokenCleanText.value = '';
+  stopSpeech();
+
+  // Nếu chỉ còn 1 đoạn chat duy nhất, reset sạch sẽ tin nhắn của đoạn chat này để làm lại từ đầu
+  if (chatSessions.value.length <= 1) {
+    const newId = Date.now();
+    chatSessions.value = [
+      {
+        id: newId,
+        title: 'Đoạn chat mới',
+        messages: [
+          {
+            role: 'assistant',
+            content: `Chào ${currentUser.value ? currentUser.value.name : 'bạn'}! Tôi là Trợ Lý AI Nhà xe Kiến Trúc. Bạn cần hỗ trợ gì cho chuyến đi mới ạ?`,
+            time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+          }
+        ]
+      }
+    ];
+    currentSessionId.value = newId;
+    persistSessions();
+    return;
+  }
+
   chatSessions.value = chatSessions.value.filter(x => x.id !== id);
   if (currentSessionId.value === id) {
     currentSessionId.value = chatSessions.value[0].id;
@@ -1888,21 +1968,30 @@ const deleteChatSession = (id) => {
 };
 
 const clearAllChats = () => {
-  if (confirm('Bạn có chắc muốn xóa toàn bộ lịch sử trò chuyện không?')) {
+  if (confirm('Bạn có chắc muốn xóa toàn bộ lịch sử trò chuyện và bắt đầu lại từ đầu không?')) {
+    const newId = Date.now();
+    currentBookingState.value = {};
+    if (countdownInterval) clearInterval(countdownInterval);
+    bookingCountdown.value = 0;
+    isHoldExpired.value = false;
+    lastAiSpokenCleanText.value = '';
+    stopSpeech();
+    cancelListening();
+
     chatSessions.value = [
       {
-        id: Date.now(),
+        id: newId,
         title: 'Đoạn chat mới',
         messages: [
           {
             role: 'assistant',
-            content: 'Chào bạn! Lịch sử đã được làm mới. Bạn cần hỗ trợ gì ạ?',
+            content: `Chào ${currentUser.value ? currentUser.value.name : 'bạn'}! Lịch sử đã được làm mới hoàn toàn. Bạn cần hỗ trợ gì cho chuyến đi mới ạ?`,
             time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
           }
         ]
       }
     ];
-    currentSessionId.value = chatSessions.value[0].id;
+    currentSessionId.value = newId;
     persistSessions();
   }
 };

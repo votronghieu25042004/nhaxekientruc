@@ -67,6 +67,33 @@ class AiAssistantController extends Controller
     }
 
     /**
+    /**
+     * Nhận diện điểm đến từ một đoạn văn bản (chuẩn hóa không dấu và hỗ trợ mọi tuyến)
+     */
+    private function detectDestinationInText(string $text): ?string
+    {
+        $unacc = self::stripVN($text);
+
+        // Đà Nẵng là điểm xuất phát nếu có các từ: "đi từ", "xuất phát từ", "từ", "ở", "đón ở"
+        $isDanangOrigin = (bool) preg_match('/(di tu da nang|xuat phat tu da nang|tu da nang|o da nang|don o da nang|don tai da nang|ben xe da nang)/i', $unacc);
+
+        if (preg_match('/(buon ma thuot|dak lak|daklak|bmt)/i', $unacc)) return 'Buôn Ma Thuột';
+        if (preg_match('/(quang tri|quan tri|dong ha)/i', $unacc)) return 'Quảng Trị';
+        if (preg_match('/(hue|thua thien)/i', $unacc)) return 'Thừa Thiên - Huế';
+        if (preg_match('/(quang binh|dong hoi)/i', $unacc)) return 'Quảng Bình';
+        if (preg_match('/(quy nhon|binh dinh)/i', $unacc)) return 'Quy Nhơn';
+        if (preg_match('/(ha noi)/i', $unacc)) return 'Hà Nội';
+        if (preg_match('/(nam dinh)/i', $unacc)) return 'Nam Định';
+        if (preg_match('/(hoi an)/i', $unacc)) return 'Hội An';
+
+        if (!$isDanangOrigin && preg_match('/(ve da nang|den da nang|di da nang|toi da nang)/i', $unacc)) {
+            return 'Đà Nẵng';
+        }
+
+        return null;
+    }
+
+    /**
      * Trích xuất thông tin thể trạng, nhu cầu và tình tiết đàm thoại xuyên suốt phiên chat
      * Giúp Trợ lý AI có bộ nhớ liên tục như Gemini Pro (Deep Context Retention)
      */
@@ -85,12 +112,17 @@ class AiAssistantController extends Controller
         $currentUnaccented = self::stripVN($currentMessage);
 
         // 1. Nhận diện say xe & vấn đề sức khỏe (Xuyên suốt các lượt chat)
+        // Nếu người dùng bảo "không say", "hết say xe", "không bị say xe" thì reset cờ say xe
         $hasSayXe = (bool) preg_match('/(say|chong mat|non|oi|say xe|say tau|tien dinh|chong say|em ai|it rung|non nao|hoa mat)/i', $unaccentedCombined);
+        if (preg_match('/(khong say|het say|khong bi say|khong con say|khong can chong say)/i', $currentUnaccented)) {
+            $hasSayXe = false;
+        }
+
         $isElderly = (bool) preg_match('/(gia|lon tuoi|nguoi gia|cao tuoi|ong ba|ba me|me gia|dau lung|thoat vi|chan yeu|kho di lai|ba cua toi|ba toi|ong toi)/i', $unaccentedCombined);
         $isBaby = (bool) preg_match('/(em be|tre em|tre nho|con nho|so sinh|be con|mang theo con)/i', $unaccentedCombined);
         $isRiengTu = (bool) preg_match('/(rieng tu|rem|kin|khong gian rieng|phong rieng|tranh nguoi|kin dao|rem che)/i', $unaccentedCombined);
 
-        // 2. Nhận diện số lượng khách/vé (Cập nhật từ tin nhắn có chứa số lượng)
+        // 2. Nhận diện số lượng khách/vé (Cập nhật từ tin nhắn gần nhất có chứa số lượng)
         $passengerCount = 1;
         foreach (array_reverse($allUserTexts) as $txt) {
             $txtUnacc = self::stripVN($txt);
@@ -114,27 +146,33 @@ class AiAssistantController extends Controller
 
         // 3. Nhận diện tuyến khách vừa từ chối / không muốn đi nữa
         $rejectedDest = null;
-        if (preg_match('/(khong muon di|thoi khong di|doi y|khong di nua|bo chuyen)\s+(ve\s+|den\s+|toi\s+)?(hu[eế]|quang tri|quang binh|quy nhon|da nang)/ui', $combinedText, $mRej)) {
-            $rejectedDest = trim($mRej[3] ?? '');
-            if (stripos($rejectedDest, 'hue') !== false || stripos($rejectedDest, 'huế') !== false) $rejectedDest = 'Thừa Thiên - Huế';
-            elseif (stripos($rejectedDest, 'quang tri') !== false) $rejectedDest = 'Quảng Trị';
-            elseif (stripos($rejectedDest, 'quy nhon') !== false) $rejectedDest = 'Quy Nhơn';
+        if (preg_match('/(khong muon di|thoi khong di|doi y|khong di nua|bo chuyen)\s+(ve\s+|den\s+|toi\s+)?(hu[eế]|quang tri|quang binh|quy nhon|da nang|buon ma thuot|dak lak|bmt)/ui', $combinedText, $mRej)) {
+            $rawRej = trim($mRej[3] ?? '');
+            $rejectedDest = $this->detectDestinationInText($rawRej);
         }
 
-        // 4. Nhận diện điểm đến trong tin nhắn hiện tại
-        $currentDest = null;
-        if (preg_match('/(quang tri|quan tri|dong ha)/i', $currentUnaccented)) $currentDest = 'Quảng Trị';
-        elseif (preg_match('/(hue|thua thien)/i', $currentUnaccented)) $currentDest = 'Thừa Thiên - Huế';
-        elseif (preg_match('/(quang binh|dong hoi)/i', $currentUnaccented)) $currentDest = 'Quảng Bình';
-        elseif (preg_match('/(quy nhon|binh dinh)/i', $currentUnaccented)) $currentDest = 'Quy Nhơn';
-        elseif (preg_match('/(da nang)/i', $currentUnaccented)) $currentDest = 'Đà Nẵng';
+        // 4. Nhận diện điểm đến đang thảo luận (Kế thừa từ tin nhắn trước nếu tin nhắn này là đổi giờ, số người, đổi ghế)
+        $currentDest = $this->detectDestinationInText($currentMessage);
+        if (!$currentDest) {
+            foreach (array_reverse($allUserTexts) as $txt) {
+                $dest = $this->detectDestinationInText($txt);
+                if ($dest && $dest !== $rejectedDest) {
+                    $currentDest = $dest;
+                    break;
+                }
+            }
+        }
 
         // 5. Kiểm tra xem người dùng đã cung cấp đủ thông tin chuyến đi chưa (Ngày, Giờ)
         $hasDate = (bool) preg_match('/(hom nay|ngay mai|sang mai|chieu mai|toi mai|mai|ngay \d+|\d{1,2}\/\d{1,2})/i', $currentUnaccented);
         $hasTime = (bool) preg_match('/(sang|chieu|toi|dem|trua|\d{1,2}h|\d{1,2}:\d{2})/i', $currentUnaccented);
         $hasOrigin = (bool) preg_match('/(da nang|xuat phat|don o|don tai|ben xe)/i', $currentUnaccented);
 
-        // 6. Kiểm tra xem khách có thực sự đã đặt vé / thanh toán cọc trong DB chưa
+        // 6. Nhận diện sở thích vị trí ghế & yêu cầu đổi ghế
+        $isWindowPreferred = (bool) preg_match('/(cua so|cửa sổ|sat cua|sát cửa|canh cua|cạnh cửa|ngoi gan cua|ngồi gần cửa|view dep|ngam canh)/ui', $unaccentedCombined);
+        $isSeatChangeRequest = (bool) preg_match('/(doi ghe|đổi ghế|ghe khac|ghế khác|cua so|cửa sổ|sat cua|sát cửa|canh cua|cạnh cửa|ngoi gan cua|ngồi gần cửa|day giua|dãy giữa|o giua|ở giữa|tang 1|tầng 1|tang 2|tầng 2|tang tren|tầng trên|tang duoi|tầng dưới|chon lai|chọn lại|doi sang|đổi sang|chuyen ghe|chuyển ghế)/ui', $currentMessage);
+
+        // 7. Kiểm tra xem khách có thực sự đã đặt vé / thanh toán cọc trong DB chưa
         $hasPaidBooking = false;
         if ($user) {
             $hasPaidBooking = \App\Models\Booking::where('user_id', $user->id)
@@ -143,7 +181,7 @@ class AiAssistantController extends Controller
                 ->exists();
         }
 
-        // 7. Nhận diện khách nói không muốn đi / đổi ý (Chưa bấm đặt)
+        // 8. Nhận diện khách nói không muốn đi / đổi ý (Chưa bấm đặt)
         $isChangingMind = (bool) preg_match('/(khong muon di|thoi khong di|doi y khong di|khong di nua|bo chuyen)/i', $currentUnaccented);
 
         return [
@@ -151,6 +189,8 @@ class AiAssistantController extends Controller
             'is_elderly' => $isElderly,
             'is_baby' => $isBaby,
             'is_rieng_tu' => $isRiengTu,
+            'is_window_preferred' => $isWindowPreferred,
+            'is_seat_change_request' => $isSeatChangeRequest,
             'passenger_count' => $passengerCount,
             'rejected_destination' => $rejectedDest,
             'current_destination' => $currentDest,
@@ -1349,11 +1389,15 @@ class AiAssistantController extends Controller
                     "• 🎪 **Tầng 2 (Dãy B):** Có rèm che riêng tư 100% chống nhìn trộm và chống nắng, nhưng vì ở vị trí cao cách mặt đất hơn 1.8m, theo nguyên lý đòn bẩy vật lý thì tầng 2 sẽ chịu lực ly tâm lắc ngang gấp 2.5 lần Tầng 1 khi xe ôm cua.\n" .
                     "👉 **Lời khuyên bác sĩ chuyên khoa & Nhà xe:** Với hành trình đường dài, **sức khỏe và sự tỉnh táo không say xe là yếu tố quan trọng số 1**. Em khuyên bạn nên **ƯU TIÊN CHỌN TẦNG 1 ({$seatsStr})** để có một chuyến đi êm ru và khỏe mạnh! *(Nếu bạn nhất quyết cần sự riêng tư, bạn vẫn có thể chọn Tầng 2, nhưng bạn nhớ dán miếng chống say sau tai và uống thuốc trước khi xe chạy 30 phút nhé)*.\n\n";
             }
-            // 2. Say xe VÀ Thích ngắm cảnh
+            // 2. Say xe VÀ Thích ngắm cảnh / gần cửa sổ
             elseif ($isSayXeQ && $isNgamCanhQ) {
-                $reply .= "👁️ **PHÂN TÍCH SAY XE vs NGẮM CẢNH (ĐỒNG BỘ TIỀN ĐÌNH):**\n" .
-                    "• Khi say xe mà nhìn ngang cửa sổ, các vật thể lướt qua quá nhanh sẽ gây xung đột giữa mắt và tai trong, làm bạn chóng mặt dữ dội hơn.\n" .
-                    "• AI đã chọn cho bạn **giường Tầng 1 khoang đầu sát cửa sổ ({$seatsStr})**: Vừa nằm ở tầng thấp êm ái chống lắc, vừa có tầm nhìn hướng thẳng về phía trước theo chiều xe chạy. Điều này giúp não bộ đồng bộ cảm giác chuyển động, triệt tiêu say xe mà vẫn thưởng ngoạn được trọn vẹn phong cảnh!\n\n";
+                $reply .= "👁️ **TƯ VẤN KHOA HỌC: SAY XE vs GHẾ GẦN CỬA SỔ ({$seatsStr}):**\n" .
+                    "• Vì bạn bị say xe nên ban đầu em khuyên mình nên ưu tiên chọn giường tầng 1 dãy giữa để triệt tiêu 98% rung lắc do nằm đúng tâm trọng lực của xe.\n" .
+                    "• Tuy nhiên, nếu bạn vẫn muốn chọn ghế gần cửa sổ để ngắm cảnh bên ngoài, em rất sẵn lòng đổi sang ghế gần cửa sổ cho bạn ngay ạ!\n" .
+                    "• **So sánh độ êm ái để bạn an tâm lựa chọn:**\n" .
+                    "  + **Ghế gần cửa sổ TẦNG 1 ({$seatsStr}):** Vừa sát cửa sổ ngắm trọn cảnh đẹp, vừa ở tầng thấp sát gầm xe nên ít bị lắc ngang, vẫn đỡ say xe rất tốt (giảm ~85% cảm giác nôn nao).\n" .
+                    "  + **Cảnh báo ghế cửa sổ TẦNG 2:** Ở tầng cao chịu lực ly tâm lắc ngang gấp 2.5 lần và mắt nhìn vật thể lướt nhanh ngang cửa sổ sẽ làm tiền đình xung đột gây say xe nặng hơn nhiều.\n" .
+                    "👉 Em đã đổi sang giường TẦNG 1 sát cửa sổ ({$seatsStr}) trên thẻ chuyến xe bên dưới cho mình rồi nhé!\n\n";
             }
             // 3. Say xe thuần túy
             elseif ($isSayXeQ) {
@@ -2204,7 +2248,10 @@ class AiAssistantController extends Controller
                 $tripInfoContext = "\n\nCÁC CHUYẾN XE THỰC TẾ ĐANG MỞ BÁN PHÙ HỢP CÂU HỎI:\n";
                 foreach ($matchingTrips as $mt) {
                     $dayTag = $mt['is_today'] ? '(Hôm nay)' : ($mt['is_tomorrow'] ? '(Ngày mai)' : '');
-                    $tripInfoContext .= "- Chuyến #{$mt['id']}: {$mt['route_name']} lúc {$mt['time_str']} ngày {$mt['date_str']} {$dayTag}, vé {$mt['price_formatted']} (cọc 30%: {$mt['deposit_price_formatted']}), xe {$mt['bus_type']} BKS {$mt['license_plate']}. Đường dẫn đặt vé: {$mt['book_url']}\n";
+                    $recSeatsStr = implode(', ', $mt['recommended_seats'] ?? []);
+                    $tripInfoContext .= "- Chuyến #{$mt['id']}: {$mt['route_name']} lúc {$mt['time_str']} ngày {$mt['date_str']} {$dayTag}, vé {$mt['price_formatted']} (cọc 30%: {$mt['deposit_price_formatted']}), xe {$mt['bus_type']} BKS {$mt['license_plate']}.\n"
+                        . "  + Vị trí giường AI chọn cho khách: {$recSeatsStr} ({$mt['ai_score']} - {$mt['ai_seat_advice']})\n"
+                        . "  + Đường dẫn đặt vé: {$mt['book_url']}\n";
                 }
                 $tripInfoContext .= "Hãy giới thiệu các chuyến xe này để khách chọn và thông báo khách có thể bấm trực tiếp vào mã ghế màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ chuyến xe bên dưới tin nhắn để giữ chỗ 5 phút qua mã VietQR.\n";
             }
@@ -2216,23 +2263,32 @@ class AiAssistantController extends Controller
                 . "- Thể trạng sức khỏe: " . (!empty($memory['has_motion_sickness']) ? 'BỊ SAY XE NẶNG (Bắt buộc luôn ghi nhớ ưu tiên ghế tầng 1 dãy giữa A04-A08 để chống xóc)' : 'Bình thường') . "\n"
                 . "- Số lượng khách/vé: " . ((!empty($memory['passenger_count']) && $memory['passenger_count'] > 1) ? "{$memory['passenger_count']} người (luôn tư vấn các giường cạnh nhau)" : '1 người') . "\n"
                 . "- Điểm xuất phát mặc định: Đà Nẵng\n"
+                . "- Điểm đến đang đàm thoại: " . (!empty($memory['current_destination']) ? "{$memory['current_destination']}" : 'Chưa xác định') . "\n"
                 . "- Điểm đến vừa đổi ý/không muốn đi nữa: " . (!empty($memory['rejected_destination']) ? "{$memory['rejected_destination']} (Khách đã bảo không muốn đi tuyến này nữa, không gợi ý lại)" : 'Không có') . "\n"
                 . "- Trạng thái vé hiện tại: " . (!empty($memory['has_paid_booking']) ? 'ĐÃ CÓ VÉ ĐẶT TRƯỚC' : 'CHƯA ĐẶT VÉ NÀO TRONG PHIÊN NÀY (Khách chỉ đang hỏi tư vấn, chưa bấm đặt vé hay thanh toán)');
 
+            $hasSayXe = !empty($memory['has_motion_sickness']);
+            $sayXeRule2Part = $hasSayXe
+                ? "   * ĐẶC BIỆT: Khách có ghi nhớ bị say xe, bạn hãy nhắc lại một cách ân cần: 'Em vẫn nhớ bạn bị say xe nên em sẽ ưu tiên chọn các giường tầng 1 dãy giữa êm nhất cho bạn nhé!'\n"
+                : "";
+            $deepMemoryRule10 = $hasSayXe
+                ? "10. BỘ NHỚ DUY TRÌ TÌNH TIẾT CŨ (DEEP CONTEXT RETENTION): Bạn PHẢI NHỚ TOÀN BỘ CÁC TÌNH TIẾT CŨ từ các câu trước trong phiên chat (như khách bị say xe, đi mấy người, người già...). Dù khách đổi từ chuyến Huế sang Buôn Ma Thuột hay Quảng Trị thì bạn VẪN PHẢI NHỚ khách bị say xe và đi mấy người để tự động lọc ghế tầng 1 dãy giữa êm ái cho tuyến mới!\n"
+                : "10. BỘ NHỚ DUY TRÌ TÌNH TIẾT CŨ: Bạn chỉ ghi nhớ các thông tin thực tế khách đã chia sẻ trong lịch sử trò chuyện. Tuyệt đối KHÔNG tự bịa ra tình trạng sức khỏe nếu khách chưa từng nhắc tới (ví dụ: khách chưa từng nói say xe thì TUYỆT ĐỐI KHÔNG ĐƯỢC tự bịa là khách bị say xe).\n";
+
             $systemPrompt = "Bạn là Trợ lý AI thông minh của Nhà xe Kiến Trúc Đà Nẵng (nhaxekientruc).\n"
                 . "QUY TẮC CỐT LÕI (BẮT BUỘC TUÂN THỦ ĐỂ ĐẠT ĐỘ THÔNG MINH NHƯ GEMINI PRO):\n"
-                . "1. PHONG CÁCH & ĐỘ DÀI: Trả lời tự nhiên, thân thiện, ngắn gọn và hữu ích (1 đến 4 câu). Đi thẳng vào trọng tâm câu hỏi. Xưng 'em', gọi 'bạn' (hoặc tên khách).\n"
-                . "2. HỎI LẠI ĐẦY ĐỦ KHI THIẾU THÔNG TIN: Khi khách nói muốn đi một điểm đến (ví dụ 'tôi đi Quảng Trị', 'tôi muốn đi Quy Nhơn', 'có xe đi Huế không') mà chưa nói rõ thời gian (khi nào, ngày nào), khung giờ nào, số người, hoặc điểm bắt đầu xuất phát ở đâu:\n"
+                . "1. PHONG CÁCH & ĐỘ DÀI: Trả lời tự nhiên, thân thiện, ngắn gọn và hữu ích (2 đến 5 câu). Đi thẳng vào trọng tâm câu hỏi. Xưng 'em', gọi 'bạn' (hoặc tên khách).\n"
+                . "2. HỎI LẠI ĐẦY ĐỦ KHI THIẾU THÔNG TIN: Khi khách nói muốn đi một điểm đến (ví dụ 'tôi đi Quảng Trị', 'tôi muốn đi Buôn Ma Thuột', 'có xe đi Huế không') mà chưa nói rõ thời gian (khi nào, ngày nào), khung giờ nào, số người, hoặc điểm bắt đầu xuất phát ở đâu:\n"
                 . "   Bạn BẮT BUỘC PHẢI HỎI LẠI ĐẦY ĐỦ CÁC Ý SAU MỘT CÁCH ÂN CẦN:\n"
                 . "   - Bạn dự kiến đi ngày nào (hôm nay, ngày mai hay ngày cụ thể)?\n"
                 . "   - Khung giờ bạn muốn xuất phát (sáng, trưa, chiều hay tối)?\n"
                 . "   - Bạn đi mấy người (mấy vé)?\n"
                 . "   - Bắt đầu xuất phát từ Đà Nẵng đúng không ạ?\n"
-                . "   * ĐẶC BIỆT: Nếu khách đã từng nói mình bị say xe ở câu trước (xem hồ sơ bên dưới), bạn PHẢI NHẮC LẠI để khách an tâm: Em vẫn nhớ bạn bị say xe nên em sẽ ưu tiên chọn các giường tầng 1 dãy giữa êm nhất cho bạn nhé!\n"
-                . "3. HIỂU TỪ NGỮ LINH HOẠT & LỖI CHÍNH TẢ: Khách có thể gõ sai chính tả (ví dụ 'quản trị' -> Quảng Trị, 'xem bus' -> xe bus, 'bình định' -> Quy Nhơn...). Hãy thông minh nhận diện ý định của khách và hỗ trợ ngay.\n"
+                . $sayXeRule2Part
+                . "3. HIỂU TỪ NGỮ LINH HOẠT & LỖI CHÍNH TẢ: Khách có thể gõ sai chính tả (ví dụ 'quản trị' -> Quảng Trị, 'xem bus' -> xe bus, 'bình định' -> Quy Nhơn, 'ddi buon ma thuot di' -> Buôn Ma Thuột...). Hãy thông minh nhận diện ý định của khách và hỗ trợ ngay.\n"
                 . "4. PHÂN BIỆT ĐỔI Ý CHƯA ĐẶT VS HỦY VÉ THỰC TẾ:\n"
                 . "   - Nếu khách nói 'không muốn đi nữa', 'thôi không đi Huế nữa', 'tôi đổi ý rồi'... mà khách CHƯA HỀ BẤM ĐẶT VÉ / CHƯA THANH TOÁN CỌC (Trạng thái vé: CHƯA ĐẶT VÉ):\n"
-                . "     TUYỆT ĐỐI KHÔNG BẮT KHÁCH VÀO MỤC 'VÉ CỦA TÔI' ĐỂ HOÀN VÉ! Vì khách chưa hề mua vé thì không có vé nào để hoàn cả! Bạn chỉ cần vui vẻ xác nhận: 'Dạ em đã hủy tìm kiếm chuyến đó cho bạn rồi ạ! Bạn có muốn đổi sang đi tuyến nào khác (như Quảng Trị, Quy Nhơn...) hay cần em hỗ trợ gì thêm không ạ?'.\n"
+                . "     TUYỆT ĐỐI KHÔNG BẮT KHÁCH VÀO MỤC 'VÉ CỦA TÔI' ĐỂ HOÀN VÉ! Vì khách chưa hề mua vé thì không có vé nào để hoàn cả! Bạn chỉ cần vui vẻ xác nhận: 'Dạ em đã hủy tìm kiếm chuyến đó cho bạn rồi ạ! Bạn có muốn đổi sang đi tuyến nào khác (như Buôn Ma Thuột, Quảng Trị, Quy Nhơn...) hay cần em hỗ trợ gì thêm không ạ?'.\n"
                 . "   - Chỉ khi khách ĐÃ ĐẶT VÉ THẬT SỰ (có mã vé KT-..., hoặc đã cọc tiền thành công) và yêu cầu hủy vé: Mới ân cần hướng dẫn hủy vé và hoàn tiền cọc 30%.\n"
                 . "5. THỜI GIAN: {$timeContext}\n"
                 . "6. THÔNG TIN KHÁCH HÀNG: {$userDesc}\n"
@@ -2244,9 +2300,19 @@ class AiAssistantController extends Controller
                 . "9. DANH SÁCH CÁC TUYẾN ĐƯỜNG ĐANG KHAI THÁC THỰC TẾ:\n"
                 . "- Nhà xe Kiến Trúc CHỈ KHAI THÁC CÁC TUYẾN SAU: {$routesSummary}.\n"
                 . "- TUYỆT ĐỐI KHÔNG TỰ BỊA RA HOẶC NHẬN CÁC TUYẾN KHÁC (như Cà Mau, Cần Thơ, Sài Gòn, TP.HCM, Hải Phòng...). Nếu khách hỏi tuyến không nằm trong danh sách trên, bạn BẮT BUỘC phải thông báo lịch sự là Nhà xe Kiến Trúc hiện chưa khai thác tuyến đó và gợi ý các tuyến nhà xe đang phục vụ.\n"
-                . "10. BỘ NHỚ DUY TRÌ TÌNH TIẾT CŨ (DEEP CONTEXT RETENTION): Bạn PHẢI NHỚ TOÀN BỘ CÁC TÌNH TIẾT CŨ từ các câu trước trong phiên chat (như khách bị say xe, đi mấy người, người già...). Dù khách đổi từ chuyến Huế sang Quảng Trị thì bạn VẪN PHẢI NHỚ khách bị say xe và đi mấy người để tự động lọc ghế tầng 1 dãy giữa êm ái cho tuyến mới!\n"
+                . $deepMemoryRule10
                 . "11. XỬ LÝ MÂU THUẪN: Nếu khách nói mâu thuẫn như 'đặt 1 vé cho 2 người', hãy khéo léo xác nhận lại: 'Dạ em hiểu mình cần đặt 2 giường cho 2 người đi cùng nhau đúng không ạ?' trước khi giữ chỗ.\n"
-                . "12. ĐỒNG BỘ NÚT BẤM: Khi hướng dẫn khách giữ vé trên thẻ chuyến xe, chỉ hướng dẫn bấm trực tiếp vào mã ghế màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ (chỗ ngồi được giữ 5 phút qua mã VietQR).";
+                . "12. ĐỒNG BỘ NÚT BẤM: Khi hướng dẫn khách giữ vé trên thẻ chuyến xe, chỉ hướng dẫn bấm trực tiếp vào mã ghế màu đỏ hoặc nút '⚡ Tự Động Chọn Ghế Này Ngay' trên thẻ (chỗ ngồi được giữ 5 phút qua mã VietQR).\n"
+                . "13. TƯ VẤN ĐỔI GHẾ KHI KHÁCH SAY XE NHƯNG MUỐN NGỒI GẦN CỬA SỔ (QUY TẮC BẮT BUỘC):\n"
+                . "   Khi khách hàng yêu cầu đổi ghế hoặc bảo muốn ngồi gần cửa sổ (ví dụ: 'tôi muốn ngồi gần cửa sổ', 'đổi ghế cho tôi', 'tôi thích ngồi cạnh cửa sổ'...):\n"
+                . "   Bạn PHẢI giải thích rõ ràng, ân cần theo đúng 4 ý sau để khách hiểu và an tâm lựa chọn:\n"
+                . "   a. Giải thích lý do ban đầu: 'Vì bạn bị say xe nên ban đầu em khuyên mình nên ưu tiên chọn ghế tầng 1 dãy giữa (như A02, A05) để giảm xóc tốt nhất (giảm tới 98% rung lắc do nằm đúng tâm trọng lực của xe).'\n"
+                . "   b. Tôn trọng nhu cầu của khách: 'Tuy nhiên, nếu anh/chị vẫn muốn chọn ghế gần cửa sổ để ngắm cảnh bên ngoài, em rất sẵn lòng đổi sang ghế gần cửa sổ cho anh/chị ạ!'\n"
+                . "   c. So sánh khoa học giữa các vị trí gần cửa sổ để khách dễ lựa chọn:\n"
+                . "      + Ghế gần cửa sổ TẦNG 1 (như giường em vừa đổi bên dưới): Vừa sát cửa sổ ngắm trọn cảnh đẹp, vừa ở tầng thấp sát sàn xe nên ít bị lắc ngang, vẫn đỡ say xe rất tốt (giảm ~85% say xe).\n"
+                . "      + Cảnh báo khách: Anh/chị nên tránh các ghế gần cửa sổ TẦNG 2 (dãy B) hoặc đuôi xe, vì ở trên cao lực văng ly tâm khi xe ôm cua đèo dốc mạnh hơn gấp 2.5 lần, nhìn vật thể lướt nhanh ngang cửa sổ sẽ làm tiền đình xung đột gây say xe nặng hơn nhiều.\n"
+                . "   d. Kết luận: 'Vì vậy, em đã đổi sang giường gần cửa sổ TẦNG 1 trên thẻ chuyến xe mới bên dưới cho mình rồi ạ! Bạn kiểm tra lại thẻ chuyến xe mới và bấm vào nút \"⚡ Tự Động Chọn Ghế Này Ngay\" để giữ chỗ 5 phút nhé!'\n"
+                . "   * TUYỆT ĐỐI KHÔNG tự gõ các mã giả lập hoặc văn bản trong ngoặc vuông mô phỏng thẻ chuyến xe, vì giao diện web đã tự động gắn thẻ chuyến xe trực quan ngay bên dưới tin nhắn!";
 
             // Xây dựng contents đa lượt (Multi-turn conversation history - tối đa 12 lượt)
             $contents = [];
@@ -2302,8 +2368,11 @@ class AiAssistantController extends Controller
                     if ($response->successful()) {
                         $replyText = $response->json('candidates.0.content.parts.0.text');
                         if (!empty($replyText)) {
+                            // Loại bỏ triệt để mọi text thô dạng [Thẻ chuyến xe...] nếu model vô tình sinh ra
+                            $replyText = preg_replace('/\[Thẻ chuyến xe[^\]]*\]/iu', '', $replyText);
+                            $replyText = trim($replyText);
                             return [
-                                'reply' => trim($replyText),
+                                'reply' => $replyText,
                                 'suggestions' => ['Đà Nẵng đi Huế', 'Đà Nẵng đi Quảng Trị', 'Đà Nẵng đi Quy Nhơn', 'Chính sách cọc 30%'],
                             ];
                         }
@@ -2340,102 +2409,129 @@ class AiAssistantController extends Controller
             return [];
         }
 
-        // Kiểm tra xem câu hỏi có liên quan đến tìm chuyến / vé xe không
-        $isTripQuery = preg_match('/(chuyen|xe|ve|dat ve|dat xe|lich|gio chay|chay|di|den|ve|khoi hanh|tuyen|sang|chieu|toi|ngay mai|hom nay)/i', $unaccented)
+        // Kiểm tra xem câu hỏi có liên quan đến tìm chuyến / vé xe không HOẶC yêu cầu đổi ghế
+        $isSeatChangeOrPref = !empty($memory['is_seat_change_request'])
+            || (bool) preg_match('/(doi ghe|đổi ghế|ghe khac|ghế khác|cua so|cửa sổ|sat cua|sát cửa|canh cua|cạnh cửa|ngoi gan cua|ngồi gần cửa|day giua|dãy giữa|o giua|ở giữa|tang 1|tầng 1|tang 2|tầng 2|tang tren|tầng trên|tang duoi|tầng dưới|chon lai|chọn lại|doi sang|đổi sang|chuyen ghe|chuyển ghế)/ui', $lower);
+
+        $isTripQuery = $isSeatChangeOrPref
+            || preg_match('/(chuyen|xe|ve|dat ve|dat xe|lich|gio chay|chay|di|den|ve|khoi hanh|tuyen|sang|chieu|toi|ngay mai|hom nay)/i', $unaccented)
             || preg_match('/(chuyến|xe|vé|đặt vé|đặt xe|lịch|giờ chạy|chạy|đi|đến|về|khởi hành|tuyến|sáng|chiều|tối|ngày mai|hôm nay)/u', $lower);
         if (!$isTripQuery) {
             return [];
         }
 
-        // Tuyệt đối loại trừ các câu hỏi thuần về ngày tháng, giờ giấc, thời tiết hoặc chào hỏi
-        if (preg_match('/(thứ mấy|mấy giờ|ngày mấy|hôm nay là|ngày mai là|thời tiết|bây giờ là|xin chào|tôi là ai|nhớ tôi)/u', $lower)) {
+        // Tuyệt đối loại trừ các câu hỏi thuần về ngày tháng, giờ giấc, thời tiết hoặc chào hỏi (trừ khi đang đổi ghế)
+        if (!$isSeatChangeOrPref && preg_match('/(thứ mấy|mấy giờ|ngày mấy|hôm nay là|ngày mai là|thời tiết|bây giờ là|xin chào|tôi là ai|nhớ tôi)/u', $lower)) {
             $isExplicitBooking = preg_match('/(đặt vé|mua vé|tìm xe|tìm chuyến|xem chuyến|có xe nào|có chuyến nào)/u', $lower);
             if (!$isExplicitBooking) {
                 return [];
             }
         }
 
-        $matchedDest = null;
-        if (preg_match('/(quang tri|quan tri|dong ha)/i', $unaccented))
-            $matchedDest = 'Quảng Trị';
-        elseif (preg_match('/(hue|thua thien)/i', $unaccented))
-            $matchedDest = 'Thừa Thiên - Huế';
-        elseif (preg_match('/(quang binh|dong hoi)/i', $unaccented))
-            $matchedDest = 'Quảng Bình';
-        elseif (preg_match('/(quy nhon|binh dinh)/i', $unaccented))
-            $matchedDest = 'Quy Nhơn';
-        elseif (preg_match('/(buon ma thuot|dak lak|bmt)/i', $unaccented))
-            $matchedDest = 'Buôn Ma Thuột';
-        elseif (preg_match('/(ha noi)/i', $unaccented))
-            $matchedDest = 'Hà Nội';
-        elseif (preg_match('/(nam dinh)/i', $unaccented))
-            $matchedDest = 'Nam Định';
-        elseif (preg_match('/(hoi an)/i', $unaccented))
-            $matchedDest = 'Hội An';
-        elseif (preg_match('/(da nang)/i', $unaccented))
-            $matchedDest = 'Đà Nẵng';
+        // Nhận diện điểm đến: Ưu tiên câu hiện tại -> nếu không có thì lấy từ bộ nhớ đàm thoại ($memory)
+        $matchedDest = $this->detectDestinationInText($query);
+        if (!$matchedDest && !empty($memory['current_destination'])) {
+            $matchedDest = $memory['current_destination'];
+        }
 
-        // Không có điểm đến -> TUYỆT ĐỐI không trả về danh sách chuyến ngẫu nhiên
-        if (!$matchedDest) {
+        // Quét tìm xem lượt trước có nhắc đến ID chuyến xe cụ thể nào không (ví dụ #420707)
+        $lastTripId = null;
+        if (!empty($history)) {
+            foreach (array_reverse($history) as $h) {
+                $hText = (string) ($h['content'] ?? '');
+                if (preg_match('/#(\d{4,8})/', $hText, $mTrip)) {
+                    $lastTripId = (int) $mTrip[1];
+                    break;
+                }
+            }
+        }
+
+        // Nếu không có điểm đến VÀ không có ID chuyến xe nào đang thảo luận -> không trả về danh sách rỗng
+        if (!$matchedDest && !$lastTripId) {
             return [];
         }
 
-        // NẾU KHÁCH CHỈ NÓI ĐIỂM ĐẾN (VÍ DỤ "TÔI ĐI QUẢNG TRỊ", "TÔI MUỐN ĐI QUẢNG TRỊ")
-        // MÀ CHƯA CÓ NGÀY, CHƯA CÓ GIỜ VÀ KHÔNG HỎI LỊCH CHẠY -> ĐỂ TRỢ LÝ HỎI LẠI TRƯỚC, KHÔNG XUẤT THẺ CHUYẾN SỚM
-        $hasDateInfo = (bool) preg_match('/(hom nay|ngay mai|sang mai|chieu mai|toi mai|mai|ngay \d+|\d{1,2}\/\d{1,2})/i', $unaccented);
-        $hasTimeInfo = (bool) preg_match('/(sang|chieu|toi|dem|trua|\d{1,2}h|\d{1,2}:\d{2})/i', $unaccented);
-        $isAskingSchedule = (bool) preg_match('/(xem lich|lich chay|may gio|gio chay|co nhung chuyen|co chuyen nao|tat ca cac chuyen|co xe nao)/i', $unaccented);
+        $trips = collect();
 
-        if (!$hasDateInfo && !$hasTimeInfo && !$isAskingSchedule && empty($memory['has_date'])) {
-            return [];
-        }
-
-        $queryBuilder = Trip::with(['route', 'bus', 'bookings.bookingSeats'])
-            ->whereIn('status', ['SCHEDULED', 'OPEN_FOR_SALE', 'READY', 'BOARDING'])
-            ->where('departure_time', '>=', Carbon::now());
-
-        if ($matchedDest) {
-            $queryBuilder->whereHas('route', function ($q) use ($matchedDest) {
-                $q->where('origin', 'like', "%{$matchedDest}%")
-                    ->orWhere('destination', 'like', "%{$matchedDest}%");
-            });
-        }
-
-        if (preg_match('/(ngày mai|sáng mai|chiều mai|tối mai|mai)/u', $lower) || (!empty($memory['has_date']) && preg_match('/(mai)/i', $memory['combined_user_text'] ?? ''))) {
-            $queryBuilder->whereDate('departure_time', Carbon::tomorrow()->toDateString());
-        }
-
-        if (preg_match('/(sáng|sáng mai)/u', $lower)) {
-            $queryBuilder->whereTime('departure_time', '>=', '05:00:00')
-                ->whereTime('departure_time', '<=', '11:59:59');
-        } elseif (preg_match('/(chiều|chiều mai)/u', $lower)) {
-            $queryBuilder->whereTime('departure_time', '>=', '12:00:00')
-                ->whereTime('departure_time', '<=', '17:59:59');
-        } elseif (preg_match('/(tối|tối mai|đêm)/u', $lower)) {
-            $queryBuilder->whereTime('departure_time', '>=', '18:00:00')
-                ->whereTime('departure_time', '<=', '23:59:59');
-        }
-
-        // Nếu là yêu cầu tìm chuyến/chọn ghế cụ thể, chỉ đưa ra 1 chuyến xe tốt nhất (Point 4)
-        $isSpecificInquiry = (bool) preg_match('/(sáng|chiều|tối|ngày mai|hôm nay|bà|ông|chọn|đặt|say|già)/u', $lower) || !empty($memory['has_motion_sickness']);
-        $tripsLimit = $isSpecificInquiry ? 1 : 3;
-
-        $trips = $queryBuilder->orderBy('departure_time', 'asc')->take($tripsLimit)->get();
-
-        if ($trips->isEmpty()) {
-            $trips = Trip::with(['route', 'bus', 'bookings.bookingSeats'])
+        // 1. Nếu khách đang yêu cầu đổi ghế trên chuyến xe vừa trao đổi:
+        if ($isSeatChangeOrPref && $lastTripId) {
+            $prevTrip = Trip::with(['route', 'bus', 'bookings.bookingSeats'])
                 ->whereIn('status', ['SCHEDULED', 'OPEN_FOR_SALE', 'READY', 'BOARDING'])
                 ->where('departure_time', '>=', Carbon::now())
-                ->whereHas('route', fn($rq) => $rq->where('origin', 'like', "%{$matchedDest}%")->orWhere('destination', 'like', "%{$matchedDest}%"))
-                ->orderBy('departure_time', 'asc')
-                ->take(1)
-                ->get();
+                ->find($lastTripId);
+            if ($prevTrip) {
+                $trips = collect([$prevTrip]);
+            }
+        }
+
+        // 2. Tra cứu theo tuyến và ngày giờ nếu chưa có chuyến cố định
+        if ($trips->isEmpty()) {
+            // NẾU KHÁCH CHỈ NÓI ĐIỂM ĐẾN (VÍ DỤ "TÔI ĐI BUÔN MA THUỘT", "TÔI ĐI QUẢNG TRỊ")
+            // MÀ CHƯA CÓ NGÀY, CHƯA CÓ GIỜ VÀ KHÔNG HỎI LỊCH CHẠY -> ĐỂ TRỢ LÝ HỎI LẠI TRƯỚC, KHÔNG XUẤT THẺ CHUYẾN SỚM
+            $hasDateInfo = (bool) preg_match('/(hom nay|ngay mai|sang mai|chieu mai|toi mai|mai|ngay \d+|\d{1,2}\/\d{1,2})/i', $unaccented);
+            $hasTimeInfo = (bool) preg_match('/(sang|chieu|toi|dem|trua|\d{1,2}h|\d{1,2}:\d{2})/i', $unaccented);
+            $isAskingSchedule = (bool) preg_match('/(xem lich|lich chay|may gio|gio chay|co nhung chuyen|co chuyen nao|tat ca cac chuyen|co xe nao)/i', $unaccented);
+
+            if (!$isSeatChangeOrPref && !$hasDateInfo && !$hasTimeInfo && !$isAskingSchedule && empty($memory['has_date'])) {
+                return [];
+            }
+
+            $queryBuilder = Trip::with(['route', 'bus', 'bookings.bookingSeats'])
+                ->whereIn('status', ['SCHEDULED', 'OPEN_FOR_SALE', 'READY', 'BOARDING'])
+                ->where('departure_time', '>=', Carbon::now());
+
+            if ($matchedDest) {
+                $queryBuilder->whereHas('route', function ($q) use ($matchedDest) {
+                    $q->where('origin', 'like', "%{$matchedDest}%")
+                        ->orWhere('destination', 'like', "%{$matchedDest}%");
+                });
+            }
+
+            // Xử lý ngày đi: ngày mai, hôm nay hoặc ngày cụ thể (ví dụ: ngày 29 hoặc 29/11)
+            if (preg_match('/(ngày mai|sáng mai|chiều mai|tối mai|mai)/u', $lower) || (!empty($memory['has_date']) && preg_match('/(mai)/i', $memory['combined_user_text'] ?? ''))) {
+                $queryBuilder->whereDate('departure_time', Carbon::tomorrow()->toDateString());
+            } elseif (preg_match('/(ngay\s*(\d{1,2})(?:\/(\d{1,2}))?)/i', $unaccented, $mDate)) {
+                $targetDay = (int) $mDate[2];
+                $targetMonth = !empty($mDate[3]) ? (int) $mDate[3] : Carbon::now()->month;
+                $targetYear = ($targetMonth < Carbon::now()->month) ? Carbon::now()->year + 1 : Carbon::now()->year;
+                try {
+                    $targetDate = Carbon::create($targetYear, $targetMonth, $targetDay)->toDateString();
+                    $queryBuilder->whereDate('departure_time', $targetDate);
+                } catch (\Throwable $dErr) {}
+            }
+
+            if (preg_match('/(sáng|sáng mai)/u', $lower)) {
+                $queryBuilder->whereTime('departure_time', '>=', '05:00:00')
+                    ->whereTime('departure_time', '<=', '11:59:59');
+            } elseif (preg_match('/(chiều|chiều mai)/u', $lower)) {
+                $queryBuilder->whereTime('departure_time', '>=', '12:00:00')
+                    ->whereTime('departure_time', '<=', '17:59:59');
+            } elseif (preg_match('/(tối|tối mai|đêm)/u', $lower)) {
+                $queryBuilder->whereTime('departure_time', '>=', '18:00:00')
+                    ->whereTime('departure_time', '<=', '23:59:59');
+            }
+
+            // Nếu là yêu cầu tìm chuyến/chọn ghế cụ thể, chỉ đưa ra 1 chuyến xe tốt nhất (Point 4)
+            $isSpecificInquiry = (bool) preg_match('/(sáng|chiều|tối|ngày mai|hôm nay|bà|ông|chọn|đặt|say|già)/u', $lower) || !empty($memory['has_motion_sickness']);
+            $tripsLimit = $isSpecificInquiry ? 1 : 3;
+
+            $trips = $queryBuilder->orderBy('departure_time', 'asc')->take($tripsLimit)->get();
+
+            if ($trips->isEmpty() && $matchedDest) {
+                $trips = Trip::with(['route', 'bus', 'bookings.bookingSeats'])
+                    ->whereIn('status', ['SCHEDULED', 'OPEN_FOR_SALE', 'READY', 'BOARDING'])
+                    ->where('departure_time', '>=', Carbon::now())
+                    ->whereHas('route', fn($rq) => $rq->where('origin', 'like', "%{$matchedDest}%")->orWhere('destination', 'like', "%{$matchedDest}%"))
+                    ->orderBy('departure_time', 'asc')
+                    ->take(1)
+                    ->get();
+            }
         }
 
         // Phân tích thể trạng & nhu cầu khách hàng qua câu hỏi hiện tại HOẶC bộ nhớ đàm thoại (Deep Context Retention)
         $isSayXe = !empty($memory['has_motion_sickness']) || (bool) preg_match('/(say|chóng mặt|nôn|ói|lắc|say xe|say tàu|tiền đình|chống say|êm ái|ít rung|mệt|nôn nao|hoa mắt)/u', $lower);
         $isRiengTu = !empty($memory['is_rieng_tu']) || (bool) preg_match('/(riêng tư|rèm|kín|không gian riêng|phòng riêng|tránh người|kín đáo|rèm che|khép kín|kéo rèm)/u', $lower);
-        $isNgamCanh = (bool) preg_match('/(ngắm cảnh|ngắm đường|ngắm biển|chụp hình|chụp ảnh|view đẹp|cửa sổ|phong cảnh|ngắm đèo|ngắm núi|panorama)/u', $lower);
+        $isNgamCanh = !empty($memory['is_window_preferred']) || (bool) preg_match('/(ngắm cảnh|ngắm đường|ngắm biển|chụp hình|chụp ảnh|view đẹp|cửa sổ|phong cảnh|ngắm đèo|ngắm núi|panorama|sát cửa|cạnh cửa|gần cửa)/u', $lower);
         $isElderly = !empty($memory['is_elderly']) || (bool) preg_match('/(già|lớn tuổi|người già|người cao tuổi|ông bà|ba mẹ|mẹ già|đau lưng|thoát vị|đau khớp|chân yếu|leo trèo|khó đi lại|\bbà\b|bà của tôi|bà tôi|ông tôi|ông của tôi|cụ)/u', $lower);
         $isBaby = !empty($memory['is_baby']) || (bool) preg_match('/(em bé|trẻ em|trẻ nhỏ|con nhỏ|sơ sinh|bế con|bé|em nhỏ|pha sữa|mang theo con)/u', $lower);
         $isTall = (bool) preg_match('/(cao|chân dài|1m7|1m8|1m85|1m9|m8|m75|to cao|nặng cân|ngoại cỡ|chật chân|đụng đầu)/u', $lower);
@@ -2557,22 +2653,55 @@ class AiAssistantController extends Controller
                     $score = '92% Tối Ưu Tầng 2';
                 }
             }
-            // 2. SAY XE VÀ THÍCH NGẮM CẢNH
+            // 2. SAY XE VÀ THÍCH NGẮM CẢNH / MUỐN NGỒI GẦN CỬA SỔ
             elseif ($isSayXe && $isNgamCanh) {
                 $reasonTag = 'say_xe';
-                $score = '97% Cửa Sổ Chống Say';
-                $targetF1 = ['A01', 'A03'];
-                $pick = null;
-                foreach ($targetF1 as $s) {
-                    if (in_array($s, $availF1)) {
-                        $pick = $s;
-                        break;
+                $score = '88% Cửa Sổ Tầng 1 Đỡ Say Xe';
+
+                // Các cặp giường sát cửa sổ TẦNG 1 tốt nhất (Dãy A bên trái hoặc Dãy C bên phải):
+                $f1WindowPairs = [
+                    ['A04', 'A06'], // Khoang giữa tầng 1 - Êm ái & ngắm cảnh tốt nhất
+                    ['A01', 'A03'], // Khoang đầu tầng 1 - Tầm nhìn thẳng thoáng mát
+                    ['A07', 'A09'],
+                    ['A10', 'A12'],
+                    ['A01', 'A04'],
+                    ['A03', 'A06'],
+                ];
+                $f1WindowSingles = ['A04', 'A06', 'A01', 'A03', 'A07', 'A09', 'A10', 'A12'];
+
+                if ($numPassengers >= 2) {
+                    $pair = null;
+                    foreach ($f1WindowPairs as $p) {
+                        if (in_array($p[0], $availF1) && in_array($p[1], $availF1)) {
+                            $pair = $p;
+                            break;
+                        }
                     }
+                    if ($pair) {
+                        $chosenSeats = $pair;
+                    } else {
+                        $wAvail = array_values(array_intersect($f1WindowSingles, $availF1));
+                        $chosenSeats = count($wAvail) >= 2 ? array_slice($wAvail, 0, 2) : array_slice($availF1, 0, 2);
+                        if (count($chosenSeats) < 2) {
+                            $chosenSeats = array_merge($chosenSeats, array_slice($availF2, 0, 2 - count($chosenSeats)));
+                        }
+                    }
+                    $seatsStr = implode(', ', $chosenSeats);
+                    $seatAdvice = "Tầng 1 - Sát cửa sổ ({$seatsStr}): Cặp giường sát cửa sổ tầng dưới sàn thấp, vừa thỏa mãn ngắm cảnh, vừa giảm xóc 85% hạn chế chao đảo tiền đình cho 2 bạn.";
+                } else {
+                    $pick = null;
+                    foreach ($f1WindowSingles as $s) {
+                        if (in_array($s, $availF1)) {
+                            $pick = $s;
+                            break;
+                        }
+                    }
+                    $chosenSeats = [$pick ?: ($availF1[0] ?? 'A04')];
+                    $seatsStr = $chosenSeats[0];
+                    $seatAdvice = "Tầng 1 - Sát cửa sổ ({$seatsStr}): Giường sát cửa sổ tầng dưới sàn thấp êm ái triệt tiêu 85% rung lắc, tầm nhìn thoáng đãng đỡ say xe hơn nhiều so với tầng 2.";
                 }
-                $chosenSeats = [$pick ?: ($availF1[0] ?? 'A01')];
-                $seatAdvice = "Tầng 1 đầu xe cạnh cửa sổ ({$chosenSeats[0]}): Mắt nhìn thẳng hướng xe chạy giúp đồng bộ tiền đình chống nôn nao, vừa ngắm trọn phong cảnh thoáng đãng.";
             }
-            // 3. SAY XE THUẦN TÚY
+            // 3. SAY XE THUẦN TÚY (Ưu tiên tầng 1 dãy giữa)
             elseif ($isSayXe) {
                 $reasonTag = 'say_xe';
                 $score = '98% Giảm Say Xe';
@@ -2585,7 +2714,8 @@ class AiAssistantController extends Controller
                         }
                     }
                     $chosenSeats = $pair ?: array_slice($availF1, 0, 2);
-                    $seatAdvice = "Tầng 1 - Dãy giữa: Vị trí trọng tâm xe êm ái nhất, cách xa bánh xe, giảm 80% cảm giác say xe cho 2 bạn.";
+                    $seatsStr = implode(', ', $chosenSeats);
+                    $seatAdvice = "Tầng 1 - Dãy giữa ({$seatsStr}): Vị trí trọng tâm xe êm ái nhất, cách xa bánh xe, giảm 80% cảm giác say xe cho 2 bạn.";
                 } else {
                     $targetF1 = ['A02', 'A05', 'A08', 'A11'];
                     $pick = null;
@@ -2683,20 +2813,46 @@ class AiAssistantController extends Controller
                 $chosenSeats = [$pick ?: ($availF2[0] ?? 'B04')];
                 $seatAdvice = "Khoang tĩnh lặng Tầng 2 ({$chosenSeats[0]}): Rèm kéo kín 100% chắn sáng, không ai đi ngang qua giường, cách xa tiếng còi buồng lái và tiếng động cơ.";
             }
-            // 9. THÍCH NGẮM CẢNH / SỐNG ẢO
+            // 9. THÍCH NGẮM CẢNH / SỐNG ẢO (KHÔNG SAY XE)
             elseif ($isNgamCanh) {
                 $reasonTag = 'ngu_say';
                 $score = '98% View Panorama';
-                $targetF2 = ['B01', 'B02', 'B07', 'B08'];
-                $pick = null;
-                foreach ($targetF2 as $s) {
-                    if (in_array($s, $availF2)) {
-                        $pick = $s;
-                        break;
+                $f2WindowPairs = [
+                    ['B01', 'B03'],
+                    ['B04', 'B06'],
+                    ['B07', 'B09'],
+                    ['B10', 'B12'],
+                ];
+                $f2WindowSingles = ['B01', 'B03', 'B04', 'B06', 'B07', 'B09', 'B10', 'B12'];
+
+                if ($numPassengers >= 2) {
+                    $pair = null;
+                    foreach ($f2WindowPairs as $p) {
+                        if (in_array($p[0], $availF2) && in_array($p[1], $availF2)) {
+                            $pair = $p;
+                            break;
+                        }
                     }
+                    if ($pair) {
+                        $chosenSeats = $pair;
+                    } else {
+                        $wAvail = array_values(array_intersect($f2WindowSingles, $availF2));
+                        $chosenSeats = count($wAvail) >= 2 ? array_slice($wAvail, 0, 2) : array_slice($availF2, 0, 2);
+                    }
+                    $seatsStr = implode(', ', $chosenSeats);
+                    $seatAdvice = "Tầng 2 cửa sổ góc rộng ({$seatsStr}): Tầm nhìn panorama 180 độ không bị dải phân cách chắn, bắt trọn cảnh quan thiên nhiên đẹp nhất.";
+                } else {
+                    $pick = null;
+                    foreach ($f2WindowSingles as $s) {
+                        if (in_array($s, $availF2)) {
+                            $pick = $s;
+                            break;
+                        }
+                    }
+                    $chosenSeats = [$pick ?: ($availF2[0] ?? 'B01')];
+                    $seatsStr = $chosenSeats[0];
+                    $seatAdvice = "Tầng 2 cửa sổ góc rộng ({$seatsStr}): Tầm nhìn panorama 180 độ không bị dải phân cách chắn, bắt trọn cảnh đèo Hải Vân và bờ biển miền Trung.";
                 }
-                $chosenSeats = [$pick ?: ($availF2[0] ?? 'B01')];
-                $seatAdvice = "Tầng 2 cửa sổ góc rộng ({$chosenSeats[0]}): Tầm nhìn panorama 180 độ không bị dải phân cách chắn, bắt trọn cảnh đèo Hải Vân và bờ biển miền Trung.";
             }
             // 10. MANG NHIỀU HÀNH LÝ / LAPTOP
             elseif ($isLuggage) {
