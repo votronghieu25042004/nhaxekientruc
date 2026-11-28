@@ -96,7 +96,7 @@
             <!-- TAB 1: QUẦY NHÂN VIÊN ẢO (VIRTUAL STAFF KIOSK STANDEE) -->
             <div v-if="sidebarTab === 'kiosk'" class="flex-1 flex flex-col p-3 overflow-y-auto custom-scrollbar justify-between space-y-3">
               <!-- Khung Quầy Nhân Viên Ảo Bé Kiến Trúc DAU -->
-              <div class="relative rounded-3xl p-3.5 text-center overflow-hidden bg-white/95 border-2 border-red-300/80 shadow-xl backdrop-blur-md text-slate-800">
+              <div class="relative rounded-3xl p-3.5 text-center overflow-hidden bg-gradient-to-b from-[#fff8f8] via-white to-[#fff1f2] border-2 border-red-200/90 shadow-xl backdrop-blur-md text-slate-800">
                 <div class="relative z-10 flex items-center justify-between pb-2 border-b border-red-100">
                   <span class="text-[9.5px] font-black tracking-wider text-red-700 uppercase">ĐH KIẾN TRÚC ĐÀ NẴNG</span>
                   <span class="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-300 text-[9px] font-black text-emerald-700 flex items-center gap-1">
@@ -113,7 +113,7 @@
                   <img
                     src="/images/mascot-transparent.png"
                     alt="Bé Kiến Trúc DAU Mascot Katedee"
-                    class="h-full w-auto object-contain drop-shadow-[0_10px_20px_rgba(225,29,72,0.25)] transition-transform duration-300"
+                    class="h-full w-auto object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.1)] drop-shadow-[0_12px_24px_rgba(225,29,72,0.25)] transition-transform duration-300"
                     :class="[
                       isCheckingLedger ? 'animate-ledger-check' : 'animate-mascot-float',
                       isSpeaking ? 'scale-105' : ''
@@ -507,7 +507,7 @@
                       <img
                         src="/images/mascot-transparent.png"
                         alt="Bé Kiến Trúc DAU Mascot"
-                        class="w-full h-full object-contain drop-shadow-[0_8px_16px_rgba(225,29,72,0.3)] animate-mascot-float"
+                        class="w-full h-full object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.1)] drop-shadow-[0_10px_20px_rgba(225,29,72,0.25)] animate-mascot-float"
                       />
                     </div>
                   </div>
